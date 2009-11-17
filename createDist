@@ -1,0 +1,53 @@
+#!/bin/sh
+
+# CoLoR, a Coq library on rewriting and termination.
+# See the COPYRIGHTS and LICENSE files.
+#
+# - Frederic Blanqui, 2005-02-03
+
+name=SimSoCCert
+
+prog=`basename $0`
+
+usage () { echo "usage: $prog [-h]"; }
+
+help () {
+  cat <<EOF
+Creates a tar.gz file of $name sources from the SVN archive.
+
+Options:
+-h Provide this help and exit
+EOF
+}
+
+case "$1" in
+-h) usage; echo; help; exit 0;;
+esac
+
+if test $# -ne 0; then usage; exit 1; fi
+
+cwd=`pwd`
+
+cd /tmp
+
+rm -rf color
+svn co svn://scm.gforge.inria.fr/svn/color/trunk/color
+
+date=`date +%y%m%d`
+
+dir=$name_$date
+rm -rf $dir
+mv color $dir
+
+rm -rf `find $dir -name .svn`
+
+echo "This is the $name library on `date`." > newREADME
+echo "Check http://color.inria.fr/ for more recent versions." >> newREADME
+echo >> newREADME
+cat $dir/README >> newREADME
+mv -f newREADME $dir/README
+
+tar cf $dir.tar $dir
+gzip $dir.tar
+mv $dir.tar.gz $cwd
+rm -rf $dir

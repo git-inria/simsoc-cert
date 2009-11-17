@@ -1,0 +1,93 @@
+#!/bin/sh
+
+# CoLoR, a Coq library on rewriting and termination.
+# See the COPYRIGHTS and LICENSE files.
+#
+# - Frederic Blanqui, 2006-01-16
+
+prog=`basename $0`
+
+usage () {
+  echo "usage: $prog [-h]"
+}
+
+help () {
+  cat <<EOF
+Creates an index for CoLoR files in doc/main.html.
+
+Options:
+-h Provide this help and exit
+EOF
+}
+
+case "$1" in
+-h) usage; echo; help; exit 0;;
+esac
+
+if test $# -ne 0
+then
+  usage; exit 1
+fi
+
+doc=`pwd`/doc/main.html
+
+# add an entry for each file of $dir
+
+prfiles () {
+  echo "<li>$dir<ul>" >> $doc
+  for f in `ls $dir/*.v`
+  do
+    if test "$root" = ""
+    then
+      d=$dir
+    else
+      d=$root.$dir
+    fi
+    g=`basename $f .v`
+    echo "<li><a href=\"CoLoR.$d.$g.html\">$g</a></li>" >> $doc
+  done
+  echo "</ul></li>" >> $doc
+}
+
+# add an entry for each $subdirs of $root
+
+prdir () {
+  echo "<li>$root<ul>" >> $doc
+  cd $root
+  for d in $subdirs
+  do
+    dir=$d; prfiles
+  done
+  cd ..
+  echo "</ul></li>" >> $doc
+}
+
+# begin
+
+cat doc/begin.html > $doc
+echo "<ul>" >> $doc
+
+# Util
+
+root=Util
+subdirs=`ls -1 $root`
+prdir
+
+# Term
+
+root=Term
+subdirs=`ls -1 $root`
+prdir
+
+# simple directories
+
+root=''
+for dir in `ls -1F | grep / | sed -e 's|/||' -e 's|doc||' -e 's|Util||' -e 's|Term||' -e 's|Coccinelle||' | sed -e 's|Nonin|NonTermin|'`
+do
+  prfiles
+done
+
+# end
+
+echo "</ul>" >> $doc
+cat doc/end.html >> $doc
