@@ -29,7 +29,7 @@ clean:
 	$(MAKECOQ) clean
 
 clean-doc:
-	rm -f doc/$(NAME).*.html doc/index.html
+	rm -f doc/$(NAME).*.html doc/index.html doc/main.html
 
 tags:
 	coqtags $(VFILES)

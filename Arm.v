@@ -2,8 +2,6 @@
 SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
 
-- Frederic Blanqui, 2009-11-12
-
 Formalization of the ARM architecture version 6 following the:
 
 ARM Architecture Reference Manual, Issue I, July 2005.
@@ -48,10 +46,10 @@ Inductive version : Type :=
 
 Inductive store_pc_offset_value : Type := O8 | O12.
 
-Definition store_pc_offset (v : store_pc_offset_value) : Z :=
+Definition store_pc_offset (v : store_pc_offset_value) : int :=
   match v with
-    | O8 => 8
-    | O12 => 12
+    | O8 => repr 8
+    | O12 => repr 12
   end.
  
 (* A2.6.5 Abort models *)
@@ -59,7 +57,7 @@ Definition store_pc_offset (v : store_pc_offset_value) : Z :=
 Inductive abort_model : Type := Restored | Updated.
 
 (* All parameters gathered *)
-
+(*FIXME: to be completed*)
 Module Type CONFIG.
   Variable version : version.
   Variable store_pc_offset : store_pc_offset_value.
@@ -77,7 +75,19 @@ End CONFIG.
 (* A2.1 Datatypes (p. 41) *)
 (****************************************************************************)
 
-Definition word := int.
+Notation word := int.
+
+Definition bit (n : nat) : word := repr (two_power_nat n).
+
+(* bits n .. n+k *)
+
+Fixpoint bits_aux (n k : nat) : Z :=
+  match k with
+    | O => two_power_nat n
+    | S k' => two_power_nat n + bits_aux (S n) k'
+  end.
+
+Definition bits (n k : nat) : word := repr (bits_aux n k).
 
 Definition is_not_zero w := negb (zeq (intval w) 0).
 
@@ -90,12 +100,12 @@ Definition is_not_zero w := negb (zeq (intval w) 0).
 
 (*FIXME: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
-Record bits (n : nat) : Type := mk_bits {
-  bits_val :> Z;
-  bits_prf : 0 <= bits_val < two_power_nat n
+Record bitvec (n : nat) : Type := mk_bitvec {
+  bitvec_val :> Z;
+  bitvec_prf : 0 <= bitvec_val < two_power_nat n
 }.
 
-Lemma bits_eqdec : forall n (b1 b2 : bits n), {b1=b2}+{~b1=b2}.
+Lemma bitvec_eqdec : forall n (b1 b2 : bitvec n), {b1=b2}+{~b1=b2}.
 
 Proof.
 intros n [v1 p1] [v2 p2]. case (zeq v1 v2); intro.
@@ -104,8 +114,8 @@ right. intro h. inversion h. contradiction.
 Qed.
 
 (*FIXME: do we need to define types for bytes and halfwords?*)
-Definition halfword := bits 16.
-Definition byte := bits 8.
+Definition halfword := bitvec 16.
+Definition byte := bitvec 8.
 
 (****************************************************************************)
 (* A2.2 Processor modes (p. 410) *)
@@ -114,6 +124,11 @@ Definition byte := bits 8.
 Module Arm (C : CONFIG).
 
 Inductive processor_exception_mode : Type := fiq | irq | svc | abt | und.
+
+Lemma processor_exception_mode_eqdec :
+  forall x y : processor_exception_mode, {x=y}+{~x=y}.
+
+Proof. decide equality. Qed.
 
 Inductive processor_mode : Type :=
   usr | sys | exn (m : processor_exception_mode).
@@ -129,9 +144,9 @@ Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
 (* A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
-Definition register_number := bits 4.
+Definition register_number := bitvec 4.
 
-Definition is_eq (Rd : register_number) (x : Z) : bool := zeq (bits_val Rd) x.
+Definition is_eq (Rd : register_number) (x : Z) : bool := zeq (bitvec_val Rd) x.
 
 Inductive physical_register : Type :=
 | R (r : register_number)
@@ -141,13 +156,11 @@ Inductive physical_register : Type :=
 | R_irq (v : Z) (h : 13 <= v <= 14)
 | R_fiq (v : Z) (h : 8 <= v <= 14).
 
-Definition physical_registers := physical_register -> word.
-
 Lemma physical_register_eqdec : forall x y : physical_register, {x=y}+{~x=y}.
 
 Proof.
 destruct x; destruct y; intros; try (right; discriminate).
-destruct (bits_eqdec r r0). subst. auto.
+destruct (bitvec_eqdec r r0). subst. auto.
 right. intro h. inversion h. contradiction.
 destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
@@ -206,56 +219,56 @@ Definition status_register := word.
 
 (* Condition code flags (p. 49) *)
 
-Definition Nmask := (*bit[31]*) repr 2147483648.
+Definition Nmask := bit 31.
 Definition Nbit r := and r Nmask.
 Definition set_N r := is_not_zero (Nbit r).
 
-Definition Zmask := (*bit[30]*) repr 1073741824.
+Definition Zmask := bit 30.
 Definition Zbit r := and r Zmask.
 Definition set_Z r := is_not_zero (Zbit r).
 
-Definition Cmask := (*bit[29]*) repr 536870912.
+Definition Cmask := bit 29.
 Definition Cbit r := and r Cmask.
 Definition set_C r := is_not_zero (Cbit r).
 
-Definition Vmask := (*bit[28]*) repr 268435456.
+Definition Vmask := bit 28.
 Definition Vbit r := and r Vmask.
 Definition set_V r := is_not_zero (Vbit r).
 
 (* The Q flag (p. 51) *)
 
-Definition Qmask := (*bit[27]*) repr 134217728.
+Definition Qmask := bit 27.
 Definition Qbit r := and r Qmask.
 Definition set_Q r := is_not_zero (Qbit r).
 
 (* The GE bits (p. 51) *)
 
-Definition GEmask := (*bits[16:19]*) repr 983040.
+Definition GEmask := bits 16 3 (*bits[16:19]*).
 Definition GEbits r := and r GEmask.
 
 (* The E bit (p. 51) *)
 
-Definition Emask := (*bit[9]*) repr 512.
+Definition Emask := bit 9.
 Definition Ebit r := and r Emask.
 Definition set_E r := is_not_zero (Ebit r).
 
 (* The interrupt disable bits (p. 52) *)
 
-Definition Amask := (*bit[8]*) repr 256.
+Definition Amask := bit 8.
 Definition Abit r := and r Amask.
 Definition set_A r := is_not_zero (Abit r).
 
-Definition Imask := (*bit[7]*) repr 128.
+Definition Imask := bit 7.
 Definition Ibit r := and r Imask.
 Definition set_I r := is_not_zero (Ibit r).
 
-Definition Fmask := (*bit[6]*) repr 64.
+Definition Fmask := bit 6.
 Definition Fbit r := and r Fmask.
 Definition set_F r := is_not_zero (Fbit r).
 
 (* Mode bits (p. 52) *)
 
-Definition Mmask := (*bits[0:4]*) repr 15.
+Definition Mmask := bits 0 4.
 Definition Mbits r := and r Mmask.
 
 Definition mode (r : status_register) : option processor_mode :=
@@ -272,11 +285,11 @@ Definition mode (r : status_register) : option processor_mode :=
 
 (* The T and J bits (p. 53) *)
 
-Definition Tmask := (*bit[5]*) repr 32.
+Definition Tmask := bit 5.
 Definition Tbit r := and r Tmask.
 Definition set_T r := is_not_zero (Tbit r).
 
-Definition Jmask := (*bit[24]*) repr 16777216.
+Definition Jmask := bit 24.
 Definition Jbit r := and r Jmask.
 Definition set_J r := is_not_zero (Jbit r).
 
@@ -337,15 +350,20 @@ Definition priority (e : exception) : BinInt.Z :=
     | UndIns | SoftInt => 7 (* lowest *)
   end.
 
+Fixpoint insert (e : exception) (l : list exception) : list exception :=
+  match l with
+    | nil => e :: nil
+    | e' :: l' => if zlt (priority e) (priority e') then e :: l
+      else e' :: insert e l'
+  end.
+
 (****************************************************************************)
 (* A2.7 Endian support (p. 68) *)
 (****************************************************************************)
 
-Definition address := bits 30.
+Definition address := bitvec 30.
 
-Definition address_eqdec := @bits_eqdec 30.
-
-Definition memory := address -> word.
+Definition address_eqdec := @bitvec_eqdec 30.
 
 (****************************************************************************)
 (* A2.8 Unaligned access support (p. 76) *)
@@ -371,8 +389,8 @@ Record state : Type := mk_state {
   cpsr : status_register; (* Current program status register *)
   spsr : processor_exception_mode -> status_register;
     (* Saved program status registers *)
-  reg : physical_registers;
-  mem : memory;
+  reg : physical_register -> word;
+  mem : address -> word;
   exns : list exception (* Raised exceptions *)
 }.
 
@@ -383,6 +401,9 @@ Notation "s .reg" := (reg s) (at level 2, left associativity).
 Notation "s .mem" := (mem s) (at level 2, left associativity).
 Notation "s .exns" := (exns s) (at level 2, left associativity).*)
 
+Definition reg_content (s : state) (m : processor_mode) (Rn : register_number)
+  : word := reg s (phy_reg_of_mode m Rn).
+
 Section update.
 
 Variables (A : Type) (eqdec : forall x y : A, {x=y}+{~x=y}) (B : Type).
@@ -392,15 +413,29 @@ Definition update (f : A -> B) (a : A) (b : B) : A -> B :=
 
 End update.
 
+Definition update_spsr := update processor_exception_mode_eqdec.
 Definition update_register := update physical_register_eqdec.
+Definition update_memory := update address_eqdec.
 
 Definition update_reg (s : state) (m : processor_mode) (Rd : register_number)
   := update_register (reg s) (phy_reg_of_mode m Rd).
 
-Definition reg_content (s : state) (m : processor_mode) (Rn : register_number)
-  : word := reg s (phy_reg_of_mode m Rn).
+Definition update_mem (s : state) := update_memory (mem s).
 
-Definition update_memory := update address_eqdec.
+Definition set_cpsr s new_cpsr :=
+  mk_state new_cpsr (spsr s) (reg s) (mem s) (exns s).
+
+Definition set_spsr s m w :=
+  mk_state (cpsr s) (update_spsr (spsr s) m w) (reg s) (mem s) (exns s).
+
+Definition set_reg s m Rd w :=
+  mk_state (cpsr s) (spsr s) (update_reg s m Rd w) (mem s) (exns s).
+
+Definition set_mem s a w :=
+  mk_state (cpsr s) (spsr s) (reg s) (update_mem s a w) (exns s).
+
+Definition add_exn s e :=
+  mk_state (cpsr s) (spsr s) (reg s) (mem s) (insert e (exns s)).
 
 (****************************************************************************)
 (* Chapter A3 - The ARM Instruction Set *)
@@ -410,7 +445,7 @@ Definition update_memory := update address_eqdec.
 (* A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
-Definition cond_mask := (*bits[28:31]*) repr 4026531840.
+Definition cond_mask := bits 28 3. (*bits[28:31]*)
 Definition cond (r : status_register) := intval (and r cond_mask).
 
 Definition ConditionPassed (r : status_register) : bool :=
@@ -574,7 +609,7 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 *)
 
-Definition adc (s : state) (S : bool) (Rd Rn : register_number) (so : int)
+Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
   : option state :=
   let r := cpsr s in
     match mode r with
