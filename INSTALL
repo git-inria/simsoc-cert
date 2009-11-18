@@ -1,0 +1,35 @@
+SimSoC-Cert, a Coq library for certifying Systems-on-Chips
+----------------------------------------------------------
+
+The compilation procedure that is provided hereafter requires a
+UNIX-like operating system with the following commands (it also works
+with Cygwin on Windows):
+
+- Coq 8.2pl1 http://coq.inria.fr/
+- GNU make version 3.81 http://www.gnu.org/software/make/
+- GNU find version 4.4.0 http://www.gnu.org/software/findutils/findutils.html
+
+For compiling SimSoC-Cert, use the command "MAKE" (replace MAKE by your
+command for GNU make).
+
+If you use the development version of SimSoC-Cert under SVN
+(http://gforge.inria.fr/projects/simsoc-cert/), after an update,
+before doing "MAKE", you need to do 'MAKE config' to recompile
+dependencies when new files are added in the archive.
+
+For compiling the html documentation, use the command "MAKE doc". The
+starting file is doc/main.html.
+
+For compiling the TAGS file, use the command "MAKE tags". This
+requires "coqtags" from ProofGeneral http://proofgeneral.inf.ed.ac.uk/.
+
+For using the library, type the following command in Coq or add it in
+your ~/.coqrc file:
+
+	Add Rec LoadPath "<dir>" as SimSoCCert.
+
+where <dir> is the directory where the library is installed.
+
+If you encounter any problem, send a mail to Frederic Blanqui
+(firstname.name@inria.fr) or Jean-Francois Monin
+(firstname.name@imag.fr).

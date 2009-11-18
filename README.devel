@@ -1,0 +1,78 @@
+SimSoC-Cert, a Coq library for certifying Systems-on-Chips
+----------------------------------------------------------
+
+Guideline for SimSoC-Cert developers:
+-------------------------------------
+
+- For new contributors, update the COPYRIGHT file.
+
+- Don't forget to update the CHANGES and THANKS files.
+
+- If you bring important modifications to an already existing file,
+add in the header your name with the modification date yy-mm-dd.
+
+About compilation:
+------------------
+
+- Before any commit, make sure that CoLoR compiles with the last
+stable release of Coq and, if possible, with the development version
+of Coq. Check also that Rainbow examples still work.
+
+- Put useful messages when you commit.
+
+- When you add a file, do "make config" to build Makefile.Coq and the
+dependencies again.
+
+About the coding style:
+-----------------------
+
+- Try to follow the style currently used.
+
+- Use maximum 78 characters per line.
+
+- Add the SimSoC-Cert header at the beginning of each file with the
+creation date yy-mm-dd.
+
+- Only use Parameter, Definition, Lemma (no Axiom, Theorem, etc.).
+
+- Put comments! And use the possibilities offered by coqdoc. For
+instance, "(** " creates a section title. Check the result by doing
+"make doc".
+
+- Try to use the Coq standard library as much as possible.
+
+- Define decidability lemmas using boolean function.
+
+- Avoid decidability lemmas. Use boolean functions instead.
+
+- Try to define equivalence lemmas whenever possible in order to use
+  rewriting.
+
+- Try to build the names of lemmas by concatening its main
+ingredients. For instance:
+
+Lemma Vforall_in : forall P x n (v : vec n), Vforall P v -> Vin x v -> P x.
+
+You can also add the suffix "intro" or "elim" for specifying its
+use. For instance:
+
+Lemma Vforall_intro : forall (P : A->Prop) n (v : vec n),
+  (forall x, Vin x v -> P x) -> Vforall P v.
+
+provides a way of proving Vforall (introduction rule).
+
+Lemma Vin_elim : forall x n (v : vec n),
+  Vin x v -> exists n1, exists v1 : vec n1, exists n2, exists v2 : vec n2,
+    exists H : n1 + S n2 = n, v = Vcast (Vapp v1 (Vcons x v2)) H.
+
+provides a way to deduce some information from Vin (elimination rule).
+
+- Use "Require Export" as less as possible. Use "Require Import"
+instead. This reduces the compilation time.
+
+- Use (*COQ:...*) for indicating problems with Coq,
+      (*FIXME:...*) for indicating something to be fixed,
+      (*REMARK:...*) for adding some important remark
+                     (e.g. something can could be improved), 
+      (*REMOVE:...*) for indicating something to be removed,
+      (*MOVE:...*) for indicating something to be moved.
