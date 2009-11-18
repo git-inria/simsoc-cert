@@ -1,9 +1,11 @@
-#!/bin/sh
+#!/bin/sh -x
 
 # CoLoR, a Coq library on rewriting and termination.
 # See the COPYRIGHTS and LICENSE files.
 #
 # - Frederic Blanqui, 2006-01-16
+
+name=SimSoCCert
 
 prog=`basename $0`
 
@@ -13,7 +15,7 @@ usage () {
 
 help () {
   cat <<EOF
-Creates an index for CoLoR files in doc/main.html.
+Creates an index for $name files in doc/main.html.
 
 Options:
 -h Provide this help and exit
@@ -44,7 +46,7 @@ prfiles () {
       d=$root.$dir
     fi
     g=`basename $f .v`
-    echo "<li><a href=\"CoLoR.$d.$g.html\">$g</a></li>" >> $doc
+    echo "<li><a href=\"$name.$d.$g.html\">$g</a></li>" >> $doc
   done
   echo "</ul></li>" >> $doc
 }
@@ -69,22 +71,22 @@ echo "<ul>" >> $doc
 
 # Util
 
-root=Util
-subdirs=`ls -1 $root`
-prdir
-
-# Term
-
-root=Term
-subdirs=`ls -1 $root`
-prdir
+#root=Util
+#subdirs=`ls -1 $root`
+#prdir
 
 # simple directories
 
-root=''
-for dir in `ls -1F | grep / | sed -e 's|/||' -e 's|doc||' -e 's|Util||' -e 's|Term||' -e 's|Coccinelle||' | sed -e 's|Nonin|NonTermin|'`
+#root=''
+#for dir in `ls -1F | grep / | sed -e 's|/||' -e 's|doc||'`
+#do
+#  prfiles
+#done
+
+for f in `ls *.v`
 do
-  prfiles
+  g=`basename $f .v`
+  echo "<li><a href=\"$name.$g.html\">$g</a></li>" >> $doc
 done
 
 # end

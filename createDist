@@ -30,8 +30,8 @@ cwd=`pwd`
 
 cd /tmp
 
-rm -rf color
-svn co svn://scm.gforge.inria.fr/svn/color/trunk/color
+rm -rf simsoc-cert
+svn co svn://scm.gforge.inria.fr/svn/simsoc-cert
 
 date=`date +%y%m%d`
 
@@ -42,7 +42,7 @@ mv color $dir
 rm -rf `find $dir -name .svn`
 
 echo "This is the $name library on `date`." > newREADME
-echo "Check http://color.inria.fr/ for more recent versions." >> newREADME
+echo "Check for more recent versions." >> newREADME
 echo >> newREADME
 cat $dir/README >> newREADME
 mv -f newREADME $dir/README
