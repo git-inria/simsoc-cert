@@ -37,7 +37,7 @@ Inductive version : Type :=
 | ARMv6.
 
 (****************************************************************************)
-(* Chapter A2 - Programmers’ Model *)
+(* Chapter A2 - Programmers’ Model (p. 39) *)
 (****************************************************************************)
 
 (****************************************************************************)
@@ -79,6 +79,8 @@ End CONFIG.
 
 Notation word := int.
 
+Definition two : word := repr 2.
+
 (* mask made of bit [n] *)
 
 Definition mask (n : nat) : word := repr (two_power_nat n).
@@ -114,10 +116,12 @@ Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
 
 (* test to zero *)
 
-Definition word_of_bool (b : bool) : word := if b then one else zero.
 Definition is_zero (w : word) : bool := zeq (intval w) 0.
-Definition word_is_zero (w : word) : word := word_of_bool (is_zero w).
 Definition is_not_zero (w : word) : bool := negb (is_zero w).
+
+Definition word_of_bool (b : bool) : word := if b then one else zero.
+
+Definition word_is_zero (w : word) : word := word_of_bool (is_zero w).
 Definition word_is_not_zero (w : word) : word := word_of_bool (is_not_zero w).
 
 (* bit of a word *)
@@ -433,7 +437,7 @@ Definition update_mem (a : address) (w : word) (s : state) : address -> word :=
 Definition set_cpsr (s : state) (w : word) : state :=
   mk_state w (spsr s) (reg s) (mem s) (exns s).
 
-Definition update_cpsr (w : word) (s : state) : state :=
+Definition update_cpsr (s : state) (w : word) : state :=
   set_cpsr s (or (cpsr s) w).
 
 Definition set_spsr (s : state) (m : processor_exception_mode) (w : word)
@@ -450,7 +454,7 @@ Definition add_exn (s : state) (e : exception) : state :=
   mk_state (cpsr s) (spsr s) (reg s) (mem s) (insert e (exns s)).
 
 (****************************************************************************)
-(* Chapter A3 - The ARM Instruction Set *)
+(* Chapter A3 - The ARM Instruction Set (p. 109) *)
 (****************************************************************************)
 
 (****************************************************************************)
@@ -596,14 +600,79 @@ Inductive coprocessor_instruction : Type :=
 (****************************************************************************)
 
 (****************************************************************************)
-(* Chapter A4 - ARM Instructions *)
+(* Chapter A5 - ARM Addressing Modes (p. 441) *)
+(****************************************************************************)
+
+(****************************************************************************)
+(* A5.1 Addressing Mode 1 - Data-processing operands (p. 442) *)
+(****************************************************************************)
+
+Inductive shifter : Type := LSL | LSR | ASR | ROR.
+
+Inductive shifter_value : Type :=
+| SImm (shift_imm : word)
+| SReg (Rs : register_number).
+
+Inductive shifter_operand : Type :=
+| Imm (rotate_imm immed_8 : word)
+| Shift (Rm : register_number) (s : shifter) (w : shifter_value)
+| RRX (Rm : register_number).
+
+(* A5.1.3 Data-processing operands - Immediate (p. 446) *)
+(*
+shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
+if rotate_imm == 0 then
+  shifter_carry_out = C flag
+else /* rotate_imm != 0 */
+  shifter_carry_out = shifter_operand[31]
+*)
+Definition shifter_operand_Imm (i : word) (rotate_imm immed_8 : word)
+  : word * bool :=
+  let v := ror immed_8 (mul two rotate_imm) in
+  let c := if is_zero rotate_imm then is_set Cbit i else is_set 31 v in
+  (v, c).
+
+(* A5.1.4 Data-processing operands - Register (p. 448) *)
+(*
+shifter_operand = Rm
+shifter_carry_out = C Flag
+*)
+Definition shifter_operand_Reg (s : state) (m : processor_mode) (i : word)
+  (Rm : register_number) : word * bool :=
+  (reg_content s m Rm, is_set Cbit i).
+
+(* A5.1.5 Data-processing operands - Logical shift left by immediate (p. 449) *)
+(*
+if shift_imm == 0 then /* Register Operand */
+shifter_operand = Rm
+shifter_carry_out = C Flag
+else /* shift_imm > 0 */
+shifter_operand = Rm Logical_Shift_Left shift_imm
+shifter_carry_out = Rm[32 - shift_imm]
+*)
+Definition shifter_operand_LSL_Imm (s : state) (m : processor_mode) (i : word)
+  (Rm : register_number) (shift_imm : word) : word * bool :=
+  if is_zero shift_imm then (reg_content s m Rm, is_set Cbit i)
+  else (shl (reg_content s m Rm) shift_imm, (*FIXME*)true).
+
+(*FIXME:
+Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
+  (i : word) (so : shifter_operand) : word * bool :=
+  match so with
+    | Imm rotate_imm immed_8 => shifter_operand_Imm rotate_imm immed_8
+    | Shift Rm s w => shifter_operand_Shift s m i Rm s w
+    | RRX r => shifter_operand_RRX s m i r
+  end.*)
+
+(****************************************************************************)
+(* Chapter A4 - ARM Instructions (p. 151) *)
 (****************************************************************************)
 
 Definition result := option state.
 
 Definition Unpredictable := @None state.
 
-(* CurrentModeHasSPSR p. 1125 *)
+(* CurrentModeHasSPSR (p. 1125) *)
 
 Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
   match m with
@@ -611,7 +680,7 @@ Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
     | _ => true
   end.
 
-(* CarryFrom p. 1124 *)
+(* CarryFrom (p. 1124) *)
 
 Definition CarryFrom_add2 (x y : word) : word :=
   word_of_bool (zlt max_unsigned (unsigned x + unsigned y)).
@@ -619,7 +688,7 @@ Definition CarryFrom_add2 (x y : word) : word :=
 Definition CarryFrom_add3 (x y z : word) : word :=
   word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
 
-(* OverflowFrom p. 1131 *)
+(* OverflowFrom (p. 1131) *)
 
 Definition OverflowFrom_add2 (x y : word) : word :=
   word_of_bool (zlt max_signed (signed x + signed y)).
@@ -649,7 +718,7 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 *)
 
-Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
+Definition adc (S : bool) (Rd Rn : register_number) (so : word) (s : state)
   : option state :=
   let r := cpsr s in
     match mode r with
@@ -669,11 +738,10 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
                   (update Nbit (bit 31 v)
                     (update Zbit (word_is_not_zero v)
                       (update Cbit (CarryFrom_add3 Rn so c)
-                        (update Vbit (OverflowFrom_add3 Rn so c) r))))))
+                        (update Vbit (OverflowFrom_add3 Rn so c) r)))))
             end
-            else let Rn := reg_content s m Rn in
-              let c := get Cbit r in
-              let v := add (add Rn so) c in
-                Some (set_reg s m Rd v)
+          else let Rn := reg_content s m Rn in
+            let c := get Cbit r in
+            let v := add (add Rn so) c in Some (set_reg s m Rd v)
         else Some s
     end.
