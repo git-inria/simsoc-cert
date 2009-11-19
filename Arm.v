@@ -24,6 +24,8 @@ left. auto. right. intros [h1 h2]. contradiction.
 right. intros [h1 h2]. contradiction.
 Defined.
 
+Definition neb (x y : bool) : bool := negb (eqb x y).
+
 (****************************************************************************)
 (* Architecture versions (p. 13) *)
 (****************************************************************************)
@@ -77,41 +79,64 @@ End CONFIG.
 
 Notation word := int.
 
-Definition bit (n : nat) : word := repr (two_power_nat n).
+(* mask made of bit [n] *)
 
-Definition bit0 := bit 0. Definition bit1 := bit 1.
-Definition bit2 := bit 2. Definition bit3 := bit 3.
-Definition bit4 := bit 4. Definition bit5 := bit 5.
-Definition bit6 := bit 6. Definition bit7 := bit 7.
-Definition bit8 := bit 8. Definition bit9 := bit 9.
-Definition bit10 := bit 10. Definition bit11 := bit 11.
-Definition bit12 := bit 12. Definition bit13 := bit 13.
-Definition bit14 := bit 14. Definition bit15 := bit 15.
-Definition bit16 := bit 16. Definition bit17 := bit 17.
-Definition bit18 := bit 18. Definition bit19 := bit 19.
-Definition bit20 := bit 20. Definition bit21 := bit 21.
-Definition bit22 := bit 22. Definition bit23 := bit 23.
-Definition bit24 := bit 24. Definition bit25 := bit 25.
-Definition bit26 := bit 26. Definition bit27 := bit 27.
-Definition bit28 := bit 28. Definition bit29 := bit 29.
-Definition bit30 := bit 30. Definition bit31 := bit 31.
+Definition mask (n : nat) : word := repr (two_power_nat n).
 
-(* bits n .. n+k *)
+Definition mask0 := mask 0. Definition mask1 := mask 1.
+Definition mask2 := mask 2. Definition mask3 := mask 3.
+Definition mask4 := mask 4. Definition mask5 := mask 5.
+Definition mask6 := mask 6. Definition mask7 := mask 7.
+Definition mask8 := mask 8. Definition mask9 := mask 9.
+Definition mask10 := mask 10. Definition mask11 := mask 11.
+Definition mask12 := mask 12. Definition mask13 := mask 13.
+Definition mask14 := mask 14. Definition mask15 := mask 15.
+Definition mask16 := mask 16. Definition mask17 := mask 17.
+Definition mask18 := mask 18. Definition mask19 := mask 19.
+Definition mask20 := mask 20. Definition mask21 := mask 21.
+Definition mask22 := mask 22. Definition mask23 := mask 23.
+Definition mask24 := mask 24. Definition mask25 := mask 25.
+Definition mask26 := mask 26. Definition mask27 := mask 27.
+Definition mask28 := mask 28. Definition mask29 := mask 29.
+Definition mask30 := mask 30. Definition mask31 := mask 31.
 
-Fixpoint bits_aux (n k : nat) : Z :=
+(* mask made of the bits from bit [n] to bit [n+k] *)
+
+Fixpoint masks_aux (n k : nat) : Z :=
   match k with
     | O => two_power_nat n
-    | S k' => two_power_nat n + bits_aux (S n) k'
+    | S k' => two_power_nat n + masks_aux (S n) k'
   end.
 
-Definition bits (n k : nat) : word := repr (bits_aux n k).
+(* mask made of the bits from bit [n] to bit [n+(p-n)] *)
 
-(* Tell if the i-th bit of a word is set *)
-(*REMOVE:Definition bit w i := bits_of_Z wordsize (intval w) i.*)
+Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
 
-(* Sub-word between bit [i] and bit [j], assuming i <= j *)
-(*REMOVE:Definition subintval w i j :=
-  Z_of_bits wordsize (fun k => if zle i k && zle k j then bit w k else false).*)
+(* test to zero *)
+
+Definition word_of_bool (b : bool) : word := if b then one else zero.
+Definition is_zero (w : word) : bool := zeq (intval w) 0.
+Definition word_is_zero (w : word) : word := word_of_bool (is_zero w).
+Definition is_not_zero (w : word) : bool := negb (is_zero w).
+Definition word_is_not_zero (w : word) : word := word_of_bool (is_not_zero w).
+
+(* bit of a word *)
+
+Definition bit (k : nat) (w : word) : word := and (mask k) w.
+Notation get := bit.
+Definition is_set (k : nat) (w : word) : bool := is_not_zero (bit k w).
+Definition set (k : nat) (w : word) : word := or (mask k) w.
+Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
+Definition update (k : nat) (w x : word) : word :=
+  if is_not_zero x then set k w else clear k w.
+
+Definition is_signed (w : word) : bool := is_not_zero (bit 31 w).
+
+(*REMOVE?Fixpoint ors (ws : list word) : word :=
+  match ws with
+    | nil => zero
+    | w :: ws' => or w (ors ws')
+  end.*)
 
 (*FIXME: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
@@ -132,20 +157,6 @@ Qed.
 Definition halfword := bitvec 16.
 Definition byte := bitvec 8.
 
-Fixpoint ors (ws : list word) : word :=
-  match ws with
-    | nil => zero
-    | w :: ws' => or w (ors ws')
-  end.
-
-Definition is_zero (w : word) : bool := zeq (intval w) 0.
-
-Definition test_zero (w : word) : word := if is_zero w then one else zero.
-
-Definition is_not_zero (w : word) : bool := negb (is_zero w).
-
-Definition test_not_zero (w : word) : word := if is_zero w then zero else one.
-
 (****************************************************************************)
 (* A2.2 Processor modes (p. 410) *)
 (****************************************************************************)
@@ -161,12 +172,6 @@ Proof. decide equality. Qed.
 
 Inductive processor_mode : Type :=
   usr | sys | exn (m : processor_exception_mode).
-
-Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
-  match m with
-    | usr | sys => false
-    | _ => true
-  end.
 
 (****************************************************************************)
 (* A2.3 Registers (p. 42) *)
@@ -248,92 +253,33 @@ Definition status_register := word.
 
 (* Condition code flags (p. 49) *)
 
-Definition Nmask := bit31.
-Definition Nbit r := and r Nmask.
-Definition Nbool r := is_not_zero (Nbit r).
-Definition setN r := or r Nmask.
-Definition notNmask := not Nmask.
-Definition clearN r := and r notNmask.
-Definition updateN w r := if is_not_zero w then setN r else clearN r.
-
-Definition Zmask := bit30.
-Definition Zbit r := and r Zmask.
-Definition Zbool r := is_not_zero (Zbit r).
-Definition setZ r := or r Zmask.
-Definition notZmask := not Zmask.
-Definition clearZ r := and r notZmask.
-Definition updateZ w r := if is_not_zero w then setZ r else clearZ r.
-
-Definition Cmask := bit29.
-Definition Cbit r := and r Cmask.
-Definition Cbool r := is_not_zero (Cbit r).
-Definition setC r := or r Cmask.
-Definition notCmask := not Cmask.
-Definition clearC r := and r notCmask.
-Definition updateC w r := if is_not_zero w then setC r else clearC r.
-
-Definition Vmask := bit28.
-Definition Vbit r := and r Vmask.
-Definition Vbool r := is_not_zero (Vbit r).
-Definition setV r := or r Vmask.
-Definition notVmask := not Vmask.
-Definition clearV r := and r notVmask.
-Definition updateV w r := if is_not_zero w then setV r else clearV r.
+Definition Nbit := 31%nat.
+Definition Zbit := 30%nat.
+Definition Cbit := 29%nat.
+Definition Vbit := 28%nat.
 
 (* The Q flag (p. 51) *)
 
-Definition Qmask := bit27.
-Definition Qbit r := and r Qmask.
-Definition Qbool r := is_not_zero (Qbit r).
-Definition setQ r := or r Qmask.
-Definition notQmask := not Qmask.
-Definition clearQ r := and r notQmask.
-Definition updateQ w r := if is_not_zero w then setQ r else clearQ r.
+Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEmask := bits 16 3 (*bits[16:19]*).
+Definition GEmask := masks 16 19.
 Definition GEbits r := and r GEmask.
 
 (* The E bit (p. 51) *)
 
-Definition Emask := bit9.
-Definition Ebit r := and r Emask.
-Definition Ebool r := is_not_zero (Ebit r).
-Definition setE r := or r Emask.
-Definition notEmask := not Emask.
-Definition clearE r := and r notEmask.
-Definition updateE w r := if is_not_zero w then setE r else clearE r.
+Definition Ebit := 9%nat.
 
 (* The interrupt disable bits (p. 52) *)
 
-Definition Amask := bit8.
-Definition Abit r := and r Amask.
-Definition Abool r := is_not_zero (Abit r).
-Definition setA r := or r Amask.
-Definition notAmask := not Amask.
-Definition clearA r := and r notAmask.
-Definition updateA w r := if is_not_zero w then setA r else clearA r.
-
-Definition Imask := bit7.
-Definition Ibit r := and r Imask.
-Definition Ibool r := is_not_zero (Ibit r).
-Definition setI r := or r Imask.
-Definition notImask := not Imask.
-Definition clearI r := and r notImask.
-Definition updateI w r := if is_not_zero w then setI r else clearI r.
-
-Definition Fmask := bit6.
-Definition Fbit r := and r Fmask.
-Definition Fbool r := is_not_zero (Fbit r).
-Definition setF r := or r Fmask.
-Definition notFmask := not Fmask.
-Definition clearF r := and r notFmask.
-Definition updateF w r := if is_not_zero w then setF r else clearF r.
+Definition Abit := 8%nat.
+Definition Ibit := 7%nat.
+Definition Fbit := 6%nat.
 
 (* Mode bits (p. 52) *)
 
-Definition Mmask := bits 0 4.
+Definition Mmask := masks 0 4.
 Definition Mbits r := and r Mmask.
 
 Definition mode (r : status_register) : option processor_mode :=
@@ -350,21 +296,8 @@ Definition mode (r : status_register) : option processor_mode :=
 
 (* The T and J bits (p. 53) *)
 
-Definition Tmask := bit5.
-Definition Tbit r := and r Tmask.
-Definition Tbool r := is_not_zero (Tbit r).
-Definition setT r := or r Tmask.
-Definition notTmask := not Tmask.
-Definition clearT r := and r notTmask.
-Definition updateT w r := if is_not_zero w then setT r else clearT r.
-
-Definition Jmask := bit24.
-Definition Jbit r := and r Jmask.
-Definition Jbool r := is_not_zero (Jbit r).
-Definition setJ r := or r Jmask.
-Definition notJmask := not Jmask.
-Definition clearJ r := and r notJmask.
-Definition updateJ w r := if is_not_zero w then setJ r else clearJ r.
+Definition Tbit := 5%nat.
+Definition Jbit := 24%nat.
 
 (****************************************************************************)
 (* A2.6 Exceptions (p. 54) *)
@@ -477,25 +410,25 @@ Notation "s .exns" := (exns s) (at level 2, left associativity).*)
 Definition reg_content (s : state) (m : processor_mode) (Rn : register_number)
   : word := reg s (phy_reg_of_mode m Rn).
 
-Section update.
+Section update_map.
 
 Variables (A : Type) (eqdec : forall x y : A, {x=y}+{~x=y}) (B : Type).
 
-Definition update (a : A) (b : B) (f : A -> B) : A -> B :=
+Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
   fun x => if eqdec x a then b else f x.
 
-End update.
+End update_map.
 
 Definition update_spsr (m : processor_exception_mode) (w : word) (s : state)
   : processor_exception_mode -> word
-  := update processor_exception_mode_eqdec m w (spsr s).
+  := update_map processor_exception_mode_eqdec m w (spsr s).
 
 Definition update_reg (m : processor_mode) (Rd : register_number) (w : word)
   (s : state) : physical_register -> word :=
-  update physical_register_eqdec (phy_reg_of_mode m Rd) w (reg s).
+  update_map physical_register_eqdec (phy_reg_of_mode m Rd) w (reg s).
 
 Definition update_mem (a : address) (w : word) (s : state) : address -> word :=
-  update address_eqdec a w (mem s).
+  update_map address_eqdec a w (mem s).
 
 Definition set_cpsr (s : state) (w : word) : state :=
   mk_state w (spsr s) (reg s) (mem s) (exns s).
@@ -524,33 +457,33 @@ Definition add_exn (s : state) (e : exception) : state :=
 (* A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
-Definition cond_mask := bits 28 3. (*bits[28:31]*)
+Definition cond_mask := masks 28 3. (*bits[28:31]*)
 Definition cond (r : status_register) := intval (and r cond_mask).
 
 Definition ConditionPassed (r : status_register) : bool :=
   match cond r with
-    | (*0000*) 0 => (* Z set *) Zbool r
-    | (*0001*) 1 => (* Z clear *) negb (Zbool r)
-    | (*0010*) 2 => (* C set *) Cbool r
-    | (*0011*) 3 => (* C clear *) negb (Cbool r)
-    | (*0100*) 4 => (* N set *) Cbool r
-    | (*0101*) 5 => (* N clear *) negb (Cbool r)
-    | (*0110*) 6 => (* V set *) Vbool r
-    | (*0111*) 7 => (* V clear *) negb (Vbool r)
+    | (*0000*) 0 => (* Z set *) is_set Zbit r
+    | (*0001*) 1 => (* Z clear *) negb (is_set Zbit r)
+    | (*0010*) 2 => (* C set *) is_set Cbit r
+    | (*0011*) 3 => (* C clear *) negb (is_set Cbit r)
+    | (*0100*) 4 => (* N set *) is_set Cbit r
+    | (*0101*) 5 => (* N clear *) negb (is_set Cbit r)
+    | (*0110*) 6 => (* V set *) is_set Vbit r
+    | (*0111*) 7 => (* V clear *) negb (is_set Vbit r)
     | (*1000*) 8 => (* C set and Z clear *)
-      andb (Cbool r) (negb (Zbool r))
+      andb (is_set Cbit r) (negb (is_set Zbit r))
     | (*1001*) 9 => (* C clear or Z set *)
-      orb (negb (Cbool r)) (Zbool r)
+      orb (negb (is_set Cbit r)) (is_set Zbit r)
     | (*1010*) 10 => (* N set and V set, or N clear and V clear (N==V) *)
-      eqb (Nbool r) (Vbool r)
+      eqb (is_set Nbit r) (is_set Vbit r)
     | (*1011*) 11 => (* N set and V clear, or N clear and V set (N!=V) *)
-      negb (eqb (Nbool r) (Vbool r))
+      negb (eqb (is_set Nbit r) (is_set Vbit r))
     | (*1100*) 12 => (* Z clear, and either N set and V set,
          or N clear and V clear (Z==0,N==V) *)
-      andb (negb (Zbool r)) (eqb (Nbool r) (Vbool r))
+      andb (negb (is_set Zbit r)) (eqb (is_set Nbit r) (is_set Vbit r))
     | (*1101*) 13 => (* Z set, or N set and V clear, or N clear and V set
          (Z==1 or N!=V) *)
-      orb (Zbool r) (negb (eqb (Nbool r) (Vbool r)))
+      orb (is_set Zbit r) (negb (eqb (is_set Nbit r) (is_set Vbit r)))
     | _ => true
   end.
 
@@ -670,6 +603,34 @@ Definition result := option state.
 
 Definition Unpredictable := @None state.
 
+(* CurrentModeHasSPSR p. 1125 *)
+
+Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
+  match m with
+    | usr | sys => false
+    | _ => true
+  end.
+
+(* CarryFrom p. 1124 *)
+
+Definition CarryFrom_add2 (x y : word) : word :=
+  word_of_bool (zlt max_unsigned (unsigned x + unsigned y)).
+
+Definition CarryFrom_add3 (x y z : word) : word :=
+  word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
+
+(* OverflowFrom p. 1131 *)
+
+Definition OverflowFrom_add2 (x y : word) : word :=
+  word_of_bool (zlt max_signed (signed x + signed y)).
+
+(*FIXME: use this more efficient definition given p. 1131?*)
+Definition OverflowFrom_add2' (x y : word) (r : word) :=
+  let sx := is_signed x in (eqb sx (is_signed y)) && (neb sx (is_signed r)).
+
+Definition OverflowFrom_add3 (x y z : word) : word :=
+  word_of_bool (zlt max_signed (signed x + signed y + signed z)).
+
 (****************************************************************************)
 (* A4.1.2 ADC (p. 154) *)
 (****************************************************************************)
@@ -699,16 +660,20 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
             match m with
               | usr | sys => Unpredictable
               | exn e =>
-                let v := add (add (reg_content s m Rn) so) (Cbit r) in
+                let Rn := reg_content s m Rn in
+                let c := get Cbit r in
+                let v := add (add Rn so) c in
                 let s := set_reg s m Rd v in
                 if is_eq Rd 15 then Some (set_cpsr s (spsr s e))
-                else
-                  Some (update_cpsr (updateN (bit31 v)
-                    (updateZ (test_not_zero v)
-                      updateC (CarryFrom )
-                      (updateV (OverflowFrom ) r))))
+                else Some (set_cpsr s (or (cpsr s)
+                  (update Nbit (bit 31 v)
+                    (update Zbit (word_is_not_zero v)
+                      (update Cbit (CarryFrom_add3 Rn so c)
+                        (update Vbit (OverflowFrom_add3 Rn so c) r))))))
             end
-          else let v := add (add (reg_content s m Rn) so) (Cbit r) in
-            Some (set_reg s m Rd v)
+            else let Rn := reg_content s m Rn in
+              let c := get Cbit r in
+              let v := add (add Rn so) c in
+                Some (set_reg s m Rd v)
         else Some s
     end.
