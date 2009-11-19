@@ -665,7 +665,7 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
                 let v := add (add Rn so) c in
                 let s := set_reg s m Rd v in
                 if is_eq Rd 15 then Some (set_cpsr s (spsr s e))
-                else Some (set_cpsr s (or (cpsr s)
+                else Some (update_cpsr s
                   (update Nbit (bit 31 v)
                     (update Zbit (word_is_not_zero v)
                       (update Cbit (CarryFrom_add3 Rn so c)
