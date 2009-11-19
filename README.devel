@@ -14,9 +14,9 @@ add in the header your name with the modification date yy-mm-dd.
 About compilation:
 ------------------
 
-- Before any commit, make sure that CoLoR compiles with the last
-stable release of Coq and, if possible, with the development version
-of Coq. Check also that Rainbow examples still work.
+- Before any commit, make sure that it compiles with the last stable
+release of Coq and, if possible, with the development version of
+Coq.
 
 - Put useful messages when you commit.
 

@@ -221,25 +221,30 @@ Definition status_register := word.
 
 Definition Nmask := bit 31.
 Definition Nbit r := and r Nmask.
-Definition set_N r := is_not_zero (Nbit r).
+Definition setN r := or r Nmask.
+Definition Nbool r := is_not_zero (Nbit r).
 
 Definition Zmask := bit 30.
 Definition Zbit r := and r Zmask.
-Definition set_Z r := is_not_zero (Zbit r).
+Definition setZ r := or r Zmask.
+Definition Zbool r := is_not_zero (Zbit r).
 
 Definition Cmask := bit 29.
 Definition Cbit r := and r Cmask.
-Definition set_C r := is_not_zero (Cbit r).
+Definition setC r := or r Cmask.
+Definition Cbool r := is_not_zero (Cbit r).
 
 Definition Vmask := bit 28.
 Definition Vbit r := and r Vmask.
-Definition set_V r := is_not_zero (Vbit r).
+Definition setV r := or r Vmask.
+Definition Vbool r := is_not_zero (Vbit r).
 
 (* The Q flag (p. 51) *)
 
 Definition Qmask := bit 27.
 Definition Qbit r := and r Qmask.
-Definition set_Q r := is_not_zero (Qbit r).
+Definition setQ r := or r Qmask.
+Definition Qbool r := is_not_zero (Qbit r).
 
 (* The GE bits (p. 51) *)
 
@@ -250,21 +255,25 @@ Definition GEbits r := and r GEmask.
 
 Definition Emask := bit 9.
 Definition Ebit r := and r Emask.
-Definition set_E r := is_not_zero (Ebit r).
+Definition setE r := or r Emask.
+Definition Ebool r := is_not_zero (Ebit r).
 
 (* The interrupt disable bits (p. 52) *)
 
 Definition Amask := bit 8.
 Definition Abit r := and r Amask.
-Definition set_A r := is_not_zero (Abit r).
+Definition setA r := or r Amask.
+Definition Abool r := is_not_zero (Abit r).
 
 Definition Imask := bit 7.
 Definition Ibit r := and r Imask.
-Definition set_I r := is_not_zero (Ibit r).
+Definition setI r := or r Imask.
+Definition Ibool r := is_not_zero (Ibit r).
 
 Definition Fmask := bit 6.
 Definition Fbit r := and r Fmask.
-Definition set_F r := is_not_zero (Fbit r).
+Definition setF r := or r Fmask.
+Definition Fbool r := is_not_zero (Fbit r).
 
 (* Mode bits (p. 52) *)
 
@@ -287,11 +296,13 @@ Definition mode (r : status_register) : option processor_mode :=
 
 Definition Tmask := bit 5.
 Definition Tbit r := and r Tmask.
-Definition set_T r := is_not_zero (Tbit r).
+Definition setT r := or r Tmask.
+Definition Tbool r := is_not_zero (Tbit r).
 
 Definition Jmask := bit 24.
 Definition Jbit r := and r Jmask.
-Definition set_J r := is_not_zero (Jbit r).
+Definition setJ r := or r Jmask.
+Definition Jbool r := is_not_zero (Jbit r).
 
 (****************************************************************************)
 (* A2.6 Exceptions (p. 54) *)
@@ -408,7 +419,7 @@ Section update.
 
 Variables (A : Type) (eqdec : forall x y : A, {x=y}+{~x=y}) (B : Type).
 
-Definition update (f : A -> B) (a : A) (b : B) : A -> B :=
+Definition update (a : A) (b : B) (f : A -> B) : A -> B :=
   fun x => if eqdec x a then b else f x.
 
 End update.
@@ -418,21 +429,22 @@ Definition update_register := update physical_register_eqdec.
 Definition update_memory := update address_eqdec.
 
 Definition update_reg (s : state) (m : processor_mode) (Rd : register_number)
-  := update_register (reg s) (phy_reg_of_mode m Rd).
+  (w : word) := update_register (phy_reg_of_mode m Rd) w (reg s).
 
-Definition update_mem (s : state) := update_memory (mem s).
+Definition update_mem (s : state) (a : address) (w : word) :=
+  update_memory a w (mem s).
 
-Definition set_cpsr s new_cpsr :=
+Definition set_cpsr new_cpsr s :=
   mk_state new_cpsr (spsr s) (reg s) (mem s) (exns s).
 
-Definition set_spsr s m w :=
-  mk_state (cpsr s) (update_spsr (spsr s) m w) (reg s) (mem s) (exns s).
+Definition set_spsr m w s :=
+  mk_state (cpsr s) (update_spsr m w (spsr s)) (reg s) (mem s) (exns s).
 
-Definition set_reg s m Rd w :=
-  mk_state (cpsr s) (spsr s) (update_reg s m Rd w) (mem s) (exns s).
+Definition set_reg m Rd w s :=
+  mk_state (cpsr s) (spsr s) (update_reg m Rd w s) (mem s) (exns s).
 
-Definition set_mem s a w :=
-  mk_state (cpsr s) (spsr s) (reg s) (update_mem s a w) (exns s).
+Definition set_mem a w s :=
+  mk_state (cpsr s) (spsr s) (reg s) (update_mem a w s) (exns s).
 
 Definition add_exn s e :=
   mk_state (cpsr s) (spsr s) (reg s) (mem s) (insert e (exns s)).
@@ -450,28 +462,28 @@ Definition cond (r : status_register) := intval (and r cond_mask).
 
 Definition ConditionPassed (r : status_register) : bool :=
   match cond r with
-    | (*0000*) 0 => (* Z set *) set_Z r
-    | (*0001*) 1 => (* Z clear *) negb (set_Z r)
-    | (*0010*) 2 => (* C set *) set_C r
-    | (*0011*) 3 => (* C clear *) negb (set_C r)
-    | (*0100*) 4 => (* N set *) set_C r
-    | (*0101*) 5 => (* N clear *) negb (set_C r)
-    | (*0110*) 6 => (* V set *) set_V r
-    | (*0111*) 7 => (* V clear *) negb (set_V r)
+    | (*0000*) 0 => (* Z set *) Zbool r
+    | (*0001*) 1 => (* Z clear *) negb (Zbool r)
+    | (*0010*) 2 => (* C set *) Cbool r
+    | (*0011*) 3 => (* C clear *) negb (Cbool r)
+    | (*0100*) 4 => (* N set *) Cbool r
+    | (*0101*) 5 => (* N clear *) negb (Cbool r)
+    | (*0110*) 6 => (* V set *) Vbool r
+    | (*0111*) 7 => (* V clear *) negb (Vbool r)
     | (*1000*) 8 => (* C set and Z clear *)
-      andb (set_C r) (negb (set_Z r))
+      andb (Cbool r) (negb (Zbool r))
     | (*1001*) 9 => (* C clear or Z set *)
-      orb (negb (set_C r)) (set_Z r)
+      orb (negb (Cbool r)) (Zbool r)
     | (*1010*) 10 => (* N set and V set, or N clear and V clear (N==V) *)
-      eqb (set_N r) (set_V r)
+      eqb (Nbool r) (Vbool r)
     | (*1011*) 11 => (* N set and V clear, or N clear and V set (N!=V) *)
-      negb (eqb (set_N r) (set_V r))
+      negb (eqb (Nbool r) (Vbool r))
     | (*1100*) 12 => (* Z clear, and either N set and V set,
          or N clear and V clear (Z==0,N==V) *)
-      andb (negb (set_Z r)) (eqb (set_N r) (set_V r))
+      andb (negb (Zbool r)) (eqb (Nbool r) (Vbool r))
     | (*1101*) 13 => (* Z set, or N set and V clear, or N clear and V set
          (Z==1 or N!=V) *)
-      orb (set_Z r) (negb (eqb (set_N r) (set_V r)))
+      orb (Zbool r) (negb (eqb (Nbool r) (Vbool r)))
     | _ => true
   end.
 
@@ -616,18 +628,18 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : int) (s : state)
       | None => Unpredictable (* p. 52 *)
       | Some m =>
         if ConditionPassed r then
-          let reg' := update_reg s m Rd
-            (add (add (reg_content s m Rn) so) (Cbit r)) in
           if S then
             match m with
               | usr | sys => Unpredictable
               | exn e =>
-                if is_eq Rd 15 then
-                  Some (mk_state (spsr s e) (spsr s) reg' (mem s) (exns s))
+                let v := add (add (reg_content s m Rn) so) (Cbit r) in
+                let s := set_reg s m Rd v in
+                if is_eq Rd 15 then Some (set_cpsr s (spsr s e))
                 else
-                  let cpsr' := or r (and Nmask (reg_content s m Rd)) in
-                    Some (mk_state (cpsr s) (spsr s) reg' (mem s) (exns s))
+                  set_cpsr_or s (Nbit v)
+                    Some s
             end
-          else Some s
+          else let v := add (add (reg_content s m Rn) so) (Cbit r) in
+            Some (set_reg s m Rd v)
         else Some s
     end.

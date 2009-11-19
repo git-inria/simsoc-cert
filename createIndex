@@ -1,17 +1,13 @@
 #!/bin/sh -x
 
-# CoLoR, a Coq library on rewriting and termination.
+# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
-#
-# - Frederic Blanqui, 2006-01-16
 
 name=SimSoCCert
 
 prog=`basename $0`
 
-usage () {
-  echo "usage: $prog [-h]"
-}
+usage () { echo "usage: $prog [-h]"; }
 
 help () {
   cat <<EOF
@@ -26,70 +22,18 @@ case "$1" in
 -h) usage; echo; help; exit 0;;
 esac
 
-if test $# -ne 0
-then
-  usage; exit 1
-fi
+if test $# -ne 0; then usage; exit 1; fi
 
 doc=`pwd`/doc/main.html
 
-# add an entry for each file of $dir
-
-prfiles () {
-  echo "<li>$dir<ul>" >> $doc
-  for f in `ls $dir/*.v`
-  do
-    if test "$root" = ""
-    then
-      d=$dir
-    else
-      d=$root.$dir
-    fi
-    g=`basename $f .v`
-    echo "<li><a href=\"$name.$d.$g.html\">$g</a></li>" >> $doc
-  done
-  echo "</ul></li>" >> $doc
-}
-
-# add an entry for each $subdirs of $root
-
-prdir () {
-  echo "<li>$root<ul>" >> $doc
-  cd $root
-  for d in $subdirs
-  do
-    dir=$d; prfiles
-  done
-  cd ..
-  echo "</ul></li>" >> $doc
-}
-
-# begin
-
 cat doc/begin.html > $doc
 echo "<ul>" >> $doc
-
-# Util
-
-#root=Util
-#subdirs=`ls -1 $root`
-#prdir
-
-# simple directories
-
-#root=''
-#for dir in `ls -1F | grep / | sed -e 's|/||' -e 's|doc||'`
-#do
-#  prfiles
-#done
 
 for f in `ls *.v`
 do
   g=`basename $f .v`
   echo "<li><a href=\"$name.$g.html\">$g</a></li>" >> $doc
 done
-
-# end
 
 echo "</ul>" >> $doc
 cat doc/end.html >> $doc

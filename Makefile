@@ -1,7 +1,5 @@
-# CoLoR, a Coq library on rewriting and termination.
+# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
-#
-# - Frederic Blanqui, 2005-02-03
 
 NAME := SimSoCCert
 
@@ -38,10 +36,10 @@ doc:
 	coqdoc --html -g -d doc -R . $(NAME) $(VFILES)
 	./createIndex
 
-ADR := login-linux.inria.fr:liama/www/color
+#ADR := login-linux.inria.fr:liama/www/color
 
-install-doc:
-	scp doc/coqdoc.css doc/*.html $(ADR)/doc
+#install-doc:
+#	scp doc/coqdoc.css doc/*.html $(ADR)/doc
 
 dist:
 	./createDist
