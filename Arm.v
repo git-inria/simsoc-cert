@@ -30,6 +30,7 @@ Definition neb (x y : bool) : bool := negb (eqb x y).
 
 (*FIXME: already defined in Coq stdlib?*)
 
+(*
 Fixpoint nat_of_pos_aux (acc : nat) (p : positive) : nat :=
   match p with
     | xH => acc
@@ -44,9 +45,31 @@ Definition nat_of_Z (x : Z) : nat :=
     | Zpos p => nat_of_pos p
     | _ => O
   end.
+*)
 
-(*FIXME: to be proved
-Lemma nat_of_Z_ok : forall x : Z, x >= 0 -> Z_of_nat (nat_of_Z x) = x.*)
+(* nat_of_Z defined in ZArith, as well as
+Zpos_eq_Z_of_nat_o_nat_of_P:
+  forall p : positive, Zpos p = Z_of_nat (nat_of_P p)
+
+Zpos_P_of_succ_nat:
+  forall n : nat, Zpos (P_of_succ_nat n) = Zsucc (Z_of_nat n)
+*)
+
+Definition nat_of_Z (x : Z) : nat :=
+  match x with
+    | Zpos p => nat_of_P p
+    | _ => O
+  end.
+
+(* Yet another test *)
+Lemma nat_of_Z_ok : forall x : Z, x >= 0 -> Z_of_nat (nat_of_Z x) = x.
+Proof.
+  destruct x; simpl.
+    reflexivity.
+    intros _. rewrite Zpos_eq_Z_of_nat_o_nat_of_P. reflexivity.
+    compute. intro n; case n; reflexivity.
+Qed.
+
 
 (****************************************************************************)
 (* Architecture versions (p. 13) *)
