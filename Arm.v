@@ -28,25 +28,6 @@ Defined.
 
 Definition neb (x y : bool) : bool := negb (eqb x y).
 
-(*FIXME: already defined in Coq stdlib?*)
-
-(*
-Fixpoint nat_of_pos_aux (acc : nat) (p : positive) : nat :=
-  match p with
-    | xH => acc
-    | xI p' => nat_of_pos_aux (S (2 * acc)) p'
-    | xO p' => nat_of_pos_aux (2 * acc) p'
-  end.
-
-Definition nat_of_pos := nat_of_pos_aux (S O).
-
-Definition nat_of_Z (x : Z) : nat :=
-  match x with
-    | Zpos p => nat_of_pos p
-    | _ => O
-  end.
-*)
-
 (* nat_of_Z defined in ZArith, as well as
 Zpos_eq_Z_of_nat_o_nat_of_P:
   forall p : positive, Zpos p = Z_of_nat (nat_of_P p)
