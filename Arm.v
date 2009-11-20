@@ -434,8 +434,17 @@ Notation "s .reg" := (reg s) (at level 2, left associativity).
 Notation "s .mem" := (mem s) (at level 2, left associativity).
 Notation "s .exns" := (exns s) (at level 2, left associativity).*)
 
-Definition reg_content (s : state) (m : processor_mode) (Rn : reg_num)
-  : word := reg s (reg_of_mode m Rn).
+Definition reg_content s m k := reg s (reg_of_mode m k).
+
+Definition set_cpsr s w := mk_state w (spsr s) (reg s) (mem s) (exns s).
+Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s).
+Definition set_reg s x :=  mk_state (cpsr s) (spsr s) x (mem s) (exns s).
+Definition set_mem s x :=  mk_state (cpsr s) (spsr s) (reg s) x (exns s).
+Definition set_exns s x :=  mk_state (cpsr s) (spsr s) (reg s) (mem s) x.
+
+Definition set_cpsr_or s w := set_cpsr s (or (cpsr s) w).
+
+Definition add_exn s e := set_exns s (insert e (exns s)).
 
 Section update_map.
 
@@ -446,35 +455,16 @@ Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
 
 End update_map.
 
-Definition update_spsr (m : processor_exception_mode) (w : word) (s : state)
-  : processor_exception_mode -> word
-  := update_map processor_exception_mode_eqdec m w (spsr s).
-
-Definition update_reg (m : processor_mode) (Rd : reg_num) (w : word)
-  (s : state) : register -> word :=
-  update_map register_eqdec (reg_of_mode m Rd) w (reg s).
-
-Definition update_mem (a : address) (w : word) (s : state) : address -> word :=
+Definition update_map_spsr s m w :=
+  update_map processor_exception_mode_eqdec m w (spsr s).
+Definition update_map_reg s m k w :=
+  update_map register_eqdec (reg_of_mode m k) w (reg s).
+Definition update_map_mem s a w :=
   update_map address_eqdec a w (mem s).
 
-Definition set_cpsr (s : state) (w : word) : state :=
-  mk_state w (spsr s) (reg s) (mem s) (exns s).
-
-Definition update_cpsr (s : state) (w : word) : state :=
-  set_cpsr s (or (cpsr s) w).
-
-Definition set_spsr (s : state) (m : processor_exception_mode) (w : word)
-  : state := mk_state (cpsr s) (update_spsr m w s) (reg s) (mem s) (exns s).
-
-Definition set_reg (s : state) (m : processor_mode) (Rd : reg_num)
-  (w : word) : state :=
-  mk_state (cpsr s) (spsr s) (update_reg m Rd w s) (mem s) (exns s).
-
-Definition set_mem (s : state) (a : address) (w : word) : state :=
-  mk_state (cpsr s) (spsr s) (reg s) (update_mem a w s) (exns s).
-
-Definition add_exn (s : state) (e : exception) : state :=
-  mk_state (cpsr s) (spsr s) (reg s) (mem s) (insert e (exns s)).
+Definition update_spsr s m w := set_spsr s (update_map_spsr s m w).
+Definition update_reg s m k w := set_reg s (update_map_reg s m k w).
+Definition update_mem s a w := set_mem s (update_map_mem s a w).
 
 (****************************************************************************)
 (* Chapter A5 - ARM Addressing Modes (p. 441) *)
@@ -721,9 +711,9 @@ Definition adc (S : bool) (Rd Rn : reg_num) (so : word) (s : state)
                 let Rn := reg_content s m Rn in
                 let c := get Cbit r in
                 let v := add (add Rn so) c in
-                let s := set_reg s m Rd v in
+                let s := update_reg s m Rd v in
                 if is_eq Rd 15 then Some (set_cpsr s (spsr s e))
-                else Some (update_cpsr s
+                else Some (set_cpsr_or s
                   (update Nbit (bit 31 v)
                     (update Zbit (word_is_not_zero v)
                       (update Cbit (CarryFrom_add3 Rn so c)
@@ -731,7 +721,8 @@ Definition adc (S : bool) (Rd Rn : reg_num) (so : word) (s : state)
             end
           else let Rn := reg_content s m Rn in
             let c := get Cbit r in
-            let v := add (add Rn so) c in Some (set_reg s m Rd v)
+            let v := add (add Rn so) c in
+              Some (update_reg s m Rd v)
         else Some s
     end.
 
