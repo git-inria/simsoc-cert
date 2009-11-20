@@ -28,6 +28,26 @@ Defined.
 
 Definition neb (x y : bool) : bool := negb (eqb x y).
 
+(*FIXME: already defined in Coq stdlib?*)
+
+Fixpoint nat_of_pos_aux (acc : nat) (p : positive) : nat :=
+  match p with
+    | xH => acc
+    | xI p' => nat_of_pos_aux (S (2 * acc)) p'
+    | xO p' => nat_of_pos_aux (2 * acc) p'
+  end.
+
+Definition nat_of_pos := nat_of_pos_aux (S O).
+
+Definition nat_of_Z (x : Z) : nat :=
+  match x with
+    | Zpos p => nat_of_pos p
+    | _ => O
+  end.
+
+(*FIXME: to be proved
+Lemma nat_of_Z_ok : forall x : Z, x >= 0 -> Z_of_nat (nat_of_Z x) = x.*)
+
 (****************************************************************************)
 (* Architecture versions (p. 13) *)
 (****************************************************************************)
@@ -89,23 +109,6 @@ Definition two : word := repr 2.
 
 Definition mask (n : nat) : word := repr (two_power_nat n).
 
-Definition mask0 := mask 0. Definition mask1 := mask 1.
-Definition mask2 := mask 2. Definition mask3 := mask 3.
-Definition mask4 := mask 4. Definition mask5 := mask 5.
-Definition mask6 := mask 6. Definition mask7 := mask 7.
-Definition mask8 := mask 8. Definition mask9 := mask 9.
-Definition mask10 := mask 10. Definition mask11 := mask 11.
-Definition mask12 := mask 12. Definition mask13 := mask 13.
-Definition mask14 := mask 14. Definition mask15 := mask 15.
-Definition mask16 := mask 16. Definition mask17 := mask 17.
-Definition mask18 := mask 18. Definition mask19 := mask 19.
-Definition mask20 := mask 20. Definition mask21 := mask 21.
-Definition mask22 := mask 22. Definition mask23 := mask 23.
-Definition mask24 := mask 24. Definition mask25 := mask 25.
-Definition mask26 := mask 26. Definition mask27 := mask 27.
-Definition mask28 := mask 28. Definition mask29 := mask 29.
-Definition mask30 := mask 30. Definition mask31 := mask 31.
-
 (* mask made of the bits from bit [n] to bit [n+k] *)
 
 Fixpoint masks_aux (n k : nat) : Z :=
@@ -143,12 +146,6 @@ Definition update (k : nat) (w x : word) : word :=
 
 Definition is_signed (w : word) : bool := is_not_zero (bit 31 w).
 
-(*REMOVE?Fixpoint ors (ws : list word) : word :=
-  match ws with
-    | nil => zero
-    | w :: ws' => or w (ors ws')
-  end.*)
-
 (*FIXME: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
 
@@ -181,7 +178,6 @@ Qed.
 
 End bitvec.
 
-(*FIXME: do we need to define types for bytes and halfwords?*)
 Definition halfword := bitvec 16.
 Definition byte := bitvec 8.
 
@@ -206,44 +202,45 @@ Inductive processor_mode : Type :=
 (* A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
-Definition register_number := bitvec 4.
+Definition reg_num := bitvec 4.
+Definition mk_reg_num := mk_bitvec 4.
 
-Definition is_eq (Rd : register_number) (x : Z) : bool := zeq (bitvec_val Rd) x.
+Definition is_eq (Rd : reg_num) (x : Z) : bool := zeq (bitvec_val Rd) x.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [unsigned (and w (masks k (k+3)))] is always smaller than
 [two_power_nat 4]*)
-Definition reg_num (k : nat) (w : word) : register_number :=
-  mk_bitvec 4 (unsigned (and w (masks k (k+3)))).
+Definition reg_num_of (k : nat) (w : word) : reg_num :=
+  mk_reg_num (unsigned (and w (masks k (k+3)))).
 
-Inductive physical_register : Type :=
-| R (r : register_number)
-| R_svc (v : Z) (h : 13 <= v <= 14)
-| R_abt (v : Z) (h : 13 <= v <= 14)
-| R_und (v : Z) (h : 13 <= v <= 14)
-| R_irq (v : Z) (h : 13 <= v <= 14)
-| R_fiq (v : Z) (h : 8 <= v <= 14).
+Inductive register : Type :=
+| R (k : reg_num)
+| R_svc (k : Z) (h : 13 <= k <= 14)
+| R_abt (k : Z) (h : 13 <= k <= 14)
+| R_und (k : Z) (h : 13 <= k <= 14)
+| R_irq (k : Z) (h : 13 <= k <= 14)
+| R_fiq (k : Z) (h : 8 <= k <= 14).
 
-Lemma physical_register_eqdec : forall x y : physical_register, {x=y}+{~x=y}.
+Lemma register_eqdec : forall x y : register, {x=y}+{~x=y}.
 
 Proof.
 destruct x; destruct y; intros; try (right; discriminate).
-destruct (bitvec_eqdec r r0). subst. auto.
+destruct (bitvec_eqdec k k0). subst. auto.
 right. intro h. inversion h. contradiction.
-destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (zeq k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (zeq k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (zeq k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (zeq k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (zeq v v0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (zeq k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
 Qed.
 
-Definition phy_reg_of_exn_mode (m : processor_exception_mode)
-  (k : register_number) : physical_register :=
+Definition reg_of_exn_mode (m : processor_exception_mode)
+  (k : reg_num) : register :=
   match m with
     | svc =>
       match between_dec 13 k 14 with
@@ -272,11 +269,11 @@ Definition phy_reg_of_exn_mode (m : processor_exception_mode)
       end
   end.
 
-Definition phy_reg_of_mode (m : processor_mode) (k : register_number)
-  : physical_register :=
+Definition reg_of_mode (m : processor_mode) (k : reg_num)
+  : register :=
   match m with
     | usr | sys => R k
-    | exn e => phy_reg_of_exn_mode e k
+    | exn e => reg_of_exn_mode e k
   end.
 
 (****************************************************************************)
@@ -425,7 +422,7 @@ Record state : Type := mk_state {
   cpsr : word; (* Current program status register *)
   spsr : processor_exception_mode -> word;
     (* Saved program status registers *)
-  reg : physical_register -> word;
+  reg : register -> word;
   mem : address -> word;
   exns : list exception (* Raised exceptions *)
 }.
@@ -437,8 +434,8 @@ Notation "s .reg" := (reg s) (at level 2, left associativity).
 Notation "s .mem" := (mem s) (at level 2, left associativity).
 Notation "s .exns" := (exns s) (at level 2, left associativity).*)
 
-Definition reg_content (s : state) (m : processor_mode) (Rn : register_number)
-  : word := reg s (phy_reg_of_mode m Rn).
+Definition reg_content (s : state) (m : processor_mode) (Rn : reg_num)
+  : word := reg s (reg_of_mode m Rn).
 
 Section update_map.
 
@@ -453,9 +450,9 @@ Definition update_spsr (m : processor_exception_mode) (w : word) (s : state)
   : processor_exception_mode -> word
   := update_map processor_exception_mode_eqdec m w (spsr s).
 
-Definition update_reg (m : processor_mode) (Rd : register_number) (w : word)
-  (s : state) : physical_register -> word :=
-  update_map physical_register_eqdec (phy_reg_of_mode m Rd) w (reg s).
+Definition update_reg (m : processor_mode) (Rd : reg_num) (w : word)
+  (s : state) : register -> word :=
+  update_map register_eqdec (reg_of_mode m Rd) w (reg s).
 
 Definition update_mem (a : address) (w : word) (s : state) : address -> word :=
   update_map address_eqdec a w (mem s).
@@ -469,7 +466,7 @@ Definition update_cpsr (s : state) (w : word) : state :=
 Definition set_spsr (s : state) (m : processor_exception_mode) (w : word)
   : state := mk_state (cpsr s) (update_spsr m w s) (reg s) (mem s) (exns s).
 
-Definition set_reg (s : state) (m : processor_mode) (Rd : register_number)
+Definition set_reg (s : state) (m : processor_mode) (Rd : reg_num)
   (w : word) : state :=
   mk_state (cpsr s) (spsr s) (update_reg m Rd w s) (mem s) (exns s).
 
@@ -478,6 +475,87 @@ Definition set_mem (s : state) (a : address) (w : word) : state :=
 
 Definition add_exn (s : state) (e : exception) : state :=
   mk_state (cpsr s) (spsr s) (reg s) (mem s) (insert e (exns s)).
+
+(****************************************************************************)
+(* Chapter A5 - ARM Addressing Modes (p. 441) *)
+(****************************************************************************)
+
+(****************************************************************************)
+(* A5.1 Addressing Mode 1 - Data-processing operands (p. 442) *)
+(****************************************************************************)
+
+Inductive shifter : Type := LSL | LSR | ASR | ROR.
+
+Inductive shifter_value : Type :=
+| ValImm (shift_imm : word)
+| ValReg (Rs : reg_num).
+
+Inductive shifter_operand : Type :=
+| Imm (rotate_imm immed_8 : word)
+| Shift (Rm : reg_num) (s : shifter) (w : shifter_value)
+| RRX (Rm : reg_num).
+
+(* A5.1.1 Encoding (p. 443) *)
+
+Definition decode_shifter (w : word) : shifter :=
+  match subword_val 5 6 w with
+    | (*00*) 0 => LSL
+    | (*01*) 1 => LSR
+    | (*10*) 2 => ASR
+    | (*11*) _ => ROR
+  end.
+
+Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
+  if x then Imm (subword 8 11 w) (subword 0 7 w)
+  else Shift (reg_num_of 0 w) (decode_shifter w)
+    (if z then ValImm (subword 7 11 w) else ValReg (reg_num_of 8 w)).
+
+(* A5.1.3 Data-processing operands - Immediate (p. 446) *)
+(*
+shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
+if rotate_imm == 0 then
+  shifter_carry_out = C flag
+else /* rotate_imm != 0 */
+  shifter_carry_out = shifter_operand[31]
+*)
+Definition shifter_operand_Imm (i : word) (rotate_imm immed_8 : word)
+  : word * bool :=
+  let v := ror immed_8 (mul two rotate_imm) in
+  let c := if is_zero rotate_imm then is_set Cbit i else is_set 31 v in
+  (v, c).
+
+(* A5.1.4 Data-processing operands - Register (p. 448) *)
+(*
+shifter_operand = Rm
+shifter_carry_out = C Flag
+*)
+Definition shifter_operand_Reg (s : state) (m : processor_mode) (i : word)
+  (Rm : reg_num) : word * bool :=
+  (reg_content s m Rm, is_set Cbit i).
+
+(* A5.1.5 Data-processing operands - Logical shift left by immediate (p. 449) *)
+(*
+if shift_imm == 0 then /* Register Operand */
+shifter_operand = Rm
+shifter_carry_out = C Flag
+else /* shift_imm > 0 */
+shifter_operand = Rm Logical_Shift_Left shift_imm
+shifter_carry_out = Rm[32 - shift_imm]
+*)
+Definition shifter_operand_LSL_Imm (s : state) (m : processor_mode) (i : word)
+  (Rm : reg_num) (shift_imm : word) : word * bool :=
+  let Rm := reg_content s m Rm in
+  if is_zero shift_imm then (Rm, is_set Cbit i)
+  else (shl Rm shift_imm, is_set (nat_of_Z (32 - shift_imm)) Rm).
+
+(*FIXME:
+Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
+  (i : word) (so : shifter_operand) : word * bool :=
+  match so with
+    | Imm rotate_imm immed_8 => shifter_operand_Imm rotate_imm immed_8
+    | Shift Rm s w => shifter_operand_Shift s m i Rm s w
+    | RRX r => shifter_operand_RRX s m i r
+  end.*)
 
 (****************************************************************************)
 (* Chapter A3 - The ARM Instruction Set (p. 109) *)
@@ -515,195 +593,68 @@ Definition ConditionPassed (w : word) : bool :=
   end.
 
 (****************************************************************************)
-(* A3.3 Branch instructions (p. 113) *)
+(* Chapter A4 - ARM Instructions (p. 151) *)
 (****************************************************************************)
 
-Inductive branch_instruction : Type := B | BL | BLX | BX | BXJ.
+Inductive instruction : Type :=
+| ADC (S : bool) (Rd Rn : reg_num) (so : shifter_operand).
 
 (****************************************************************************)
-(* A3.4 Data-processing instructions (p. 115) *)
+(* Instruction decoding *)
 (****************************************************************************)
 
-Inductive data_processing_instruction : Type :=
-  AND | EOR | SUB | RSB | ADD | ADC | SBC | RSC
-| TST | TEQ | CMP | CMN | ORR | MOV | BIC | MVN.
+(*FIXME: should be replaced by option type when all instructions
+will be formalized*)
+Inductive decoding_result : Type :=
+| Inst (i : instruction)
+| Undefined
+| Todo.
 
-(****************************************************************************)
-(* A3.5 Multiply instructions (p. 117) *)
-(****************************************************************************)
+Section clist.
 
-Inductive multiply_instruction : Type :=
-  MLA | MUL | SMLA | SMLAD | SMLAL | SMLALD | SMLAW | SMLSD | SMLSLD | SMMLA
-| SMMLS | SMMUL | SMUAD | SMUL | SMULL | SMULW | SMUSD | UMAAL | UMLAL | UMULL.
+Variables (A : Type) (a : A).
 
-(****************************************************************************)
-(* A3.6 Parallel addition and subtraction instructions (p. 122) *)
-(****************************************************************************)
-
-Inductive parallel_addition_instruction_code : Type :=
-  ADD16 | ADDSUBX | SUBADDX | SUB16 | ADD8 | SUB8.
-
-Inductive parallel_addition_instruction_prefix : Type :=
-  PAS | PAQ | PASH | PAU | PAUQ | PAUH.
-
-Definition parallel_addition_instruction :=
-  (parallel_addition_instruction_prefix
-    * parallel_addition_instruction_code)%type.
-
-(****************************************************************************)
-(* A3.7 Extend instructions (p. 124) *)
-(****************************************************************************)
-
-Inductive extend_instruction_code : Type :=
-  XTAB16 | XTAB | XTAH | XTB16 | XTB | XTH.
-
-Inductive extend_instruction_prefix : Type := XS | XU.
-
-Definition extend_instruction :=
-  (extend_instruction_prefix * extend_instruction_code)%type.
-
-(****************************************************************************)
-(* A3.8 Miscellaneous arithmetic instructions (p. 125) *)
-(****************************************************************************)
-
-Inductive miscellaneous_arithmetic_instruction : Type :=
-  CLZ | USAD8 | USADA8.
-
-(****************************************************************************)
-(* A3.9 Other miscellaneous instructions (p. 126) *)
-(****************************************************************************)
-
-Inductive other_miscellaneous_instruction : Type :=
-  PKHBT | PKHTB | REV | REV16 | REVSH | SEL | SSAT | SSAT16 | USAT | USAT16.
-
-(****************************************************************************)
-(* A3.10 Status register access instructions (p. 127) *)
-(****************************************************************************)
-
-Inductive status_register_access_instruction : Type :=
-  MRS | MSR | CPS | SETEND.
-
-(****************************************************************************)
-(* A3.11 Load and Store instructions (p. 129) *)
-(****************************************************************************)
-
-Inductive load_and_store_instruction : Type :=
-  LDR | LDRB | LDRBT | LDRD | LDREX | LDRH | LDRSB | LDRSH | LDRT
-| STR | STRB | STRBT | STRD | STREX | STRH | STRT.
-
-(****************************************************************************)
-(* A3.12 Load and Store Multiple instructions (p. 134) *)
-(****************************************************************************)
-
-Inductive addressing_mode : Type := IA | IB | DA | DB | FD | FA | ED | EA.
-
-Inductive load_and_store_multiple_instruction : Type := LDM | STM.
-
-(****************************************************************************)
-(* A3.13 Semaphore instructions (p. 136) *)
-(****************************************************************************)
-
-Inductive semaphore_instruction : Type := SWP | SWPB.
-
-(****************************************************************************)
-(* A3.14 Exception-generating instructions (p. 137) *)
-(****************************************************************************)
-
-Inductive exception_generating_instruction : Type := BKPT | SWI.
-
-(****************************************************************************)
-(* A3.15 Coprocessor instructions (P. 138) *)
-(****************************************************************************)
-
-Inductive coprocessor_instruction : Type :=
-  CDP | LDC | MCR | MCRR | MRC | MRRC | STC.
-
-(****************************************************************************)
-(* A3.16 Extending the instruction set (p. 140) *)
-(****************************************************************************)
-
-(****************************************************************************)
-(* Chapter A5 - ARM Addressing Modes (p. 441) *)
-(****************************************************************************)
-
-(****************************************************************************)
-(* A5.1 Addressing Mode 1 - Data-processing operands (p. 442) *)
-(****************************************************************************)
-
-Inductive shifter : Type := LSL | LSR | ASR | ROR.
-
-Inductive shifter_value : Type :=
-| SImm (shift_imm : word)
-| SReg (Rs : register_number).
-
-Inductive shifter_operand : Type :=
-| Imm (rotate_imm immed_8 : word)
-| Shift (Rm : register_number) (s : shifter) (w : shifter_value)
-| RRX (Rm : register_number).
-
-(* A5.1.1 Encoding (p. 443) *)
-
-Definition decode_shifter (w : word) : shifter :=
-  match subword_val 5 6 w with
-    | (*00*) 0 => LSL
-    | (*01*) 1 => LSR
-    | (*10*) 2 => ASR
-    | (*11*) _ => ROR
+Fixpoint clist (k : nat) : list A :=
+  match k with
+    | O => nil
+    | S k' => a :: clist k'
   end.
 
-Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
-  if x then Imm (subword 8 11 w) (subword 0 7 w)
-  else Shift (reg_num 0 w) (decode_shifter w)
-    (if z then SImm (subword 7 11 w) else SReg (reg_num 8 w)).
+End clist.
 
-(* A5.1.3 Data-processing operands - Immediate (p. 446) *)
-(*
-shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
-if rotate_imm == 0 then
-  shifter_carry_out = C flag
-else /* rotate_imm != 0 */
-  shifter_carry_out = shifter_operand[31]
-*)
-Definition shifter_operand_Imm (i : word) (rotate_imm immed_8 : word)
-  : word * bool :=
-  let v := ror immed_8 (mul two rotate_imm) in
-  let c := if is_zero rotate_imm then is_set Cbit i else is_set 31 v in
-  (v, c).
+Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
+  match p with
+    | xI p' => bools_of_positive p' (false :: acc)
+    | xO p' => bools_of_positive p' (true :: acc)
+    | xH => true :: acc
+  end.
 
-(* A5.1.4 Data-processing operands - Register (p. 448) *)
-(*
-shifter_operand = Rm
-shifter_carry_out = C Flag
-*)
-Definition shifter_operand_Reg (s : state) (m : processor_mode) (i : word)
-  (Rm : register_number) : word * bool :=
-  (reg_content s m Rm, is_set Cbit i).
+Definition bools_of_word (w : word) : list bool :=
+  match unsigned w with
+    | Zpos p => bools_of_positive p nil
+    | _ => clist false wordsize
+  end.
 
-(* A5.1.5 Data-processing operands - Logical shift left by immediate (p. 449) *)
-(*
-if shift_imm == 0 then /* Register Operand */
-shifter_operand = Rm
-shifter_carry_out = C Flag
-else /* shift_imm > 0 */
-shifter_operand = Rm Logical_Shift_Left shift_imm
-shifter_carry_out = Rm[32 - shift_imm]
-*)
-Definition shifter_operand_LSL_Imm (s : state) (m : processor_mode) (i : word)
-  (Rm : register_number) (shift_imm : word) : word * bool :=
-  if is_zero shift_imm then (reg_content s m Rm, is_set Cbit i)
-  else (shl (reg_content s m Rm) shift_imm, (*FIXME*)true).
+Section decode.
 
-(*FIXME:
-Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
-  (i : word) (so : shifter_operand) : word * bool :=
-  match so with
-    | Imm rotate_imm immed_8 => shifter_operand_Imm rotate_imm immed_8
-    | Shift Rm s w => shifter_operand_Shift s m i Rm s w
-    | RRX r => shifter_operand_RRX s m i r
-  end.*)
+Local Notation "0" := false.
+Local Notation "1" := true.
+Local Infix "'" := cons (at level 60, right associativity).
+
+Definition decode (w : word) : decoding_result :=
+  match bools_of_word w with
+   (* A4.1.2 ADC (p. 154) *)
+   (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
+    | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
+      (*FIXME: only if [negb (negb I && X && Y)] *)
+      Inst (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+    | _ => Todo
+  end.
+
+End decode.
 
 (****************************************************************************)
-(* Chapter A4 - ARM Instructions (p. 151) *)
+(* Instruction semantics *)
 (****************************************************************************)
 
 Definition result := option state.
@@ -756,7 +707,7 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 *)
 
-Definition adc (S : bool) (Rd Rn : register_number) (so : word) (s : state)
+Definition adc (S : bool) (Rd Rn : reg_num) (so : word) (s : state)
   : option state :=
   let r := cpsr s in
     match mode r with
@@ -784,60 +735,4 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : word) (s : state)
         else Some s
     end.
 
-(****************************************************************************)
-(* A3.1 Instruction set encoding (p. 110) *)
-(****************************************************************************)
-
-Inductive instruction : Type :=
-| Adc (S : bool) (Rd Rn : register_number) (so : shifter_operand).
-
-(*FIXME: should be replaced by option type when all instructions
-will be formalized*)
-Inductive decoding_result : Type :=
-| Inst (i : instruction)
-| Undefined
-| Todo.
-
-Section clist.
-
-Variables (A : Type) (a : A).
-
-Fixpoint clist (k : nat) : list A :=
-  match k with
-    | O => nil
-    | S k' => a :: clist k'
-  end.
-
-End clist.
-
-Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
-  match p with
-    | xI p' => bools_of_positive p' (false :: acc)
-    | xO p' => bools_of_positive p' (true :: acc)
-    | xH => true :: acc
-  end.
-
-Definition bools_of_word (w : word) : list bool :=
-  match unsigned w with
-    | Zpos p => bools_of_positive p nil
-    | _ => clist false wordsize
-  end.
-
-Section decode.
-
-Local Notation "0" := false.
-Local Notation "1" := true.
-Local Infix "'" := cons (at level 60, right associativity).
-
-Definition decode (w : word) : decoding_result :=
-  match bools_of_word w with
-   (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
-    | c 'o 'n 'd '0 '0 'x '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'y '_ '_ 'z '_ '_ '_ '_ =>
-      Inst (Adc s (reg_num 12 w) (reg_num 16 w) (decode_shifter_operand w x z))
-    | _ => Todo
-  end.
-
-End decode.
-
 End Arm.
-
