@@ -5,6 +5,8 @@ See the COPYRIGHTS and LICENSE files.
 Formalization of the ARM architecture version 6 following the:
 
 ARM Architecture Reference Manual, Issue I, July 2005.
+
+Page numbers refer to ARMv6.pdf.
 *)
 
 Set Implicit Arguments.
@@ -79,6 +81,8 @@ End CONFIG.
 
 Notation word := int.
 
+Coercion intval : word >-> Z.
+
 Definition two : word := repr 2.
 
 (* mask made of bit [n] *)
@@ -116,7 +120,7 @@ Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
 
 (* test to zero *)
 
-Definition is_zero (w : word) : bool := zeq (intval w) 0.
+Definition is_zero (w : word) : bool := zeq w 0.
 Definition is_not_zero (w : word) : bool := negb (is_zero w).
 
 Definition word_of_bool (b : bool) : word := if b then one else zero.
@@ -124,7 +128,10 @@ Definition word_of_bool (b : bool) : word := if b then one else zero.
 Definition word_is_zero (w : word) : word := word_of_bool (is_zero w).
 Definition word_is_not_zero (w : word) : word := word_of_bool (is_not_zero w).
 
-(* bit of a word *)
+(* bit(s) of a word *)
+
+Definition subword (k l : nat) (w : word) : word := and (masks k l) w.
+Definition subword_val (k l : nat) (w : word) : Z := intval (subword k l w).
 
 Definition bit (k : nat) (w : word) : word := and (mask k) w.
 Notation get := bit.
@@ -144,18 +151,35 @@ Definition is_signed (w : word) : bool := is_not_zero (bit 31 w).
 
 (*FIXME: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
-Record bitvec (n : nat) : Type := mk_bitvec {
+
+Section bitvec.
+
+Variable n : nat.
+
+Let modulus := two_power_nat n.
+
+Record bitvec : Type := build_bitvec {
   bitvec_val :> Z;
-  bitvec_prf : 0 <= bitvec_val < two_power_nat n
+  bitvec_prf : 0 <= bitvec_val < modulus
 }.
 
-Lemma bitvec_eqdec : forall n (b1 b2 : bitvec n), {b1=b2}+{~b1=b2}.
+Lemma bitvec_in_range: forall x, 0 <= Zmod x modulus < modulus.
 
 Proof.
-intros n [v1 p1] [v2 p2]. case (zeq v1 v2); intro.
+intro x. exact (Z_mod_lt x modulus (two_power_nat_pos n)).
+Qed.
+
+Definition mk_bitvec (x : Z) : bitvec := build_bitvec (bitvec_in_range x).
+
+Lemma bitvec_eqdec : forall b1 b2 : bitvec, {b1=b2}+{~b1=b2}.
+
+Proof.
+intros [v1 p1] [v2 p2]. case (zeq v1 v2); intro.
 left. subst. rewrite (proof_irrelevance _ p1 p2). auto.
 right. intro h. inversion h. contradiction.
 Qed.
+
+End bitvec.
 
 (*FIXME: do we need to define types for bytes and halfwords?*)
 Definition halfword := bitvec 16.
@@ -185,6 +209,12 @@ Inductive processor_mode : Type :=
 Definition register_number := bitvec 4.
 
 Definition is_eq (Rd : register_number) (x : Z) : bool := zeq (bitvec_val Rd) x.
+
+(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
+since [unsigned (and w (masks k (k+3)))] is always smaller than
+[two_power_nat 4]*)
+Definition reg_num (k : nat) (w : word) : register_number :=
+  mk_bitvec 4 (unsigned (and w (masks k (k+3)))).
 
 Inductive physical_register : Type :=
 | R (r : register_number)
@@ -253,8 +283,6 @@ Definition phy_reg_of_mode (m : processor_mode) (k : register_number)
 (* A2.5 Program status registers (p. 49) *)
 (****************************************************************************)
 
-Definition status_register := word.
-
 (* Condition code flags (p. 49) *)
 
 Definition Nbit := 31%nat.
@@ -268,8 +296,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEmask := masks 16 19.
-Definition GEbits r := and r GEmask.
+Definition GEbits w := subword 16 19 w.
 
 (* The E bit (p. 51) *)
 
@@ -283,11 +310,10 @@ Definition Fbit := 6%nat.
 
 (* Mode bits (p. 52) *)
 
-Definition Mmask := masks 0 4.
-Definition Mbits r := and r Mmask.
+Definition Mbits w := subword_val 0 4 w.
 
-Definition mode (r : status_register) : option processor_mode :=
-  match intval (Mbits r) with
+Definition mode (w : word) : option processor_mode :=
+  match Mbits w with
     | (*0b10000*) 16 => Some usr
     | (*0b10001*) 17 => Some (exn fiq)
     | (*0b10010*) 18 => Some (exn irq)
@@ -396,8 +422,8 @@ Definition address_eqdec := @bitvec_eqdec 30.
 (****************************************************************************)
 
 Record state : Type := mk_state {
-  cpsr : status_register; (* Current program status register *)
-  spsr : processor_exception_mode -> status_register;
+  cpsr : word; (* Current program status register *)
+  spsr : processor_exception_mode -> word;
     (* Saved program status registers *)
   reg : physical_register -> word;
   mem : address -> word;
@@ -461,33 +487,30 @@ Definition add_exn (s : state) (e : exception) : state :=
 (* A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
-Definition cond_mask := masks 28 3. (*bits[28:31]*)
-Definition cond (r : status_register) := intval (and r cond_mask).
-
-Definition ConditionPassed (r : status_register) : bool :=
-  match cond r with
-    | (*0000*) 0 => (* Z set *) is_set Zbit r
-    | (*0001*) 1 => (* Z clear *) negb (is_set Zbit r)
-    | (*0010*) 2 => (* C set *) is_set Cbit r
-    | (*0011*) 3 => (* C clear *) negb (is_set Cbit r)
-    | (*0100*) 4 => (* N set *) is_set Cbit r
-    | (*0101*) 5 => (* N clear *) negb (is_set Cbit r)
-    | (*0110*) 6 => (* V set *) is_set Vbit r
-    | (*0111*) 7 => (* V clear *) negb (is_set Vbit r)
+Definition ConditionPassed (w : word) : bool :=
+  match subword_val 28 31 w with
+    | (*0000*) 0 => (* Z set *) is_set Zbit w
+    | (*0001*) 1 => (* Z clear *) negb (is_set Zbit w)
+    | (*0010*) 2 => (* C set *) is_set Cbit w
+    | (*0011*) 3 => (* C clear *) negb (is_set Cbit w)
+    | (*0100*) 4 => (* N set *) is_set Cbit w
+    | (*0101*) 5 => (* N clear *) negb (is_set Cbit w)
+    | (*0110*) 6 => (* V set *) is_set Vbit w
+    | (*0111*) 7 => (* V clear *) negb (is_set Vbit w)
     | (*1000*) 8 => (* C set and Z clear *)
-      andb (is_set Cbit r) (negb (is_set Zbit r))
+      andb (is_set Cbit w) (negb (is_set Zbit w))
     | (*1001*) 9 => (* C clear or Z set *)
-      orb (negb (is_set Cbit r)) (is_set Zbit r)
+      orb (negb (is_set Cbit w)) (is_set Zbit w)
     | (*1010*) 10 => (* N set and V set, or N clear and V clear (N==V) *)
-      eqb (is_set Nbit r) (is_set Vbit r)
+      eqb (is_set Nbit w) (is_set Vbit w)
     | (*1011*) 11 => (* N set and V clear, or N clear and V set (N!=V) *)
-      negb (eqb (is_set Nbit r) (is_set Vbit r))
+      negb (eqb (is_set Nbit w) (is_set Vbit w))
     | (*1100*) 12 => (* Z clear, and either N set and V set,
          or N clear and V clear (Z==0,N==V) *)
-      andb (negb (is_set Zbit r)) (eqb (is_set Nbit r) (is_set Vbit r))
+      andb (negb (is_set Zbit w)) (eqb (is_set Nbit w) (is_set Vbit w))
     | (*1101*) 13 => (* Z set, or N set and V clear, or N clear and V set
          (Z==1 or N!=V) *)
-      orb (is_set Zbit r) (negb (eqb (is_set Nbit r) (is_set Vbit r)))
+      orb (is_set Zbit w) (negb (eqb (is_set Nbit w) (is_set Vbit w)))
     | _ => true
   end.
 
@@ -618,6 +641,21 @@ Inductive shifter_operand : Type :=
 | Shift (Rm : register_number) (s : shifter) (w : shifter_value)
 | RRX (Rm : register_number).
 
+(* A5.1.1 Encoding (p. 443) *)
+
+Definition decode_shifter (w : word) : shifter :=
+  match subword_val 5 6 w with
+    | (*00*) 0 => LSL
+    | (*01*) 1 => LSR
+    | (*10*) 2 => ASR
+    | (*11*) _ => ROR
+  end.
+
+Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
+  if x then Imm (subword 8 11 w) (subword 0 7 w)
+  else Shift (reg_num 0 w) (decode_shifter w)
+    (if z then SImm (subword 7 11 w) else SReg (reg_num 8 w)).
+
 (* A5.1.3 Data-processing operands - Immediate (p. 446) *)
 (*
 shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
@@ -745,3 +783,61 @@ Definition adc (S : bool) (Rd Rn : register_number) (so : word) (s : state)
             let v := add (add Rn so) c in Some (set_reg s m Rd v)
         else Some s
     end.
+
+(****************************************************************************)
+(* A3.1 Instruction set encoding (p. 110) *)
+(****************************************************************************)
+
+Inductive instruction : Type :=
+| Adc (S : bool) (Rd Rn : register_number) (so : shifter_operand).
+
+(*FIXME: should be replaced by option type when all instructions
+will be formalized*)
+Inductive decoding_result : Type :=
+| Inst (i : instruction)
+| Undefined
+| Todo.
+
+Section clist.
+
+Variables (A : Type) (a : A).
+
+Fixpoint clist (k : nat) : list A :=
+  match k with
+    | O => nil
+    | S k' => a :: clist k'
+  end.
+
+End clist.
+
+Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
+  match p with
+    | xI p' => bools_of_positive p' (false :: acc)
+    | xO p' => bools_of_positive p' (true :: acc)
+    | xH => true :: acc
+  end.
+
+Definition bools_of_word (w : word) : list bool :=
+  match unsigned w with
+    | Zpos p => bools_of_positive p nil
+    | _ => clist false wordsize
+  end.
+
+Section decode.
+
+Local Notation "0" := false.
+Local Notation "1" := true.
+Local Infix "'" := cons (at level 60, right associativity).
+
+Definition decode (w : word) : decoding_result :=
+  match bools_of_word w with
+   (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
+    | c 'o 'n 'd '0 '0 'x '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'y '_ '_ 'z '_ '_ '_ '_ =>
+      Inst (Adc s (reg_num 12 w) (reg_num 16 w) (decode_shifter_operand w x z))
+    | _ => Todo
+  end.
+
+End decode.
+
+End Arm.
+
