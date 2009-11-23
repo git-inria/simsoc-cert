@@ -74,9 +74,9 @@ Inductive version : Type :=
 
 (* A2.4.3 Reading the program counter (p. 47) *)
 
-Inductive store_pc_offset_value : Type := O8 | O12.
+Inductive store_PC_offset_value : Type := O8 | O12.
 
-Definition store_pc_offset (v : store_pc_offset_value) : int :=
+Definition store_PC_offset (v : store_PC_offset_value) : int :=
   match v with
     | O8 => repr 8
     | O12 => repr 12
@@ -90,7 +90,7 @@ Inductive abort_model : Type := Restored | Updated.
 (*FIXME: to be completed*)
 Module Type CONFIG.
   Variable version : version.
-  Variable store_pc_offset : store_pc_offset_value.
+  Variable store_PC_offset : store_PC_offset_value.
   Variable ve_irq_normal_address : Z. (* A2.6 Exceptions (p. 54) *)
   Variable ve_fiq_normal_address : Z.
   Variable ve_irq_high_vector_address : Z.
@@ -109,13 +109,17 @@ Notation word := int.
 
 Coercion intval : word >-> Z.
 
-Definition two : word := repr 2.
+Notation w0 := zero.
+Notation w1 := one.
+Definition w2 : word := repr 2.
+Definition w4 : word := repr 4.
 Definition w31 : word := repr 31.
+
 Definition maxu : word := repr max_unsigned.
 Definition max : word := repr max_signed.
 Definition min : word := repr min_signed.
 
-Definition word_of_bool (b : bool) : word := if b then one else zero.
+Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 (* mask made of bit [n] *)
 Definition mask (n : nat) : word := repr (two_power_nat n).
@@ -217,7 +221,7 @@ Inductive processor_mode : Type :=
 Definition reg_num := bitvec 4.
 Definition mk_reg_num := mk_bitvec 4.
 
-Definition pc := mk_reg_num 15.
+Definition PC := mk_reg_num 15.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [unsigned (and w (masks k (k+3)))] is always smaller than
@@ -542,7 +546,7 @@ else /* rotate_imm != 0 */
   shifter_carry_out = shifter_operand[31]
 *)
 Definition so_imm (i : word) (rotate_imm immed_8 : word) : word * bool :=
-  let v := Rotate_Right immed_8 (mul two rotate_imm) in
+  let v := Rotate_Right immed_8 (mul w2 rotate_imm) in
   let c := if zeq rotate_imm 0 then is_set Cbit i else is_set 31 v in
   (v, c).
 
@@ -592,8 +596,8 @@ Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Left Rm Rs7, is_set (nat_of_Z (32 - Rs7)) Rm)
-         | Eq => (zero, is_set 0 Rm)
-         | Gt => (zero, false)
+         | Eq => (w0, is_set 0 Rm)
+         | Gt => (w0, false)
        end.
 
 (* A5.1.7 Data-processing operands - Logical shift right by immediate (p. 451) *)
@@ -608,7 +612,7 @@ else /* shift_imm > 0 */
 Definition so_LSR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m Rm in
-  if zeq shift_imm 0 then (zero, is_set 31 Rm)
+  if zeq shift_imm 0 then (w0, is_set 31 Rm)
   else (Logical_Shift_Right Rm shift_imm,
     is_set (pred (nat_of_Z shift_imm)) Rm).
 
@@ -634,8 +638,8 @@ Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Right Rm Rs7, is_set (pred (nat_of_Z Rs7)) Rm)
-         | Eq => (zero, is_set 31 Rm)
-         | Gt => (zero, false)
+         | Eq => (w0, is_set 31 Rm)
+         | Gt => (w0, false)
        end.
 
 (* A5.1.9 Data-processing operands - Arithmetic shift right by immediate (p. 453) *)
@@ -655,7 +659,7 @@ Definition so_ASR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m Rm in
   if zeq shift_imm 0 then
-    if is_set 31 Rm then (maxu, true) else (zero, false)
+    if is_set 31 Rm then (maxu, true) else (w0, false)
   else (Arithmetic_Shift_Right Rm shift_imm,
     is_set (pred (nat_of_Z shift_imm)) Rm).
 
@@ -683,7 +687,7 @@ Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
   else match Zcompare Rs7 32 with
          | Lt => (Arithmetic_Shift_Right Rm Rs7,
            is_set (pred (nat_of_Z Rs7)) Rm)
-         | _ => if is_set 31 Rm then (maxu, true) else (zero, false)
+         | _ => if is_set 31 Rm then (maxu, true) else (w0, false)
        end.
 
 (* A5.1.11 Data-processing operands - Rotate right by immediate (p. 455) *)
@@ -699,7 +703,7 @@ Definition so_ROR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m Rm in
   if zeq shift_imm 0 then
-    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm one),
+    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
       is_set 0 Rm)
   else (Rotate_Right Rm shift_imm, is_set (pred (nat_of_Z shift_imm)) Rm).
 
@@ -733,7 +737,7 @@ shifter_carry_out = Rm[0]
 Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
   : word * bool :=
   let Rm := reg_content s m Rm in
-    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm one),
+    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
       is_set 0 Rm).
 
 (* Semantics of a shifter operand *)
@@ -853,6 +857,10 @@ Definition result := option state.
 
 Definition Unpredictable := @None state.
 
+(*FIXME*)
+Definition incr_PC (m : processor_mode) (s : state) : state :=
+  update_reg m PC (add w4 (reg_content s m PC)) s.
+
 (* CurrentModeHasSPSR (p. 1125) *)
 
 Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
@@ -911,22 +919,22 @@ Definition adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
             let Rn := reg_content s m Rn in
             let c := get Cbit r in
             let v := add (add Rn so) c in
-              Some (update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (incr_PC m (update_cpsr (spsr s e) (update_reg m Rd v s)))
         end
       else
         let Rn := reg_content s m Rn in
         let c := get Cbit r in
         let v := add (add Rn so) c in
-          Some (update_cpsr
+          Some (incr_PC m (update_cpsr
             (update Vbit (OverflowFrom_add3 Rn so c)
               (update Cbit (CarryFrom_add3 Rn so c)
                 (update Zbit (ne_0 v)
                   (update Nbit (bit 31 v) r))))
-            (update_reg m Rd v s))
+            (update_reg m Rd v s)))
     else
       let Rn := reg_content s m Rn in
       let c := get Cbit r in
-      let v := add (add Rn so) c in Some (update_reg m Rd v s)
+      let v := add (add Rn so) c in Some (incr_PC m (update_reg m Rd v s))
   else Some s.
 
 (****************************************************************************)
@@ -936,7 +944,7 @@ Definition adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
 Definition next (s : state) : option state :=
   match mode (cpsr s) with
     | Some m =>
-      let a := reg_content s m pc in
+      let a := reg_content s m PC in
       let w := (*FIXME*) mem s (mk_bitvec 30 (bits 2 31 a)) in
         match decode w with
           | Some i =>
