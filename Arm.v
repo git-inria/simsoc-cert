@@ -118,11 +118,9 @@ Definition min : word := repr min_signed.
 Definition word_of_bool (b : bool) : word := if b then one else zero.
 
 (* mask made of bit [n] *)
-
 Definition mask (n : nat) : word := repr (two_power_nat n).
 
 (* mask made of the bits from bit [n] to bit [n+k] *)
-
 Fixpoint masks_aux (n k : nat) : Z :=
   match k with
     | O => two_power_nat n
@@ -130,28 +128,35 @@ Fixpoint masks_aux (n k : nat) : Z :=
   end.
 
 (* mask made of the bits from bit [n] to bit [n+(p-n)] *)
-
 Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
 
 (* test to zero *)
-
 Definition eq_0 (w : word) : word := word_of_bool (zeq 0 w).
 Definition ne_0 (w : word) : word := word_of_bool (zne 0 w).
 
-(* bit(s) of a word *)
+(* bits [k] to [l] of [w] *)
+Definition bits (k l : nat) (w : word) : word := and (masks k l) w.
+Definition bits_val (k l : nat) (w : word) : Z := intval (bits k l w).
 
-Definition subword (k l : nat) (w : word) : word := and (masks k l) w.
-Definition subword_val (k l : nat) (w : word) : Z := intval (subword k l w).
-
+(* bit [k] of [w] *)
 Definition bit (k : nat) (w : word) : word := and (mask k) w.
 Notation get := bit.
-Definition is_set (k : nat) (w : word) : bool := zne 0 (bit k w).
-Definition set (k : nat) (w : word) : word := or (mask k) w.
-Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
-Definition update (k : nat) (w x : word) : word :=
-  if zeq 0 x then clear k w else set k w.
 
-Definition is_signed (w : word) : bool := zne 0 (bit 31 w).
+(* tell if bit [k] of [w] is set to 1 *)
+Definition is_set (k : nat) (w : word) : bool := zne (bit k w) 0.
+
+(* set bit [k] of [w] to 1 *)
+Definition set (k : nat) (w : word) : word := or (mask k) w.
+
+(* set bit [k] of [w] to 0 *)
+Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
+
+(* set bit [k] of [w] to [x] *)
+Definition update (k : nat) (x w : word) : word :=
+  if zeq x 0 then clear k w else set k w.
+
+(* tell if a signed word is negative *)
+Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
 
 (*FIXME: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
@@ -212,7 +217,7 @@ Inductive processor_mode : Type :=
 Definition reg_num := bitvec 4.
 Definition mk_reg_num := mk_bitvec 4.
 
-Definition is_eq (Rd : reg_num) (x : Z) : bool := zeq (bitvec_val Rd) x.
+Definition pc := mk_reg_num 15.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [unsigned (and w (masks k (k+3)))] is always smaller than
@@ -276,8 +281,7 @@ Definition reg_of_exn_mode (m : processor_exception_mode)
       end
   end.
 
-Definition reg_of_mode (m : processor_mode) (k : reg_num)
-  : register :=
+Definition reg_of_mode (m : processor_mode) (k : reg_num) : register :=
   match m with
     | usr | sys => R k
     | exn e => reg_of_exn_mode e k
@@ -300,7 +304,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEbits w := subword 16 19 w.
+Definition GEbits w := bits 16 19 w.
 
 (* The E bit (p. 51) *)
 
@@ -314,7 +318,7 @@ Definition Fbit := 6%nat.
 
 (* Mode bits (p. 52) *)
 
-Definition Mbits w := subword_val 0 4 w.
+Definition Mbits w := bits_val 0 4 w.
 
 Definition mode (w : word) : option processor_mode :=
   match Mbits w with
@@ -443,15 +447,11 @@ Notation "s .exns" := (exns s) (at level 2, left associativity).*)
 
 Definition reg_content s m k := reg s (reg_of_mode m k).
 
-Definition set_cpsr s w := mk_state w (spsr s) (reg s) (mem s) (exns s).
+Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s).
 Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s).
-Definition set_reg s x :=  mk_state (cpsr s) (spsr s) x (mem s) (exns s).
-Definition set_mem s x :=  mk_state (cpsr s) (spsr s) (reg s) x (exns s).
-Definition set_exns s x :=  mk_state (cpsr s) (spsr s) (reg s) (mem s) x.
-
-Definition set_cpsr_or s w := set_cpsr s (or (cpsr s) w).
-
-Definition add_exn s e := set_exns s (insert e (exns s)).
+Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s).
+Definition set_mem s x := mk_state (cpsr s) (spsr s) (reg s) x (exns s).
+Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) (mem s) x.
 
 Section update_map.
 
@@ -462,16 +462,19 @@ Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
 
 End update_map.
 
-Definition update_map_spsr s m w :=
+Definition update_map_spsr m w s :=
   update_map processor_exception_mode_eqdec m w (spsr s).
-Definition update_map_reg s m k w :=
+Definition update_map_reg m k w s :=
   update_map register_eqdec (reg_of_mode m k) w (reg s).
-Definition update_map_mem s a w :=
+Definition update_map_mem a w s :=
   update_map address_eqdec a w (mem s).
 
-Definition update_spsr s m w := set_spsr s (update_map_spsr s m w).
-Definition update_reg s m k w := set_reg s (update_map_reg s m k w).
-Definition update_mem s a w := set_mem s (update_map_mem s a w).
+Definition update_cpsr w s := set_cpsr s w.
+Definition update_cpsr_or w s := set_cpsr s (or (cpsr s) w).
+Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
+Definition update_reg m k w s := set_reg s (update_map_reg m k w s).
+Definition update_mem a w s := set_mem s (update_map_mem a w s).
+Definition add_exn e s := set_exns s (insert e (exns s)).
 
 (****************************************************************************)
 (* Chapter A5 - ARM Addressing Modes (p. 441) *)
@@ -495,7 +498,7 @@ Inductive shifter_operand : Type :=
 (* A5.1.1 Encoding (p. 443) *)
 
 Definition decode_shifter (w : word) : shifter :=
-  match subword_val 5 6 w with
+  match bits_val 5 6 w with
     | (*00*) 0 => LSL
     | (*01*) 1 => LSR
     | (*10*) 2 => ASR
@@ -503,9 +506,9 @@ Definition decode_shifter (w : word) : shifter :=
   end.
 
 Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
-  if x then Imm (subword 8 11 w) (subword 0 7 w)
+  if x then Imm (bits 8 11 w) (bits 0 7 w)
   else Shift (reg_num_of 0 w) (decode_shifter w)
-    (if z then ValImm (subword 7 11 w) else ValReg (reg_num_of 8 w)).
+    (if z then ValImm (bits 7 11 w) else ValReg (reg_num_of 8 w)).
 
 (* Logical_Shift_Left (p. 1129) *)
 (* Performs a left shift, inserting zeros in the vacated bit positions
@@ -526,6 +529,9 @@ Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
 (* Performs a right rotate, where each bit that is shifted off the
 right is inserted on the left. *)
 Definition Rotate_Right := ror. (*FIXME?*)
+
+(*FIXME: duplicate the following functions in case you do not need to
+compute the carry *)
 
 (* A5.1.3 Data-processing operands - Immediate (p. 446) *)
 (*
@@ -582,7 +588,7 @@ else /* Rs[7:0] > 32 */
 Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
   let Rm := reg_content s m Rm in
-  let Rs7 := subword 0 7 (reg_content s m Rs) in
+  let Rs7 := bits 0 7 (reg_content s m Rs) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Left Rm Rs7, is_set (nat_of_Z (32 - Rs7)) Rm)
@@ -624,7 +630,7 @@ else /* Rs[7:0] > 32 */
 Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
   let Rm := reg_content s m Rm in
-  let Rs7 := subword 0 7 (reg_content s m Rs) in
+  let Rs7 := bits 0 7 (reg_content s m Rs) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Right Rm Rs7, is_set (pred (nat_of_Z Rs7)) Rm)
@@ -672,7 +678,7 @@ else /* Rs[7:0] >= 32 */
 Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
   let Rm := reg_content s m Rm in
-  let Rs7 := subword 0 7 (reg_content s m Rs) in
+  let Rs7 := bits 0 7 (reg_content s m Rs) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Arithmetic_Shift_Right Rm Rs7,
@@ -713,9 +719,9 @@ Definition so_ROR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
   let Rm := reg_content s m Rm in
   let Rs := reg_content s m Rs in
-  let Rs7 := subword 0 7 Rs in
+  let Rs7 := bits 0 7 Rs in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
-  else let Rs4 := subword 0 4 Rs in
+  else let Rs4 := bits 0 4 Rs in
     if zeq Rs4 0 then (Rm, is_set 31 Rm)
     else (Rotate_Right Rm Rs4, is_set (pred (nat_of_Z Rs4)) Rm).
 
@@ -729,6 +735,8 @@ Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
   let Rm := reg_content s m Rm in
     (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm one),
       is_set 0 Rm).
+
+(* Semantics of a shifter operand *)
 
 Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
   (i : word) (so : shifter_operand) : word * bool :=
@@ -757,7 +765,7 @@ Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
 (****************************************************************************)
 
 Definition ConditionPassed (w : word) : bool :=
-  match subword_val 28 31 w with
+  match bits_val 28 31 w with
     | (*0000*) 0 => (* Z set *) is_set Zbit w
     | (*0001*) 1 => (* Z clear *) negb (is_set Zbit w)
     | (*0010*) 2 => (* C set *) is_set Cbit w
@@ -794,13 +802,6 @@ Inductive instruction : Type :=
 (* Instruction decoding *)
 (****************************************************************************)
 
-(*FIXME: should be replaced by option type when all instructions
-will be formalized*)
-Inductive decoding_result : Type :=
-| Inst (i : instruction)
-| Undefined
-| Todo.
-
 Section clist.
 
 Variables (A : Type) (a : A).
@@ -832,14 +833,14 @@ Local Notation "0" := false.
 Local Notation "1" := true.
 Local Infix "'" := cons (at level 60, right associativity).
 
-Definition decode (w : word) : decoding_result :=
+Definition decode (w : word) : option instruction :=
   match bools_of_word w with
    (* A4.1.2 ADC (p. 154) *)
    (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
     | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
-      (*FIXME: only if [negb (negb I && X && Y)] *)
-      Inst (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
-    | _ => Todo
+      (*FIXME: only if [negb (negb i && x && y)] *)
+      Some (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+    | _ => None (*FIXME*)
   end.
 
 End decode.
@@ -875,7 +876,7 @@ Definition OverflowFrom_add2 (x y : word) : word :=
 
 (*FIXME: use this more efficient definition given p. 1131?*)
 Definition OverflowFrom_add2' (x y : word) (r : word) :=
-  let sx := is_signed x in (eqb sx (is_signed y)) && (neb sx (is_signed r)).
+  let sx := is_neg x in (eqb sx (is_neg y)) && (neb sx (is_neg r)).
 
 Definition OverflowFrom_add3 (x y z : word) : word :=
   word_of_bool (zlt max_signed (signed x + signed y + signed z)).
@@ -898,33 +899,55 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 *)
 
-Definition adc (S : bool) (Rd Rn : reg_num) (so : word) (s : state)
-  : option state :=
+Definition adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
+  (m : processor_mode) : option state :=
   let r := cpsr s in
-    match mode r with
-      | None => Unpredictable (* p. 52 *)
-      | Some m =>
-        if ConditionPassed r then
-          if S then
-            match m with
-              | usr | sys => Unpredictable
-              | exn e =>
-                let Rn := reg_content s m Rn in
-                let c := get Cbit r in
-                let v := add (add Rn so) c in
-                let s := update_reg s m Rd v in
-                if is_eq Rd 15 then Some (set_cpsr s (spsr s e))
-                else Some (set_cpsr_or s
-                  (update Nbit (bit 31 v)
-                    (update Zbit (ne_0 v)
-                      (update Cbit (CarryFrom_add3 Rn so c)
-                        (update Vbit (OverflowFrom_add3 Rn so c) r)))))
-            end
-          else let Rn := reg_content s m Rn in
+  if ConditionPassed r then
+    if Sbit then
+      if zeq Rd 15 then
+        match m with
+          | usr | sys => Unpredictable
+          | exn e =>
+            let Rn := reg_content s m Rn in
             let c := get Cbit r in
             let v := add (add Rn so) c in
-              Some (update_reg s m Rd v)
-        else Some s
-    end.
+              Some (update_cpsr (spsr s e) (update_reg m Rd v s))
+        end
+      else
+        let Rn := reg_content s m Rn in
+        let c := get Cbit r in
+        let v := add (add Rn so) c in
+          Some (update_cpsr
+            (update Vbit (OverflowFrom_add3 Rn so c)
+              (update Cbit (CarryFrom_add3 Rn so c)
+                (update Zbit (ne_0 v)
+                  (update Nbit (bit 31 v) r))))
+            (update_reg m Rd v s))
+    else
+      let Rn := reg_content s m Rn in
+      let c := get Cbit r in
+      let v := add (add Rn so) c in Some (update_reg m Rd v s)
+  else Some s.
+
+(****************************************************************************)
+(* ARM simulation *)
+(****************************************************************************)
+
+Definition next (s : state) : option state :=
+  match mode (cpsr s) with
+    | Some m =>
+      let a := reg_content s m pc in
+      let w := (*FIXME*) mem s (mk_bitvec 30 (bits 2 31 a)) in
+        match decode w with
+          | Some i =>
+            match i with
+              | ADC Sbit Rd Rn so =>
+                let (v, _) := shifter_operand_value_and_carry s m w so in
+                  adc Sbit Rd Rn v s m
+            end
+          | _ => None
+        end
+    | None => None
+  end.
 
 End Arm.
