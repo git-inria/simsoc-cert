@@ -156,8 +156,9 @@ Definition set (k : nat) (w : word) : word := or (mask k) w.
 Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
 
 (* set bit [k] of [w] to [x] *)
-Definition update (k : nat) (x w : word) : word :=
-  if zeq x 0 then clear k w else set k w.
+Definition update_bool (k : nat) (b : bool) (w : word) : word :=
+  if b then clear k w else set k w.
+Definition update (k : nat) (c w : word) : word := update_bool k (zeq c 0) w.
 
 (* tell if a signed word is negative *)
 Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
@@ -800,7 +801,9 @@ Definition ConditionPassed (w : word) : bool :=
 (****************************************************************************)
 
 Inductive instruction : Type :=
-| ADC (S : bool) (Rd Rn : reg_num) (so : shifter_operand).
+| ADC (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
+| ADD (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
+| AND (S : bool) (Rd Rn : reg_num) (so : shifter_operand).
 
 (****************************************************************************)
 (* Instruction decoding *)
@@ -842,6 +845,16 @@ Definition decode (w : word) : option instruction :=
    (* A4.1.2 ADC (p. 154) *)
    (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
     | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
+      (*FIXME: only if [negb (negb i && x && y)] *)
+      Some (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+   (* A4.1.3 ADD (p. 156) *)
+   (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
+    | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '0 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
+      (*FIXME: only if [negb (negb i && x && y)] *)
+      Some (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+   (* A4.1.4 AND (p. 158) *)
+   (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
+    | _ '_ '_ '_ '0 '0 'i '0 '0 '0 '0 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
       (*FIXME: only if [negb (negb i && x && y)] *)
       Some (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
     | _ => None (*FIXME*)
@@ -907,7 +920,7 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 *)
 
-Definition adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
+Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
   (m : processor_mode) : option state :=
   let r := cpsr s in
   if ConditionPassed r then
@@ -938,6 +951,95 @@ Definition adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
   else Some s.
 
 (****************************************************************************)
+(* A4.1.3 ADD (p. 156) *)
+(****************************************************************************)
+
+(*
+if ConditionPassed(cond) then
+  Rd = Rn + shifter_operand
+  if S == 1 and Rd == R15 then
+    if CurrentModeHasSPSR() then
+      CPSR = SPSR
+    else UNPREDICTABLE
+  else if S == 1 then
+    N Flag = Rd[31]
+    Z Flag = if Rd == 0 then 1 else 0
+    C Flag = CarryFrom(Rn + shifter_operand)
+    V Flag = OverflowFrom(Rn + shifter_operand)
+*)
+
+Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
+  (m : processor_mode) : option state :=
+  let r := cpsr s in
+  if ConditionPassed r then
+    if Sbit then
+      if zeq Rd 15 then
+        match m with
+          | usr | sys => Unpredictable
+          | exn e =>
+            let Rn := reg_content s m Rn in
+            let v := add Rn so in
+              Some (incr_PC m (update_cpsr (spsr s e) (update_reg m Rd v s)))
+        end
+      else
+        let Rn := reg_content s m Rn in
+        let v := add Rn so in
+          Some (incr_PC m (update_cpsr
+            (update Vbit (OverflowFrom_add2 Rn so)
+              (update Cbit (CarryFrom_add2 Rn so)
+                (update Zbit (ne_0 v)
+                  (update Nbit (bit 31 v) r))))
+            (update_reg m Rd v s)))
+    else
+      let Rn := reg_content s m Rn in
+      let v := add Rn so in Some (incr_PC m (update_reg m Rd v s))
+  else Some s.
+
+(****************************************************************************)
+(* A4.1.4 AND (p. 158) *)
+(****************************************************************************)
+
+(*
+if ConditionPassed(cond) then
+  Rd = Rn AND shifter_operand
+  if S == 1 and Rd == R15 then
+    if CurrentModeHasSPSR() then
+      CPSR = SPSR
+    else UNPREDICTABLE
+  else if S == 1 then
+    N Flag = Rd[31]
+    Z Flag = if Rd == 0 then 1 else 0
+    C Flag = shifter_carry_out
+    V Flag = unaffected
+*)
+
+Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
+  (s : state) (m : processor_mode) : option state :=
+  let r := cpsr s in
+  if ConditionPassed r then
+    if Sbit then
+      if zeq Rd 15 then
+        match m with
+          | usr | sys => Unpredictable
+          | exn e =>
+            let Rn := reg_content s m Rn in
+            let v := and Rn so in
+              Some (incr_PC m (update_cpsr (spsr s e) (update_reg m Rd v s)))
+        end
+      else
+        let Rn := reg_content s m Rn in
+        let v := and Rn so in
+          Some (incr_PC m (update_cpsr
+            (update_bool Cbit c
+              (update Zbit (ne_0 v)
+                (update Nbit (bit 31 v) r)))
+            (update_reg m Rd v s)))
+    else
+      let Rn := reg_content s m Rn in
+      let v := and Rn so in Some (incr_PC m (update_reg m Rd v s))
+  else Some s.
+
+(****************************************************************************)
 (* ARM simulation *)
 (****************************************************************************)
 
@@ -951,7 +1053,13 @@ Definition next (s : state) : option state :=
             match i with
               | ADC Sbit Rd Rn so =>
                 let (v, _) := shifter_operand_value_and_carry s m w so in
-                  adc Sbit Rd Rn v s m
+                  Adc Sbit Rd Rn v s m
+              | ADD Sbit Rd Rn so =>
+                let (v, _) := shifter_operand_value_and_carry s m w so in
+                  Add Sbit Rd Rn v s m
+              | AND Sbit Rd Rn so =>
+                let (v, c) := shifter_operand_value_and_carry s m w so in
+                  And Sbit Rd Rn v c s m
             end
           | _ => None
         end
