@@ -21,7 +21,7 @@ Require Import Integers. Import Int.
 Require Import Util.
 
 (****************************************************************************)
-(* Type for shifter operands *)
+(** Type for shifter operands *)
 (****************************************************************************)
 
 Inductive shifter : Type := LSL | LSR | ASR | ROR.
@@ -36,7 +36,7 @@ Inductive shifter_operand : Type :=
 | RRX (Rm : reg_num).
 
 (****************************************************************************)
-(* A5.1.1 Encoding (p. 443) *)
+(** A5.1.1 Encoding (p. 443) *)
 (****************************************************************************)
 
 Definition decode_shifter (w : word) : shifter :=
@@ -56,7 +56,7 @@ Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
 compute the carry *)
 
 (****************************************************************************)
-(* A5.1.3 Data-processing operands - Immediate (p. 446) *)
+(** A5.1.3 Data-processing operands - Immediate (p. 446) *)
 (****************************************************************************)
 
 (*
@@ -73,7 +73,7 @@ Definition so_imm (i : word) (rotate_imm immed_8 : word) : word * bool :=
   (v, c).
 
 (****************************************************************************)
-(* A5.1.4 Data-processing operands - Register (p. 448) *)
+(** A5.1.4 Data-processing operands - Register (p. 448) *)
 (****************************************************************************)
 
 (*
@@ -85,7 +85,7 @@ Definition so_reg (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
   : word * bool := (reg_content s m Rm, is_set Cbit i).
 
 (****************************************************************************)
-(* A5.1.5 Data-processing operands - Logical shift left by immediate
+(** A5.1.5 Data-processing operands - Logical shift left by immediate
    (p. 449) *)
 (****************************************************************************)
 
@@ -106,7 +106,7 @@ Definition so_LSL_imm (s : state) (m : processor_mode) (i : word)
     is_set (nat_of_Z (32 - shift_imm)) Rm).
 
 (****************************************************************************)
-(* A5.1.6 Data-processing operands - Logical shift left by register
+(** A5.1.6 Data-processing operands - Logical shift left by register
    (p. 450) *)
 (****************************************************************************)
 
@@ -137,7 +137,7 @@ Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
        end.
 
 (****************************************************************************)
-(* A5.1.7 Data-processing operands - Logical shift right by immediate
+(** A5.1.7 Data-processing operands - Logical shift right by immediate
    (p. 451) *)
 (****************************************************************************)
 
@@ -158,7 +158,7 @@ Definition so_LSR_imm (s : state) (m : processor_mode) (i : word)
     is_set (pred (nat_of_Z shift_imm)) Rm).
 
 (****************************************************************************)
-(* A5.1.8 Data-processing operands - Logical shift right by register
+(** A5.1.8 Data-processing operands - Logical shift right by register
    (p. 452) *)
 (****************************************************************************)
 
@@ -189,7 +189,7 @@ Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
        end.
 
 (****************************************************************************)
-(* A5.1.9 Data-processing operands - Arithmetic shift right by immediate
+(** A5.1.9 Data-processing operands - Arithmetic shift right by immediate
    (p. 453) *)
 (****************************************************************************)
 
@@ -215,7 +215,7 @@ Definition so_ASR_imm (s : state) (m : processor_mode) (i : word)
     is_set (pred (nat_of_Z shift_imm)) Rm).
 
 (****************************************************************************)
-(* A5.1.10 Data-processing operands - Arithmetic shift right by register
+(** A5.1.10 Data-processing operands - Arithmetic shift right by register
    (p. 454) *)
 (****************************************************************************)
 
@@ -247,7 +247,7 @@ Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
        end.
 
 (****************************************************************************)
-(* A5.1.11 Data-processing operands - Rotate right by immediate (p. 455) *)
+(** A5.1.11 Data-processing operands - Rotate right by immediate (p. 455) *)
 (****************************************************************************)
 
 (*
@@ -268,7 +268,7 @@ Definition so_ROR_imm (s : state) (m : processor_mode) (i : word)
   else (Rotate_Right Rm shift_imm, is_set (pred (nat_of_Z shift_imm)) Rm).
 
 (****************************************************************************)
-(* A5.1.12 Data-processing operands - Rotate right by register (p. 456) *)
+(** A5.1.12 Data-processing operands - Rotate right by register (p. 456) *)
 (****************************************************************************)
 
 (*
@@ -294,7 +294,7 @@ Definition so_ROR_reg (s : state) (m : processor_mode) (i : word)
     else (Rotate_Right Rm Rs4, is_set (pred (nat_of_Z Rs4)) Rm).
 
 (****************************************************************************)
-(* A5.1.13 Data-processing operands - Rotate right with extend (p. 457) *)
+(** A5.1.13 Data-processing operands - Rotate right with extend (p. 457) *)
 (****************************************************************************)
 
 (*
@@ -309,7 +309,7 @@ Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
       is_set 0 Rm).
 
 (****************************************************************************)
-(* Semantics of a shifter operand *)
+(** Semantics of a shifter operand *)
 (****************************************************************************)
 
 Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)

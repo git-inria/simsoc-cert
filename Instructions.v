@@ -8,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-ARM instructions
+Chapter A4 - ARM Instructions (p. 150)
 *)
 
 Set Implicit Arguments.

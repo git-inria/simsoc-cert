@@ -2,7 +2,7 @@
 SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
 
-Definitions and lemmas extending the Coq standard library.
+Miscellaneous definitions and lemmas extending the Coq standard library.
 *)
 
 Set Implicit Arguments.

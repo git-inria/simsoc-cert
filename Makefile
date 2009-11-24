@@ -33,7 +33,7 @@ tags:
 	coqtags $(VFILES)
 
 doc:
-	coqdoc --html -g -d doc -R . $(NAME) $(VFILES)
+	coqdoc --html -toc -g -d doc -R . $(NAME) $(VFILES)
 	./createIndex
 
 #ADR := login-linux.inria.fr:liama/www/color

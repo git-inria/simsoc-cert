@@ -17,7 +17,7 @@ Require Import Bitvec.
 Require Import ZArith.
 
 (****************************************************************************)
-(* Architecture versions (p. 13) *)
+(** Architecture versions (p. 13) *)
 (****************************************************************************)
 
 Inductive version : Type :=
@@ -27,7 +27,7 @@ Inductive version : Type :=
 | ARMv6.
 
 (****************************************************************************)
-(* A2.4.3 Reading the program counter (p. 47) *)
+(** A2.4.3 Reading the program counter (p. 47) *)
 (****************************************************************************)
 
 Inductive store_PC_offset_value : Type := O8 | O12.
@@ -39,13 +39,13 @@ Definition store_PC_offset (v : store_PC_offset_value) : word :=
   end.
  
 (****************************************************************************)
-(* A2.6.5 Abort models (p. 61) *)
+(** A2.6.5 Abort models (p. 61) *)
 (****************************************************************************)
 
 Inductive abort_model : Type := Restored | Updated.
 
 (****************************************************************************)
-(* All IMPLEMENTATION DEFINED parameters *)
+(** All IMPLEMENTATION DEFINED parameters *)
 (****************************************************************************)
 
 (*FIXME: to be completed*)

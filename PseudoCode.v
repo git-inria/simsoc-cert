@@ -8,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Pseudocode semantics.
+Pseudocode functions.
 *)
 
 Set Implicit Arguments.
@@ -20,7 +20,7 @@ Require Import State.
 Require Import Coqlib.
 
 (****************************************************************************)
-(* Logical_Shift_Left (p. 1129) *)
+(** Logical_Shift_Left (p. 1129) *)
 (****************************************************************************)
 
 (* Performs a left shift, inserting zeros in the vacated bit positions
@@ -29,7 +29,7 @@ on the right. *)
 Definition Logical_Shift_Left := shl. (*FIXME?*)
 
 (****************************************************************************)
-(* Logical_Shift_Right (p. 1129) *)
+(** Logical_Shift_Right (p. 1129) *)
 (****************************************************************************)
 
 (* Performs a right shift, inserting zeros in the vacated bit
@@ -38,7 +38,7 @@ positions on the left. *)
 Definition Logical_Shift_Right := shru. (*FIXME?*)
 
 (****************************************************************************)
-(* Arithmetic_Shift_Right (p. 1121) *)
+(** Arithmetic_Shift_Right (p. 1121) *)
 (****************************************************************************)
 
 (* Performs a right shift, repeatedly inserting the original left-most
@@ -47,7 +47,7 @@ bit (the sign bit) in the vacated bit positions on the left. *)
 Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
 
 (****************************************************************************)
-(* Rotate_Right (p. 1132) *)
+(** Rotate_Right (p. 1132) *)
 (****************************************************************************)
 
 (* Performs a right rotate, where each bit that is shifted off the
@@ -56,7 +56,7 @@ right is inserted on the left. *)
 Definition Rotate_Right := ror. (*FIXME?*)
 
 (****************************************************************************)
-(* SignExtend(arg) (p.1134) *)
+(** SignExtend(arg) (p.1134) *)
 (****************************************************************************)
 
 (* Sign-extends (propagates the sign bit) its argument to 32 bits. *)
@@ -64,7 +64,7 @@ Definition Rotate_Right := ror. (*FIXME?*)
 Definition SignExtend := sign_ext. (*FIXME?*)
 
 (****************************************************************************)
-(* CurrentModeHasSPSR (p. 1125) *)
+(** CurrentModeHasSPSR (p. 1125) *)
 (****************************************************************************)
 
 (* Returns TRUE if the current processor mode is not User mode or
@@ -78,7 +78,7 @@ Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
   end.
 
 (****************************************************************************)
-(* CarryFrom (p. 1124) *)
+(** CarryFrom (p. 1124) *)
 (****************************************************************************)
 
 (* Returns 1 if the addition specified as its parameter caused a carry
@@ -94,7 +94,7 @@ Definition CarryFrom_add3 (x y z : word) : word :=
   word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
 
 (****************************************************************************)
-(* OverflowFrom (p. 1131) *)
+(** OverflowFrom (p. 1131) *)
 (****************************************************************************)
 
 (* Returns 1 if the addition or subtraction specified as its parameter
@@ -117,7 +117,7 @@ Definition OverflowFrom_add3 (x y z : word) : word :=
   word_of_bool (zlt max_signed (signed x + signed y + signed z)).
 
 (****************************************************************************)
-(* A3.2 The condition field (p. 111) *)
+(** A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
 Definition ConditionPassed (w : word) : bool :=

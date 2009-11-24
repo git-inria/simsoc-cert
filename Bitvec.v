@@ -7,6 +7,8 @@ Formalization of the ARM architecture version 6 following the:
 ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
+
+Bit vectors.
 *)
 
 Set Implicit Arguments.
@@ -19,7 +21,7 @@ Require Import Coqlib.
 Open Scope Z_scope.
 
 (****************************************************************************)
-(* 32-bits words, masks and bit operations *)
+(** 32-bits words, masks and bit operations *)
 (****************************************************************************)
 
 Notation word := int.
@@ -83,7 +85,7 @@ Definition update (k : nat) (c w : word) : word := update_bool k (zeq c 0) w.
 Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
 
 (****************************************************************************)
-(* n-bits words *)
+(** n-bits words *)
 (****************************************************************************)
 
 (*FIXME: replace bits by generalizing in Integers the type int by

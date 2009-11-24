@@ -22,7 +22,7 @@ Require Import Integers. Import Int.
 Open Scope Z_scope.
 
 (****************************************************************************)
-(* A2.2 Processor modes (p. 410) *)
+(** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)
 
 Inductive processor_exception_mode : Type := fiq | irq | svc | abt | und.
@@ -36,9 +36,11 @@ Inductive processor_mode : Type :=
   usr | sys | exn (m : processor_exception_mode).
 
 (****************************************************************************)
-(* A2.3 Registers (p. 42) *)
-(* A2.4 General-purpose registers (p. 44) *)
+(** A2.3 Registers (p. 42) & A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
+
+Definition PC := mk_reg_num 15.
+Definition LR := mk_reg_num 14.
 
 Inductive register : Type :=
 | R (k : reg_num)
@@ -103,7 +105,7 @@ Definition reg_of_mode (m : processor_mode) (k : reg_num) : register :=
   end.
 
 (****************************************************************************)
-(* A2.5 Program status registers (p. 49) *)
+(** A2.5 Program status registers (p. 49) *)
 (****************************************************************************)
 
 (* Condition code flags (p. 49) *)
@@ -153,7 +155,7 @@ Definition Tbit := 5%nat.
 Definition Jbit := 24%nat.
 
 (****************************************************************************)
-(* A2.6 Exceptions (p. 54) *)
+(** A2.6 Exceptions (p. 54) *)
 (****************************************************************************)
 
 Inductive exception : Type :=
@@ -198,6 +200,7 @@ Definition exception_mode (e : exception) : processor_exception_mode :=
   end.*)
 
 (* Exception priorities (p. 63) *)
+
 Definition priority (e : exception) : BinInt.Z :=
   match e with
     | Reset => 1 (* highest *)
@@ -217,7 +220,7 @@ Fixpoint insert (e : exception) (l : list exception) : list exception :=
   end.
 
 (****************************************************************************)
-(* A2.7 Endian support (p. 68) *)
+(** A2.7 Endian support (p. 68) *)
 (****************************************************************************)
 
 Definition address := bitvec 30.
@@ -225,33 +228,39 @@ Definition address := bitvec 30.
 Definition address_eqdec := @bitvec_eqdec 30.
 
 (****************************************************************************)
-(* A2.8 Unaligned access support (p. 76) *)
+(** A2.8 Unaligned access support (p. 76) *)
 (****************************************************************************)
 
 (****************************************************************************)
-(* A2.9 Unaligned access support (p. 76) *)
+(** A2.9 Unaligned access support (p. 76) *)
 (****************************************************************************)
 
 (****************************************************************************)
-(* A2.10 The Jazelle Extension *)
+(** A2.10 The Jazelle Extension *)
 (****************************************************************************)
 
 (****************************************************************************)
-(* A2.11 Saturated integer arithmetic *)
+(** A2.11 Saturated integer arithmetic *)
 (****************************************************************************)
 
 (****************************************************************************)
-(* ARM state *)
+(** ARM state *)
 (****************************************************************************)
 
 Record state : Type := mk_state {
-  cpsr : word; (* Current program status register *)
+  (* Current program status register *)
+  cpsr : word;
+  (* Saved program status registers *)
   spsr : processor_exception_mode -> word;
-    (* Saved program status registers *)
+  (* Registers *)
   reg : register -> word;
+  (* Memory *)
   mem : address -> word;
-  exns : list exception (* Raised exceptions *)
+  (* Raised exceptions *)
+  exns : list exception
 }.
+
+Definition Unpredictable := @None state.
 
 (*FIXME: does not work :-(
 Notation "s .cpsr" := (cpsr s) (at level 2, left associativity).
