@@ -46,30 +46,33 @@ Definition bools_of_word (w : word) : list bool :=
     | _ => clist false wordsize
   end.
 
+Inductive decode_result : Type :=
+  Inst (i : instruction) | Undefined | Unpredictable.
+
 Section decode.
 
 Local Notation "0" := false.
 Local Notation "1" := true.
 Local Infix "'" := cons (at level 60, right associativity).
 
-Definition decode (w : word) : option instruction :=
+Definition decode (w : word) : decode_result :=
   match bools_of_word w with
    (* A4.1.2 ADC (p. 154) *)
    (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
     | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '1 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
       (*FIXME: only if [negb (negb i && x && y)] *)
-      Some (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+      Inst (ADC s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
    (* A4.1.3 ADD (p. 156) *)
    (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
     | _ '_ '_ '_ '0 '0 'i '0 '1 '0 '0 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
       (*FIXME: only if [negb (negb i && x && y)] *)
-      Some (ADD s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+      Inst (ADD s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
    (* A4.1.4 AND (p. 158) *)
    (*31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 10 09 08 07 06 05 04 03 02 01*)
     | _ '_ '_ '_ '0 '0 'i '0 '0 '0 '0 's '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ '_ 'x '_ '_ 'y '_ '_ '_ '_ =>
       (*FIXME: only if [negb (negb i && x && y)] *)
-      Some (AND s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
-    | _ => None (*FIXME*)
+      Inst (AND s (reg_num_of 12 w) (reg_num_of 16 w) (decode_shifter_operand w i y))
+    | _ => Unpredictable (*FIXME*)
   end.
 
 End decode.

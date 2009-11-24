@@ -37,6 +37,8 @@ Definition execute (m : processor_mode) (w : word) (i : instruction)
     | BL L w => Bl L w s m
   end.
 
+Definition handle_exception (s : state) : option state := Some s. (*FIXME*)
+
 Definition next (s : state) : option state :=
   match mode (cpsr s) with
     | None => None
@@ -46,16 +48,22 @@ Definition next (s : state) : option state :=
         | Some is =>
           match is with
             | ARM =>
-              let a := reg_content s m PC in (*FIXME?*)
+              let a := reg_content s m PC in
               let w := mem s (address_of a) in (*FIXME?*)
+              let r :=
                 match decode w with
-                  | None => None
-                  | Some i =>
+                  | Unpredictable => None
+                  | Undefined => Some (add_exn UndIns s)
+                  | Inst i =>
                     match execute m w i s with
                       | None => None
                       | Some (b, s') => if b then incr_PC m s' else Some s'
                     end
                 end
+              in match r with
+                   | None => None
+                   | Some s => handle_exception s
+                 end
             | Thumb => None
             | Jazelle => None
           end
