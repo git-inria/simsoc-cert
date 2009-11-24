@@ -18,6 +18,39 @@ Require Import Bitvec.
 Require Import Integers. Import Int.
 Require Import PseudoCode.
 Require Import Coqlib.
+Require Import Util.
+
+(****************************************************************************)
+(** Current instruction address
+cf. A2.4.3 Register 15 and the program counter,
+Reading the program counter (p. 47) *)
+(****************************************************************************)
+
+Definition cur_inst_address (s : state) (m : processor_mode) : word :=
+  sub (reg_content s m PC) w8.
+
+(****************************************************************************)
+(** Next instruction address
+cf. A2.7.1 Address space (p. 70) *)
+(****************************************************************************)
+
+Definition next_inst_address (s : state) (m : processor_mode) : word :=
+  (* [add (cur_inst_address s m PC) w4] is replaced by: *)
+  sub (reg_content s m PC) w4.
+
+Definition incr_PC (m : processor_mode) (s : state) : option state :=
+  let pc := reg_content s m PC in
+  if zlt pc w4 then None else Some (update_reg m PC (next_inst_address s m) s).
+
+(****************************************************************************)
+(** Executing an instruction generates a pair [(b,s)] where:
+- [b] is a boolean indicating whether the PC needs to be incremented or not,
+- [s] is the new state. *)
+(****************************************************************************)
+
+Definition result := option (bool * state).
+
+Definition Unpredictable : result := None.
 
 (****************************************************************************)
 (** A4.1.2 ADC (p. 154) *)
@@ -38,7 +71,7 @@ if ConditionPassed(cond) then
 >>*)
 
 Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
-  (m : processor_mode) : option state :=
+  (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
@@ -49,13 +82,13 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
             let Rn := reg_content s m Rn in
             let c := get Cbit r in
             let v := add (add Rn so) c in
-              Some (update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
         end
       else
         let Rn := reg_content s m Rn in
         let c := get Cbit r in
         let v := add (add Rn so) c in
-          Some (update_cpsr
+          Some (true, update_cpsr
             (update Vbit (OverflowFrom_add3 Rn so c)
               (update Cbit (CarryFrom_add3 Rn so c)
                 (update Zbit (ne_0 v)
@@ -64,8 +97,8 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
     else
       let Rn := reg_content s m Rn in
       let c := get Cbit r in
-      let v := add (add Rn so) c in Some (update_reg m Rd v s)
-  else Some s.
+      let v := add (add Rn so) c in Some (zne Rd 15, update_reg m Rd v s)
+  else Some (true, s).
 
 (****************************************************************************)
 (** A4.1.3 ADD (p. 156) *)
@@ -86,7 +119,7 @@ if ConditionPassed(cond) then
 >>*)
 
 Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
-  (m : processor_mode) : option state :=
+  (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
@@ -96,12 +129,12 @@ Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
           | exn e =>
             let Rn := reg_content s m Rn in
             let v := add Rn so in
-              Some (update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
         end
       else
         let Rn := reg_content s m Rn in
         let v := add Rn so in
-          Some (update_cpsr
+          Some (true, update_cpsr
             (update Vbit (OverflowFrom_add2 Rn so)
               (update Cbit (CarryFrom_add2 Rn so)
                 (update Zbit (ne_0 v)
@@ -109,8 +142,8 @@ Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
             (update_reg m Rd v s))
     else
       let Rn := reg_content s m Rn in
-      let v := add Rn so in Some (update_reg m Rd v s)
-  else Some s.
+      let v := add Rn so in Some (zne Rd 15, update_reg m Rd v s)
+  else Some (true, s).
 
 (****************************************************************************)
 (** A4.1.4 AND (p. 158) *)
@@ -131,7 +164,7 @@ if ConditionPassed(cond) then
 >>*)
 
 Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
-  (s : state) (m : processor_mode) : option state :=
+  (s : state) (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
@@ -141,20 +174,20 @@ Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
           | exn e =>
             let Rn := reg_content s m Rn in
             let v := and Rn so in
-              Some (update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
         end
       else
         let Rn := reg_content s m Rn in
         let v := and Rn so in
-          Some (update_cpsr
+          Some (true, update_cpsr
             (update_bool Cbit c
               (update Zbit (ne_0 v)
                 (update Nbit (bit 31 v) r)))
             (update_reg m Rd v s))
     else
       let Rn := reg_content s m Rn in
-      let v := and Rn so in Some (update_reg m Rd v s)
-  else Some s.
+      let v := and Rn so in Some (zne Rd 15, update_reg m Rd v s)
+  else Some (true, s).
 
 (****************************************************************************)
 (** A4.1.5 B, BL (p. 160) *)
@@ -167,9 +200,8 @@ if ConditionPassed(cond) then
   PC = PC + (SignExtend_30(signed_immed_24) << 2)
 >>*)
 
-Definition Bl (L : bool) (w : word) (s : state) (m : processor_mode)
-  : option state :=
+Definition Bl (L : bool) (w : word) (s : state) (m : processor_mode) : result :=
   if ConditionPassed (cpsr s) then
-    Some (update_reg m PC (Logical_Shift_Left (SignExtend 30 w) w2)
-      (if L then (*FIXME*) s else s))
-  else Some s.
+    Some (false, update_reg m PC (Logical_Shift_Left (SignExtend 30 w) w2)
+      (if L then update_reg m LR (next_inst_address s m) s else s))
+  else Some (true, s).
