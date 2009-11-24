@@ -21,6 +21,16 @@ Require Import Coqlib.
 Require Import Util.
 
 (****************************************************************************)
+(** Executing an instruction generates either:
+- [None] to represent UNPREDICTABLE
+- [Some (b,s)] where:
+-- [b] is a boolean indicating whether the PC needs to be incremented,
+-- [s] is the new state. *)
+(****************************************************************************)
+
+Definition result := option (bool * state).
+
+(****************************************************************************)
 (** Current instruction address
 cf. A2.4.3 Register 15 and the program counter,
 Reading the program counter (p. 47) *)
@@ -38,19 +48,10 @@ Definition next_inst_address (s : state) (m : processor_mode) : word :=
   (* [add (cur_inst_address s m PC) w4] is replaced by: *)
   sub (reg_content s m PC) w4.
 
+(*FIXME?*)
 Definition incr_PC (m : processor_mode) (s : state) : option state :=
-  let pc := reg_content s m PC in
-  if zlt pc w4 then None else Some (update_reg m PC (next_inst_address s m) s).
-
-(****************************************************************************)
-(** Executing an instruction generates a pair [(b,s)] where:
-- [b] is a boolean indicating whether the PC needs to be incremented or not,
-- [s] is the new state. *)
-(****************************************************************************)
-
-Definition result := option (bool * state).
-
-Definition Unpredictable : result := None.
+  if zlt (reg_content s m PC) w4 then None
+  else Some (update_reg m PC (next_inst_address s m) s).
 
 (****************************************************************************)
 (** A4.1.2 ADC (p. 154) *)
@@ -77,7 +78,7 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
     if Sbit then
       if zeq Rd 15 then
         match m with
-          | usr | sys => Unpredictable
+          | usr | sys => None
           | exn e =>
             let Rn := reg_content s m Rn in
             let c := get Cbit r in
@@ -125,7 +126,7 @@ Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
     if Sbit then
       if zeq Rd 15 then
         match m with
-          | usr | sys => Unpredictable
+          | usr | sys => None
           | exn e =>
             let Rn := reg_content s m Rn in
             let v := add Rn so in
@@ -170,7 +171,7 @@ Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
     if Sbit then
       if zeq Rd 15 then
         match m with
-          | usr | sys => Unpredictable
+          | usr | sys => None
           | exn e =>
             let Rn := reg_content s m Rn in
             let v := and Rn so in
