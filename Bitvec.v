@@ -59,10 +59,6 @@ Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
 Definition eq_0 (w : word) : word := word_of_bool (zeq 0 w).
 Definition ne_0 (w : word) : word := word_of_bool (zne 0 w).
 
-(* bits [k] to [l] of [w] *)
-Definition bits (k l : nat) (w : word) : word := and (masks k l) w.
-Definition bits_val (k l : nat) (w : word) : Z := intval (bits k l w).
-
 (* bit [k] of [w] *)
 Definition bit (k : nat) (w : word) : word := and (mask k) w.
 Notation get := bit.
@@ -80,6 +76,11 @@ Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
 Definition update_bool (k : nat) (b : bool) (w : word) : word :=
   if b then clear k w else set k w.
 Definition update (k : nat) (c w : word) : word := update_bool k (zeq c 0) w.
+
+(* bits [k] to [l] of [w] *)
+Definition bits (k l : nat) (w : word) : word := and (masks k l) w.
+Definition bits_val (k l : nat) (w : word) : Z :=
+  intval (bits k l w) / two_power_nat k. (*FIXME: use a shift instead*)
 
 (* tell if a signed word is negative *)
 Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
@@ -119,15 +120,3 @@ right. intro h. inversion h. contradiction.
 Qed.
 
 End bitvec.
-
-Definition halfword := bitvec 16.
-Definition byte := bitvec 8.
-
-Definition reg_num := bitvec 4.
-Definition mk_reg_num := mk_bitvec 4.
-
-(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
-since [unsigned (and w (masks k (k+3)))] is always smaller than
-[two_power_nat 4]*)
-Definition reg_num_of (k : nat) (w : word) : reg_num :=
-  mk_reg_num (unsigned (and w (masks k (k+3)))).
