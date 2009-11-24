@@ -59,13 +59,13 @@ compute the carry *)
 (** A5.1.3 Data-processing operands - Immediate (p. 446) *)
 (****************************************************************************)
 
-(*
+(** <<
 shifter_operand = immed_8 Rotate_Right (rotate_imm * 2)
 if rotate_imm == 0 then
   shifter_carry_out = C flag
 else /* rotate_imm != 0 */
   shifter_carry_out = shifter_operand[31]
-*)
+>>*)
 
 Definition so_imm (i : word) (rotate_imm immed_8 : word) : word * bool :=
   let v := Rotate_Right immed_8 (mul w2 rotate_imm) in
@@ -76,10 +76,10 @@ Definition so_imm (i : word) (rotate_imm immed_8 : word) : word * bool :=
 (** A5.1.4 Data-processing operands - Register (p. 448) *)
 (****************************************************************************)
 
-(*
+(** <<
 shifter_operand = Rm
 shifter_carry_out = C Flag
-*)
+>>*)
 
 Definition so_reg (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
   : word * bool := (reg_content s m Rm, is_set Cbit i).
@@ -89,14 +89,14 @@ Definition so_reg (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
    (p. 449) *)
 (****************************************************************************)
 
-(*
+(** <<
 if shift_imm == 0 then /* Register Operand */
 shifter_operand = Rm
 shifter_carry_out = C Flag
 else /* shift_imm > 0 */
 shifter_operand = Rm Logical_Shift_Left shift_imm
 shifter_carry_out = Rm[32 - shift_imm]
-*)
+>>*)
 
 Definition so_LSL_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
@@ -110,7 +110,7 @@ Definition so_LSL_imm (s : state) (m : processor_mode) (i : word)
    (p. 450) *)
 (****************************************************************************)
 
-(*
+(** <<
 if Rs[7:0] == 0 then
   shifter_operand = Rm
   shifter_carry_out = C Flag
@@ -123,7 +123,7 @@ else if Rs[7:0] == 32 then
 else /* Rs[7:0] > 32 */
   shifter_operand = 0
   shifter_carry_out = 0
-*)
+>>*)
 
 Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
@@ -141,14 +141,14 @@ Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
    (p. 451) *)
 (****************************************************************************)
 
-(*
+(** <<
 if shift_imm == 0 then
   shifter_operand = 0
   shifter_carry_out = Rm[31]
 else /* shift_imm > 0 */
   shifter_operand = Rm Logical_Shift_Right shift_imm
   shifter_carry_out = Rm[shift_imm - 1]
-*)
+>>*)
 
 Definition so_LSR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
@@ -162,7 +162,7 @@ Definition so_LSR_imm (s : state) (m : processor_mode) (i : word)
    (p. 452) *)
 (****************************************************************************)
 
-(*
+(** <<
 if Rs[7:0] == 0 then
   shifter_operand = Rm
   shifter_carry_out = C Flag
@@ -175,7 +175,7 @@ else if Rs[7:0] == 32 then
 else /* Rs[7:0] > 32 */
   shifter_operand = 0
   shifter_carry_out = 0
-*)
+>>*)
 
 Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
@@ -193,7 +193,7 @@ Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
    (p. 453) *)
 (****************************************************************************)
 
-(*
+(** <<
 if shift_imm == 0 then
   if Rm[31] == 0 then
     shifter_operand = 0
@@ -204,7 +204,7 @@ if shift_imm == 0 then
 else /* shift_imm > 0 */
   shifter_operand = Rm Arithmetic_Shift_Right <shift_imm>
   shifter_carry_out = Rm[shift_imm - 1]
-*)
+>>*)
 
 Definition so_ASR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
@@ -219,7 +219,7 @@ Definition so_ASR_imm (s : state) (m : processor_mode) (i : word)
    (p. 454) *)
 (****************************************************************************)
 
-(*
+(** <<
 if Rs[7:0] == 0 then
   shifter_operand = Rm
   shifter_carry_out = C Flag
@@ -233,7 +233,7 @@ else /* Rs[7:0] >= 32 */
   else /* Rm[31] == 1 */
     shifter_operand = 0xFFFFFFFF
     shifter_carry_out = Rm[31]
-*)
+>>*)
 
 Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
@@ -250,14 +250,14 @@ Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
 (** A5.1.11 Data-processing operands - Rotate right by immediate (p. 455) *)
 (****************************************************************************)
 
-(*
+(** <<
 if shift_imm == 0 then
   See "Data-processing operands - Rotate right with extend" on page A5-17
   (p. 457)
 else /* shift_imm > 0 */
   shifter_operand = Rm Rotate_Right shift_imm
   shifter_carry_out = Rm[shift_imm - 1]
-*)
+>>*)
 
 Definition so_ROR_imm (s : state) (m : processor_mode) (i : word)
   (Rm : reg_num) (shift_imm : word) : word * bool :=
@@ -271,7 +271,7 @@ Definition so_ROR_imm (s : state) (m : processor_mode) (i : word)
 (** A5.1.12 Data-processing operands - Rotate right by register (p. 456) *)
 (****************************************************************************)
 
-(*
+(** <<
 if Rs[7:0] == 0 then
   shifter_operand = Rm
   shifter_carry_out = C Flag
@@ -281,7 +281,7 @@ else if Rs[4:0] == 0 then
 else /* Rs[4:0] > 0 */
   shifter_operand = Rm Rotate_Right Rs[4:0]
   shifter_carry_out = Rm[Rs[4:0] - 1]
-*)
+>>*)
 
 Definition so_ROR_reg (s : state) (m : processor_mode) (i : word)
   (Rm Rs : reg_num) : word * bool :=
@@ -297,10 +297,10 @@ Definition so_ROR_reg (s : state) (m : processor_mode) (i : word)
 (** A5.1.13 Data-processing operands - Rotate right with extend (p. 457) *)
 (****************************************************************************)
 
-(*
+(** <<
 shifter_operand = (C Flag Logical_Shift_Left 31) OR (Rm Logical_Shift_Right 1)
 shifter_carry_out = Rm[0]
-*)
+>>*)
 
 Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
   : word * bool :=
