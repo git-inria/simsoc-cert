@@ -482,6 +482,91 @@ Definition update_mem a w s := set_mem s (update_map_mem a w s).
 Definition add_exn e s := set_exns s (insert e (exns s)).
 
 (****************************************************************************)
+(* Pseudo-code instructions *)
+(****************************************************************************)
+
+(* Logical_Shift_Left (p. 1129) *)
+(*
+Performs a left shift, inserting zeros in the vacated bit positions
+on the right.
+*)
+Definition Logical_Shift_Left := shl. (*FIXME?*)
+
+(* Logical_Shift_Right (p. 1129) *)
+(*
+Performs a right shift, inserting zeros in the vacated bit
+positions on the left.
+*)
+Definition Logical_Shift_Right := shru. (*FIXME?*)
+
+(* Arithmetic_Shift_Right (p. 1121) *)
+(*
+Performs a right shift, repeatedly inserting the original left-most
+bit (the sign bit) in the vacated bit positions on the left.
+*)
+Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
+
+(* Rotate_Right (p. 1132) *)
+(*
+Performs a right rotate, where each bit that is shifted off the
+right is inserted on the left.
+*)
+Definition Rotate_Right := ror. (*FIXME?*)
+
+(* SignExtend(arg) (p.1134) *)
+(*
+Sign-extends (propagates the sign bit) its argument to 32 bits.
+*)
+Definition SignExtend := sign_ext. (*FIXME?*)
+
+(* CurrentModeHasSPSR (p. 1125) *)
+(*
+Returns TRUE if the current processor mode is not User mode or
+System mode, and returns FALSE if the current mode is User mode or
+System mode.
+*)
+Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
+  match m with
+    | usr | sys => false
+    | _ => true
+  end.
+
+(* CarryFrom (p. 1124) *)
+(*
+Returns 1 if the addition specified as its parameter caused a carry
+(true result is bigger than 2^32-1, where the operands are treated as
+unsigned integers), and returns 0 in all other cases. This delivers
+further information about an addition which occurred earlier in the
+pseudo-code. The addition is not repeated.
+*)
+Definition CarryFrom_add2 (x y : word) : word :=
+  word_of_bool (zlt max_unsigned (unsigned x + unsigned y)).
+
+Definition CarryFrom_add3 (x y z : word) : word :=
+  word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
+
+(* OverflowFrom (p. 1131) *)
+(*
+Returns 1 if the addition or subtraction specified as its parameter
+caused a 32-bit signed overflow. Addition generates an overflow if
+both operands have the same sign (bit[31]), and the sign of the result
+is different to the sign of both operands. Subtraction causes an
+overflow if the operands have different signs, and the first operand
+and the result have different signs.  This delivers further
+information about an addition or subtraction which occurred earlier in
+the pseudo-code.  The addition or subtraction is not repeated.
+*)
+Definition OverflowFrom_add2 (x y : word) : word :=
+  word_of_bool (zlt max_signed (signed x + signed y)).
+
+(*FIXME: use this more efficient definition given p. 1131?*)
+Definition OverflowFrom_add2' (x y : word) (r : word) :=
+  let sx := is_neg x in (eqb sx (is_neg y)) && (neb sx (is_neg r)).
+
+Definition OverflowFrom_add3 (x y z : word) : word :=
+  word_of_bool (zlt max_signed (signed x + signed y + signed z)).
+
+(****************************************************************************)
 (* Chapter A5 - ARM Addressing Modes (p. 441) *)
 (****************************************************************************)
 
@@ -514,26 +599,6 @@ Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
   if x then Imm (bits 8 11 w) (bits 0 7 w)
   else Shift (reg_num_of 0 w) (decode_shifter w)
     (if z then ValImm (bits 7 11 w) else ValReg (reg_num_of 8 w)).
-
-(* Logical_Shift_Left (p. 1129) *)
-(* Performs a left shift, inserting zeros in the vacated bit positions
-on the right. *)
-Definition Logical_Shift_Left := shl. (*FIXME?*)
-
-(* Logical_Shift_Right (p. 1129) *)
-(* Performs a right shift, inserting zeros in the vacated bit
-positions on the left. *)
-Definition Logical_Shift_Right := shru. (*FIXME?*)
-
-(* Arithmetic_Shift_Right (p. 1121) *)
-(* Performs a right shift, repeatedly inserting the original left-most
-bit (the sign bit) in the vacated bit positions on the left. *)
-Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
-
-(* Rotate_Right (p. 1132) *)
-(* Performs a right rotate, where each bit that is shifted off the
-right is inserted on the left. *)
-Definition Rotate_Right := ror. (*FIXME?*)
 
 (*FIXME: duplicate the following functions in case you do not need to
 compute the carry *)
@@ -803,7 +868,8 @@ Definition ConditionPassed (w : word) : bool :=
 Inductive instruction : Type :=
 | ADC (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
 | ADD (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
-| AND (S : bool) (Rd Rn : reg_num) (so : shifter_operand).
+| AND (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
+| BL (L : bool) (w : word).
 
 (****************************************************************************)
 (* Instruction decoding *)
@@ -874,34 +940,6 @@ Definition Unpredictable := @None state.
 Definition incr_PC (m : processor_mode) (s : state) : state :=
   update_reg m PC (add w4 (reg_content s m PC)) s.
 
-(* CurrentModeHasSPSR (p. 1125) *)
-
-Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
-  match m with
-    | usr | sys => false
-    | _ => true
-  end.
-
-(* CarryFrom (p. 1124) *)
-
-Definition CarryFrom_add2 (x y : word) : word :=
-  word_of_bool (zlt max_unsigned (unsigned x + unsigned y)).
-
-Definition CarryFrom_add3 (x y z : word) : word :=
-  word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
-
-(* OverflowFrom (p. 1131) *)
-
-Definition OverflowFrom_add2 (x y : word) : word :=
-  word_of_bool (zlt max_signed (signed x + signed y)).
-
-(*FIXME: use this more efficient definition given p. 1131?*)
-Definition OverflowFrom_add2' (x y : word) (r : word) :=
-  let sx := is_neg x in (eqb sx (is_neg y)) && (neb sx (is_neg r)).
-
-Definition OverflowFrom_add3 (x y z : word) : word :=
-  word_of_bool (zlt max_signed (signed x + signed y + signed z)).
-
 (****************************************************************************)
 (* A4.1.2 ADC (p. 154) *)
 (****************************************************************************)
@@ -948,7 +986,7 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
       let Rn := reg_content s m Rn in
       let c := get Cbit r in
       let v := add (add Rn so) c in Some (incr_PC m (update_reg m Rd v s))
-  else Some s.
+  else Some (incr_PC m s).
 
 (****************************************************************************)
 (* A4.1.3 ADD (p. 156) *)
@@ -993,7 +1031,7 @@ Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
     else
       let Rn := reg_content s m Rn in
       let v := add Rn so in Some (incr_PC m (update_reg m Rd v s))
-  else Some s.
+  else Some (incr_PC m s).
 
 (****************************************************************************)
 (* A4.1.4 AND (p. 158) *)
@@ -1037,7 +1075,24 @@ Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
     else
       let Rn := reg_content s m Rn in
       let v := and Rn so in Some (incr_PC m (update_reg m Rd v s))
-  else Some s.
+  else Some (incr_PC m s).
+
+(****************************************************************************)
+(* A4.1.5 B, BL (p. 160) *)
+(****************************************************************************)
+
+(*
+if ConditionPassed(cond) then
+  if L == 1 then
+    LR = address of the instruction after the branch instruction
+  PC = PC + (SignExtend_30(signed_immed_24) << 2)
+*)
+
+(*Definition Bl (L : bool) (w : word) (s : state) (m : processor_mode)
+  : option state :=
+  if ConditionPassed (cpsr r) then
+  
+  else Some s.*)
 
 (****************************************************************************)
 (* ARM simulation *)
@@ -1060,6 +1115,7 @@ Definition next (s : state) : option state :=
               | AND Sbit Rd Rn so =>
                 let (v, c) := shifter_operand_value_and_carry s m w so in
                   And Sbit Rd Rn v c s m
+              | BL L w => Some s (*FIXME*)
             end
           | _ => None
         end
