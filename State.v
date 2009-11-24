@@ -22,6 +22,13 @@ Require Import Integers. Import Int.
 Open Scope Z_scope.
 
 (****************************************************************************)
+(** A2.1 Data types (p. 39) *)
+(****************************************************************************)
+
+Definition byte := bitvec 8.
+Definition halfword := bitvec 16.
+
+(****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)
 
@@ -39,8 +46,17 @@ Inductive processor_mode : Type :=
 (** A2.3 Registers (p. 42) & A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
+Definition reg_num := bitvec 4.
+Definition mk_reg_num := mk_bitvec 4.
+
 Definition PC := mk_reg_num 15.
 Definition LR := mk_reg_num 14.
+
+(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
+since [unsigned (and w (masks k (k+3)))] is always smaller than
+[two_power_nat 4]*)
+Definition reg_num_of (k : nat) (w : word) : reg_num :=
+  mk_reg_num (unsigned (and w (masks k (k+3)))).
 
 Inductive register : Type :=
 | R (k : reg_num)
@@ -121,7 +137,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEbits w := bits 16 19 w.
+Definition GEbits := bits_val 16 19.
 
 (* The E bit (p. 51) *)
 
@@ -135,7 +151,7 @@ Definition Fbit := 6%nat.
 
 (* Mode bits (p. 52) *)
 
-Definition Mbits w := bits_val 0 4 w.
+Definition Mbits := bits_val 0 4.
 
 Definition mode (w : word) : option processor_mode :=
   match Mbits w with
@@ -153,6 +169,16 @@ Definition mode (w : word) : option processor_mode :=
 
 Definition Tbit := 5%nat.
 Definition Jbit := 24%nat.
+
+Inductive instruction_set : Type := ARM | Thumb | Jazelle.
+
+Definition inst_set (w : word) : option instruction_set :=
+  match is_set Jbit w, is_set Tbit w with
+    | false, false => Some ARM
+    | false, true => Some Thumb
+    | true, false => Some Jazelle
+    | true, true => None
+  end.
 
 (****************************************************************************)
 (** A2.6 Exceptions (p. 54) *)
@@ -227,6 +253,10 @@ Definition address := bitvec 30.
 
 Definition address_eqdec := @bitvec_eqdec 30.
 
+(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
+since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
+Definition address_of (w : word) : address := mk_bitvec 30 (bits_val 2 31 w).
+
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
 (****************************************************************************)
@@ -259,8 +289,6 @@ Record state : Type := mk_state {
   (* Raised exceptions *)
   exns : list exception
 }.
-
-Definition Unpredictable := @None state.
 
 (*FIXME: does not work :-(
 Notation "s .cpsr" := (cpsr s) (at level 2, left associativity).

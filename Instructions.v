@@ -15,6 +15,7 @@ Set Implicit Arguments.
 
 Require Import Shift.
 Require Import Bitvec.
+Require Import State.
 
 Inductive instruction : Type :=
 | ADC (S : bool) (Rd Rn : reg_num) (so : shifter_operand)
