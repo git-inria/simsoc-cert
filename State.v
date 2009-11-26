@@ -53,10 +53,9 @@ Definition PC := mk_reg_num 15.
 Definition LR := mk_reg_num 14.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
-since [unsigned (and w (masks k (k+3)))] is always smaller than
-[two_power_nat 4]*)
-Definition reg_num_of_word (k : nat) (w : word) : reg_num :=
-  mk_reg_num (unsigned (and w (masks k (k+3)))).
+since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
+Definition reg_num_from_bit (k : nat) (w : word) : reg_num :=
+  mk_reg_num (bits_val k (k+3) w).
 
 Inductive register : Type :=
 | R (k : reg_num)
@@ -251,12 +250,14 @@ Fixpoint insert (e : exception) (l : list exception) : list exception :=
 
 Definition address := bitvec 30.
 
+Definition mk_address := mk_bitvec 30.
+
 Definition address_eqdec := @bitvec_eqdec 30.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
 Definition address_of_word (w : word) : address :=
-  mk_bitvec 30 (bits_val 2 31 w).
+  mk_address (bits_val 2 31 w).
 
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
