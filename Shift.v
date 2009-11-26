@@ -49,8 +49,8 @@ Definition decode_shifter (w : word) : shifter :=
 
 Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
   if x then Imm (bits 8 11 w) (bits 0 7 w)
-  else Shift (reg_num_of 0 w) (decode_shifter w)
-    (if z then ValImm (bits 7 11 w) else ValReg (reg_num_of 8 w)).
+  else Shift (reg_num_of_word 0 w) (decode_shifter w)
+    (if z then ValImm (bits 7 11 w) else ValReg (reg_num_of_word 8 w)).
 
 (*FIXME: duplicate the following functions in case you do not need to
 compute the carry *)

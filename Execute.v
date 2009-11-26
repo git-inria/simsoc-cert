@@ -49,7 +49,7 @@ Definition next (s : state) : option state :=
           match is with
             | ARM =>
               let a := reg_content s m PC in
-              let w := mem s (address_of a) in (*FIXME?*)
+              let w := mem s (address_of_word a) in (*FIXME?*)
               let r :=
                 match decode w with
                   | Unpredictable => None

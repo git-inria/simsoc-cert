@@ -55,7 +55,7 @@ Definition LR := mk_reg_num 14.
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [unsigned (and w (masks k (k+3)))] is always smaller than
 [two_power_nat 4]*)
-Definition reg_num_of (k : nat) (w : word) : reg_num :=
+Definition reg_num_of_word (k : nat) (w : word) : reg_num :=
   mk_reg_num (unsigned (and w (masks k (k+3)))).
 
 Inductive register : Type :=
@@ -255,7 +255,8 @@ Definition address_eqdec := @bitvec_eqdec 30.
 
 (*FIXME: can be improved by using build_bitvec instead of mk_bitvec
 since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
-Definition address_of (w : word) : address := mk_bitvec 30 (bits_val 2 31 w).
+Definition address_of_word (w : word) : address :=
+  mk_bitvec 30 (bits_val 2 31 w).
 
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
@@ -327,3 +328,34 @@ Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
 Definition update_reg m k w s := set_reg s (update_map_reg m k w s).
 Definition update_mem a w s := set_mem s (update_map_mem a w s).
 Definition add_exn e s := set_exns s (insert e (exns s)).
+
+(****************************************************************************)
+(** Executing an instruction generates either:
+- [None] to represent UNPREDICTABLE
+- [Some (b,s)] where:
+-- [b] is a boolean indicating whether the PC needs to be incremented,
+-- [s] is the new state. *)
+(****************************************************************************)
+
+Definition result := option (bool * state).
+
+(****************************************************************************)
+(** Current instruction address
+cf. A2.4.3 Register 15 and the program counter,
+Reading the program counter (p. 47) *)
+(****************************************************************************)
+
+Definition cur_inst_address (s : state) (m : processor_mode) : word :=
+  sub (reg_content s m PC) w8.
+
+(****************************************************************************)
+(** Next ARM instruction address
+cf. A2.7.1 Address space (p. 70) *)
+(****************************************************************************)
+
+Definition next_inst_address (s : state) (m : processor_mode) : word :=
+  (* [add (cur_inst_address s m PC) w4] is replaced by: *)
+  sub (reg_content s m PC) w4.
+
+Definition incr_PC (m : processor_mode) (s : state) : option state :=
+  Some (update_reg m PC (next_inst_address s m) s).
