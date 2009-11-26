@@ -38,6 +38,7 @@ Definition w2 : word := repr 2.
 Definition w4 : word := repr 4.
 Definition w8 : word := repr 8.
 Definition w12 : word := repr 12.
+Definition w15 : word := repr 15.
 Definition w31 : word := repr 31.
 
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
@@ -80,7 +81,7 @@ Definition update (k : nat) (c w : word) : word := update_bool k (zeq c 0) w.
 (* bits [k] to [l] of [w] *)
 Definition bits (k l : nat) (w : word) : word := and (masks k l) w.
 Definition bits_val (k l : nat) (w : word) : Z :=
-  intval (bits k l w) / two_power_nat k. (*FIXME: use a shift instead*)
+  bits k l w / two_power_nat k. (*FIXME: use a shift instead*)
 
 (* tell if a signed word is negative *)
 Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
