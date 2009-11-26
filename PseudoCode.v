@@ -19,6 +19,8 @@ Require Import Integers. Import Int.
 Require Import Coqlib.
 Require Import Util.
 
+Open Scope Z_scope.
+
 (****************************************************************************)
 (** Types of pseudo-code values *)
 (****************************************************************************)
@@ -42,10 +44,10 @@ Record sorted_val : Type := mk_sorted_val {
 
 Inductive exp : Type :=
 | Var (k : nat)
-| Reg (k : reg_num)
 | Word (w : word)
 | Flag (n : nat)
-| Bit (n : nat) (k : reg_num)
+| Reg (e : exp)
+| Bit (n : nat) (e : exp)
 | If (b : bexp) (e1 e2 : exp)
 | Add (e1 e2 : exp)
 | CarryFrom_add2 (e1 e2 : exp)
@@ -55,7 +57,8 @@ Inductive exp : Type :=
 
 with bexp : Type :=
 | Eq (e1 e2 : exp)
-| CurrentModeHasSPSR.
+| ConditionPassed
+| BAnd (be1 be2 : bexp).
 
 (****************************************************************************)
 (** Pseudo-code expressions used as left hand-side of affectations *)
@@ -63,7 +66,7 @@ with bexp : Type :=
 
 Inductive lexp : Type :=
 | LCPSR
-| LReg (k : reg_num)
+| LReg (e : exp)
 | LFlag (n : nat).
 
 (****************************************************************************)
@@ -87,41 +90,48 @@ Section interp.
 Variable sorted_val_of_var : nat -> sorted_val.
 Variable m : processor_mode.
 
-Definition word_of_sort (s : state) (t : sort) : type_of_sort t -> word :=
+Section exp.
+
+Variable s : state.
+
+Definition word_of_sort (t : sort) : type_of_sort t -> word :=
   match t as t return type_of_sort t -> word with
     | SBool => word_of_bool
     | SRegNum => reg_content s m
     | SWord => fun v => v
   end.
 
-Definition word_of_var (s : state) (k : nat) : word :=
-  let (t, v) := sorted_val_of_var k in word_of_sort s t v.
+Definition word_of_var (k : nat) : word :=
+  let (t, v) := sorted_val_of_var k in word_of_sort t v.
 
-Fixpoint word_of_exp (s : state) (e : exp) : word :=
+Fixpoint word_of_exp (e : exp) : word :=
   match e with
-    | Var k => word_of_var s k
-    | Reg k => reg_content s m k
+    | Var k => word_of_var k
     | Word w => w
     | Flag n => bit n (cpsr s)
-    | Bit n k => bit n (reg_content s m k)
+    | Reg e => reg_content s m (mk_reg_num (word_of_exp e))
+    | Bit n e => bit n (word_of_exp e)
     | If be e1 e2 =>
-      if bool_of_bexp s be then word_of_exp s e1 else word_of_exp s e2
-    | Add e1 e2 => add (word_of_exp s e1) (word_of_exp s e2)
+      if bool_of_bexp be then word_of_exp e1 else word_of_exp e2
+    | Add e1 e2 => add (word_of_exp e1) (word_of_exp e2)
     | CarryFrom_add2 e1 e2 =>
-      Functions.CarryFrom_add2 (word_of_exp s e1) (word_of_exp s e2)
+      Functions.CarryFrom_add2 (word_of_exp e1) (word_of_exp e2)
     | OverflowFrom_add2 e1 e2 =>
-      Functions.OverflowFrom_add2 (word_of_exp s e1) (word_of_exp s e2)
+      Functions.OverflowFrom_add2 (word_of_exp e1) (word_of_exp e2)
     | CarryFrom_add3 e1 e2 e3 => Functions.CarryFrom_add3
-      (word_of_exp s e1) (word_of_exp s e2) (word_of_exp s e3)
+      (word_of_exp e1) (word_of_exp e2) (word_of_exp e3)
     | OverflowFrom_add3 e1 e2 e3 => Functions.OverflowFrom_add3
-      (word_of_exp s e1) (word_of_exp s e2) (word_of_exp s e3)
+      (word_of_exp e1) (word_of_exp e2) (word_of_exp e3)
   end
 
-with bool_of_bexp (s : state) (be : bexp) : bool :=
+with bool_of_bexp (be : bexp) : bool :=
   match be with
-    | Eq e1 e2 => zeq (word_of_exp s e1) (word_of_exp s e2)
-    | CurrentModeHasSPSR => Functions.CurrentModeHasSPSR m
+    | Eq e1 e2 => zeq (word_of_exp e1) (word_of_exp e2)
+    | ConditionPassed => Functions.ConditionPassed (cpsr s)
+    | BAnd be1 be2 => andb (bool_of_bexp be1) (bool_of_bexp be2)
   end.
+
+End exp.
 
 (****************************************************************************)
 (** Semantics of pseudo-code instructions *)
@@ -130,31 +140,38 @@ with bool_of_bexp (s : state) (be : bexp) : bool :=
 Definition update (le : lexp) (w : word) (s : state) : bool * state :=
   match le with
     | LCPSR => (true, update_cpsr w s)
-    | LReg k => (zne k 15, update_reg m k w s)
+    | LReg e => let k := word_of_exp s e in
+      (zne k 15, update_reg m (mk_reg_num k) w s)
     | LFlag n => (true, update_cpsr (update n w (cpsr s)) s)
   end.
 
-Fixpoint interp (i : inst) (s : state) : result :=
+(* state in which all expressions are evaluated *)
+Variable s0 : state.
+
+Fixpoint interp_aux (s : state) (i : inst) : result :=
   match i with
     | Unpredictable => None
     | Seq i1 i2 =>
-      match interp i1 s with
+      match interp_aux s i1 with
         | None => None
         | Some (b1, s1) =>
-          match interp i2 s1 with
+          match interp_aux s1 i2 with
             | None => None
             | Some (b2, s2) => Some (andb b1 b2, s2)
           end
       end
-    | Affect le e => Some (update le (word_of_exp s e) s)
-    | IfThen be i => if bool_of_bexp s be then interp i s else Some (true, s)
+    | Affect le e => Some (update le (word_of_exp s0 e) s)
+    | IfThen be i =>
+      if bool_of_bexp s0 be then interp_aux s i else Some (true, s)
     | IfThenElse be i1 i2 =>
-      if bool_of_bexp s be then interp i1 s else interp i2 s
+      if bool_of_bexp s0 be then interp_aux s i1 else interp_aux s i2
     | Affect_CPSR_SPSR =>
       match m with
         | exn e => Some (true, update_cpsr (spsr s e) s)
         | _ => None
       end
   end.
+
+Definition interp := interp_aux s0.
 
 End interp.
