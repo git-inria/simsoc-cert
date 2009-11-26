@@ -16,7 +16,7 @@ Set Implicit Arguments.
 Require Import Bitvec.
 Require Import Coqlib.
 Require Import State.
-Require Import PseudoCode.
+Require Import Functions.
 Require Import Integers. Import Int.
 Require Import Util.
 
