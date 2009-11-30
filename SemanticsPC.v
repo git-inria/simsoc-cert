@@ -19,11 +19,11 @@ Require Import Bitvec.
 
 Open Scope nat_scope.
 
-Definition dummy : sorted_val := mk_sorted_val SWord w0.
-
 Definition W0 := Word w0.
 Definition W1 := Word w1.
 Definition W15 := Word w15.
+
+Definition dummy := w0.
 
 (****************************************************************************)
 (** A4.1.2 ADC (p. 154) *)
@@ -45,18 +45,18 @@ if ConditionPassed(cond) then
 
 Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
   (m : processor_mode) : result :=
-  let sorted_val_of_var (k : nat) : sorted_val :=
+  let word_of_var (k : nat) : word :=
     match k with
-      | 0 => mk_sorted_val SWord (word_of_bool Sbit)
-      | 1 => mk_sorted_val SRegNum Rd
-      | 2 => mk_sorted_val SRegNum Rn
-      | 3 => mk_sorted_val SWord so
+      | 0 => Sbit
+      | 1 => Rd
+      | 2 => Rn
+      | 3 => so
       | _ => dummy
     end in
   let Sbit := Var 0 in
   let Rd := Var 1 in
   let Rn := Var 2 in
-  let so := Var 3 in interp sorted_val_of_var m s
+  let so := Var 3 in interp word_of_var m s
     (IfThen ConditionPassed
       (Seq (Affect (LReg Rd) (Add (Add (Reg Rn) so) (Flag Cbit)))
         (IfThenElse (BAnd (Eq Sbit W1) (Eq Rd W15))

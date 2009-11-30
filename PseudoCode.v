@@ -22,23 +22,6 @@ Require Import Util.
 Open Scope Z_scope.
 
 (****************************************************************************)
-(** Types of pseudo-code values *)
-(****************************************************************************)
-
-Inductive sort : Type := SBool | SRegNum | SWord.
-
-Definition type_of_sort (s : sort) : Type :=
-  match s with
-    | SBool => bool
-    | SRegNum => reg_num
-    | SWord => word
-  end.
-
-Record sorted_val : Type := mk_sorted_val {
-  sv_sort : sort;
-  sv_val :> type_of_sort sv_sort }.
-
-(****************************************************************************)
 (* Pseudo-code expressions *)
 (****************************************************************************)
 
@@ -48,7 +31,7 @@ Inductive exp : Type :=
 | Flag (n : nat)
 | Reg (e : exp)
 | Bit (n : nat) (e : exp)
-| If (b : bexp) (e1 e2 : exp)
+| If (be : bexp) (e1 e2 : exp)
 | Add (e1 e2 : exp)
 | CarryFrom_add2 (e1 e2 : exp)
 | OverflowFrom_add2 (e1 e2 : exp)
@@ -87,22 +70,12 @@ Inductive inst : Type :=
 
 Section interp.
 
-Variable sorted_val_of_var : nat -> sorted_val.
+Variable word_of_var : nat -> word.
 Variable m : processor_mode.
 
 Section exp.
 
 Variable s : state.
-
-Definition word_of_sort (t : sort) : type_of_sort t -> word :=
-  match t as t return type_of_sort t -> word with
-    | SBool => word_of_bool
-    | SRegNum => reg_content s m
-    | SWord => fun v => v
-  end.
-
-Definition word_of_var (k : nat) : word :=
-  let (t, v) := sorted_val_of_var k in word_of_sort t v.
 
 Fixpoint word_of_exp (e : exp) : word :=
   match e with
@@ -167,7 +140,7 @@ Fixpoint interp_aux (s : state) (i : inst) : result :=
       if bool_of_bexp s0 be then interp_aux s i1 else interp_aux s i2
     | Affect_CPSR_SPSR =>
       match m with
-        | exn e => Some (true, update_cpsr (spsr s e) s)
+        | exn e => Some (true, update_cpsr (spsr s0 e) s)
         | _ => None
       end
   end.

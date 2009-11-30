@@ -43,6 +43,8 @@ Definition w31 : word := repr 31.
 
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
+Coercion word_of_bool : bool >-> word.
+
 (* mask made of bit [n] *)
 Definition mask (n : nat) : word := repr (two_power_nat n).
 
@@ -119,5 +121,10 @@ intros [v1 p1] [v2 p2]. case (zeq v1 v2); intro.
 left. subst. rewrite (proof_irrelevance _ p1 p2). auto.
 right. intro h. inversion h. contradiction.
 Qed.
+
+(*FIXME: to be improved when n<=32*)
+Definition word_of_bitvec (v : bitvec) : word := repr v.
+
+Coercion word_of_bitvec : bitvec >-> word.
 
 End bitvec.
