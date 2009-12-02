@@ -40,7 +40,21 @@ Lemma processor_exception_mode_eqdec :
 Proof. decide equality. Qed.
 
 Inductive processor_mode : Type :=
-  usr | sys | exn (m : processor_exception_mode).
+  usr | exn (m : processor_exception_mode) | sys.
+
+Definition mode_number (m : processor_mode) : word := repr (Zpos
+  (match m with
+     | usr => 1~0~0~0~0
+     | exn e =>
+       match e with
+         | fiq => 1~0~0~0~1
+         | irq => 1~0~0~1~0
+         | svc => 1~0~0~1~1
+         | abt => 1~0~1~1~1
+         | und => 1~1~0~1~1
+       end
+     | sys => 1~1~1~1~1
+   end)).
 
 (****************************************************************************)
 (** A2.3 Registers (p. 42) & A2.4 General-purpose registers (p. 44) *)
@@ -271,6 +285,8 @@ Definition result := option (bool * state).
 cf. A2.4.3 Register 15 and the program counter,
 Reading the program counter (p. 47) *)
 (****************************************************************************)
+
+(*IMPROVE: add cur_inst_address as new field in state?*)
 
 Definition cur_inst_address (s : state) (m : processor_mode) : word :=
   sub (reg_content s m PC) w8.
