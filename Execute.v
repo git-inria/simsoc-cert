@@ -21,6 +21,7 @@ Require Import Shift.
 Require Import Bitvec.
 Require Import Integers. Import Int.
 Require Import Coqlib.
+Require Import Exception.
 
 Definition execute (m : processor_mode) (w : word) (i : instruction)
   (s : state) : result :=
@@ -36,8 +37,6 @@ Definition execute (m : processor_mode) (w : word) (i : instruction)
         And Sbit Rd Rn v c s m
     | BL L w => Bl L w s m
   end.
-
-Definition handle_exception (s : state) : option state := Some s. (*FIXME*)
 
 Definition next (s : state) : option state :=
   match mode (cpsr s) with
@@ -62,7 +61,7 @@ Definition next (s : state) : option state :=
                 end
               in match r with
                    | None => None
-                   | Some s => handle_exception s
+                   | Some s => handle_exception s m
                  end
             | Thumb => None
             | Jazelle => None

@@ -19,12 +19,6 @@ Require Import Bitvec.
 
 Open Scope nat_scope.
 
-Definition W0 := Word w0.
-Definition W1 := Word w1.
-Definition W15 := Word w15.
-
-Definition dummy := w0.
-
 (****************************************************************************)
 (** A4.1.2 ADC (p. 154) *)
 (****************************************************************************)
@@ -49,20 +43,19 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
   let Sbit := Var 0 in let Rd := Var 1 in let Rn := Var 2 in let so := Var 3 in
     interp env m s
     (IfThen ConditionPassed
-      (Seq (Affect (Reg Rd) All (Add (Add (State (Reg Rn) All) so)
-                                     (State CPSR (Bit Cbit))))
+      (Seq (Affect (Reg Rd) All
+        (Add (Add (State (Reg Rn) All) so) (State CPSR (Bit Cbit))))
         (IfThenElse (BAnd (Eq Sbit W1) (Eq Rd W15))
           Affect_CPSR_SPSR
           (IfThen (Eq Sbit W1)
             (Seq (Affect CPSR (Bit Nbit) (State (Reg Rd) (Bit 31)))
-              (Seq (Affect CPSR (Bit Zbit)
-                           (If (Eq (State (Reg Rd) All) W0) W1 W0))
-                (Seq (Affect CPSR (Bit Cbit)
-                  (CarryFrom_add3 (State (Reg Rn) All) so
-                                  (State CPSR (Bit Cbit))))
-                (Affect CPSR (Bit Vbit)
-                  (OverflowFrom_add3 (State (Reg Rn) All) so
-                                     (State CPSR (Bit Cbit))))))))))).
+            (Seq (Affect CPSR (Bit Zbit)
+              (If (Eq (State (Reg Rd) All) W0) W1 W0))
+            (Seq (Affect CPSR (Bit Cbit)
+              (CarryFrom_add3 (State (Reg Rn) All) so (State CPSR (Bit Cbit))))
+            (Affect CPSR (Bit Vbit)
+              (OverflowFrom_add3 (State (Reg Rn) All) so
+                (State CPSR (Bit Cbit))))))))))).
 
 (****************************************************************************)
 (** A4.1.3 ADD (p. 156) *)

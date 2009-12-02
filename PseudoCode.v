@@ -49,6 +49,11 @@ with bexp : Type :=
 | ConditionPassed
 | BAnd (be1 be2 : bexp).
 
+Definition W0 := Word w0.
+Definition W1 := Word w1.
+Definition W14 := Word w14.
+Definition W15 := Word w15.
+
 (****************************************************************************)
 (** Pseudo-code instructions *)
 (****************************************************************************)

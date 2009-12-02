@@ -179,70 +179,13 @@ Definition inst_set (w : word) : option instruction_set :=
     | true, true => None
   end.
 
+
 (****************************************************************************)
 (** A2.6 Exceptions (p. 54) *)
 (****************************************************************************)
 
 Inductive exception : Type :=
   Reset | UndIns | SoftInt | ImpAbort | PFAbort | DataAbort | IRQ | FIQ.
-
-Definition exception_mode (e : exception) : processor_exception_mode :=
-  match e with
-    | Reset => svc
-    | UndIns => und
-    | SoftInt => svc
-    | ImpAbort => abt
-    | PFAbort => abt
-    | DataAbort => abt
-    | IRQ => irq
-    | FIQ => fiq
-  end.
-
-(*FIXME: Definition exception_handler_address (e : exception) : BinInt.Z :=
-  match C.use_high_vectors with
-    | false =>
-      match e with
-        | Reset =>     (*0x00000000*)  0
-        | UndIns =>    (*0x00000004*)  4
-        | SoftInt =>   (*0x00000008*)  8
-        | PFAbort =>   (*0x0000000C*) 12
-        | DataAbort => (*0x00000010*) 16
-(*FIXME: depends on VE bit in the system control coprocessor *)
-        | IRQ =>       (*0x00000018*) 24
-        | FIQ =>       (*0x0000001C*) 28
-      end
-    | true =>
-      match e with
-        | Reset =>     (*0xFFFF0000*) 4294901760
-        | UndIns =>    (*0xFFFF0004*) 4294901764
-        | SoftInt =>   (*0xFFFF0008*) 4294901768
-        | PFAbort =>   (*0xFFFF000C*) 4294901772
-        | DataAbort => (*0xFFFF0010*) 4294901776
-(*FIXME: depends on VE bit in the system control coprocessor *)
-        | IRQ =>       (*0xFFFF0018*) 4294901784
-        | FIQ =>       (*0xFFFF001C*) 4294901788
-      end
-  end.*)
-
-(* Exception priorities (p. 63) *)
-
-Definition priority (e : exception) : BinInt.Z :=
-  match e with
-    | Reset => 1 (* highest *)
-    | DataAbort => 2
-    | FIQ => 3
-    | IRQ => 4
-    | ImpAbort => 5
-    | PFAbort => 6
-    | UndIns | SoftInt => 7 (* lowest *)
-  end.
-
-Fixpoint insert (e : exception) (l : list exception) : list exception :=
-  match l with
-    | nil => e :: nil
-    | e' :: l' => if zlt (priority e) (priority e') then e :: l
-      else e' :: insert e l'
-  end.
 
 (****************************************************************************)
 (** A2.7 Endian support (p. 68) *)
@@ -312,7 +255,6 @@ Definition update_cpsr_or w s := set_cpsr s (or (cpsr s) w).
 Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
 Definition update_reg m k w s := set_reg s (update_map_reg m k w s).
 Definition update_mem a w s := set_mem s (update_map_mem a w s).
-Definition add_exn e s := set_exns s (insert e (exns s)).
 
 (****************************************************************************)
 (** Executing an instruction generates either:

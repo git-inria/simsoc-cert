@@ -38,6 +38,7 @@ Definition w2 : word := repr 2.
 Definition w4 : word := repr 4.
 Definition w8 : word := repr 8.
 Definition w12 : word := repr 12.
+Definition w14 : word := repr 14.
 Definition w15 : word := repr 15.
 Definition w31 : word := repr 31.
 
