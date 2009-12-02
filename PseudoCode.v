@@ -49,10 +49,9 @@ with bexp : Type :=
 | ConditionPassed
 | BAnd (be1 be2 : bexp).
 
-Definition W0 := Word w0.
-Definition W1 := Word w1.
-Definition W14 := Word w14.
-Definition W15 := Word w15.
+Coercion Word : word >-> exp.
+
+Definition W (p : positive) : exp := Word (repr (Zpos p)).
 
 (****************************************************************************)
 (** Pseudo-code instructions *)
@@ -84,11 +83,9 @@ Variable word_of_var : nat -> word.
 Definition empty (_ : nat) : word := w0.
 Definition assoc := @update_map _ eq_nat_dec word.
 
+(* state in which expressions are evaluated *)
+Variable s0 : state.
 Variable m : processor_mode.
-
-Section exp.
-
-Variable s : state.
 
 Fixpoint word_of_exp (e : exp) : word :=
   match e with
@@ -110,20 +107,18 @@ Fixpoint word_of_exp (e : exp) : word :=
 
 with word_of_sexp (se : sexp) : word :=
   match se with
-    | CPSR => cpsr s
-    | SPSR em => spsr s em
-    | Reg e => reg_content s m (mk_reg_num (word_of_exp e))
-    | Reg_exn em e => (*FIXME*) cpsr s
+    | CPSR => cpsr s0
+    | SPSR em => spsr s0 em
+    | Reg e => reg_content s0 m (mk_reg_num (word_of_exp e))
+    | Reg_exn em e => (*FIXME*) cpsr s0
   end
 
 with bool_of_bexp (be : bexp) : bool :=
   match be with
     | Eq e1 e2 => zeq (word_of_exp e1) (word_of_exp e2)
-    | ConditionPassed => Functions.ConditionPassed (cpsr s)
+    | ConditionPassed => Functions.ConditionPassed (cpsr s0)
     | BAnd be1 be2 => andb (bool_of_bexp be1) (bool_of_bexp be2)
   end.
-
-End exp.
 
 (****************************************************************************)
 (** Semantics of pseudo-code instructions *)
@@ -141,13 +136,10 @@ Definition update (se : sexp) (r : range) (v : word) (s : state)
   match se with
     | CPSR => (true, update_cpsr (update_range r v (cpsr s)) s)
     | SPSR em => (true, update_spsr em (update_range r v (spsr s em)) s)
-    | Reg e => let k := mk_reg_num (word_of_exp s e) in
+    | Reg e => let k := mk_reg_num (word_of_exp e) in
       (zne k 15, update_reg m k (update_range r v (reg_content s m k)) s)
     | Reg_exn em e => (*FIXME*) (true, s)
   end.
-
-(* state in which all expressions are evaluated *)
-Variable s0 : state.
 
 Fixpoint interp_aux (s : state) (i : inst) : result :=
   match i with
@@ -161,11 +153,11 @@ Fixpoint interp_aux (s : state) (i : inst) : result :=
             | Some (b2, s2) => Some (andb b1 b2, s2)
           end
       end
-    | Affect le r e => Some (update le r (word_of_exp s0 e) s)
+    | Affect le r e => Some (update le r (word_of_exp e) s)
     | IfThen be i =>
-      if bool_of_bexp s0 be then interp_aux s i else Some (true, s)
+      if bool_of_bexp be then interp_aux s i else Some (true, s)
     | IfThenElse be i1 i2 =>
-      if bool_of_bexp s0 be then interp_aux s i1 else interp_aux s i2
+      if bool_of_bexp be then interp_aux s i1 else interp_aux s i2
     | Affect_CPSR_SPSR =>
       match m with
         | exn e => Some (true, update_cpsr (spsr s0 e) s)

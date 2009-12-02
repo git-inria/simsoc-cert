@@ -41,16 +41,16 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
   (m : processor_mode) : result :=
   let env := assoc 0 Sbit (assoc 1 Rd (assoc 2 Rn (assoc 3 so empty))) in
   let Sbit := Var 0 in let Rd := Var 1 in let Rn := Var 2 in let so := Var 3 in
-    interp env m s
+    interp env s m
     (IfThen ConditionPassed
       (Seq (Affect (Reg Rd) All
         (Add (Add (State (Reg Rn) All) so) (State CPSR (Bit Cbit))))
-        (IfThenElse (BAnd (Eq Sbit W1) (Eq Rd W15))
+        (IfThenElse (BAnd (Eq Sbit w1) (Eq Rd w15))
           Affect_CPSR_SPSR
-          (IfThen (Eq Sbit W1)
+          (IfThen (Eq Sbit w1)
             (Seq (Affect CPSR (Bit Nbit) (State (Reg Rd) (Bit 31)))
             (Seq (Affect CPSR (Bit Zbit)
-              (If (Eq (State (Reg Rd) All) W0) W1 W0))
+              (If (Eq (State (Reg Rd) All) w0) w1 w0))
             (Seq (Affect CPSR (Bit Cbit)
               (CarryFrom_add3 (State (Reg Rn) All) so (State CPSR (Bit Cbit))))
             (Affect CPSR (Bit Vbit)
