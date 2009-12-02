@@ -52,7 +52,7 @@ Definition mk_reg_num := mk_bitvec 4.
 Definition PC := mk_reg_num 15.
 Definition LR := mk_reg_num 14.
 
-(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
+(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
 since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
 Definition reg_num_from_bit (k : nat) (w : word) : reg_num :=
   mk_reg_num (bits_val k (k+3) w).
@@ -254,7 +254,7 @@ Definition mk_address := mk_bitvec 30.
 
 Definition address_eqdec := @bitvec_eqdec 30.
 
-(*FIXME: can be improved by using build_bitvec instead of mk_bitvec
+(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
 since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
 Definition address_of_word (w : word) : address :=
   mk_address (bits_val 2 31 w).
@@ -292,13 +292,6 @@ Record state : Type := mk_state {
   exns : list exception
 }.
 
-(*FIXME: does not work :-(
-Notation "s .cpsr" := (cpsr s) (at level 2, left associativity).
-Notation "s .spsr" := (spsr s) (at level 2, left associativity).
-Notation "s .reg" := (reg s) (at level 2, left associativity).
-Notation "s .mem" := (mem s) (at level 2, left associativity).
-Notation "s .exns" := (exns s) (at level 2, left associativity).*)
-
 Definition reg_content s m k := reg s (reg_of_mode m k).
 
 Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s).
@@ -306,15 +299,6 @@ Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s).
 Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s).
 Definition set_mem s x := mk_state (cpsr s) (spsr s) (reg s) x (exns s).
 Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) (mem s) x.
-
-Section update_map.
-
-Variables (A : Type) (eqdec : forall x y : A, {x=y}+{~x=y}) (B : Type).
-
-Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
-  fun x => if eqdec x a then b else f x.
-
-End update_map.
 
 Definition update_map_spsr m w s :=
   update_map processor_exception_mode_eqdec m w (spsr s).

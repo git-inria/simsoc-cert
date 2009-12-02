@@ -25,12 +25,12 @@ Open Scope Z_scope.
 (* Pseudo-code expressions *)
 (****************************************************************************)
 
+Inductive range : Type := All | Bit (n : nat) | Bits (p n : nat).
+
 Inductive exp : Type :=
 | Var (k : nat)
 | Word (w : word)
-| Flag (n : nat)
-| Reg (e : exp)
-| Bit (n : nat) (e : exp)
+| State (se : sexp) (r : range)
 | If (be : bexp) (e1 e2 : exp)
 | Add (e1 e2 : exp)
 | CarryFrom_add2 (e1 e2 : exp)
@@ -38,19 +38,16 @@ Inductive exp : Type :=
 | CarryFrom_add3 (e1 e2 e3 : exp)
 | OverflowFrom_add3 (e1 e2 e3 : exp)
 
+with sexp : Type :=
+| CPSR
+| SPSR (em : processor_exception_mode)
+| Reg (e : exp)
+| Reg_exn (em : processor_exception_mode) (e : exp)
+
 with bexp : Type :=
 | Eq (e1 e2 : exp)
 | ConditionPassed
 | BAnd (be1 be2 : bexp).
-
-(****************************************************************************)
-(** Pseudo-code expressions used as left hand-side of affectations *)
-(****************************************************************************)
-
-Inductive lexp : Type :=
-| LCPSR
-| LReg (e : exp)
-| LFlag (n : nat).
 
 (****************************************************************************)
 (** Pseudo-code instructions *)
@@ -59,7 +56,7 @@ Inductive lexp : Type :=
 Inductive inst : Type :=
 | Unpredictable
 | Seq (i1 i2 : inst)
-| Affect (le : lexp) (e : exp)
+| Affect (se : sexp) (r : range) (e : exp)
 | IfThen (be : bexp) (i : inst)
 | IfThenElse (be : bexp) (i1 i2 : inst)
 | Affect_CPSR_SPSR.
@@ -68,9 +65,20 @@ Inductive inst : Type :=
 (** Semantics of pseudo-code expressions *)
 (****************************************************************************)
 
+Definition word_of_range (r : range) (w : word) : word :=
+  match r with
+    | All => w
+    | Bit n => w[n]
+    | Bits p n => w[p#n]
+  end.
+
 Section interp.
 
 Variable word_of_var : nat -> word.
+
+Definition empty (_ : nat) : word := w0.
+Definition assoc := @update_map _ eq_nat_dec word.
+
 Variable m : processor_mode.
 
 Section exp.
@@ -81,9 +89,7 @@ Fixpoint word_of_exp (e : exp) : word :=
   match e with
     | Var k => word_of_var k
     | Word w => w
-    | Flag n => bit n (cpsr s)
-    | Reg e => reg_content s m (mk_reg_num (word_of_exp e))
-    | Bit n e => bit n (word_of_exp e)
+    | State se r => word_of_range r (word_of_sexp se)
     | If be e1 e2 =>
       if bool_of_bexp be then word_of_exp e1 else word_of_exp e2
     | Add e1 e2 => add (word_of_exp e1) (word_of_exp e2)
@@ -95,6 +101,14 @@ Fixpoint word_of_exp (e : exp) : word :=
       (word_of_exp e1) (word_of_exp e2) (word_of_exp e3)
     | OverflowFrom_add3 e1 e2 e3 => Functions.OverflowFrom_add3
       (word_of_exp e1) (word_of_exp e2) (word_of_exp e3)
+  end
+
+with word_of_sexp (se : sexp) : word :=
+  match se with
+    | CPSR => cpsr s
+    | SPSR em => spsr s em
+    | Reg e => reg_content s m (mk_reg_num (word_of_exp e))
+    | Reg_exn em e => (*FIXME*) cpsr s
   end
 
 with bool_of_bexp (be : bexp) : bool :=
@@ -110,12 +124,21 @@ End exp.
 (** Semantics of pseudo-code instructions *)
 (****************************************************************************)
 
-Definition update (le : lexp) (w : word) (s : state) : bool * state :=
-  match le with
-    | LCPSR => (true, update_cpsr w s)
-    | LReg e => let k := word_of_exp s e in
-      (zne k 15, update_reg m (mk_reg_num k) w s)
-    | LFlag n => (true, update_cpsr (update n w (cpsr s)) s)
+Definition update_range (r : range) (v w : word) : word :=
+  match r with
+    | All => v
+    | Bit n => update_bit n v w
+    | Bits p n => update_bits p n v w
+  end.
+
+Definition update (se : sexp) (r : range) (v : word) (s : state)
+  : bool * state :=
+  match se with
+    | CPSR => (true, update_cpsr (update_range r v (cpsr s)) s)
+    | SPSR em => (true, update_spsr em (update_range r v (spsr s em)) s)
+    | Reg e => let k := mk_reg_num (word_of_exp s e) in
+      (zne k 15, update_reg m k (update_range r v (reg_content s m k)) s)
+    | Reg_exn em e => (*FIXME*) (true, s)
   end.
 
 (* state in which all expressions are evaluated *)
@@ -133,7 +156,7 @@ Fixpoint interp_aux (s : state) (i : inst) : result :=
             | Some (b2, s2) => Some (andb b1 b2, s2)
           end
       end
-    | Affect le e => Some (update le (word_of_exp s0 e) s)
+    | Affect le r e => Some (update le r (word_of_exp s0 e) s)
     | IfThen be i =>
       if bool_of_bexp s0 be then interp_aux s i else Some (true, s)
     | IfThenElse be i1 i2 =>

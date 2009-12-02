@@ -52,8 +52,8 @@ Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
   else Shift (reg_num_from_bit 0 w) (decode_shifter w)
     (if z then ValImm (bits 7 11 w) else ValReg (reg_num_from_bit 8 w)).
 
-(*FIXME: duplicate the following functions in case you do not need to
-compute the carry *)
+(*IMPROVE: duplicate the following functions in case you do not need to
+compute the carry? *)
 
 (****************************************************************************)
 (** A5.1.3 Data-processing operands - Immediate (p. 446) *)

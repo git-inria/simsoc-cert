@@ -109,7 +109,7 @@ the pseudo-code.  The addition or subtraction is not repeated. *)
 Definition OverflowFrom_add2 (x y : word) : word :=
   word_of_bool (zlt max_signed (signed x + signed y)).
 
-(*FIXME: use this more efficient definition given p. 1131?*)
+(*IMPROVE: use this more efficient definition given p. 1131?*)
 Definition OverflowFrom_add2' (x y : word) (r : word) :=
   let sx := is_neg x in (eqb sx (is_neg y)) && (bne sx (is_neg r)).
 
@@ -121,7 +121,7 @@ Definition OverflowFrom_add3 (x y z : word) : word :=
 (****************************************************************************)
 
 Definition ConditionPassed (w : word) : bool :=
-  match bits_val 28 31 w with
+  match bits_val 31 28 w with
     | (*0000*) 0 => (* Z set *) is_set Zbit w
     | (*0001*) 1 => (* Z clear *) negb (is_set Zbit w)
     | (*0010*) 2 => (* C set *) is_set Cbit w

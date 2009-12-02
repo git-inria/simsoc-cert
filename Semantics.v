@@ -48,23 +48,23 @@ Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
           | usr | sys => None
           | exn e =>
             let Rn := reg_content s m Rn in
-            let c := get Cbit r in
+            let c := r[Cbit] in
             let v := add (add Rn so) c in
               Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
         end
       else
         let Rn := reg_content s m Rn in
-        let c := get Cbit r in
+        let c := r[Cbit] in
         let v := add (add Rn so) c in
           Some (true, update_cpsr
-            (update Vbit (OverflowFrom_add3 Rn so c)
-              (update Cbit (CarryFrom_add3 Rn so c)
-                (update Zbit (ne_0 v)
-                  (update Nbit (bit 31 v) r))))
+            (update_bit Vbit (OverflowFrom_add3 Rn so c)
+              (update_bit Cbit (CarryFrom_add3 Rn so c)
+                (update_bit Zbit (zne v 0)
+                  (update_bit Nbit v[31] r))))
             (update_reg m Rd v s))
     else
       let Rn := reg_content s m Rn in
-      let c := get Cbit r in
+      let c := r[Cbit] in
       let v := add (add Rn so) c in Some (zne Rd 15, update_reg m Rd v s)
   else Some (true, s).
 
@@ -103,10 +103,10 @@ Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
         let Rn := reg_content s m Rn in
         let v := add Rn so in
           Some (true, update_cpsr
-            (update Vbit (OverflowFrom_add2 Rn so)
-              (update Cbit (CarryFrom_add2 Rn so)
-                (update Zbit (ne_0 v)
-                  (update Nbit (bit 31 v) r))))
+            (update_bit Vbit (OverflowFrom_add2 Rn so)
+              (update_bit Cbit (CarryFrom_add2 Rn so)
+                (update_bit Zbit (zne v 0)
+                  (update_bit Nbit v[31] r))))
             (update_reg m Rd v s))
     else
       let Rn := reg_content s m Rn in
@@ -148,9 +148,9 @@ Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
         let Rn := reg_content s m Rn in
         let v := and Rn so in
           Some (true, update_cpsr
-            (update_bool Cbit c
-              (update Zbit (ne_0 v)
-                (update Nbit (bit 31 v) r)))
+            (update_bit_aux Cbit c
+              (update_bit Zbit (zne v 0)
+                (update_bit Nbit v[31] r)))
             (update_reg m Rd v s))
     else
       let Rn := reg_content s m Rn in

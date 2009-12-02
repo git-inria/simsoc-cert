@@ -45,54 +45,72 @@ Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
 
-(* mask made of bit [n] *)
-Definition mask (n : nat) : word := repr (two_power_nat n).
+(* test to zero *)
+(*REMOVE:Definition eq_0 (w : word) : word := word_of_bool (zeq 0 w).
+Definition ne_0 (w : word) : word := word_of_bool (zne 0 w).*)
 
-(* mask made of the bits from bit [n] to bit [n+k] *)
+(* mask made of the bits [n] to [n+k] *)
 Fixpoint masks_aux (n k : nat) : Z :=
   match k with
     | O => two_power_nat n
     | S k' => two_power_nat n + masks_aux (S n) k'
   end.
 
-(* mask made of the bits from bit [n] to bit [n+(p-n)] *)
-Definition masks (n p : nat) : word := repr (masks_aux n (p-n)).
+(* mask made of the bits [n] to [n+(p-n)] (p>=n) *)
+Definition masks (p n : nat) : word := repr (masks_aux n (p-n)).
+Definition anti_masks p n := not (masks p n).
 
-(* test to zero *)
-Definition eq_0 (w : word) : word := word_of_bool (zeq 0 w).
-Definition ne_0 (w : word) : word := word_of_bool (zne 0 w).
+(* mask made of bit [n] *)
+Definition mask n := masks n n.
+Definition anti_mask n := anti_masks n n.
 
-(* bit [k] of [w] *)
-Definition bit (k : nat) (w : word) : word := and (mask k) w.
+(* w[p:n] = bits [p] to [n] of [w] (p>=n) *)
+Definition bits (p n : nat) (w : word) : word := and (masks p n) w.
+Notation "w [ p # n ]" := (bits p n w) (at level 8).
+
+(* value of w[p:n] *)
+(*IMPROVE: use a shift instead*)
+Definition bits_val (p n : nat) (w : word) : Z := w[p#n] / two_power_nat n.
+
+(* w[n] = bit [n] of [w] *)
+Definition bit n := bits n n.
 Notation get := bit.
+Notation "w [ n ]" := (bit n w) (at level 8).
 
 (* tell if bit [k] of [w] is set to 1 *)
-Definition is_set (k : nat) (w : word) : bool := zne (bit k w) 0.
-
-(* set bit [k] of [w] to 1 *)
-Definition set (k : nat) (w : word) : word := or (mask k) w.
-
-(* set bit [k] of [w] to 0 *)
-Definition clear (k : nat) (w : word) : word := and (not (mask k)) w.
-
-(* set bit [k] of [w] to [x] *)
-Definition update_bool (k : nat) (b : bool) (w : word) : word :=
-  if b then clear k w else set k w.
-Definition update (k : nat) (c w : word) : word := update_bool k (zeq c 0) w.
-
-(* bits [k] to [l] of [w] *)
-Definition bits (k l : nat) (w : word) : word := and (masks k l) w.
-Definition bits_val (k l : nat) (w : word) : Z :=
-  bits k l w / two_power_nat k. (*FIXME: use a shift instead*)
+Definition is_set (n : nat) (w : word) : bool := zne w[n] 0.
 
 (* tell if a signed word is negative *)
-Definition is_neg (w : word) : bool := zne (bit 31 w) 0.
+Definition is_neg := is_set 31.
+
+(* set w[k] to 1 *)
+Definition set (n : nat) (w : word) : word := or (mask n) w.
+
+(* set w[k] to 0 *)
+Definition clear (n : nat) (w : word) : word := and (anti_mask n) w.
+
+(* update w[k] *)
+Definition update_bit_aux (n : nat) (b : bool) (w : word) : word :=
+  if b then clear n w else set n w.
+Definition update_bit (n : nat) (v w : word) : word :=
+  update_bit_aux n (zeq v 0) w.
+
+(* replace w[p:p-k] by v[k:0] *)
+Fixpoint update_bits_aux (p k : nat) (v w : word) : word :=
+  match k with
+    | O => update_bit p v[0] w
+    | S k' => update_bits_aux (pred p) k' v (update_bit p v[k] w)
+  end.
+
+(* replace w[p:n] by v[p-n:0] (p>=n) *)
+Definition update_bits (p n : nat) (v w : word) : word :=
+  update_bits_aux p (p-n) v w.
 
 (****************************************************************************)
 (** n-bits words *)
 (****************************************************************************)
 
-(*FIXME: replace bits by generalizing in Integers the type int by
+(*IMPROVE: replace bits by generalizing in Integers the type int by
 taking wordsize as a parameter?*)
 
 Section bitvec.
@@ -122,7 +140,7 @@ left. subst. rewrite (proof_irrelevance _ p1 p2). auto.
 right. intro h. inversion h. contradiction.
 Qed.
 
-(*FIXME: to be improved when n<=32*)
+(*IMPROVE: to be improved when n<=32*)
 Definition word_of_bitvec (v : bitvec) : word := repr v.
 
 Coercion word_of_bitvec : bitvec >-> word.
