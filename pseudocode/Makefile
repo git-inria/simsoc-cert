@@ -30,7 +30,7 @@ OCAMLDEP := ocamldep $(INCLUDES)
 OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
-FILES := ast
+FILES := ast parser lexer
 
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)

@@ -8,43 +8,36 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Pseudocode syntax and semantics.
+Pseudocode abstract syntax tree.
 *)
-
 
 (****************************************************************************)
 (** Pseudo-code expressions *)
 (****************************************************************************)
 
-type nat = int;; (*IMPROVE: use a private data type?*)
+type num = int;; (*IMPROVE: use a private data type?*)
 
-type word = int;;
+type word = int;; (*FIXME: use int32?*)
 
 type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
-type range = All | Bit of nat | Bits of nat * nat;;
+type range = All | Bit of num | Bits of num * num;;
 
 type exp =
-| Var of nat
 | Word of word
 | State of sexp * range
-| If of bexp * exp * exp
-| Add of exp * exp
-| CarryFrom_add2 of exp * exp
-| OverflowFrom_add2 of exp * exp
-| CarryFrom_add3 of exp * exp * exp
-| OverflowFrom_add3 of exp * exp * exp
+| If of exp * exp * exp
+| Fun of string * exp list
 
 and sexp =
 | CPSR
 | SPSR of processor_exception_mode
-| Reg of exp
-| Reg_exn of processor_exception_mode * exp
+| Reg of processor_exception_mode option * exp
 
 and bexp =
 | Eq of exp * exp
-| ConditionPassed
-| BAnd of bexp * bexp;;
+| BFun of string * exp list
+| And of bexp * bexp;;
 
 (****************************************************************************)
 (** Pseudo-code instructions *)
@@ -54,6 +47,4 @@ type inst =
 | Unpredictable
 | Seq of inst * inst
 | Affect of sexp * range * exp
-| IfThen of bexp * inst
-| IfThenElse of bexp * inst * inst
-| Affect_CPSR_SPSR;;
+| IfThenElse of bexp * inst * inst option;;
