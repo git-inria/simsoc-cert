@@ -1,3 +1,6 @@
+# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# See the COPYRIGHTS and LICENSE files.
+
 targ = keepoper ARMv6.txt operV6.txt
 
 all : $(targ)

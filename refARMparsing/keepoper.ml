@@ -1,16 +1,29 @@
+(**
+SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+See the COPYRIGHTS and LICENSE files.
+
+Formalization of the ARM architecture version 6 following the:
+
+ARM Architecture Reference Manual, Issue I, July 2005.
+
+Page numbers refer to ARMv6.pdf.
+
+Pseudocode syntax and semantics.
+*)
+
 (* 
 #load "dynlink.cma";; 
 #load "camlp4o.cma";; 
 ocamlc -pp camlp4o
 *)
 
-(* Pour le test *)
+(* For testing *)
 let rec list_of_stream = parser
   | [< 'x; l = list_of_stream >] -> x :: l
   | [< >] -> []
 
 
-(* Identificateurs *)
+(* Identifiers *)
 let ident =
   let bu = Buffer.create 16 in 
   let rec ident_aux = parser
