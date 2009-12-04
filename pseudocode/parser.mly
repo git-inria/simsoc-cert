@@ -39,8 +39,11 @@ Pseudocode parser.
 %%
 
 lib:
-| /* nothing */        { [] }
-| IDENT IDENT inst lib { ($1, $2, $3) :: $4 }
+| prog EOF { $1 }
+;
+prog:
+| /* nothing */                   { [] }
+| IDENT IDENT SEMICOLON inst prog { ($1, $2, $4) :: $5 }
 ;
 insts:
 | /* nothing */        { [] }

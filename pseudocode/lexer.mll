@@ -83,4 +83,5 @@ rule token = parse
   | "0b" (bin as s) { WORD (word_of_bin_string s) }
   | binop as s { BINOP s }
   | ident as s { IDENT s }
+  | eof { EOF }
   | _ { raise Parsing.Parse_error }

@@ -104,13 +104,10 @@ clean:
 .depend:
 	touch .depend
 
-depend:
+depend: $(PARSERS:%=%.ml)
 	$(SHOW) OCAMLDEP
 	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BIN_FILES:%=%.ml) > .depend
 
-parser.cmo: ast.cmo parser.cmi 
-parser.cmx: ast.cmx parser.cmi 
-lexer.cmo: parser.cmi ast.cmo 
-lexer.cmx: parser.cmx ast.cmx 
+parser.cmi: ast.cmi
 
 include .depend
