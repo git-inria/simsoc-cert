@@ -21,7 +21,6 @@ Pseudocode parser.
 %token CONDITION_PASSED CARRY_FROM OVERFLOW_FROM
 %token IF THEN ELSE
 %token <string> IDENT
-%token <string> BINOP
 %token LPAR RPAR LSQB RSQB BEGIN END
 %token CPSR
 %token <Ast.processor_exception_mode> SPSR_MODE
@@ -29,12 +28,15 @@ Pseudocode parser.
 %token <Ast.word> WORD
 %token <Ast.num> NUM
 %token <Ast.flag> FLAG
+%token PLUS EQEQ AND
 
-%left BINOP
+%left AND /* lowest precedence */
+%left EQEQ
+%left PLUS /* highest precedence */
 
 %type <Ast.prog list> lib
 
-%start lib
+%start lib /* entry point */
 
 %%
 
@@ -74,7 +76,9 @@ exp:
 | sexp                     { State $1 }
 | sexp range               { Range (State $1, $2) }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| exp BINOP exp            { Fun ($2, [$1; $3]) }
+| exp AND exp              { Fun ("and", [$1; $3]) }
+| exp EQEQ exp             { Fun ("==", [$1; $3]) }
+| exp PLUS exp             { Fun ("+", [$1; $3]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | idents                   { Other $1 }
 ;

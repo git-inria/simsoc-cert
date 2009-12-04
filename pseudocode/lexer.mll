@@ -49,7 +49,6 @@ let num = digit+
 let letter = ['a'-'z' 'A'-'Z' '_' '.']
 let ident = letter (letter|digit)*
 let bin = ['0' '1']+
-let binop = "==" | "and" | "+"
 let flag = ['N' 'Z' 'C' 'V']
 
 rule token = parse
@@ -81,7 +80,9 @@ rule token = parse
       { REG (Some (mode_of_string m), num_of_string s) }
   | num as s { NUM (num_of_string s) }
   | "0b" (bin as s) { WORD (word_of_bin_string s) }
-  | binop as s { BINOP s }
+  | "+" { PLUS }
+  | "==" { EQEQ }
+  | "and" { AND }
   | ident as s { IDENT s }
   | eof { EOF }
   | _ { raise Parsing.Parse_error }
