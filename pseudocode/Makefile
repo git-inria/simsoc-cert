@@ -99,12 +99,12 @@ tags:
 	otags -sr '.mli' -r .
 
 clean:
-	rm -f *~ *.cm* *.o $(PARSERS:%=%.ml %.output)
+	rm -f *~ *.cm* *.o $(PARSERS:%=%.ml) $(PARSERS:%=%.output)
 
-.depend:
-	touch .depend
+#.depend:
+#	touch .depend
 
-depend: $(PARSERS:%=%.ml)
+.depend depend: $(PARSERS:%=%.ml)
 	$(SHOW) OCAMLDEP
 	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BIN_FILES:%=%.ml) > .depend
 
