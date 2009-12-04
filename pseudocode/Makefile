@@ -30,18 +30,17 @@ OCAMLDEP := ocamldep $(INCLUDES)
 OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
-FILES := ast parser lexer
+PARSERS := parser lexer
+FILES := ast $(PARSERS)
 
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
 
-BIN_FILES :=
+BIN_FILES := compil
 
 BINS := $(BIN_FILES:%=bin/%)
 BYTS := $(BINS:%=%.byt)
 OPTS := $(BINS:%=%.opt)
-
-PARSERS := lexer parser
 
 .PRECIOUS: $(BIN_FILES:%=%.cmo) $(BIN_FILES:%=%.cmx) $(PARSERS:%=%.ml)
 
@@ -58,11 +57,11 @@ bin/%: bin/%.byt
 
 bin/%.byt: %.cmo
 	$(SHOW) OCAMLC -o $@
-	$(HIDE) $(OCAMLC) -o $@ $(CMAFILES) $(RAINBOW_CMOFILES) $<
+	$(HIDE) $(OCAMLC) -o $@ $(CMAFILES) $(CMOFILES) $<
 
 bin/%.opt: %.cmx
 	$(SHOW) OCAMLOPT -o $@
-	$(HIDE) $(OCAMLOPT) -o $@ $(CMXAFILES) $(RAINBOW_CMXFILES) $<
+	$(HIDE) $(OCAMLOPT) -o $@ $(CMXAFILES) $(CMXFILES) $<
 	$(SHOW) STRIP -s $@
 	$(HIDE) strip -s $@
 

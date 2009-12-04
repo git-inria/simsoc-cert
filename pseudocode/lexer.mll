@@ -16,6 +16,7 @@ open Parser;;
 open Ast;;
 open Lexing;;
 
+let num_of_string = int_of_string;;
 let word_of_string = int_of_string;;
 
 let word_of_bin_string s =
@@ -33,13 +34,23 @@ let mode_of_string = function
   | "und" -> Und
   | _ -> invalid_arg "mode_of_string";;
 
+let flag_of_char = function
+  | 'N' -> N
+  | 'Z' -> Z
+  | 'C' -> C
+  | 'V' -> V
+  | _ -> invalid_arg "flag_of_string";;
+
 }
 
 let mode = "fiq" | "irq" | "svc" | "abt" | "und"
-let num = ['0'-'9']+
-let ident = ['a'-'z' 'A'-'Z' '_']+
+let digit = ['0'-'9']
+let num = digit+
+let letter = ['a'-'z' 'A'-'Z' '_' '.']
+let ident = letter (letter|digit)*
 let bin = ['0' '1']+
 let binop = "==" | "and" | "+"
+let flag = ['N' 'Z' 'C' 'V']
 
 rule token = parse
   | [' ' '\r' '\t'] { token lexbuf }
@@ -54,13 +65,22 @@ rule token = parse
   | ']' { RSQB }
   | ':' { COLON }
   | ';' { SEMICOLON }
+  | ',' { COMA }
   | '=' { EQ }
-  | binop as s { BINOP s }
+  | "if" { IF }
+  | "then" { THEN }
+  | "else" { ELSE }
+  | "begin" { BEGIN }
+  | "end" { END }
+  | "UNPREDICTABLE" { UNPREDICTABLE }
+  | (flag as c) [' ' '\t']+ "Flag" { FLAG (flag_of_char c) }
   | "CPSR" { Parser.CPSR }
   | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
-  | "R" (num as s) { REG (word_of_string s) }
+  | "R" (num as s) { REG (None, num_of_string s) }
   | "R" (num as s) "_" (mode as m)
-      { REG_MODE (mode_of_string m, word_of_string s) }
-  | num as s { WORD (word_of_string s) }
+      { REG (Some (mode_of_string m), num_of_string s) }
+  | num as s { NUM (num_of_string s) }
   | "0b" (bin as s) { WORD (word_of_bin_string s) }
+  | binop as s { BINOP s }
   | ident as s { IDENT s }
+  | _ { raise Parsing.Parse_error }

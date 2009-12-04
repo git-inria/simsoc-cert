@@ -23,26 +23,33 @@ let word_of_num n = n;;
 
 type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
-type range = All | Bit of num | Bits of num * num;;
+type flag = N | Z | C | V;;
+
+type range = Bit of num | Bits of num * num;;
 
 type exp =
 | Word of word
-| State of sexp * range
+| State of sexp
 | If of exp * exp * exp
 | Fun of string * exp list
-| Var of string
+| Range of exp * range
+| Other of string list
 
 and sexp =
 | CPSR
 | SPSR of processor_exception_mode
-| Reg of processor_exception_mode option * exp;;
+| Reg of processor_exception_mode option * num
+| Var of string
+| Flag of flag;;
 
 (****************************************************************************)
 (** Pseudo-code instructions *)
 (****************************************************************************)
 
 type inst =
+| Block of inst list
 | Unpredictable
-| Seq of inst * inst
-| Affect of sexp * range * exp
+| Affect of sexp * range option * exp
 | IfThenElse of exp * inst * inst option;;
+
+type prog = string * string * inst;;
