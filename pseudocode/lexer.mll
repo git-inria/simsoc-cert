@@ -12,10 +12,13 @@ Page numbers refer to ARMv6.pdf.
 Pseudocode lexer.
 *)
 
-open Lexing;;
 open Parser;;
+open Ast;;
+open Lexing;;
 
-let int_of_bin_string s =
+let word_of_string = int_of_string;;
+
+let word_of_bin_string s =
   let r = ref 0 and n = String.length s in
   for i = 0 to n - 1 do
     if s.[i] = '1' then r := !r + (1 lsl (n-i))
@@ -33,9 +36,10 @@ let mode_of_string = function
 }
 
 let mode = "fiq" | "irq" | "svc" | "abt" | "und"
-let notneg = ['0'-'9']+
+let num = ['0'-'9']+
 let ident = ['a'-'z' 'A'-'Z' '_']+
 let bin = ['0' '1']+
+let binop = "==" | "and" | "+"
 
 rule token = parse
   | [' ' '\r' '\t'] { token lexbuf }
@@ -44,20 +48,19 @@ rule token = parse
 	     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 				      pos_lnum = ln+1; pos_bol = off };
 	     token lexbuf }
-  | '=' { EQ }
-  | "==" { EQEQ }
   | '(' { LPAR }
   | ')' { RPAR }
   | '[' { LSQB }
   | ']' { RSQB }
   | ':' { COLON }
-  | '+' { PLUS }
-  | "and" { AND }
-  | "CPSR" { CPSR }
-  | "SPSR_" (mode as m) { SPSR (mode_of_string m) }
-  | "R" (notneg as s) { REG (int_of_string s) }
-  | "R" (notneg as s) "_" mode { REG_MODE (mode_of_string m, int_of_string s) }
-  | notneg as s { WORD (int_of_string s) }
-  | "0b" (bin as s) { WORD (int_of_bin_string s) }
+  | ';' { SEMICOLON }
+  | '=' { EQ }
+  | binop as s { BINOP s }
+  | "CPSR" { Parser.CPSR }
+  | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
+  | "R" (num as s) { REG (word_of_string s) }
+  | "R" (num as s) "_" (mode as m)
+      { REG_MODE (mode_of_string m, word_of_string s) }
+  | num as s { WORD (word_of_string s) }
+  | "0b" (bin as s) { WORD (word_of_bin_string s) }
   | ident as s { IDENT s }
-  | eof { raise Eof }

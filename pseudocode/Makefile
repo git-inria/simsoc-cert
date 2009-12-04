@@ -25,7 +25,7 @@ WARNINGS = -w A -warn-error A
 
 OCAMLC = ocamlc -g $(INCLUDES) $(WARNINGS)
 OCAMLLEX := ocamllex
-OCAMLYACC := ocamlyacc
+OCAMLYACC := ocamlyacc -v
 OCAMLDEP := ocamldep $(INCLUDES)
 OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
@@ -41,7 +41,7 @@ BINS := $(BIN_FILES:%=bin/%)
 BYTS := $(BINS:%=%.byt)
 OPTS := $(BINS:%=%.opt)
 
-PARSERS :=
+PARSERS := lexer parser
 
 .PRECIOUS: $(BIN_FILES:%=%.cmo) $(BIN_FILES:%=%.cmx) $(PARSERS:%=%.ml)
 
@@ -100,13 +100,18 @@ tags:
 	otags -sr '.mli' -r .
 
 clean:
-	rm -f *~ *.cm* *.o
+	rm -f *~ *.cm* *.o $(PARSERS:%=%.ml %.output)
+
+.depend:
+	touch .depend
 
 depend:
 	$(SHOW) OCAMLDEP
 	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BIN_FILES:%=%.ml) > .depend
 
-.depend:
-	touch .depend
+parser.cmo: ast.cmo parser.cmi 
+parser.cmx: ast.cmx parser.cmi 
+lexer.cmo: parser.cmi ast.cmo 
+lexer.cmx: parser.cmx ast.cmx 
 
 include .depend
