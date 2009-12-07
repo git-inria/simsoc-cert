@@ -42,7 +42,8 @@ let take_eol_indent =
 
 exception Error of int
 
-let rec prbl n s = if n = 0 then print_endline s else (print_char ' '; prbl (n-1) s)
+let rec prbl n s =
+  if n = 0 then print_endline s else (print_char ' '; prbl (n-1) s)
 
 (* lnb = line number *)
 (* n l represents the non-empty stack n :: l of previous indentations *)
@@ -63,8 +64,10 @@ let rec loop lnb0 n0 l0 s =
   let lnb = lnb0 + 1 in 
   match nc with
     | Line (n, c) -> 
-	if n > n0 then (prbl n "begin"; print_endline c; loop lnb n (n0 :: l0) s)
-        else let n1, l1 = unstack lnb n n0 l0 in print_endline c; loop lnb n1 l1 s
+	if n > n0 then
+	  (prbl n "begin"; print_endline c; loop lnb n (n0 :: l0) s)
+        else let n1, l1 = unstack lnb n n0 l0 in
+	  print_endline c; loop lnb n1 l1 s
     | EOL -> let _ = unstack lnb 0 n0 l0 in ()
 
 
