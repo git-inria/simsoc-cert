@@ -78,11 +78,14 @@ rule token = parse
   | "R" (num as s) { REG (None, num_of_string s) }
   | "R" (num as s) "_" (mode as m)
       { REG (Some (mode_of_string m), num_of_string s) }
+  | "LR" { REG (None, 14) }
+  | "PC" { REG (None, 15) }
   | num as s { NUM (num_of_string s) }
   | "0b" (bin as s) { WORD (word_of_bin_string s) }
   | "+" { PLUS }
   | "==" { EQEQ }
   | "and" { AND }
+  | "<<" { LTLT }
   | ident as s { IDENT s }
   | eof { EOF }
   | _ { raise Parsing.Parse_error }

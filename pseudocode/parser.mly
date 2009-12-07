@@ -28,11 +28,12 @@ Pseudocode parser.
 %token <Ast.word> WORD
 %token <Ast.num> NUM
 %token <Ast.flag> FLAG
-%token PLUS EQEQ AND
+%token PLUS EQEQ AND LTLT
 
-%left AND /* lowest precedence */
+%left AND  /* lowest precedence */
 %left EQEQ
-%left PLUS /* highest precedence */
+%left PLUS
+%left LTLT /* highest precedence */
 
 %type <Ast.prog list> lib
 
@@ -45,8 +46,11 @@ lib:
 ;
 prog:
 | /* nothing */                   { [] }
-| IDENT IDENT SEMICOLON inst prog { ($1, $2, $4) :: $5 }
+| IDENT IDENT alt SEMICOLON inst prog { ($1, $2, $5) :: $6 }
 ;
+alt:
+| /* nothing */  { }
+| COMA IDENT alt { }
 insts:
 | /* nothing */        { [] }
 | inst                 { [$1] }
@@ -76,9 +80,10 @@ exp:
 | sexp                     { State $1 }
 | sexp range               { Range (State $1, $2) }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| exp AND exp              { Fun ("and", [$1; $3]) }
-| exp EQEQ exp             { Fun ("==", [$1; $3]) }
-| exp PLUS exp             { Fun ("+", [$1; $3]) }
+| exp AND exp              { BinOp ($1, "and", $3) }
+| exp EQEQ exp             { BinOp ($1, "==", $3) }
+| exp PLUS exp             { BinOp ($1, "+", $3) }
+| exp LTLT exp             { BinOp ($1, "<<", $3) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | idents                   { Other $1 }
 ;

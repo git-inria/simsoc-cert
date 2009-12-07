@@ -32,6 +32,7 @@ type exp =
 | State of sexp
 | If of exp * exp * exp
 | Fun of string * exp list
+| BinOp of exp * string * exp
 | Range of exp * range
 | Other of string list
 
@@ -108,6 +109,8 @@ let range b = function
 let sexp b = function
   | CPSR -> string b "CPSR"
   | SPSR m -> bprintf b "SPSR_%a" mode m
+  | Reg (None, 14) -> string b "LR"
+  | Reg (None, 15) -> string b "PC"
   | Reg (None, n) -> bprintf b "R%a" num n
   | Reg (Some m, n) -> bprintf b "R%a_%a" num n mode m
   | Var s -> string b s
@@ -117,16 +120,18 @@ let rec exp b = function
   | Word w -> word b w
   | State se -> sexp b se
   | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+  | BinOp (e1, f, e2) -> bprintf b "%a %s %a" exp e1 f exp e2
   | Fun (f, es) -> bprintf b "%s(%a)" f (list "," exp) es
   | Range (e, r) -> bprintf b "%a[%a]" exp e range r
   | Other ss -> list " " string b ss;;
 
-let rec inst k b i =
+let rec inst k b i = indent b k;
   match i with
-    | Block _ | IfThenElse (_, Block _, _) ->
-	bprintf b "%a%a" indent k (inst_aux k) i
+    | Block _ | IfThenElse (_, Block _, None)
+    | IfThenElse (_, _, Some (Block _|IfThenElse _)) ->
+	bprintf b "%a" (inst_aux k) i
     | Unpredictable | Affect _ | IfThenElse _ ->
-	bprintf b "%a%a;" indent k (inst_aux k) i
+	bprintf b "%a;" (inst_aux k) i
 
 and inst_aux k b = function
   | Block is ->
