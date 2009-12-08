@@ -21,5 +21,5 @@ operV6.txt : keepoper ARMv6.txt
 	./keepoper < ARMv6.txt > $@
 
 indentV6.txt : indentation operV6.txt
-	cat operV6.txt | sed -e 's/$$/;/' -e 's/then;$$/then/' | ./indentation  > $@
+	cat operV6.txt | sed -e 's|$$|;|' -e 's|then;$$|then|' -e 's|else;$$|else|' -e 's|^\([ ]*/\*.*\*/\);|\1|' -e 's|if (\(.*\));$$|if (\1) then|' | ./indentation  > $@
 
