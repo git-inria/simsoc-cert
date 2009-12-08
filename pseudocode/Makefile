@@ -67,7 +67,7 @@ bin/%.opt: %.cmx
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES :=
+FRAGILE_FILES := ast
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 

@@ -12,48 +12,45 @@ Pseudocode abstract syntax tree.
 *)
 
 (****************************************************************************)
-(** Pseudo-code expressions *)
+(** Pseudo-code expressions and instructions *)
 (****************************************************************************)
-
-type num = int;; (*IMPROVE: use a private data type?*)
-
-type word = int;; (*FIXME: use int32?*)
-
-let word_of_num n = n;;
 
 type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
-type flag = N | Z | C | V;;
+type num = int;; (*IMPROVE: use a private data type?*)
 
-type range = Bit of num | Bits of num * num;;
+type word =
+| Bin of num * int
+| Hex of int32
+| Num of num;;
+
+type range =
+| Full
+| Bit of num
+| Bits of num * num
+| Flag of bool * string;; (* true for "Flag", false for "bit" *)
 
 type exp =
 | Word of word
-| State of sexp
+| State of state * range
 | If of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
-| Range of exp * range
 | Other of string list
 
-and sexp =
+and state =
 | CPSR
 | SPSR of processor_exception_mode
 | Reg of processor_exception_mode option * num
-| Var of string
-| Flag of flag;;
-
-(****************************************************************************)
-(** Pseudo-code instructions *)
-(****************************************************************************)
+| Var of string;;
 
 type inst =
 | Block of inst list
 | Unpredictable
-| Affect of sexp * range option * exp
+| Affect of (state * range) * exp
 | IfThenElse of exp * inst * inst option;;
 
-type prog = string * string * inst;;
+type prog = string * string * num option * inst;;
 
 (****************************************************************************)
 (** Printing functions *)
@@ -90,39 +87,50 @@ let string_of_mode = function
   | Und -> "und";;
 
 let mode b m = string b (string_of_mode m);;
-
-let string_of_flag = function
-  | N -> "N"
-  | Z -> "Z"
-  | C -> "C"
-  | V -> "V";;
-
-let flag b f = string b (string_of_flag f);;
-
+let flag b f = string b f;;
 let num b n = bprintf b "%d" n;;
-let word b w = bprintf b "%d" w;;
+
+let bin_string_of_int =
+  let rec aux s n i =
+    if n <= 0 then s
+    else if i mod 2 = 0 then aux ("0" ^ s) (n-1) (i/2)
+    else aux ("1" ^ s) (n-1) (i/2)
+  in aux "";;
+
+let word b = function
+  | Bin (n, i) -> bprintf b "0b%s" (bin_string_of_int n i)
+  | Hex i -> bprintf b "0x%08lX" i
+  | Num i -> bprintf b "%d" i;;
 
 let range b = function
-  | Bit n -> bprintf b "%a" num n
-  | Bits (n, p) -> bprintf b "%a:%a" num n num p;;
+  | Full -> ()
+  | Bit n -> bprintf b "[%a]" num n
+  | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
+  | Flag (true, f) -> bprintf b "%s Flag" f
+  | Flag (false, f) -> bprintf b "%s bit" f;;
 
-let sexp b = function
+let state b = function
   | CPSR -> string b "CPSR"
   | SPSR m -> bprintf b "SPSR_%a" mode m
   | Reg (None, 14) -> string b "LR"
   | Reg (None, 15) -> string b "PC"
   | Reg (None, n) -> bprintf b "R%a" num n
   | Reg (Some m, n) -> bprintf b "R%a_%a" num n mode m
-  | Var s -> string b s
-  | Flag f -> bprintf b "%a Flag" flag f;;
+  | Var s -> string b s;;
+
+let state_range b (s, r) =
+  match s, r with
+    | CPSR, Flag _ -> bprintf b "%a" range r
+    | s, Full -> bprintf b "%a" state s
+    | s, Flag _ -> bprintf b "%a %a" state s range r
+    | s, _ -> bprintf b "%a%a" state s range r;;
 
 let rec exp b = function
   | Word w -> word b w
-  | State se -> sexp b se
+  | State (s, r) -> state_range b (s, r)
   | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (e1, f, e2) -> bprintf b "%a %s %a" exp e1 f exp e2
   | Fun (f, es) -> bprintf b "%s(%a)" f (list "," exp) es
-  | Range (e, r) -> bprintf b "%a[%a]" exp e range r
   | Other ss -> list " " string b ss;;
 
 let rec inst k b i = indent b k;
@@ -137,14 +145,15 @@ and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
-  | Unpredictable ->
-      string b "UNPREDICTABLE"
-  | Affect (se, ro, e) ->
-      bprintf b "%a%a = %a" sexp se (option range) ro exp e
+  | Unpredictable -> string b "UNPREDICTABLE"
+  | Affect (sr, e) -> bprintf b "%a = %a" state_range sr exp e
   | IfThenElse (e, i, None) ->
       bprintf b "if %a then\n%a" exp e (inst (k+4)) i
   | IfThenElse (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
 	exp e (inst (k+4)) i1 indent k (inst_aux k) i2;;
 
-let prog b (r, f, i) = bprintf b "%s %s;\n%a" r f (inst 9) i;;
+let version b k = bprintf b " (%d)" k;;
+
+let prog b (r, f, v, i) =
+  bprintf b "%s %s%a;\n%a\n" r f (option version) v (inst 9) i;;

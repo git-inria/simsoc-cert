@@ -16,15 +16,9 @@ open Parser;;
 open Ast;;
 open Lexing;;
 
-let num_of_string = int_of_string;;
-let word_of_string = int_of_string;;
+let num_of_string s = Scanf.sscanf s "%i" (fun x -> x);;
 
-let word_of_bin_string s =
-  let r = ref 0 and n = String.length s in
-  for i = 0 to n - 1 do
-    if s.[i] = '1' then r := !r + (1 lsl (n-i))
-  done;
-  !r;;
+let word_of_string s = Scanf.sscanf s "%li" (fun x -> x);;
 
 let mode_of_string = function
   | "fiq" -> Fiq
@@ -34,24 +28,32 @@ let mode_of_string = function
   | "und" -> Und
   | _ -> invalid_arg "mode_of_string";;
 
-let flag_of_char = function
-  | 'N' -> N
-  | 'Z' -> Z
-  | 'C' -> C
-  | 'V' -> V
-  | _ -> invalid_arg "flag_of_string";;
+let keyword_table = Hashtbl.create 53;;
+
+let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
+  (List.map (fun s -> s, RESERVED s) ["not"; "address"; "high"; "JE"]
+   @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
+      "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG true; "bit", FLAG false;
+      "LR", REG (None, 14); "PC", REG (None, 15); "and", AND "and";
+      "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"]);;
 
 }
 
 let mode = "fiq" | "irq" | "svc" | "abt" | "und"
+
 let digit = ['0'-'9']
-let num = digit+
-let letter = ['a'-'z' 'A'-'Z' '_' '.']
+let letter = ['a'-'z' 'A'-'Z' '_' '.' '-']
+
 let ident = letter (letter|digit)*
-let bin = ['0' '1']+
-let flag = ['N' 'Z' 'C' 'V']
+
+let reserved = "not" | "high" | "address"
+
+let num = digit+
+let bin = "0b" ['0' '1']+
+let hex = "0x" ['0'-'9' 'A'-'F']+
 
 rule token = parse
+  | "/*" _* "*/" { token lexbuf }
   | [' ' '\r' '\t'] { token lexbuf }
   | '\n' { let ln = lexbuf.lex_curr_p.pos_lnum
 	   and off = lexbuf.lex_curr_p.pos_cnum in
@@ -66,26 +68,16 @@ rule token = parse
   | ';' { SEMICOLON }
   | ',' { COMA }
   | '=' { EQ }
-  | "if" { IF }
-  | "then" { THEN }
-  | "else" { ELSE }
-  | "begin" { BEGIN }
-  | "end" { END }
-  | "UNPREDICTABLE" { UNPREDICTABLE }
-  | (flag as c) [' ' '\t']+ "Flag" { FLAG (flag_of_char c) }
-  | "CPSR" { Parser.CPSR }
   | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
   | "R" (num as s) { REG (None, num_of_string s) }
   | "R" (num as s) "_" (mode as m)
       { REG (Some (mode_of_string m), num_of_string s) }
-  | "LR" { REG (None, 14) }
-  | "PC" { REG (None, 15) }
+  | bin as s { WORD (Bin (String.length s - 2, num_of_string s)) }
+  | hex as s { WORD (Hex (word_of_string s)) }
   | num as s { NUM (num_of_string s) }
-  | "0b" (bin as s) { WORD (word_of_bin_string s) }
-  | "+" { PLUS }
-  | "==" { EQEQ }
-  | "and" { AND }
-  | "<<" { LTLT }
-  | ident as s { IDENT s }
+  | "==" as s { EQEQ s }
+  | "+" { PLUS "+" }
+  | "<<" as s { LTLT s }
+  | ident as s { try Hashtbl.find keyword_table s with Not_found -> IDENT s }
   | eof { EOF }
   | _ { raise Parsing.Parse_error }

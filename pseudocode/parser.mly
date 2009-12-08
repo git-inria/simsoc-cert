@@ -27,13 +27,17 @@ Pseudocode parser.
 %token <Ast.processor_exception_mode option * Ast.num> REG
 %token <Ast.word> WORD
 %token <Ast.num> NUM
-%token <Ast.flag> FLAG
-%token PLUS EQEQ AND LTLT
+%token <bool> FLAG
+%token <string> PLUS EQEQ AND LTLT NOT
+%token <string> RESERVED
 
-%left AND  /* lowest precedence */
+/* lowest precedence */
+%left AND
 %left EQEQ
 %left PLUS
-%left LTLT /* highest precedence */
+%left LTLT
+%nonassoc NOT
+/* highest precedence */
 
 %type <Ast.prog list> lib
 
@@ -42,57 +46,79 @@ Pseudocode parser.
 %%
 
 lib:
-| prog EOF { $1 }
+| progs EOF { $1 }
+;
+progs:
+| /* nothing */ { [] }
+| prog progs    { $1 :: $2 }
 ;
 prog:
-| /* nothing */                   { [] }
-| IDENT IDENT alt SEMICOLON inst prog { ($1, $2, $5) :: $6 }
+| IDENT name alt_names version SEMICOLON inst { ($1, $2, $4, $6) }
 ;
-alt:
-| /* nothing */  { }
-| COMA IDENT alt { }
-insts:
-| /* nothing */        { [] }
-| inst                 { [$1] }
-| inst SEMICOLON insts { $1 :: $3 }
+alt_names:
+| /* nothing */        { }
+| COMA name alt_names { }
+;
+name:
+| IDENT { $1 }
+| AND   { $1 }
+;
+version:
+| /* nothing */ { None }
+| LPAR NUM RPAR { Some $2 }
 ;
 inst:
 | BEGIN insts END            { Block $2 }
 | UNPREDICTABLE              { Unpredictable }
-| sexp EQ exp                { Affect ($1, None, $3) }
-| sexp range EQ exp          { Affect ($1, Some $2, $4) }
+| state_range EQ exp         { Affect ($1, $3) }
 | IF exp THEN inst           { IfThenElse ($2, $4, None) }
 | IF exp THEN inst ELSE inst { IfThenElse ($2, $4, Some $6) }
 ;
-sexp:
-| CPSR      { CPSR }
-| SPSR_MODE { SPSR $1 }
-| REG       { let m, n = $1 in Reg (m, n) }
-| IDENT     { Var $1 }
-| FLAG      { Flag $1 }
+insts:
+| /* nothing */        { [] }
+| inst insts           { $1 :: $2 }
+| inst SEMICOLON insts { $1 :: $3 }
+;
+state_range:
+| state range { $1, $2 }
+| IDENT FLAG  { CPSR, Flag ($2, $1) }
+;
+state:
+| CPSR          { CPSR }
+| SPSR_MODE     { SPSR $1 }
+| REG           { let m, n = $1 in Reg (m, n) }
+| IDENT         { Var $1 }
 ;
 range:
+| /* nothing */           { Full }
 | LSQB NUM RSQB           { Bit $2 }
 | LSQB NUM COLON NUM RSQB { Bits ($2, $4) }
+| IDENT FLAG              { Flag ($2, $1) }
+;
 exp:
 | WORD                     { Word $1 }
-| NUM                      { Word (word_of_num $1) }
-| sexp                     { State $1 }
-| sexp range               { Range (State $1, $2) }
+| NUM                      { Word (Num $1) }
+| state_range              { let s, r = $1 in State (s, r) }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| exp AND exp              { BinOp ($1, "and", $3) }
-| exp EQEQ exp             { BinOp ($1, "==", $3) }
-| exp PLUS exp             { BinOp ($1, "+", $3) }
-| exp LTLT exp             { BinOp ($1, "<<", $3) }
+| exp AND exp              { BinOp ($1, $2, $3) }
+| exp PLUS exp             { BinOp ($1, $2, $3) }
+| exp LTLT exp             { BinOp ($1, $2, $3) }
+| exp EQEQ exp             { BinOp ($1, $2, $3) }
+| NOT exp                  { Fun ("NOT", [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| idents                   { Other $1 }
+| LPAR exp RPAR            { $2 }
+| RESERVED items           { Other ($1 :: $2) }
 ;
 exps:
 | /* nothing */ { [] }
 | exp           { [$1] }
 | exp COMA exps { $1 :: $3 }
 ;
-idents:
-| IDENT IDENT  { [$1; $2] }
-| IDENT idents { $1 :: $2 }
+items:
+| /* nothing */  { [] }
+| item items     { $1 :: $2 }
+;
+item:
+| IDENT { $1 }
+| FLAG  { if $1 then "Flag" else "bit" }
 ;
