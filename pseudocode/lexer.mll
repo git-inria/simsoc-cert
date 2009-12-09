@@ -31,22 +31,23 @@ let mode_of_string = function
 let keyword_table = Hashtbl.create 53;;
 
 let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
-  (* words starting an English expression *)
   (List.map (fun s -> s, RESERVED s)
+     (* words starting an English expression *)
      ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "SUB"; "Jazelle";
-      "CV"; "Coprocessor"; "bit_position"; "architecture"]
-     (* words starting an English instruction *)
-   @ List.map (fun s -> s, RESERVED s)
-     ["Start"; "Coprocessor"; "load"; "send"]
+      "CV"; "Coprocessor"; "bit_position"; "architecture"; "value_from";
+      "Start"; "Coprocessor"; "load"; "send"; "first"; "second"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
-      "LR", REG (Reg ("14", None)); "PC", REG (Reg ("15", None));
+      "LR", REG ("14", None); "PC", REG ("15", None); "in", IN;
       "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
       "is", IS "is"; "or", OR "or"; "is_not", IS_NOT "is_not";
-      "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and"]);;
+      "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
+      "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", OR "OR";
+      "Logical_Shift_Left", LSL "Logical_Shift_Left";
+      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"]);;
 
 }
 
@@ -83,10 +84,11 @@ rule token = parse
   | '+' { PLUS "+" }
   | '*' { TIMES "*" }
   | "<<" as s { LTLT s }
+  | ">=" as s { GE s }
   | '-' { MINUS "-" }
   | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
-  | "R" (num as s) { REG (Reg (s, None)) }
-  | "R" (num as s) "_" (mode as m) { REG (Reg (s, Some (mode_of_string m))) }
+  | "R" (num as s) { REG (s, None) }
+  | "R" (num as s) "_" (mode as m) { REG (s, Some (mode_of_string m)) }
   | "R(d+1)" { RDPLUS1 }
   | num as s { NUM s }
   | bin as s { BIN s }

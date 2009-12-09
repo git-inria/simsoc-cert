@@ -19,33 +19,32 @@ type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
 type num = string;;
 
-type range =
-| Full
-| Bits of num * num
-| Flag of string * string
-| Index of exp list
-
-and exp =
+type exp =
 | Num of num
 | Bin of string
 | Hex of string
-| State of state * range
 | If of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
 | Other of string list
-
-and state =
 | CPSR
 | SPSR of processor_exception_mode
-| Reg of num * processor_exception_mode option
+| Reg of (num * processor_exception_mode option)
 | Var of string
 | RdPlus1
+| Range of exp * range
+| Unaffected
+| UnpredictableValue
+
+and range =
+| Bits of num * num
+| Flag of string * string
+| Index of exp list;;
 
 type inst =
 | Block of inst list
 | Unpredictable
-| Affect of (state * range) * exp
+| Affect of exp * exp
 | IfThenElse of exp * inst * inst option
 | Proc of string * exp list
 | While of exp * inst
@@ -93,7 +92,12 @@ let mode b m = string b (string_of_mode m);;
 
 let num = string;;
 
-let state b = function
+let rec exp b = function
+  | Bin s | Hex s | Num s -> string b s
+  | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+  | BinOp (e1, f, e2) -> bprintf b "%a %s %a" exp e1 f exp e2
+  | Fun (f, es) -> bprintf b "%s(%a)" f (list "," exp) es
+  | Other ss -> list " " string b ss
   | CPSR -> string b "CPSR"
   | SPSR m -> bprintf b "SPSR_%a" mode m
   | Reg ("14", None) -> string b "LR"
@@ -101,28 +105,18 @@ let state b = function
   | Reg (n, None) -> bprintf b "R%a" num n
   | Reg (n, Some m) -> bprintf b "R%a_%a" num n mode m
   | Var s -> string b s
-  | RdPlus1 -> string b "R(d+1)";;
+  | RdPlus1 -> string b "R(d+1)"
+  | Range (CPSR, (Flag _ as r)) -> bprintf b "%a" range r
+  | Range (BinOp _ as e, r) -> bprintf b "(%a)%a" exp e range r
+  | Range (e, (Flag _ as r)) -> bprintf b "%a %a" exp e range r
+  | Range (e, r) -> bprintf b "%a%a" exp e range r
+  | UnpredictableValue -> string b "Unpredictable"
+  | Unaffected -> string b "Unaffected"
 
-let rec range b = function
-  | Full -> ()
+and range b = function
   | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
   | Flag (n, f) -> bprintf b "%s %s" n f
-  | Index es -> bprintf b "[%a]" (list "," exp) es
-
-and state_range b (s, r) =
-  match s, r with
-    | CPSR, Flag _ -> bprintf b "%a" range r
-    | s, Full -> bprintf b "%a" state s
-    | s, Flag _ -> bprintf b "%a %a" state s range r
-    | s, _ -> bprintf b "%a%a" state s range r
-
-and exp b = function
-  | Bin s | Hex s | Num s -> string b s
-  | State (s, r) -> state_range b (s, r)
-  | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
-  | BinOp (e1, f, e2) -> bprintf b "%a %s %a" exp e1 f exp e2
-  | Fun (f, es) -> bprintf b "%s(%a)" f (list "," exp) es
-  | Other ss -> list " " string b ss;;
+  | Index es -> bprintf b "[%a]" (list "," exp) es;;
 
 let rec inst k b i = indent b k;
   match i with
@@ -138,7 +132,7 @@ and inst_aux k b = function
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
   | Unpredictable -> bprintf b "UNPREDICTABLE"
-  | Affect (sr, e) -> bprintf b "%a = %a" state_range sr exp e
+  | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
   | IfThenElse (e, i, None) ->
       bprintf b "if %a then\n%a" exp e (inst (k+4)) i
   | IfThenElse (e, i1, Some i2) ->
