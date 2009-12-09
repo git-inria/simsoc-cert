@@ -17,21 +17,23 @@ Pseudocode abstract syntax tree.
 
 type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
-type num = int;; (*IMPROVE: use a private data type?*)
+type num = string;;
 
-type word =
-| Bin of num * int
-| Hex of int32
-| Num of num;;
+type index =
+| IndNum of num
+| IndVar of string;;
 
 type range =
 | Full
 | Bit of num
 | Bits of num * num
-| Flag of string * string;;
+| Flag of string * string
+| Index of index list
 
-type exp =
-| Word of word
+and exp =
+| Num of num
+| Bin of string
+| Hex of string
 | State of state * range
 | If of exp * exp * exp
 | Fun of string * exp list
@@ -49,7 +51,11 @@ type inst =
 | Unpredictable
 | Affect of (state * range) * exp
 | IfThenElse of exp * inst * inst option
-| Proc of string list;;
+| Proc of string * exp list
+| While of exp * inst
+| Assert of exp
+| For of string * num * num * inst
+| Misc of string list;;
 
 type prog = string * string * num option * inst;;
 
@@ -89,44 +95,35 @@ let string_of_mode = function
 
 let mode b m = string b (string_of_mode m);;
 
-let num b n = bprintf b "%d" n;;
-
-let bin_string_of_int =
-  let rec aux s n i =
-    if n <= 0 then s
-    else if i mod 2 = 0 then aux ("0" ^ s) (n-1) (i/2)
-    else aux ("1" ^ s) (n-1) (i/2)
-  in aux "";;
-
-let word b = function
-  | Bin (n, i) -> bprintf b "0b%s" (bin_string_of_int n i)
-  | Hex i -> bprintf b "0x%08lX" i
-  | Num i -> bprintf b "%d" i;;
-
-let range b = function
-  | Full -> ()
-  | Bit n -> bprintf b "[%a]" num n
-  | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
-  | Flag (n, f) -> bprintf b "%s %s" n f;;
+let num = string;;
 
 let state b = function
   | CPSR -> string b "CPSR"
   | SPSR m -> bprintf b "SPSR_%a" mode m
-  | Reg (None, 14) -> string b "LR"
-  | Reg (None, 15) -> string b "PC"
+  | Reg (None, "14") -> string b "LR"
+  | Reg (None, "15") -> string b "PC"
   | Reg (None, n) -> bprintf b "R%a" num n
   | Reg (Some m, n) -> bprintf b "R%a_%a" num n mode m
   | Var s -> string b s;;
 
-let state_range b (s, r) =
+let index b = function IndNum s | IndVar s -> string b s;;
+
+let rec range b = function
+  | Full -> ()
+  | Bit n -> bprintf b "[%a]" num n
+  | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
+  | Flag (n, f) -> bprintf b "%s %s" n f
+  | Index is -> bprintf b "[%a]" (list "," index) is
+
+and state_range b (s, r) =
   match s, r with
     | CPSR, Flag _ -> bprintf b "%a" range r
     | s, Full -> bprintf b "%a" state s
     | s, Flag _ -> bprintf b "%a %a" state s range r
-    | s, _ -> bprintf b "%a%a" state s range r;;
+    | s, _ -> bprintf b "%a%a" state s range r
 
-let rec exp b = function
-  | Word w -> word b w
+and exp b = function
+  | Bin s | Hex s | Num s -> string b s
   | State (s, r) -> state_range b (s, r)
   | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (e1, f, e2) -> bprintf b "%a %s %a" exp e1 f exp e2
@@ -138,7 +135,8 @@ let rec inst k b i = indent b k;
     | Block _ | IfThenElse (_, Block _, None)
     | IfThenElse (_, _, Some (Block _|IfThenElse _)) ->
 	bprintf b "%a" (inst_aux k) i
-    | Unpredictable | Affect _ | IfThenElse _ | Proc _ ->
+    | Unpredictable | Affect _ | IfThenElse _ | Proc _ | Misc _ | While _
+    | Assert _ | For _  ->
 	bprintf b "%a;" (inst_aux k) i
 
 and inst_aux k b = function
@@ -152,9 +150,14 @@ and inst_aux k b = function
   | IfThenElse (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
 	exp e (inst (k+4)) i1 indent k (inst_aux k) i2
-  | Proc ss -> list " " string b ss;;
+  | Proc (f, es) -> bprintf b "%s(%a)" f (list "," exp) es
+  | While (e, i) -> bprintf b "while %a do %a" exp e (inst (k+4)) i
+  | Assert e -> bprintf b "assert %a" exp e
+  | For (s, n, p, i) ->
+      bprintf b "for %s = %a to %a do %a" s num n num p (inst (k+4)) i
+  | Misc ss -> list " " string b ss;;
 
-let version b k = bprintf b " (%d)" k;;
+let version b k = bprintf b " (%s)" k;;
 
 let prog b (r, f, v, i) =
   bprintf b "%s %s%a;\n%a\n" r f (option version) v (inst 9) i;;

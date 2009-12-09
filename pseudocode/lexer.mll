@@ -33,16 +33,20 @@ let keyword_table = Hashtbl.create 53;;
 let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
   (* words starting an English expression *)
   (List.map (fun s -> s, RESERVED s)
-     ["not"; "address"; "high"; "JE"; "IMPLEMENTATION"; "SUB"; "Jazelle";
-      "CV"; "Coprocessor"; "bit_position"]
+     ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "SUB"; "Jazelle";
+      "CV"; "Coprocessor"; "bit_position"; "architecture"]
      (* words starting an English instruction *)
-   @ List.map (fun s -> s, PROC s)
-     ["Start"; "Coprocessor"]
+   @ List.map (fun s -> s, RESERVED s)
+     ["Start"; "Coprocessor"; "load"]
+     (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
-      "LR", REG (None, 14); "PC", REG (None, 15); "and", AND "and";
-      "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT";
-      "EOR", EOR "EOR"]);;
+      "LR", REG (None, "14"); "PC", REG (None, "15"); "and", AND "and";
+      "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"; "do", DO;
+      "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
+      "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
+      "is", IS "is"; "or", OR "or"; "is_not", IS_NOT "is_not";
+      "is_even_numbered", EVEN "is_even_numbered"]);;
 
 }
 
@@ -77,15 +81,15 @@ rule token = parse
   | '=' { EQ }
   | "==" as s { EQEQ s}
   | '+' { PLUS "+" }
+  | '*' { TIMES "*" }
   | "<<" as s { LTLT s }
   | '-' { MINUS "-" }
   | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
-  | "R" (num as s) { REG (None, num_of_string s) }
-  | "R" (num as s) "_" (mode as m)
-      { REG (Some (mode_of_string m), num_of_string s) }
-  | bin as s { WORD (Bin (String.length s - 2, num_of_string s)) }
-  | hex as s { WORD (Hex (word_of_string s)) }
-  | num as s { NUM (num_of_string s) }
+  | "R" (num as s) { REG (None, s) }
+  | "R" (num as s) "_" (mode as m) { REG (Some (mode_of_string m), s) }
+  | num as s { NUM s }
+  | bin as s { BIN s }
+  | hex as s { HEX s }
   | ident as s { try Hashtbl.find keyword_table s with Not_found -> IDENT s }
   | eof { EOF }
   | _ { raise Parsing.Parse_error }
