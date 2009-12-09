@@ -18,9 +18,9 @@ Pseudocode parser.
 %token EOF COLON SEMICOLON COMA
 %token LPAR RPAR LSQB RSQB BEGIN END
 %token UNPREDICTABLE EQ IF THEN ELSE WHILE DO ASSERT FOR TO
-%token CPSR
+%token CPSR RDPLUS1
 %token <Ast.processor_exception_mode> SPSR_MODE
-%token <Ast.processor_exception_mode option * Ast.num> REG
+%token <Ast.state> REG
 %token <string> BIN HEX NUM
 %token <string> IDENT FLAG RESERVED PROC
 %token <string> NOT EVEN
@@ -95,18 +95,19 @@ state_range:
 state:
 | CPSR          { CPSR }
 | SPSR_MODE     { SPSR $1 }
-| REG           { let m, n = $1 in Reg (m, n) }
+| REG           { $1 }
 | IDENT         { Var $1 }
+| RDPLUS1       { RdPlus1 }
 ;
 range:
-| /* nothing */            { Full }
-| LSQB NUM RSQB            { Bit $2 }
-| LSQB NUM COLON NUM RSQB  { Bits ($2, $4) }
-| IDENT FLAG               { Flag ($1, $2) }
-| LSQB IDENT RSQB          { Index [IndVar $2] }
-| LSQB IDENT COMA NUM RSQB { Index [IndVar $2; IndNum $4] }
+| /* nothing */           { Full }
+| LSQB NUM COLON NUM RSQB { Bits ($2, $4) }
+| IDENT FLAG              { Flag ($1, $2) }
+| LSQB exp RSQB           { Index [$2] }
+| LSQB exp COMA exps RSQB { Index ($2 :: $4) }
 ;
 exp:
+| LPAR exp RPAR            { $2 }
 | NUM                      { Num $1 }
 | BIN                      { Bin $1 }
 | HEX                      { Hex $1 }
@@ -115,9 +116,9 @@ exp:
 | binop                    { $1 }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| LPAR exp RPAR            { $2 }
-| RESERVED items           { Other ($1 :: $2) }
 | IDENT EVEN               { Fun ($2, [State (Var $1, Full)]) }
+| RESERVED items           { Other ($1 :: $2) }
+| UNPREDICTABLE            { Other ["Unpredictable"] }
 ;
 binop:
 | exp AND exp    { BinOp ($1, $2, $3) }
@@ -147,5 +148,6 @@ item:
 | RESERVED                 { $1 }
 | NUM                      { $1 }
 | FOR                      { "for" }
+| TO                       { "to" }
 | LSQB IDENT COMA NUM RSQB { Printf.sprintf "[%s,%s]" $2 $4 }
 ;

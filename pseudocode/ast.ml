@@ -19,16 +19,11 @@ type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
 
 type num = string;;
 
-type index =
-| IndNum of num
-| IndVar of string;;
-
 type range =
 | Full
-| Bit of num
 | Bits of num * num
 | Flag of string * string
-| Index of index list
+| Index of exp list
 
 and exp =
 | Num of num
@@ -43,8 +38,9 @@ and exp =
 and state =
 | CPSR
 | SPSR of processor_exception_mode
-| Reg of processor_exception_mode option * num
-| Var of string;;
+| Reg of num * processor_exception_mode option
+| Var of string
+| RdPlus1
 
 type inst =
 | Block of inst list
@@ -65,13 +61,13 @@ type prog = string * string * num option * inst;;
 
 open Printf;;
 
+let string b s = bprintf b "%s" s;;
+
 let postfix p f b x = bprintf b "%a%s" f x p;;
 
 let endline f b x = postfix "\n" f b x;;
 
 let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
-
-let string b s = bprintf b "%s" s;;
 
 let list_iter f b xs = List.iter (f b) xs;;
 
@@ -100,20 +96,18 @@ let num = string;;
 let state b = function
   | CPSR -> string b "CPSR"
   | SPSR m -> bprintf b "SPSR_%a" mode m
-  | Reg (None, "14") -> string b "LR"
-  | Reg (None, "15") -> string b "PC"
-  | Reg (None, n) -> bprintf b "R%a" num n
-  | Reg (Some m, n) -> bprintf b "R%a_%a" num n mode m
-  | Var s -> string b s;;
-
-let index b = function IndNum s | IndVar s -> string b s;;
+  | Reg ("14", None) -> string b "LR"
+  | Reg ("15", None) -> string b "PC"
+  | Reg (n, None) -> bprintf b "R%a" num n
+  | Reg (n, Some m) -> bprintf b "R%a_%a" num n mode m
+  | Var s -> string b s
+  | RdPlus1 -> string b "R(d+1)";;
 
 let rec range b = function
   | Full -> ()
-  | Bit n -> bprintf b "[%a]" num n
   | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
   | Flag (n, f) -> bprintf b "%s %s" n f
-  | Index is -> bprintf b "[%a]" (list "," index) is
+  | Index es -> bprintf b "[%a]" (list "," exp) es
 
 and state_range b (s, r) =
   match s, r with
@@ -143,7 +137,7 @@ and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
-  | Unpredictable -> string b "UNPREDICTABLE"
+  | Unpredictable -> bprintf b "UNPREDICTABLE"
   | Affect (sr, e) -> bprintf b "%a = %a" state_range sr exp e
   | IfThenElse (e, i, None) ->
       bprintf b "if %a then\n%a" exp e (inst (k+4)) i

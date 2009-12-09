@@ -37,16 +37,16 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
       "CV"; "Coprocessor"; "bit_position"; "architecture"]
      (* words starting an English instruction *)
    @ List.map (fun s -> s, RESERVED s)
-     ["Start"; "Coprocessor"; "load"]
+     ["Start"; "Coprocessor"; "load"; "send"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
-      "LR", REG (None, "14"); "PC", REG (None, "15"); "and", AND "and";
+      "LR", REG (Reg ("14", None)); "PC", REG (Reg ("15", None));
       "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
       "is", IS "is"; "or", OR "or"; "is_not", IS_NOT "is_not";
-      "is_even_numbered", EVEN "is_even_numbered"]);;
+      "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and"]);;
 
 }
 
@@ -85,8 +85,9 @@ rule token = parse
   | "<<" as s { LTLT s }
   | '-' { MINUS "-" }
   | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
-  | "R" (num as s) { REG (None, s) }
-  | "R" (num as s) "_" (mode as m) { REG (Some (mode_of_string m), s) }
+  | "R" (num as s) { REG (Reg (s, None)) }
+  | "R" (num as s) "_" (mode as m) { REG (Reg (s, Some (mode_of_string m))) }
+  | "R(d+1)" { RDPLUS1 }
   | num as s { NUM s }
   | bin as s { BIN s }
   | hex as s { HEX s }
