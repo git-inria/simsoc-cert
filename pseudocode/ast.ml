@@ -28,7 +28,7 @@ type range =
 | Full
 | Bit of num
 | Bits of num * num
-| Flag of bool * string;; (* true for "Flag", false for "bit" *)
+| Flag of string * string;;
 
 type exp =
 | Word of word
@@ -48,7 +48,8 @@ type inst =
 | Block of inst list
 | Unpredictable
 | Affect of (state * range) * exp
-| IfThenElse of exp * inst * inst option;;
+| IfThenElse of exp * inst * inst option
+| Proc of string list;;
 
 type prog = string * string * num option * inst;;
 
@@ -87,7 +88,7 @@ let string_of_mode = function
   | Und -> "und";;
 
 let mode b m = string b (string_of_mode m);;
-let flag b f = string b f;;
+
 let num b n = bprintf b "%d" n;;
 
 let bin_string_of_int =
@@ -106,8 +107,7 @@ let range b = function
   | Full -> ()
   | Bit n -> bprintf b "[%a]" num n
   | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
-  | Flag (true, f) -> bprintf b "%s Flag" f
-  | Flag (false, f) -> bprintf b "%s bit" f;;
+  | Flag (n, f) -> bprintf b "%s %s" n f;;
 
 let state b = function
   | CPSR -> string b "CPSR"
@@ -138,7 +138,7 @@ let rec inst k b i = indent b k;
     | Block _ | IfThenElse (_, Block _, None)
     | IfThenElse (_, _, Some (Block _|IfThenElse _)) ->
 	bprintf b "%a" (inst_aux k) i
-    | Unpredictable | Affect _ | IfThenElse _ ->
+    | Unpredictable | Affect _ | IfThenElse _ | Proc _ ->
 	bprintf b "%a;" (inst_aux k) i
 
 and inst_aux k b = function
@@ -151,7 +151,8 @@ and inst_aux k b = function
       bprintf b "if %a then\n%a" exp e (inst (k+4)) i
   | IfThenElse (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
-	exp e (inst (k+4)) i1 indent k (inst_aux k) i2;;
+	exp e (inst (k+4)) i1 indent k (inst_aux k) i2
+  | Proc ss -> list " " string b ss;;
 
 let version b k = bprintf b " (%d)" k;;
 
