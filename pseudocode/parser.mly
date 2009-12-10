@@ -24,7 +24,7 @@ Pseudocode parser.
 %token <string> BIN HEX
 %token <Ast.num> NUM
 %token <string> IDENT FLAG RESERVED PROC
-%token <string> NOT EVEN GE
+%token <string> NOT EVEN GE LT GT
 %token <string> PLUS EQEQ AND LTLT MINUS EOR ROR TIMES IS IS_NOT OR LSL ASR
 
 /* lowest precedence */
@@ -49,11 +49,15 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT name alt_names version SEMICOLON block { ($1, $2, $4, $6) }
+| IDENT names vars version SEMICOLON block { ($1, $2 ^ $3, $4, $6) }
 ;
-alt_names:
-| /* nothing */       { }
-| COMA name alt_names { }
+vars:
+| /* nothing */    { "" }
+| LT IDENT GT vars { $2 ^ $4 }
+;
+names:
+| name            { $1 }
+| name COMA names { $1 }
 ;
 name:
 | IDENT { $1 }
@@ -102,7 +106,7 @@ exp:
 | BIN                      { Bin $1 }
 | HEX                      { Hex $1 }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| binop                    { $1 }
+| exp binop exp            { BinOp ($1, $2, $3) }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | IDENT EVEN               { Fun ($2, [Var $1]) }
@@ -116,6 +120,23 @@ exp:
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
 ;
 binop:
+| AND    { $1 }
+| PLUS   { $1 }
+| LTLT   { $1 }
+| EQEQ   { $1 }
+| MINUS  { $1 }
+| EOR    { $1 }
+| TIMES  { $1 }
+| ROR    { $1 }
+| IS     { $1 }
+| IS_NOT { $1 }
+| OR     { $1 }
+| LSL    { $1 }
+| ASR    { $1 }
+| GE     { $1 }
+| LT     { $1 }
+;
+binop_exp:
 | exp AND exp    { BinOp ($1, $2, $3) }
 | exp PLUS exp   { BinOp ($1, $2, $3) }
 | exp LTLT exp   { BinOp ($1, $2, $3) }
@@ -130,6 +151,7 @@ binop:
 | exp LSL exp    { BinOp ($1, $2, $3) }
 | exp ASR exp    { BinOp ($1, $2, $3) }
 | exp GE exp     { BinOp ($1, $2, $3) }
+| exp LT exp     { BinOp ($1, $2, $3) }
 ;
 range:
 | LSQB NUM COLON NUM RSQB { Bits ($2, $4) }
