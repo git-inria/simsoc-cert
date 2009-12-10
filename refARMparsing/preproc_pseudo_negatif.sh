@@ -1,17 +1,19 @@
 #!/bin/sh
 
 sed -e 's|$|;|' \
+    -e 's|\( *//.*\);$|;\1|' \
+    -e 's|\( */\*.*\*/\);|;\1|' \
+    -e 's|^\( *\);|\1|' \
+    -e 's| and;| and|' \
+    -e 's|\([^0-9]\) AND;|\1 AND|' \
+    -e 's| or;| or|' \
     -e 's|then;$|then|' \
-    -e 's|then \([ ]*/\*.*\*/\);$|then \1|' \
-    -e 's|else;$|else|' \
-    -e 's|else \([ ]*/\*.*\*/\);$|else \1|' \
-    -e 's|^\(.*\*/\);|\1|' \
-    -e 's|^\( *\*/\);$|\1|' \
-    -e 's|\([ ]*//.*\);$|; \1|' \
+    -e 's|then;\( */\*\)|then\1|' \
+    -e 's|^\( *\)else;|\1else|' \
     -e 's|if (\(.*\));$|if (\1) then|' \
-    -e 's|^\([ ]*\)if \(.*\)\([0-9)]\);$|\1if \2\3 then|' \
-    -e 's|^\([ ]*\)while \(.*\);|\1while \2 do|' \
-    -e 's|^\([ ]*\)for \(.*\);|\1for \2 do|' \
+    -e 's|^\( *\)if \(.*\)\([0-9)]\);$|\1if \2\3 then|' \
+    -e 's|^\( *\)while \(.*\);|\1while \2 do|' \
+    -e 's|^\( *\)for \(.*\);|\1for \2 do|' \
     -e 's|\[cp_num\]| cp_num |' \
     -e 's|-\([A-Za-z]\)| \1|g' \
     -e 's|bit position|bit_position|' \
@@ -23,6 +25,7 @@ sed -e 's|$|;|' \
     -e 's|value from|value_from|' \
     -e 's|CPSR with|CPSR_with|' \
     -e 's|SUB ARCHITECTURE|SUB_ARCHITECTURE|' \
-    -e 's|^\([ ]*\)If |\1if |' \
+    -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
-    -e 's|(diff4]|(diff4)|'
+    -e 's|(diff4]|(diff4)|' \
+    -e 's|) – |) - |'
