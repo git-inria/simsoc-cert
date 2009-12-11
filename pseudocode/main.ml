@@ -15,11 +15,19 @@ open Printf;;
 open Arg;;
 open Lexing;;
 
+(***********************************************************************)
+(** usage and exit function in case of error *)
+(***********************************************************************)
+
 let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file.pc";;
 
 let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
 
 let error s = fprintf stderr "error: %s\n" s; print_usage_and_exit ();;
+
+(***********************************************************************)
+(** parameters *)
+(***********************************************************************)
 
 let get_filename, set_filename =
   let filename = ref "" in
@@ -28,6 +36,16 @@ let get_filename, set_filename =
      else error "wrong number of arguments");;
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
+
+(***********************************************************************)
+(** command line parsing *)
+(***********************************************************************)
+
+let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file.pc";;
+
+let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
+
+let error s = fprintf stderr "error: %s\n" s; print_usage_and_exit ();;
 
 let rec options () = [
   "-h", Unit print_help, "display the list of options";
@@ -43,6 +61,10 @@ and print_help () =
 let parse_args () =
   Arg.parse (options()) set_filename (usage_msg());
   if get_filename() = "" then error "no filename given";;
+
+(***********************************************************************)
+(** parsing functions *)
+(***********************************************************************)
 
 let fprint_loc oc loc =
   Printf.fprintf oc "file \"%s\", line %d, character %d" 
@@ -69,6 +91,10 @@ let parse_channel ic =
 let parse_string s =
   let lb = Lexing.from_string s in parse_lexbuf lb;;
 
+(***********************************************************************)
+(** main procedure *)
+(***********************************************************************)
+
 let main () =
   parse_args ();
   let ps = parse_file parse_channel (get_filename()) in
@@ -77,6 +103,11 @@ let main () =
     let s = Buffer.contents b in
       print_endline s;
       let ps' = parse_string s in
-	prerr_endline (if ps = ps' then "YES" else "NO");;
+	fprintf stderr "reparsing: %s\n"
+	  (if ps = ps' then "good" else "wrong");;
+
+(***********************************************************************)
+(** launch the main procedure *)
+(***********************************************************************)
 
 let _ = main ();;

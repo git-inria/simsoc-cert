@@ -36,7 +36,7 @@ FILES := ast $(PARSERS) genpc
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
 
-BIN_FILES := compil
+BIN_FILES := main
 
 BINS := $(BIN_FILES:%=bin/%)
 BYTS := $(BINS:%=%.byt)
