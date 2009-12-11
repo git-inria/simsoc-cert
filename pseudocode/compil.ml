@@ -11,11 +11,9 @@ Page numbers refer to ARMv6.pdf.
 Pseudocode compiler.
 *)
 
-open Ast;;
-open Lexing;;
 open Printf;;
-open Parsing;;
 open Arg;;
+open Lexing;;
 
 let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file.pc";;
 
@@ -53,23 +51,32 @@ let fprint_loc oc loc =
 let open_file fn =
   try open_in fn with Sys_error s -> prerr_endline s; exit 1;;
 
-let parse_file parse fn =
+let parse_file parse_channel fn =
   let ic = open_file fn in
-  let x = parse ic in
+  let x = parse_channel ic in
     close_in ic; x;;
 
-let parse ic =
+let parse_lexbuf lb =
+  try Parser.lib Lexer.token lb
+  with Parsing.Parse_error ->
+    fprintf stderr "%a: syntax error\n" fprint_loc lb.lex_curr_p; exit 1;;
+
+let parse_channel ic =
   let lb = Lexing.from_channel ic in
     lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = get_filename() };
-    try Parser.lib Lexer.token lb
-    with Parse_error ->
-      fprintf stderr "%a: syntax error\n" fprint_loc lb.lex_curr_p; exit 1;;
+    parse_lexbuf lb;;
+
+let parse_string s =
+  let lb = Lexing.from_string s in parse_lexbuf lb;;
 
 let main () =
   parse_args ();
-  let ps = parse_file parse (get_filename()) in
+  let ps = parse_file parse_channel (get_filename()) in
   let b = Buffer.create 10000 in
-    List.iter (Ast.prog b) ps;
-    print_endline (Buffer.contents b);;
+    List.iter (Genpc.prog b) ps;
+    let s = Buffer.contents b in
+      print_endline s;
+      let ps' = parse_string s in
+	prerr_endline (if ps = ps' then "YES" else "NO");;
 
 let _ = main ();;

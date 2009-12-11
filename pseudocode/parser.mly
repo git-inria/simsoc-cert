@@ -49,15 +49,17 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT names vars version SEMICOLON block { ($1, $2 ^ $3, $4, $6) }
+| IDENT names vars version SEMICOLON block
+    { {pref = $1; pname = List.hd $2; paltnames = List.tl $2;
+       pvars = $3; pversion = $4; pinst = $6} }
 ;
 vars:
-| /* nothing */    { "" }
-| LT IDENT GT vars { $2 ^ $4 }
+| /* nothing */    { [] }
+| LT IDENT GT vars { $2 :: $4 }
 ;
 names:
-| name            { $1 }
-| name COMA names { $1 }
+| name            { [$1] }
+| name COMA names { $1 :: $3 }
 ;
 name:
 | IDENT { $1 }
@@ -106,7 +108,7 @@ exp:
 | BIN                      { Bin $1 }
 | HEX                      { Hex $1 }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| exp binop exp            { BinOp ($1, $2, $3) }
+| binop_exp                { $1 }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | IDENT EVEN               { Fun ($2, [Var $1]) }
@@ -118,23 +120,6 @@ exp:
 | LPAR exp RPAR range      { Range ($2, $4) }
 | RESERVED items           { Other ($1 :: $2) }
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
-;
-binop:
-| AND    { $1 }
-| PLUS   { $1 }
-| LTLT   { $1 }
-| EQEQ   { $1 }
-| MINUS  { $1 }
-| EOR    { $1 }
-| TIMES  { $1 }
-| ROR    { $1 }
-| IS     { $1 }
-| IS_NOT { $1 }
-| OR     { $1 }
-| LSL    { $1 }
-| ASR    { $1 }
-| GE     { $1 }
-| LT     { $1 }
 ;
 binop_exp:
 | exp AND exp    { BinOp ($1, $2, $3) }
@@ -176,5 +161,5 @@ item:
 | FOR                      { "for" }
 | TO                       { "to" }
 | IN                       { "in" }
-| LSQB IDENT COMA NUM RSQB { Printf.sprintf "[%s,%s]" $2 $4 }
+| IDENT LSQB IDENT COMA NUM RSQB { Printf.sprintf "%s[%s,%s]" $1 $3 $5 }
 ;

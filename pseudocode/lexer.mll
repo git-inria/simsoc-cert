@@ -40,14 +40,14 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
-      "LR", REG ("14", None); "PC", REG ("15", None); "in", IN;
+      "LR", REG ("14", None); "PC", REG ("15", None); "pc", REG ("15", None);
       "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
       "is", IS "is"; "or", OR "or"; "is_not", IS_NOT "is_not";
       "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
       "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", OR "OR";
-      "Logical_Shift_Left", LSL "Logical_Shift_Left";
+      "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
       "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"]);;
 
 let incr_line_number lexbuf =
