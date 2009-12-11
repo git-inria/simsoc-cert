@@ -1,0 +1,42 @@
+--- ARMv6.txt.orig	2009-12-11 16:44:45.000000000 +0800
++++ ARMv6.txt	2009-12-11 16:59:53.000000000 +0800
+@@ -11915,9 +11915,9 @@
+ 
+            assert end_address == address + 8
+ 
+-           where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
++           /* where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
+            Multiple on page A5-41, except that Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than
+-           depending on bits[15:0] of the instruction.
++           depending on bits[15:0] of the instruction. */
+ 
+ 
+            Notes
+@@ -14583,14 +14583,12 @@
+               UNPREDICTABLE
+          assert end_address == address + 8
+ 
+-         where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
+-         Multiple on page A5-41, with the following modifications:
+-
+-         •      Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than depending on bits[15:0] of the
+-                instruction.
+-
+-         •      Rn is the banked version of R13 belonging to the mode specified by the instruction, rather than being
+-                the version of R13 of the current mode.
++         /* where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store        */
++         /* Multiple on page A5-41, with the following modifications:                                                    */
++         /* .      Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than depending on bits[15:0] of the       */
++         /*        instruction.                                                                                          */
++         /* .      Rn is the banked version of R13 belonging to the mode specified by the instruction, rather than being */
++         /*        the version of R13 of the current mode.                                                               */
+ 
+ 
+          Notes
+@@ -49653,4 +49651,4 @@
+ 
+ 
+ Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
+-
+\ No newline at end of file
++

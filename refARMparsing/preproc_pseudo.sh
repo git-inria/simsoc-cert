@@ -15,6 +15,8 @@ sed \
     -e '/^ *UNPREDICTABLE/s|$|;|' \
     -e '/^ *Coprocessor/s|$|;|' \
     -e '/^ *assert /s|$|;|' \
+    -e 's|\( *//.*\);$|;\1|' \
+    -e 's|\( */\*.*\*/\);|;\1|' \
     -e 's|if (\(.*\))$|if (\1) then|' \
     -e 's|^\( *\)if \(.*\)\([0-9]\)$|\1if \2\3 then|' \
     -e 's|^\( *\)while \(.*\)|\1while \2 do|' \
@@ -32,5 +34,6 @@ sed \
     -e 's|SUB ARCHITECTURE|SUB_ARCHITECTURE|' \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
-    -e 's|(diff4]|(diff4)|'
+    -e 's|(diff4]|(diff4)|' \
+    -e 's|) – |) - |'
 
