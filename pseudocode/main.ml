@@ -19,7 +19,7 @@ open Lexing;;
 (** usage and exit function in case of error *)
 (***********************************************************************)
 
-let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file.pc";;
+let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] (-pc) file";;
 
 let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
 
@@ -37,19 +37,25 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
+type action = Gen_PC | Gen_PCC;;
+
+let get_action, is_action_set, set_action =
+  let action = ref Gen_PC and is_set = ref false in
+    (fun () -> !action),
+    (fun () -> !is_set),
+    (fun a -> if !is_set then error "wrong number of options"
+     else begin action := a; is_set := true end);;
+
 (***********************************************************************)
 (** command line parsing *)
 (***********************************************************************)
 
-let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file.pc";;
-
-let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
-
-let error s = fprintf stderr "error: %s\n" s; print_usage_and_exit ();;
-
 let rec options () = [
   "-h", Unit print_help, "display the list of options";
   "-d", Unit set_debug_mode, "turn on debug mode";
+  "-pc", Unit (fun () -> set_action Gen_PC), "generate pseudocode";
+  "-pcc", Unit (fun () -> set_action Gen_PCC),
+  "generate pseudocode and reparse it";
 ]
 
 and print_options oc () =
@@ -60,7 +66,8 @@ and print_help () =
 
 let parse_args () =
   Arg.parse (options()) set_filename (usage_msg());
-  if get_filename() = "" then error "no filename given";;
+  if get_filename() = "" then error "no filename given";
+  if not (is_action_set()) then error "wrong number of option";;
 
 (***********************************************************************)
 (** parsing functions *)
@@ -95,16 +102,23 @@ let parse_string s =
 (** main procedure *)
 (***********************************************************************)
 
+let string_of f ps =
+  let b = Buffer.create 10000 in
+    f b ps; Buffer.contents b;;
+
 let main () =
   parse_args ();
   let ps = parse_file parse_channel (get_filename()) in
-  let b = Buffer.create 10000 in
-    List.iter (Genpc.prog b) ps;
-    let s = Buffer.contents b in
-      print_endline s;
-      let ps' = parse_string s in
-	fprintf stderr "reparsing: %s\n"
-	  (if ps = ps' then "good" else "wrong");;
+    match get_action () with
+      | Gen_PC ->
+	  let s = string_of Genpc.lib ps in
+	    print_endline s
+      | Gen_PCC ->
+	  let s = string_of Genpc.lib ps in
+	    print_endline s;
+	    let ps' = parse_string s in
+	      fprintf stderr "reparsing: %s\n"
+		(if ps = ps' then "good" else "wrong");;
 
 (***********************************************************************)
 (** launch the main procedure *)

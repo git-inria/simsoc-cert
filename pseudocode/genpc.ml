@@ -129,3 +129,5 @@ let prog b p =
   bprintf b "%s %a%a%a;\n%a\n" p.pref
     (list ", " string) (p.pname :: p.paltnames) (list "" var) p.pvars
     (option version) p.pversion (inst 9) p.pinst;;
+
+let lib b ps = list "" prog b ps;;
