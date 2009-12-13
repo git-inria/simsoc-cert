@@ -1,6 +1,61 @@
---- ARMv6.txt.orig	2009-12-11 16:44:45.000000000 +0800
-+++ ARMv6.txt	2009-12-11 16:59:53.000000000 +0800
-@@ -11915,9 +11915,9 @@
+--- ARMv6.txt.orig	2009-12-13 00:51:05.000000000 +0800
++++ ARMv6.txt	2009-12-13 23:02:18.000000000 +0800
+@@ -7905,8 +7905,7 @@
+                              J Flag = 1
+                              Start opcode execution at jpc
+                    else
+-                        if ((CV bit of Jazelle OS Control register) == 0) AND
+-                                         (IMPLEMENTATION DEFINED CONDITION) then
++                        if ((CV bit of Jazelle OS Control register) == 0) AND (IMPLEMENTATION DEFINED CONDITION) then
+                              PC = invalidhandler
+                         else
+                              /* Subject to SUB-ARCHITECTURE DEFINED restrictions on Rm: */
+@@ -10358,25 +10357,25 @@
+ 
+ 
+          Operation
+-         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
+-         page A2-11 for details.
+-
+-         The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these
+-         masks depend on the architecture version, see Table A4-1.
+-
+-                                                                               Table A4-1 Bit mask constants
+-
+-           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
+-
+-           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
+-
+-           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
+-
+-           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
+-
+-           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
+-
+-           6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
++         /* There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on    */
++         /* page A2-11 for details.                                                                                    */
++         /*                                                                                                            */
++         /* The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these */
++         /* masks depend on the architecture version, see Table A4-1. */
++         /*                                                                                                            */
++         /*                                                                       Table A4-1 Bit mask constants        */
++         /*                                                                                                            */
++         /*   Architecture versions         UnallocMask          UserMask          PrivMask          StateMask         */
++         /*                                                                                                            */
++         /*   4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000        */
++         /*                                                                                                            */
++         /*   4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020        */
++         /*                                                                                                            */
++         /*   5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020        */
++         /*                                                                                                            */
++         /*   5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020        */
++         /*                                                                                                            */
++         /*   6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020        */
+ 
+ 
+          if ConditionPassed(cond) then
+@@ -11915,9 +11914,9 @@
  
             assert end_address == address + 8
  
@@ -12,7 +67,7 @@
  
  
             Notes
-@@ -14583,14 +14583,12 @@
+@@ -14583,14 +14582,12 @@
                UNPREDICTABLE
           assert end_address == address + 8
  
@@ -33,10 +88,10 @@
  
  
           Notes
-@@ -49653,4 +49651,4 @@
+@@ -49653,4 +49650,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
 -
-\ No newline at end of file
+\ Pas de fin de ligne à la fin du fichier.
 +
