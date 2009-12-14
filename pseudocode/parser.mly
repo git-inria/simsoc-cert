@@ -93,7 +93,7 @@ block:
 ;
 insts:
 | /* nothing */ { [] }
-| inst insts    { $1 :: $2 }
+| block insts    { $1 :: $2 }
 ;
 simple_exp:
 | NUM           { Num $1 }
