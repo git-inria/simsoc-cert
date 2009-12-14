@@ -13,6 +13,21 @@ Functions of general interest about lists, printing, etc.
 
 open Printf;;
 
+(***********************************************************************)
+(** strings *)
+(***********************************************************************)
+
+module StrOrd = struct
+  type t = string
+  let compare = Pervasives.compare
+end;;
+
+module StrSet = Set.Make (StrOrd);;
+
+(***********************************************************************)
+(** printing in a buffer *)
+(***********************************************************************)
+
 let string b s = bprintf b "%s" s;;
 
 let postfix p f b x = bprintf b "%a%s" f x p;;

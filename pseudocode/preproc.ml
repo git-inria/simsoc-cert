@@ -13,6 +13,43 @@ Transform a raw AST into an AST ready for code generation.
 
 open Ast;;
 open Printf;;
+open Util;;
+
+(***********************************************************************)
+(** program variables *)
+(***********************************************************************)
+
+let rec vars_exp = function
+| If (e1, e2, e3) ->
+    StrSet.union (vars_exp e1) (StrSet.union (vars_exp e2) (vars_exp e3))
+| Fun (_, es) -> vars_exps es
+| BinOp (e1, _, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
+| Var s -> StrSet.singleton s
+| RdPlus1 -> StrSet.singleton "Rd"
+| Range (e, r) -> StrSet.union (vars_exp e) (vars_range r)
+| CPSR | SPSR _ | Reg _ | Other _ | Num _ | Bin _ | Hex _ | Unaffected
+| UnpredictableValue -> StrSet.empty
+
+and vars_range = function
+  | Index es -> vars_exps es
+  | Bits _ | Flag _ -> StrSet.empty
+
+and vars_exps es =
+  List.fold_left (fun s e -> StrSet.union s (vars_exp e)) StrSet.empty es;;
+
+let rec vars_inst = function
+  | Block is ->
+      List.fold_left (fun s i -> StrSet.union s (vars_inst i)) StrSet.empty is
+  | Affect (e1, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
+  | IfThenElse (e, i, None) -> StrSet.union (vars_exp e) (vars_inst i)
+  | IfThenElse (e, i1, Some i2) ->
+      StrSet.union (vars_exp e) (StrSet.union (vars_inst i1) (vars_inst i2))
+  | Proc (_, es) -> vars_exps es
+  | While (e, i) -> StrSet.union (vars_exp e) (vars_inst i)
+  | For (_, _, _, i) -> vars_inst i
+  | Unpredictable | Misc _ | Assert _ -> StrSet.empty;;
+
+let vars p = vars_inst p.pinst;;
 
 (***********************************************************************)
 (** program preprocessing *)
