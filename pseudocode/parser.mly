@@ -49,9 +49,9 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT names vars version SEMICOLON block
+| IDENT names vars version block
     { {pref = $1; pname = List.hd $2; paltnames = List.tl $2;
-       pvars = $3; pversion = $4; pinst = $6} }
+       pvars = $3; pversion = $4; pinst = $5} }
 ;
 vars:
 | /* nothing */    { [] }
@@ -84,6 +84,7 @@ cond:
 | FOR IDENT EQ NUM TO NUM DO block { For ($2, $4, $6, $8) }
 ;
 inst:
+| simple_inst           { $1 }
 | simple_inst SEMICOLON { $1 }
 | cond                  { $1 }
 ;

@@ -126,7 +126,7 @@ let version b k = bprintf b " (%s)" k;;
 let var b s = bprintf b "<%s>" s;;
 
 let prog b p =
-  bprintf b "%s %a%a%a;\n%a\n" p.pref
+  bprintf b "%s %a%a%a\n%a\n" p.pref
     (list ", " string) (p.pname :: p.paltnames) (list "" var) p.pvars
     (option version) p.pversion (inst 9) p.pinst;;
 
