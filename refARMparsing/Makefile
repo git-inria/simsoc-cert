@@ -31,7 +31,7 @@ ARMv6.txt.orig :
 	pdftotext -layout ../ARMv6.pdf $@
 
 # some informal text after "assert" -> /* comment */
-ARMv6.txt : ARMv6.txt.orig
+ARMv6.txt : ARMv6.txt.orig ARMv6.txt.patch
 	cp -a $< $@
 	patch < ARMv6.txt.patch
 

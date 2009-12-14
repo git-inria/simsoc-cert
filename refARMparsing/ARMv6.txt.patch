@@ -1,18 +1,15 @@
 --- ARMv6.txt.orig	2009-12-13 00:51:05.000000000 +0800
-+++ ARMv6.txt	2009-12-15 00:54:24.000000000 +0800
-@@ -7904,9 +7904,8 @@
++++ ARMv6.txt	2009-12-15 01:49:44.000000000 +0800
+@@ -7904,7 +7904,7 @@
                          else
                               J Flag = 1
                               Start opcode execution at jpc
 -                   else
--                        if ((CV bit of Jazelle OS Control register) == 0) AND
--                                         (IMPLEMENTATION DEFINED CONDITION) then
 +                    else
-+                        if ((CV bit of Jazelle OS Control register) == 0) AND (IMPLEMENTATION DEFINED CONDITION) then
+                         if ((CV bit of Jazelle OS Control register) == 0) AND
+                                          (IMPLEMENTATION DEFINED CONDITION) then
                               PC = invalidhandler
-                         else
-                              /* Subject to SUB-ARCHITECTURE DEFINED restrictions on Rm: */
-@@ -10358,26 +10357,25 @@
+@@ -10358,26 +10358,25 @@
  
  
           Operation
@@ -58,7 +55,7 @@
  
           if ConditionPassed(cond) then
               if opcode[25] == 1 then
-@@ -11915,9 +11913,9 @@
+@@ -11915,9 +11914,9 @@
  
             assert end_address == address + 8
  
@@ -70,7 +67,7 @@
  
  
             Notes
-@@ -14583,14 +14581,12 @@
+@@ -14583,14 +14582,12 @@
                UNPREDICTABLE
           assert end_address == address + 8
  
@@ -91,7 +88,7 @@
  
  
           Notes
-@@ -16207,15 +16203,6 @@
+@@ -16207,15 +16204,6 @@
                     Memory[address,4] = Rm
                     Rd = temp
                 if Shared(address) then   /* ARMv6 */
@@ -107,7 +104,7 @@
                   physical_address = TLB(address)
                   ClearExclusiveByAddress(physical_address,processor_id,4)
                   /* See Summary of operation on page A2-49 */
-@@ -49653,4 +49640,4 @@
+@@ -49653,4 +49641,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
