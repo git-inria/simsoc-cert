@@ -1,0 +1,116 @@
+--- indentV6.txt.orig	2009-12-14 14:13:37.000000000 +0800
++++ indentV6.txt	2009-12-14 14:15:18.000000000 +0800
+@@ -168,13 +168,10 @@
+                              Start opcode execution at jpc;
+                              end
+                         end
+-                    end
+                    else
+                         begin
+                         if ((CV bit of Jazelle OS Control register) == 0) AND
+-                                         begin
+                                          (IMPLEMENTATION DEFINED CONDITION) then
+-                                         end
+                              PC = invalidhandler;
+                         else
+                              begin
+@@ -183,6 +180,7 @@
+                              PC = Rm AND 0xFFFFFFFE;
+                              end
+                         end
++                    end
+                end
+            end
+ A4.1.12 CDP
+@@ -419,12 +417,10 @@
+          if ConditionPassed(cond) then
+              begin
+              if (Rd is_even_numbered) and (Rd is_not R14) and
+-                      begin
+                       (address[1:0] == 0b00) and
+                       ((CP15_reg1_Ubit == 1) or (address[2] == 0)) then
+-                      end
+-                  Rd = Memory[address,4];
+                   begin
++                  Rd = Memory[address,4];
+                   R(d+1) = memory[address+4,4];
+                   end
+              else
+@@ -612,21 +608,6 @@
+            end
+ A4.1.39 MSR
+          begin
+-         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
+-         page A2-11 for details.
+-         The pseudo code uses four bit mask constants to identify these categories of PSR bits. The values of these
+-         masks depend on the architecture version, see Table A4-1.
+-                                                                               begin
+-                                                                               Table A4-1 Bit mask constants
+-                                                                               end
+-           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
+-           begin
+-           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
+-           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
+-           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
+-           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
+-           6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
+-           end
+          end
+ A4.1.40 MUL
+            begin
+@@ -766,8 +747,8 @@
+              begin
+              Rd = SignedSat(Rm + SignedSat(Rn*2, 32), 32);
+              if SignedDoesSat(Rm + SignedSat(Rn*2, 32), 32) or
+-                 begin
+                  SignedDoesSat(Rn*2, 32) then
++                 begin
+                  Q Flag = 1;
+                  end
+              end
+@@ -778,8 +759,8 @@
+              begin
+              Rd = SignedSat(Rm - SignedSat(Rn*2, 32), 32);
+              if SignedDoesSat(Rm - SignedSat(Rn*2, 32), 32) or
+-                 begin
+                  SignedDoesSat(Rn*2, 32) then
++                 begin
+                  Q Flag = 1;
+                  end
+              end
+@@ -1608,12 +1589,10 @@
+            if ConditionPassed(cond) then
+                begin
+                if (Rd is_even_numbered) and (Rd is_not R14) and
+-                        begin
+                         (address[1:0] == 0b00) and
+                         ((CP15_reg1_Ubit == 1) or (address[2] == 0)) then
+-                        end
+-                    Memory[address,4] = Rd;
+                     begin
++                    Memory[address,4] = Rd;
+                     Memory[address+4,4] = R(d+1);
+                     end
+                else
+@@ -1667,9 +1646,7 @@
+              ClearExclusiveLocal(processor_id);
+              /* See Summary of operation on page A2-49 */
+              /* The notes take precedence over any implied atomicity or
+-                begin
+                 order of events indicated in the pseudo code */
+-                end
+              end
+          end
+ A4.1.104 STRH
+@@ -1781,6 +1758,11 @@
+                    Rd = temp;
+                    end
+                if Shared(address) then   /* ARMv6 */
++                   begin
++                   physical_address = TLB(address);
++                   ClearExclusiveByAddress(physical_address,processor_id,4);
++                   /* See Summary of operation on page A2-49 */
++                   end
+                end
+            end
+ A4.1.109 SWPB

@@ -28,6 +28,9 @@ ARMv6.txt : ARMv6.txt.orig
 operV6.txt : keepoper ARMv6.txt
 	./keepoper < ARMv6.txt > $@
 
-indentV6.txt : indentation oneline_expr preproc_pseudo_negatif.sh operV6.txt indentV6.txt.patch
-	cat operV6.txt | ./oneline_expr | ./preproc_pseudo_negatif.sh | ./indentation > $@
-	patch indentV6.txt indentV6.txt.patch
+indentV6.txt.orig : indentation oneline_expr preproc_pseudo.sh operV6.txt
+	cat operV6.txt | ./oneline_expr | ./preproc_pseudo.sh | ./indentation > $@
+
+indentV6.txt : indentV6.txt.orig
+	cp -a $< $@
+	patch < indentV6.txt.patch.positif
