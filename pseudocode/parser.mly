@@ -19,7 +19,7 @@ Pseudocode parser.
 %token LPAR RPAR LSQB RSQB BEGIN END
 %token UNPREDICTABLE EQ IF THEN ELSE WHILE DO ASSERT FOR TO UNAFFECTED IN
 %token CPSR RDPLUS1
-%token <Ast.processor_exception_mode> SPSR_MODE
+%token <Ast.processor_exception_mode option> SPSR_MODE
 %token <Ast.num * Ast.processor_exception_mode option> REG
 %token <string> BIN HEX
 %token <Ast.num> NUM

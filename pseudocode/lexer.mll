@@ -36,7 +36,7 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
      ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "Jazelle";
       "CV"; "Coprocessor"; "bit_position"; "architecture"; "value_from";
       "Start"; "coprocessor"; "load"; "send"; "first"; "second"; "CPSR_with";
-      "SUB_ARCHITECTURE"]
+      "SUB_ARCHITECTURE"; "ARMv5"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
@@ -48,7 +48,8 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
       "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
       "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", OR "OR";
       "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
-      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"]);;
+      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right";
+      "SPSR", SPSR_MODE None]);;
 
 let incr_line_number lexbuf =
   let ln = lexbuf.lex_curr_p.pos_lnum
@@ -94,7 +95,7 @@ rule token = parse
   | "==" as s { EQEQ s}
   | "<<" as s { LTLT s }
   | ">=" as s { GE s }
-  | "SPSR_" (mode as m) { SPSR_MODE (mode_of_string m) }
+  | "SPSR_" (mode as m) { SPSR_MODE (Some (mode_of_string m)) }
   | "R" (num as s) { REG (s, None) }
   | "R" (num as s) "_" (mode as m) { REG (s, Some (mode_of_string m)) }
   | "R(d+1)" { RDPLUS1 }

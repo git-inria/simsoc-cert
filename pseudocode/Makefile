@@ -13,7 +13,7 @@ else
   HIDE := @
 endif
 
-LIBS :=
+LIBS := str
 CMAFILES := $(LIBS:%=%.cma)
 CMXAFILES := $(LIBS:%=%.cmxa)
 
@@ -31,7 +31,7 @@ OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
 PARSERS := parser lexer
-FILES := ast $(PARSERS) genpc
+FILES := util ast $(PARSERS) genpc preproc
 
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
@@ -67,7 +67,7 @@ bin/%.opt: %.cmx
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES := genpc
+FRAGILE_FILES := genpc preproc
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 

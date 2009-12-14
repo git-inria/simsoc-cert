@@ -13,27 +13,9 @@ Pseudocode pretty-printer.
 
 open Ast;;
 open Printf;;
-
-let string b s = bprintf b "%s" s;;
-
-let postfix p f b x = bprintf b "%a%s" f x p;;
-
-let endline f b x = postfix "\n" f b x;;
+open Util;;
 
 let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
-
-let list_iter f b xs = List.iter (f b) xs;;
-
-let list sep f =
-  let rec aux b = function
-    | [] -> ()
-    | [x] -> f b x
-    | x :: xs -> bprintf b "%a%s%a" f x sep aux xs
-  in aux;;
-
-let option f b = function
-  | None -> ()
-  | Some x -> f b x;;
 
 let string_of_mode = function
   | Fiq -> "fiq"
@@ -45,8 +27,6 @@ let string_of_mode = function
 let mode b m = string b (string_of_mode m);;
 
 let num = string;;
-
-let par f b x = bprintf b "(%a)" f x;;
 
 let rec exp b = function
   | Bin s | Hex s | Num s -> string b s
@@ -61,7 +41,8 @@ let rec exp b = function
   | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | Other ss -> list " " string b ss
   | CPSR -> string b "CPSR"
-  | SPSR m -> bprintf b "SPSR_%a" mode m
+  | SPSR None -> string b "SPSR"
+  | SPSR (Some m) -> bprintf b "SPSR_%a" mode m
   | Reg ("14", None) -> string b "LR"
   | Reg (n, None) -> bprintf b "R%a" num n
   | Reg (n, Some m) -> bprintf b "R%a_%a" num n mode m

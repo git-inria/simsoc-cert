@@ -19,7 +19,7 @@ open Lexing;;
 (** usage and exit function in case of error *)
 (***********************************************************************)
 
-let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] (-pc) file";;
+let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file";;
 
 let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
 
@@ -37,10 +37,10 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
-type action = Gen_PC | Gen_PCC;;
+type action = GenPC | GenPCC | GenPre;;
 
 let get_action, is_action_set, set_action =
-  let action = ref Gen_PC and is_set = ref false in
+  let action = ref GenPC and is_set = ref false in
     (fun () -> !action),
     (fun () -> !is_set),
     (fun a -> if !is_set then error "wrong number of options"
@@ -53,9 +53,10 @@ let get_action, is_action_set, set_action =
 let rec options () = [
   "-h", Unit print_help, "display the list of options";
   "-d", Unit set_debug_mode, "turn on debug mode";
-  "-pc", Unit (fun () -> set_action Gen_PC), "generate pseudocode";
-  "-pcc", Unit (fun () -> set_action Gen_PCC),
+  "-pc", Unit (fun () -> set_action GenPC), "generate pseudocode";
+  "-pcc", Unit (fun () -> set_action GenPCC),
   "generate pseudocode and reparse it";
+  "-pre", Unit (fun () -> set_action GenPre), "preprocess pseudocode";
 ]
 
 and print_options oc () =
@@ -110,15 +111,20 @@ let main () =
   parse_args ();
   let ps = parse_file parse_channel (get_filename()) in
     match get_action () with
-      | Gen_PC ->
+      | GenPC ->
 	  let s = string_of Genpc.lib ps in
 	    print_endline s
-      | Gen_PCC ->
+      | GenPCC ->
 	  let s = string_of Genpc.lib ps in
 	    print_endline s;
 	    let ps' = parse_string s in
 	      fprintf stderr "reparsing: %s\n"
-		(if ps = ps' then "good" else "wrong");;
+		(if ps = ps' then "good" else "wrong")
+      | GenPre ->
+	  let ps = List.map Preproc.prog ps in
+	  let s = string_of Genpc.lib ps in
+	    print_endline s
+;;
 
 (***********************************************************************)
 (** launch the main procedure *)
