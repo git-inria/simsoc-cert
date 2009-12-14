@@ -14,14 +14,14 @@ Transform a raw AST into an AST ready for code generation.
 open Ast;;
 open Printf;;
 
+(***********************************************************************)
+(** program preprocessing *)
+(***********************************************************************)
+
 let name p =
   match p.pversion with
     | None -> p.pname
     | Some k -> sprintf "%s%s" p.pname k;;
-
-(***********************************************************************)
-(** program preprocessing *)
-(***********************************************************************)
 
 let args =
   let rec args = function
@@ -31,6 +31,7 @@ let args =
 
 let  string_of_op = function
   | "+" -> "add"
+  | "-" -> "sub"
   | s -> s;;
 
 let func p ss =
@@ -44,16 +45,15 @@ let rec exp p =
   let rec exp = function
     | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
     | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
-    | Fun (("CarryFrom"|"OverflowFrom" as f), [BinOp (_, op, _) as e]) ->
-	let es = args e in
-	  Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es), es)
+    | Fun (("OverflowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
+	   [BinOp (_, op, _) as e]) ->let es = args e in
+	Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es), es)
     | Fun (f, es) -> Fun (f, List.map exp es)
+    | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, Num n)
     | BinOp (e1, f, e2) -> (*Fun (f, List.map exp [e1; e2])*)
 	BinOp (exp e1, f, exp e2)
     | Other ss -> Fun (func p ss, [])
     | Range (e, r) -> Range (exp e, range p r)
-    | Unaffected ->
-	invalid_arg (sprintf "preprocessing Unaffected in %s" (name p))
     | UnpredictableValue -> Fun (sprintf "%s_UnpredictableValue" (name p), [])
     | e -> e
   in exp
@@ -74,8 +74,8 @@ let inst p =
     | Block [i] -> inst i
     | Block is -> Block (remove_nops (List.map inst is))
     | Unpredictable -> Unpredictable
-    | Affect (_, Unaffected) -> nop
-    | Affect (e1, e2) -> Affect (exp e1, exp e2)
+    | Affect (e1, e2) -> let e2 = exp e2 in
+	if e2 = Unaffected then nop else Affect (exp e1, e2)
 (*    | IfThenElse (Fun ("CurrentModeHasSPSR", []), Affect (CPSR, SPSR None),
 		  Some Unpredictable) -> *)
     | IfThenElse (e, i, None) ->
@@ -85,12 +85,9 @@ let inst p =
 	let i2 = inst i2 in
 	  if is_nop i2 then IfThenElse (exp e, inst i1, None)
 	  else IfThenElse (exp e, inst i1, Some (inst i2))
-    | Proc (("CarryFrom"|"OverflowFrom" as f), [e]) ->
-	let es = args e in
-	  Proc (sprintf "%s_%s%d" f (name p) (List.length es), es)
     | Proc (f, es) -> Proc (f, List.map exp es)
     | While (e, i) -> While (exp e, inst i)
-    | Assert e -> Assert (exp e)
+    | Assert _ -> nop
     | For (s, n, p, i) -> For (s, n, p, inst i)
     | Misc ss -> Proc (func p ss, [])
   in inst
