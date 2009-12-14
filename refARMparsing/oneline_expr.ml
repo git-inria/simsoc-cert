@@ -48,21 +48,21 @@ let take_eol =
     | [< ''+' | '-' as c; s >] -> Buffer.clear bu; fin (Char c) s 
     | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = ident c s in 
       (match i with
-	 | "or" | "and" | "OR" | "AND"  as op -> Buffer.clear bu; fin (String op) s 
+	 | "or" | "and" | "OR" | "AND"  as op -> Buffer.clear bu; after_op (String op) s 
 	 | _ -> Buffer.add_string bu i; fin op s
       )
     | [< 'c; s >] -> Buffer.add_char bu c; fin op s 
   and fin op  = parser
     | [< ''\n' >] -> op, Buffer.contents bu
-    | [< ''+' | '-' as c; s >] -> Buffer.add_char bu c; fin_aux op s 
+    | [< ''+' | '-' as c; s >] -> Buffer.add_char bu c; after_op op s 
     | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = ident c s in 
       (Buffer.add_string bu i;
        match i with
-	 | "or" | "and" | "OR" | "AND"  -> fin_aux op s
+	 | "or" | "and" | "OR" | "AND"  -> after_op op s
 	 | _ -> fin op s
       )
     | [< 'c; s >] -> Buffer.add_char bu c; fin op s 
-  and fin_aux op = parser
+  and after_op op = parser
     | [< ''\n'; s >] -> Buffer.add_char bu ' '; eat_blanks op s
     | [< 'c; s >] -> Buffer.add_char bu c; fin op s
   and eat_blanks op = parser
