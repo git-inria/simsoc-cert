@@ -37,6 +37,9 @@ let ident =
 type op = Char of char | String of string | Nop
 
 (* Full line *)
+(* A \n after a bin op is discarded 
+   We assume that there are no trailing blanks
+*)
 let take_eol =
   let bu = Buffer.create 80 in 
   let rec deb op = parser
@@ -51,7 +54,21 @@ let take_eol =
     | [< 'c; s >] -> Buffer.add_char bu c; fin op s 
   and fin op  = parser
     | [< ''\n' >] -> op, Buffer.contents bu
-    | [< 'c; s >] -> Buffer.add_char bu c; fin op s in
+    | [< ''+' | '-' as c; s >] -> Buffer.add_char bu c; fin_aux op s 
+    | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = ident c s in 
+      (Buffer.add_string bu i;
+       match i with
+	 | "or" | "and" | "OR" | "AND"  -> fin_aux op s
+	 | _ -> fin op s
+      )
+    | [< 'c; s >] -> Buffer.add_char bu c; fin op s 
+  and fin_aux op = parser
+    | [< ''\n'; s >] -> Buffer.add_char bu ' '; eat_blanks op s
+    | [< 'c; s >] -> Buffer.add_char bu c; fin op s
+  and eat_blanks op = parser
+    | [< '' '; s >] -> eat_blanks op s
+    | [< 'c; s >] -> Buffer.add_char bu c; fin op s
+  in
   let take_eol c s = Buffer.clear bu; Buffer.add_char bu c; deb Nop s in
   take_eol
 
