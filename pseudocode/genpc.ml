@@ -28,15 +28,16 @@ let mode b m = string b (string_of_mode m);;
 
 let num = string;;
 
+let level = function
+  | "and" -> 0
+  | "==" | "!=" | "is" | "is_not" | ">=" | "<" -> 1
+  | "+" | "-" -> 2
+  | _ -> -1;;
+
 let rec exp b = function
   | Bin s | Hex s | Num s -> string b s
-  | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" pexp1 e1 exp e2 exp e3
-  | BinOp ((Other _ as e1), ("+"|"or" as f), e2) ->
-      bprintf b "%a %s %a" exp e1 f pexp1 e2
-  | BinOp (e, ("+"|"*"|"-"|"<<" as f), Num n) when e <> Var "address" ->
-      bprintf b "%a%s%s" exp e f n
-  | BinOp (e1, f, e2) -> bprintf b "%a %s %a" pexp1 e1 f pexp1 e2
-  | Fun (("NOT" as f), [e]) -> bprintf b "%s %a" f pexp e
+  | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+  | BinOp (_, f, _) as e -> pexp_level (level f) b e
   | Fun (("is_even_numbered" as f), [e]) -> bprintf b "%a %s" exp e f
   | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | Other ss -> list " " string b ss
@@ -54,20 +55,15 @@ let rec exp b = function
   | UnpredictableValue -> string b "UNPREDICTABLE"
   | Unaffected -> string b "unaffected"
 
-(* put parentheses around complex expressions *)
 and pexp b e =
   match e with
-    | If _ | BinOp _ | Other _ | Range (_, Flag _) -> par exp b e
+    | If _ | BinOp _ | Other _ -> par exp b e
     | _ -> exp b e
 
-(* put parentheses around complex expressions,
-except some binary operations *)
-and pexp1 b e =
-  match e with
-    | BinOp (_, f, _) when f <> "Rotate_Right" && f <> "or" && f <> "*"
-	&& f <> "<<" -> exp b e
-    | Range (_, Flag _) -> exp b e
-    | _ -> pexp b e
+and pexp_level k b = function
+  | BinOp (_, f, _) as e when level f = k ->
+      let es = args e in list (sprintf " %s " f) (pexp_level (k+1)) b es
+  | e -> pexp b e
 
 and range b = function
   | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
@@ -91,10 +87,10 @@ and inst_aux k b = function
   | Affect (Reg ("15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
   | IfThenElse (e, i, None) ->
-      bprintf b "if %a then\n%a" pexp1 e (inst (k+4)) i
+      bprintf b "if %a then\n%a" exp e (inst (k+4)) i
   | IfThenElse (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
-	pexp1 e (inst (k+4)) i1 indent k (inst_sc k) i2
+	exp e (inst (k+4)) i1 indent k (inst_sc k) i2
   | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | While (e, i) -> bprintf b "while %a do\n%a" exp e (inst (k+4)) i
   | Assert e -> bprintf b "assert %a" exp e

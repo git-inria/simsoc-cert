@@ -55,3 +55,11 @@ type prog = {
   pvars : string list;
   pversion : num option;
   pinst : inst };;
+
+let args = function
+  | BinOp (_, f, _) as e ->
+      let rec aux = function
+	| BinOp (e1, g, e2) when g = f -> aux e1 @ aux e2
+	| e -> [e]
+      in aux e
+  | e -> [e];;

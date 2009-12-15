@@ -60,12 +60,6 @@ let name p =
     | None -> p.pname
     | Some k -> sprintf "%s%s" p.pname k;;
 
-let args =
-  let rec args = function
-    | BinOp (e1, _, e2) -> e2 :: args e1
-    | e -> [e]
-  in fun es -> List.rev (args es);;
-
 let  string_of_op = function
   | "+" -> "add"
   | "-" -> "sub"
@@ -83,7 +77,7 @@ let rec exp p =
     | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
     | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
     | Fun (("OverflowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
-	   [BinOp (_, op, _) as e]) ->let es = args e in
+	   [BinOp (_, op, _) as e]) -> let es = args e in
 	Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es), es)
     | Fun (f, es) -> Fun (f, List.map exp es)
     | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, Num n)

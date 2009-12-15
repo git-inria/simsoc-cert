@@ -67,7 +67,7 @@ bin/%.opt: %.cmx
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES := genpc preproc
+FRAGILE_FILES := ast genpc preproc
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 

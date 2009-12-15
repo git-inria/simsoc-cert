@@ -13,6 +13,7 @@ Pseudocode parser.
 *)
 
   open Ast;;
+
 %}
 
 %token EOF COLON SEMICOLON COMA
@@ -24,14 +25,15 @@ Pseudocode parser.
 %token <string> BIN HEX
 %token <Ast.num> NUM
 %token <string> IDENT FLAG RESERVED PROC
-%token <string> NOT EVEN GE LT GT
-%token <string> PLUS EQEQ AND LTLT MINUS EOR ROR TIMES IS IS_NOT OR LSL ASR
+%token <string> NOT EVEN GTEQ LT GT BANGEQ AND OR
+%token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR IS ISNOT BOR LSL ASR
 
 /* lowest precedence */
-%left AND EOR ROR LTLT OR LSL ASR GE
-%left EQEQ IS IS_NOT
+%left AND OR
+%left EQEQ IS ISNOT BANGEQ GTEQ
+%left BAND BOR EOR ROR LTLT LSL ASR
 %left PLUS MINUS
-%left TIMES
+%left STAR
 %nonassoc NOT
 /* highest precedence */
 
@@ -63,7 +65,7 @@ names:
 ;
 name:
 | IDENT { $1 }
-| AND   { $1 }
+| BAND  { $1 }
 | EOR   { $1 }
 ;
 version:
@@ -124,19 +126,22 @@ exp:
 ;
 binop_exp:
 | exp AND exp    { BinOp ($1, $2, $3) }
+| exp BAND exp   { BinOp ($1, $2, $3) }
 | exp PLUS exp   { BinOp ($1, $2, $3) }
 | exp LTLT exp   { BinOp ($1, $2, $3) }
 | exp EQEQ exp   { BinOp ($1, $2, $3) }
+| exp BANGEQ exp { BinOp ($1, $2, $3) }
 | exp MINUS exp  { BinOp ($1, $2, $3) }
 | exp EOR exp    { BinOp ($1, $2, $3) }
-| exp TIMES exp  { BinOp ($1, $2, $3) }
+| exp STAR exp   { BinOp ($1, $2, $3) }
 | exp ROR exp    { BinOp ($1, $2, $3) }
 | exp IS exp     { BinOp ($1, $2, $3) }
-| exp IS_NOT exp { BinOp ($1, $2, $3) }
+| exp ISNOT exp  { BinOp ($1, $2, $3) }
 | exp OR exp     { BinOp ($1, $2, $3) }
+| exp BOR exp    { BinOp ($1, $2, $3) }
 | exp LSL exp    { BinOp ($1, $2, $3) }
 | exp ASR exp    { BinOp ($1, $2, $3) }
-| exp GE exp     { BinOp ($1, $2, $3) }
+| exp GTEQ exp   { BinOp ($1, $2, $3) }
 | exp LT exp     { BinOp ($1, $2, $3) }
 ;
 range:

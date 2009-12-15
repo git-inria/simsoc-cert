@@ -41,12 +41,12 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
       "LR", REG ("14", None); "PC", REG ("15", None); "pc", REG ("15", None);
-      "CPSR", Parser.CPSR; "AND", AND "AND"; "NOT", NOT "NOT"; "do", DO;
+      "CPSR", Parser.CPSR; "AND", BAND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
-      "is", IS "is"; "or", OR "or"; "is_not", IS_NOT "is_not";
+      "is", IS "is"; "or", OR "or"; "is_not", ISNOT "is_not";
       "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
-      "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", OR "OR";
+      "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", BOR "OR";
       "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
       "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right";
       "SPSR", SPSR_MODE None]);;
@@ -56,8 +56,6 @@ let incr_line_number lexbuf =
   and off = lexbuf.lex_curr_p.pos_cnum in
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 			     pos_lnum = ln+1; pos_bol = off };;
-
-let in_multi_line_comment = ref false;;
 
 }
 
@@ -88,13 +86,14 @@ rule token = parse
   | ',' { COMA }
   | '=' { EQ }
   | '+' { PLUS "+" }
-  | '*' { TIMES "*" }
+  | '*' { STAR "*" }
   | '-' { MINUS "-" }
   | '<' { LT "<" }
   | '>' { GT ">" }
   | "==" as s { EQEQ s}
   | "<<" as s { LTLT s }
-  | ">=" as s { GE s }
+  | ">=" as s { GTEQ s }
+  | "!=" as s { BANGEQ s }
   | "SPSR_" (mode as m) { SPSR_MODE (Some (mode_of_string m)) }
   | "R" (num as s) { REG (s, None) }
   | "R" (num as s) "_" (mode as m) { REG (s, Some (mode_of_string m)) }
