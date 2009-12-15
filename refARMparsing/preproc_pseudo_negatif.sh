@@ -26,7 +26,8 @@ sed -e 's|$|;|' \
     -e 's|value from|value_from|' \
     -e 's|CPSR with|CPSR_with|' \
     -e 's|SUB ARCHITECTURE|SUB_ARCHITECTURE|' \
-    -e 's|or above|or_above|'
+    -e 's|or above|or_above|' \
+    -e 's|8_bit_immediate|immed_8|' \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
