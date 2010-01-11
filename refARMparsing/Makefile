@@ -23,8 +23,8 @@ indentation : indentation.ml
 oneline_expr : oneline_expr.ml
 	ocamlopt -pp camlp4o $< -o $@
 
-ARMv6.txt.orig : 
-	pdftotext -layout ../ARMv6.pdf $@
+ARMv6.txt.orig :
+	pdftotext -layout ../doc/ARMv6.pdf $@
 
 # some informal text after "assert" -> /* comment */
 ARMv6.txt : ARMv6.txt.orig ARMv6.txt.patch
