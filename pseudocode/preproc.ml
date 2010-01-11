@@ -76,9 +76,17 @@ let rec exp p =
   let rec exp = function
     | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
     | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
-    | Fun (("OverflowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
+    | Fun (("OverflowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8"|"BorrowFrom" as f),
 	   [BinOp (_, op, _) as e]) -> let es = args e in
 	Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es), es)
+    | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
+        Fun ("SignExtend_24to30", es)
+    | Fun (("SignedSat"|"UnsignedSat"|"SignedDoesSat"|"UnsignedDoesSat" as f),
+           [BinOp (e1, ("+"|"-" as op), e2); Num n]) ->
+        Fun ((sprintf "%s_%s%s" f (string_of_op op) n), [exp e1; exp e2])
+    | Fun ("SignedSat"|"SignedDoesSat" as f,
+           [BinOp (e, "*", Num "2"); Num n]) ->
+        Fun ((sprintf "%s_double%s" f n), [exp e])
     | Fun (f, es) -> Fun (f, List.map exp es)
     | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, Num n)
     | BinOp (e1, f, e2) -> (*Fun (f, List.map exp [e1; e2])*)

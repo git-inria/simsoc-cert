@@ -37,7 +37,7 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
-type action = GenPC | GenPCC | GenPre;;
+type action = GenPC | GenPCC | GenPre | GenCxx;;
 
 let get_action, is_action_set, set_action =
   let action = ref GenPC and is_set = ref false in
@@ -57,6 +57,8 @@ let rec options () = [
   "-pcc", Unit (fun () -> set_action GenPCC),
   "generate pseudocode and reparse it";
   "-pre", Unit (fun () -> set_action GenPre), "preprocess pseudocode";
+  "-cxx", Unit (fun () -> set_action GenCxx),
+  "generate simulation code";
 ]
 
 and print_options oc () =
@@ -75,7 +77,7 @@ let parse_args () =
 (***********************************************************************)
 
 let fprint_loc oc loc =
-  Printf.fprintf oc "file \"%s\", line %d, character %d" 
+  Printf.fprintf oc "file \"%s\", line %d, character %d"
     loc.pos_fname loc.pos_lnum (loc.pos_cnum - loc.pos_bol + 1);;
 
 let open_file fn =
@@ -124,6 +126,10 @@ let main () =
 	  let ps = List.map Preproc.prog ps in
 	  let s = string_of Genpc.lib ps in
 	    print_endline s
+      | GenCxx ->
+	  let ps = List.map Preproc.prog ps in
+	  let s = string_of Gencxx.lib ps in
+	    print_string s
 ;;
 
 (***********************************************************************)
