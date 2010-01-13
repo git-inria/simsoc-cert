@@ -37,5 +37,6 @@ sed \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
-    -e 's|) – |) - |'
+    -e 's|) – |) - |' \
+    -e 's|memory\[|Memory\[|'
 
