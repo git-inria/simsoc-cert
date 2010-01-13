@@ -52,7 +52,7 @@ let cxx_type_of = function
 let input_registers = ["Rn"; "Rm"; "Rs"];;
 let output_registers = ["Rd"; "RdHi"; "RdLo"; "Rn"];;
 
-let specials = ["CP15_reg1_EEbit"; "Memory"; "memory"; "Ri"; "Ri_usr";
+let specials = ["CP15_reg1_EEbit"; "Memory"; "Ri"; "Ri_usr";
                 "CP15_reg1_Ubit"; "GE"; "i";
                 "UnallocMask"; "StateMask"; "UserMask"; "PrivMask"]
 
@@ -246,8 +246,6 @@ let rec generate_exp buffer expression =
   | Range (expr1, Index [expr2]) ->
       bprintf buffer "((%a>>%a)&1)"
       generate_exp expr1 generate_exp expr2
-  | Range (Var "memory", r) ->
-      generate_exp buffer (Range (Var "Memory", r))
   | Range (Var "Memory", Index [expr; Num num]) ->
       bprintf buffer "proc.mmu.read_%s(%a)"
         (access_type num) generate_exp expr
@@ -372,8 +370,8 @@ let ident b i =
   bprintf b "%s%a" i.iname (option version_in_name) i.iversion
 
 let generate_comment buffer p =
-  bprintf buffer "// %s %a%a\n"
-    p.pref ident p.pident (list " " ident) p.paltidents;;
+  bprintf buffer "// %s %a\n"
+    p.pref (list ", " ident_in_comment) (p.pident::p.paltidents);;
 
 let generate_prog buffer p =
   let parameters, locals = prog_variables p in
