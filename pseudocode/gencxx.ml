@@ -364,22 +364,24 @@ let generate_local_decl buffer (var, vtype) =
 let generate_inreg_load buffer str =
   bprintf buffer "const uint32_t %s_content = proc.reg(%s);\n" str str;;
 
+let ident_in_comment b i =
+  bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
+    (option version_in_comment) i.iversion
+
+let ident b i =
+  bprintf b "%s%a" i.iname (option version_in_name) i.iversion
+
 let generate_comment buffer p =
-  bprintf buffer
-    "// %s %a%a%a\n"
-    p.pref
-    (list ", " string) (p.pname :: p.paltnames)
-    (list "" prog_var) p.pvars
-    (option version_in_comment) p.pversion;;
+  bprintf buffer "// %s %a%a\n"
+    p.pref ident p.pident (list " " ident) p.paltidents;;
 
 let generate_prog buffer p =
-  let parameters,locals = prog_variables p in
+  let parameters, locals = prog_variables p in
   let inregs = List.filter (fun x -> List.mem x input_registers) parameters in
     bprintf buffer
-      "%avoid ARM_ISS::%a%a(%a) {\n%a%a%a}\n"
+      "%avoid ARM_ISS::%a(%a) {\n%a%a%a}\n"
       generate_comment p
-      (list "_" string) (p.pname :: p.paltnames)
-      (option version_in_name) p.pversion
+      (list "_" ident) (p.pident :: p.paltidents)
       (list ",\n    " prog_arg) parameters
       (list "" generate_inreg_load) inregs
       (list "" generate_local_decl) locals
@@ -388,10 +390,9 @@ let generate_prog buffer p =
 let generate_decl buffer p =
   let parameters, _ = prog_variables p in
     bprintf buffer
-      "  %a  void %a%a(%a);\n"
+      "  %a  void %a(%a);\n"
       generate_comment p
-      (list "_" string) (p.pname :: p.paltnames)
-      (option version_in_name) p.pversion
+      (list "_" ident) (p.pident :: p.paltidents)
       (list ",\n    " prog_arg) parameters;;
 
 let lib buffer progs =

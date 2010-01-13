@@ -102,9 +102,11 @@ let version b k = bprintf b " (%s)" k;;
 
 let var b s = bprintf b "<%s>" s;;
 
+let ident b i =
+  bprintf b "%s%a%a" i.iname (list "" var) i.ivars (option version) i.iversion;;
+
 let prog b p =
-  bprintf b "%s %a%a%a\n%a\n" p.pref
-    (list ", " string) (p.pname :: p.paltnames) (list "" var) p.pvars
-    (option version) p.pversion (inst 9) p.pinst;;
+  bprintf b "%s %a\n%a\n" p.pref
+    (list ", " ident) (p.pident :: p.paltidents) (inst 9) p.pinst;;
 
 let lib b ps = list "" prog b ps;;

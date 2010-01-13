@@ -51,17 +51,19 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT names vars version block
-    { {pref = $1; pname = List.hd $2; paltnames = List.tl $2;
-       pvars = $3; pversion = $4; pinst = $5} }
+| IDENT idents block
+    { { pref = $1; pident = List.hd $2; paltidents = List.tl $2; pinst = $3 } }
+;
+ident:
+| name vars version { { iname = $1; ivars = $2; iversion = $3 } }
+;
+idents:
+| ident             { [$1] }
+| ident COMA idents { $1 :: $3 }
 ;
 vars:
 | /* nothing */    { [] }
 | LT IDENT GT vars { $2 :: $4 }
-;
-names:
-| name            { [$1] }
-| name COMA names { $1 :: $3 }
 ;
 name:
 | IDENT { $1 }

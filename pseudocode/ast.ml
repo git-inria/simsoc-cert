@@ -48,12 +48,15 @@ type inst =
 | For of string * num * num * inst
 | Misc of string list;;
 
+type ident = {
+  iname : string;
+  ivars : string list;
+  iversion : num option };;
+
 type prog = {
   pref : string;
-  pname : string;
-  paltnames : string list;
-  pvars : string list;
-  pversion : num option;
+  pident : ident;
+  paltidents : ident list;
   pinst : inst };;
 
 let args = function

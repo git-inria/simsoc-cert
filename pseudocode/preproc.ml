@@ -55,10 +55,10 @@ let vars p = vars_inst p.pinst;;
 (** program preprocessing *)
 (***********************************************************************)
 
-let name p =
-  match p.pversion with
-    | None -> p.pname
-    | Some k -> sprintf "%s%s" p.pname k;;
+let ident i =
+  match i.iversion with
+    | None -> i.iname
+    | Some k -> sprintf "%s%s" i.iname k;;
 
 let  string_of_op = function
   | "+" -> "add"
@@ -67,7 +67,7 @@ let  string_of_op = function
 
 let func p ss =
   let b = Buffer.create 100 in
-    bprintf b "%s_" (name p);
+    bprintf b "%s_" (ident p.pident);
     let f = Str.global_replace (Str.regexp "[][',]") "" in
     Util.list "_" (fun b s -> Util.string b (f s)) b ss;
     Buffer.contents b;;
@@ -76,7 +76,8 @@ let rec exp p =
   let rec exp = function
     | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
     | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
-    | Fun (("OverflowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8"|"BorrowFrom" as f),
+    | Fun (("OverflowFrom"|"BorrowFrom"
+	   |"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
 	   [BinOp (_, op, _) as e]) -> let es = args e in
 	Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es), es)
     | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
@@ -93,7 +94,8 @@ let rec exp p =
 	BinOp (exp e1, f, exp e2)
     | Other ss -> Fun (func p ss, [])
     | Range (e, r) -> Range (exp e, range p r)
-    | UnpredictableValue -> Fun (sprintf "%s_UnpredictableValue" (name p), [])
+    | UnpredictableValue ->
+	Fun (sprintf "%s_UnpredictableValue" (ident p.pident), [])
     | e -> e
   in exp
 
