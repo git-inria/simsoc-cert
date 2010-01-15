@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# REMARK: do not remove the last strange -e command !
+# due to a strange dash character
+
 sed \
     -e '/^ *[a-zA-Z][a-zA-Z0-9 _(\+)]* = /s|$|;|' \
     -e '/^ *[a-zA-Z][a-zA-Z0-9 _(\+)]*\[[:0-9a-zA-Z_ ,+]*] *= /s|$|;|' \
@@ -24,19 +27,22 @@ sed \
     -e 's|-\([A-Za-z]\)| \1|g' \
     -e 's|bit position|bit_position|' \
     -e 's|address of|address_of|' \
-    -e 's|\[cp_num\]| cp_num |' \
     -e 's|is even numbered|is_even_numbered|' \
     -e 's|is not|is_not|' \
     -e 's|v5 and above|v5_and_above|' \
+    -e 's|architecture version 5 or above|v5_and_above|' \
     -e 's|v4 and earlier|v4_and_earlier|' \
-    -e 's|value from|value_from|' \
+    -e 's|first value|first_value|' \
+    -e 's|second value|second_value|' \
     -e 's|CPSR with|CPSR_with|' \
-    -e 's|SUB ARCHITECTURE|SUB_ARCHITECTURE|' \
     -e 's|or above|or_above|' \
+    -e 's|dependent operation|dependent_operation|' \
+    -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
+    -e "s| of most significant'1' in Rm|_of_most_significant_1(Rm)|" \
+    -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|8_bit_immediate|immed_8|' \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
-    -e 's|) – |) - |' \
-    -e 's|memory\[|Memory\[|'
-
+    -e 's|memory\[|Memory\[|' \
+    -e 's|–|-|'

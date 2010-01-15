@@ -27,11 +27,13 @@ let rec vars_exp = function
 | Var s -> StrSet.singleton s
 | RdPlus1 -> StrSet.singleton "Rd"
 | Range (e, r) -> StrSet.union (vars_exp e) (vars_range r)
+| Memory (e, _) | Val e -> vars_exp e
+| Coproc_exp (e, _, es) -> StrSet.union (vars_exp e) (vars_exps es)
 | CPSR | SPSR _ | Reg _ | Other _ | Num _ | Bin _ | Hex _ | Unaffected
 | UnpredictableValue -> StrSet.empty
 
 and vars_range = function
-  | Index es -> vars_exps es
+  | Index e -> vars_exp e
   | Bits _ | Flag _ -> StrSet.empty
 
 and vars_exps es =
@@ -47,6 +49,7 @@ let rec vars_inst = function
   | Proc (_, es) -> vars_exps es
   | While (e, i) -> StrSet.union (vars_exp e) (vars_inst i)
   | For (_, _, _, i) -> vars_inst i
+  | Coproc (c, _, es) -> StrSet.union (vars_exp c) (vars_exps es)
   | Unpredictable | Misc _ | Assert _ -> StrSet.empty;;
 
 let vars p = vars_inst p.pinst;;
@@ -100,7 +103,7 @@ let rec exp p =
   in exp
 
 and range p = function
-  | Index es -> Index (List.map (exp p) es)
+  | Index e -> Index (exp p e)
   | r -> r;;
 
 let nop = Block [];;
@@ -117,8 +120,6 @@ let inst p =
     | Unpredictable -> Unpredictable
     | Affect (e1, e2) -> let e2 = exp e2 in
 	if e2 = Unaffected then nop else Affect (exp e1, e2)
-(*    | IfThenElse (Fun ("CurrentModeHasSPSR", []), Affect (CPSR, SPSR None),
-		  Some Unpredictable) -> *)
     | IfThenElse (e, i, None) ->
 	let i = inst i in
 	  if is_nop i then nop else IfThenElse (exp e, i, None)
@@ -126,11 +127,13 @@ let inst p =
 	let i2 = inst i2 in
 	  if is_nop i2 then IfThenElse (exp e, inst i1, None)
 	  else IfThenElse (exp e, inst i1, Some (inst i2))
+    | Proc ("MemoryAccess", _) -> nop
     | Proc (f, es) -> Proc (f, List.map exp es)
     | While (e, i) -> While (exp e, inst i)
     | Assert _ -> nop
     | For (s, n, p, i) -> For (s, n, p, inst i)
     | Misc ss -> Proc (func p ss, [])
+    | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
   in inst
 
 let prog p = {p with pinst = inst p p.pinst};;

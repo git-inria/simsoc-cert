@@ -18,15 +18,18 @@ Pseudocode parser.
 
 %token EOF COLON SEMICOLON COMA
 %token LPAR RPAR LSQB RSQB BEGIN END
-%token UNPREDICTABLE EQ IF THEN ELSE WHILE DO ASSERT FOR TO UNAFFECTED IN
-%token CPSR RDPLUS1
+%token EQ IN
+%token UNPREDICTABLE UNAFFECTED
+%token IF THEN ELSE WHILE DO ASSERT FOR TO
+%token CPSR RDPLUS1 MEMORY
+%token COPROC LOAD SEND VALUE NOT_FINISHED FROM
 %token <Ast.processor_exception_mode option> SPSR_MODE
 %token <Ast.num * Ast.processor_exception_mode option> REG
 %token <string> BIN HEX
 %token <Ast.num> NUM
-%token <string> IDENT FLAG RESERVED PROC
-%token <string> NOT EVEN GTEQ LT GT BANGEQ AND OR
-%token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR IS ISNOT BOR LSL ASR
+%token <string> IDENT FLAG RESERVED
+%token <string> NOT EVEN GTEQ LT GT BANGEQ AND OR BOR LSL ASR
+%token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR IS ISNOT
 
 /* lowest precedence */
 %left AND OR
@@ -51,26 +54,27 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT idents block
+| IDENT prog_idents block
     { { pref = $1; pident = List.hd $2; paltidents = List.tl $2; pinst = $3 } }
 ;
-ident:
-| name vars version { { iname = $1; ivars = $2; iversion = $3 } }
+prog_ident:
+| prog_name prog_vars prog_version
+    { { iname = $1; ivars = $2; iversion = $3 } }
 ;
-idents:
-| ident             { [$1] }
-| ident COMA idents { $1 :: $3 }
+prog_idents:
+| prog_ident                  { [$1] }
+| prog_ident COMA prog_idents { $1 :: $3 }
 ;
-vars:
+prog_vars:
 | /* nothing */    { [] }
-| LT IDENT GT vars { $2 :: $4 }
+| LT IDENT GT prog_vars { $2 :: $4 }
 ;
-name:
+prog_name:
 | IDENT { $1 }
 | BAND  { $1 }
 | EOR   { $1 }
 ;
-version:
+prog_version:
 | /* nothing */ { None }
 | LPAR NUM RPAR { Some $2 }
 ;
@@ -80,8 +84,17 @@ simple_inst:
 | IDENT LPAR exps RPAR { Proc ($1, $3) }
 | ASSERT exp           { Assert $2 }
 | RESERVED items       { Misc ($1 :: $2) }
+| coproc_inst          { $1 }
 ;
-cond:
+coproc_inst:
+| LOAD exp FOR coproc { Coproc ($4, "load", [$2]) }
+| SEND exp TO coproc  { Coproc ($4, "send", [$2]) }
+| coproc IDENT items  { Coproc ($1, $2, []) }
+;
+coproc:
+| COPROC LSQB exp RSQB { $3 }
+;
+cond_inst:
 | IF exp THEN block                { IfThenElse ($2, $4, None) }
 | IF exp THEN block ELSE block     { IfThenElse ($2, $4, Some $6) }
 | WHILE exp DO block               { While ($2, $4) }
@@ -90,7 +103,7 @@ cond:
 inst:
 | simple_inst           { $1 }
 | simple_inst SEMICOLON { $1 }
-| cond                  { $1 }
+| cond_inst             { $1 }
 ;
 block:
 | inst            { $1 }
@@ -98,14 +111,18 @@ block:
 ;
 insts:
 | /* nothing */ { [] }
-| block insts    { $1 :: $2 }
+| block insts   { $1 :: $2 }
 ;
 simple_exp:
 | NUM           { Num $1 }
-| IDENT         { Var $1 }
+| var           { Var $1 }
 | CPSR          { CPSR }
 | UNAFFECTED    { Unaffected }
 | UNPREDICTABLE { UnpredictableValue }
+;
+var:
+| IDENT         { $1 }
+| VALUE         { "value" }
 ;
 exp:
 | simple_exp               { $1 }
@@ -123,8 +140,15 @@ exp:
 | IDENT FLAG               { Range (CPSR, Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
+| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, $5) }
 | RESERVED items           { Other ($1 :: $2) }
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
+| coproc_exp               { $1 }
+| IDENT VALUE              { Val (Var $1) }
+;
+coproc_exp:
+| NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }
+| var FROM coproc               { Coproc_exp ($3, $1, []) }
 ;
 binop_exp:
 | exp AND exp    { BinOp ($1, $2, $3) }
@@ -149,8 +173,7 @@ binop_exp:
 range:
 | LSQB NUM COLON NUM RSQB { Bits ($2, $4) }
 | IDENT FLAG              { Flag ($1, $2) }
-| LSQB exp RSQB           { Index [$2] }
-| LSQB exp COMA exps RSQB { Index ($2 :: $4) }
+| LSQB exp RSQB           { Index $2 }
 ;
 exps:
 | /* nothing */ { [] }
@@ -162,12 +185,8 @@ items:
 | item items     { $1 :: $2 }
 ;
 item:
-| IDENT                    { $1 }
-| FLAG                     { $1 }
-| RESERVED                 { $1 }
-| NUM                      { $1 }
-| FOR                      { "for" }
-| TO                       { "to" }
-| IN                       { "in" }
-| IDENT LSQB IDENT COMA NUM RSQB { Printf.sprintf "%s[%s,%s]" $1 $3 $5 }
+| IDENT    { $1 }
+| FLAG     { $1 }
+| RESERVED { $1 }
+| VALUE    { "value" }
 ;

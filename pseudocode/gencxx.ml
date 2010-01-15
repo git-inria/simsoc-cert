@@ -60,9 +60,12 @@ let specials = ["CP15_reg1_EEbit"; "Memory"; "Ri"; "Ri_usr";
 
 let var_type v expr =
   match expr with
-    | Range (Var "Memory", Index [_; Num "1"]) -> "uint8_t"
+(*REMOVE:    | Range (Var "Memory", Index [_; Num "1"]) -> "uint8_t"
     | Range (Var "Memory", Index [_; Num "2"]) -> "uint16_t"
-    | Range (Var "Memory", Index [_; Num "4"]) -> "uint32_t"
+    | Range (Var "Memory", Index [_; Num "4"]) -> "uint32_t"*)
+    | Memory (_, "1") -> "uint8_t"
+    | Memory (_, "2") -> "uint16_t"
+    | Memory (_, "4") -> "uint32_t"
     | _ -> cxx_type_of v;;
 
 let rec exp_variables (parameters,locals) expression =
@@ -82,7 +85,7 @@ let rec exp_variables (parameters,locals) expression =
         (List.mem str specials)
       then (parameters,locals)
       else (str::parameters,locals)
-  | Range (expr1, Index (expr2::_)) ->
+  | Range (expr1, Index expr2) ->
       let variables = exp_variables (parameters,locals) expr1 in
         exp_variables variables expr2
   | Range (expr, _) -> exp_variables (parameters,locals) expr
@@ -243,12 +246,10 @@ let rec generate_exp buffer expression =
   | RdPlus1 -> string buffer "proc.reg(Rd+1)"
   | Range (CPSR, Flag (str1,_)) ->
       bprintf buffer "proc.cpsr.%s_flag" str1
-  | Range (expr1, Index [expr2]) ->
-      bprintf buffer "((%a>>%a)&1)"
-      generate_exp expr1 generate_exp expr2
-  | Range (Var "Memory", Index [expr; Num num]) ->
-      bprintf buffer "proc.mmu.read_%s(%a)"
-        (access_type num) generate_exp expr
+  | Range (expr1, Index expr2) ->
+      bprintf buffer "((%a>>%a)&1)" generate_exp expr1 generate_exp expr2
+  | Memory (expr, num) ->
+      bprintf buffer "proc.mmu.read_%s(%a)" (access_type num) generate_exp expr
   | Range (expr, Bits (num1, num2)) -> (
       match num1, num2 with
         | "15", "0" -> bprintf buffer "get_half_0(%a)" generate_exp expr
@@ -317,20 +318,20 @@ and generate_affect buffer dst src =
               bprintf buffer "%a = %a;\n" generate_exp expr1 generate_exp src
           | Range (CPSR, Flag (str1,_)) ->
               bprintf buffer "proc.cpsr.%s_flag = %a;\n" str1 generate_exp src
-          | Range (CPSR, Index [Num num]) ->
-              bprintf buffer "proc.cpsr.%s = %a;\n" (cpsr_flag num) generate_exp src
+          | Range (CPSR, Index (Num num)) ->
+              bprintf buffer "proc.cpsr.%s = %a;\n"
+		(cpsr_flag num) generate_exp src
           | Range (CPSR, Bits (num1, num2)) ->
               bprintf buffer "proc.cpsr.%s = %a;\n"
                 (cpsr_field (num1,num2)) generate_exp src
           | Range (expr1, Bits (num1, num2)) ->
               generate_inst buffer
                 (Proc ("set_field", [expr1; Num num1; Num num2; src]))
-          | Range (Var "Memory", Index [addr; Num num]) ->
+          | Memory (addr, num) ->
               let fct = "proc.mmu.write_" ^ (access_type num) in
                 generate_inst buffer (Proc (fct, [addr; src]))
-          | Range (expr1, Index [num1]) ->
-              generate_inst buffer
-                (Proc ("set_bit", [expr1; num1; src]))
+          | Range (expr1, Index num1) ->
+              generate_inst buffer (Proc ("set_bit", [expr1; num1; src]))
           | (Reg ("15", None)) ->
               bprintf buffer "proc.set_pc_raw(%a);\n" generate_exp src
           | (Reg ("15", Some _)) ->

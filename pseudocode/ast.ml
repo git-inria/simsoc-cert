@@ -31,11 +31,14 @@ type exp =
 | Range of exp * range
 | Unaffected
 | UnpredictableValue
+| Memory of exp * num
+| Coproc_exp of exp * string * exp list
+| Val of exp
 
 and range =
 | Bits of num * num
-| Flag of string * string
-| Index of exp list;;
+| Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
+| Index of exp;;
 
 type inst =
 | Block of inst list
@@ -46,7 +49,8 @@ type inst =
 | While of exp * inst
 | Assert of exp
 | For of string * num * num * inst
-| Misc of string list;;
+| Misc of string list
+| Coproc of exp * string * exp list;;
 
 type ident = {
   iname : string;

@@ -34,9 +34,8 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
   (List.map (fun s -> s, RESERVED s)
      (* words starting an English expression *)
      ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "Jazelle";
-      "CV"; "Coprocessor"; "bit_position"; "architecture"; "value_from";
-      "Start"; "coprocessor"; "load"; "send"; "first"; "second"; "CPSR_with";
-      "SUB_ARCHITECTURE"; "ARMv5"]
+      "CV"; "bit_position"; "architecture"; "SUBARCHITECTURE";
+      "Start"; "CPSR_with"; "ARMv5"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
@@ -48,8 +47,9 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
       "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
       "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", BOR "OR";
       "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
-      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right";
-      "SPSR", SPSR_MODE None]);;
+      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"; "from", FROM;
+      "SPSR", SPSR_MODE None; "Memory", MEMORY; "load", LOAD; "send", SEND;
+      "Coprocessor", COPROC; "NotFinished", NOT_FINISHED; "value", VALUE]);;
 
 let incr_line_number lexbuf =
   let ln = lexbuf.lex_curr_p.pos_lnum
@@ -65,8 +65,6 @@ let digit = ['0'-'9']
 let letter = ['a'-'z' 'A'-'Z' '_' '.' '\'']
 
 let ident = letter (letter|digit)*
-
-let reserved = "not" | "high" | "address"
 
 let num = digit+
 let bin = "0b" ['0' '1']+

@@ -54,6 +54,12 @@ let rec exp b = function
   | Range (e, r) -> bprintf b "%a%a" pexp e range r
   | UnpredictableValue -> string b "UNPREDICTABLE"
   | Unaffected -> string b "unaffected"
+  | Memory (e, n) -> bprintf b "Memory[%a,%a]" exp e num n
+  | Coproc_exp (e, "NotFinished", _) -> bprintf b "NotFinished(%a)" coproc e
+  | Coproc_exp (e, s, _) -> bprintf b "%s from %a" s coproc e
+  | Val e -> bprintf b "%a value" exp e
+
+and coproc b e = bprintf b "Coprocessor[%a]" exp e
 
 and pexp b e =
   match e with
@@ -68,8 +74,7 @@ and pexp_level k b = function
 and range b = function
   | Bits (n, p) -> bprintf b "[%a:%a]" num n num p
   | Flag (n, f) -> bprintf b "%s %s" n f
-  | Index [e; Num n] -> bprintf b "[%a,%s]" exp e n
-  | Index es -> bprintf b "[%a]" (list ", " exp) es;;
+  | Index e -> bprintf b "[%a]" exp e;;
 
 let rec inst k b i = indent b k; inst_sc k b i
 
@@ -96,7 +101,10 @@ and inst_aux k b = function
   | Assert e -> bprintf b "assert %a" exp e
   | For (s, n, p, i) ->
       bprintf b "for %s = %a to %a do\n%a" s num n num p (inst (k+4)) i
-  | Misc ss -> list " " string b ss;;
+  | Misc ss -> list " " string b ss
+  | Coproc (c, "send", e :: _) -> bprintf b "send %a to %a" exp e coproc c
+  | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
+  | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s;;
 
 let version b k = bprintf b " (%s)" k;;
 
