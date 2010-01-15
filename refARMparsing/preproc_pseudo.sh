@@ -25,11 +25,11 @@ sed \
     -e 's|^\( *\)while \(.*\)|\1while \2 do|' \
     -e 's|^\( *\)for \(.*\);|\1for \2 do|' \
     -e 's|-\([A-Za-z]\)| \1|g' \
-    -e 's|bit position|bit_position|' \
     -e 's|address of|address_of|' \
     -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
-    -e 's|is not|!=|' \
-    -e 's|is R15|== 15|' \
+    -e 's|is not R|!= |' \
+    -e 's|is R|== |' \
+    -e 's|== R|== |' \
     -e 's|value to|to|' \
     -e 's|v5 and above|v5_and_above|' \
     -e 's|architecture version 5 or above|v5_and_above|' \
@@ -40,7 +40,7 @@ sed \
     -e 's|or above|or_above|' \
     -e 's|dependent operation|dependent_operation|' \
     -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
-    -e "s| of most significant'1' in Rm|_of_most_significant_1(Rm)|" \
+    -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|8_bit_immediate|immed_8|' \
     -e 's|^\( *\)If |\1if |' \
