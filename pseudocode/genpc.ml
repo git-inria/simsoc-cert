@@ -45,7 +45,7 @@ let rec exp b = function
   | SPSR None -> string b "SPSR"
   | SPSR (Some m) -> bprintf b "SPSR_%a" mode m
   | Reg (Num "14", None) -> string b "LR"
-  | Reg (e, o) -> bprintf b "R%a%a" exp e (option "_" mode) o
+  | Reg (e, o) -> bprintf b "R%a%a" pexp e (option "_" mode) o
   | Var s -> string b s
   | Range (CPSR, (Flag _ as r)) -> bprintf b "%a" range r
   | Range (e, (Flag _ as r)) -> bprintf b "%a %a" pexp e range r
