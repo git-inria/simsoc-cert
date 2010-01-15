@@ -32,7 +32,6 @@ type exp =
 | UnpredictableValue
 | Memory of exp * num
 | Coproc_exp of exp * string * exp list
-| Val of exp
 
 and range =
 | Bits of num * num

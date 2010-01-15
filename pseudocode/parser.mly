@@ -143,7 +143,7 @@ exp:
 | RESERVED items           { Other ($1 :: $2) }
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
 | coproc_exp               { $1 }
-| IDENT VALUE              { Val (Var $1) }
+| IDENT VALUE              { Var $1 }
 ;
 coproc_exp:
 | NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }

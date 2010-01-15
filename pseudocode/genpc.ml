@@ -55,7 +55,6 @@ let rec exp b = function
   | Memory (e, n) -> bprintf b "Memory[%a,%a]" exp e num n
   | Coproc_exp (e, "NotFinished", _) -> bprintf b "NotFinished(%a)" coproc e
   | Coproc_exp (e, s, _) -> bprintf b "%s from %a" s coproc e
-  | Val e -> bprintf b "%a value" exp e
 
 and coproc b e = bprintf b "Coprocessor[%a]" exp e
 

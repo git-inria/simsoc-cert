@@ -26,7 +26,7 @@ let rec vars_exp = function
 | BinOp (e1, _, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
 | Var s -> StrSet.singleton s
 | Range (e, r) -> StrSet.union (vars_exp e) (vars_range r)
-| Memory (e, _) | Val e -> vars_exp e
+| Memory (e, _) -> vars_exp e
 | Coproc_exp (e, _, es) -> StrSet.union (vars_exp e) (vars_exps es)
 | CPSR | SPSR _ | Reg _ | Other _ | Num _ | Bin _ | Hex _ | Unaffected
 | UnpredictableValue -> StrSet.empty
