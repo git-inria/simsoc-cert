@@ -123,22 +123,22 @@ simple_exp:
 | REG           { $1 }
 ;
 exp:
-| simple_exp               { $1 }
-| LPAR exp RPAR            { $2 }
 | BIN                      { Bin $1 }
 | HEX                      { Hex $1 }
+| SPSR_MODE                { SPSR $1 }
+| LPAR exp RPAR            { $2 }
 | IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-| binop_exp                { $1 }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| SPSR_MODE                { SPSR $1 }
-| IDENT FLAG               { Range (CPSR, Flag ($1, $2)) }
+| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, $5) }
+| coproc_exp               { $1 }
+| binop_exp                { $1 }
+| simple_exp               { $1 }
+| IDENT FLAG               { Range (CPSR (*FIXME*), Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
-| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, $5) }
 | RESERVED items           { Other ($1 :: $2) }
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
-| coproc_exp               { $1 }
 ;
 coproc_exp:
 | NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }
