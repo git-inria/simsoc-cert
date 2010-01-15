@@ -78,6 +78,7 @@ let rec exp p =
   let rec exp = function
     | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
     | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
+    | Fun ("R", e :: _) -> Reg (e, None)
     | Fun (("OverflowFrom"|"BorrowFrom"
 	   |"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
 	   [BinOp (_, op, _) as e]) -> let es = args e in
