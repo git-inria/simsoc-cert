@@ -69,9 +69,7 @@ let  string_of_op = function
 
 let func p ss =
   let b = Buffer.create 100 in
-    bprintf b "%s_" (ident p.pident);
-    let f = Str.global_replace (Str.regexp "[][',]") "" in
-    Util.list "_" (fun b s -> Util.string b (f s)) b ss;
+    list "_" string b (ident p.pident :: ss);
     Buffer.contents b;;
 
 let rec exp p =
