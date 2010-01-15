@@ -223,6 +223,8 @@ let rec generate_exp buffer expression =
   | BinOp (expr1, "<<", Num "32") ->
       bprintf buffer "(static_cast<uint64_t>(%a) << 32)"
       generate_exp expr1
+  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as num)) ->
+      bprintf buffer "d%s%s" op num
   | BinOp (expr1, "Arithmetic_Shift_Right", expr2) ->
       generate_exp buffer (Fun ("asr", [expr1; expr2]))
   | BinOp (expr1, op, expr2) ->
@@ -230,6 +232,8 @@ let rec generate_exp buffer expression =
       generate_exp expr1 (cxx_op op) generate_exp expr2
   | Fun ("LDR_ARMv5_or_above", []) ->
       generate_exp buffer (Var "v5_and_above")
+  | Fun ("is_even", [Reg (Var "d", None)]) ->
+      string buffer "is_even(d)"
   | Fun (fct, expressions) ->
       bprintf buffer "%s(%a)"
         (gen_fct fct) (list ", " generate_exp) expressions
