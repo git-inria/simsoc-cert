@@ -21,19 +21,20 @@ Pseudocode parser.
 %token EQ IN
 %token UNPREDICTABLE UNAFFECTED
 %token IF THEN ELSE WHILE DO ASSERT FOR TO
-%token CPSR RDPLUS1 MEMORY
-%token COPROC LOAD SEND VALUE NOT_FINISHED FROM
+%token CPSR MEMORY
+%token COPROC LOAD SEND NOT_FINISHED FROM
 %token <Ast.processor_exception_mode option> SPSR_MODE
 %token <Ast.exp> REG
 %token <string> BIN HEX
 %token <Ast.num> NUM
 %token <string> IDENT FLAG RESERVED
-%token <string> NOT EVEN GTEQ LT GT BANGEQ AND OR BOR LSL ASR
-%token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR IS ISNOT
+%token <string> NOT EVEN
+%token <string> GTEQ LT GT BANGEQ AND OR BOR LSL ASR
+%token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
 
 /* lowest precedence */
 %left AND OR
-%left EQEQ IS ISNOT BANGEQ GTEQ
+%left EQEQ BANGEQ GTEQ
 %left BAND BOR EOR ROR LTLT LSL ASR
 %left PLUS MINUS
 %left STAR
@@ -115,15 +116,11 @@ insts:
 ;
 simple_exp:
 | NUM           { Num $1 }
-| var           { Var $1 }
+| IDENT         { Var $1 }
 | CPSR          { CPSR }
 | UNAFFECTED    { Unaffected }
 | UNPREDICTABLE { UnpredictableValue }
 | REG           { $1 }
-;
-var:
-| IDENT         { $1 }
-| VALUE         { "value" }
 ;
 exp:
 | simple_exp               { $1 }
@@ -134,7 +131,6 @@ exp:
 | binop_exp                { $1 }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| IDENT EVEN               { Fun ($2, [Var $1]) }
 | SPSR_MODE                { SPSR $1 }
 | IDENT FLAG               { Range (CPSR, Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
@@ -143,11 +139,10 @@ exp:
 | RESERVED items           { Other ($1 :: $2) }
 | simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
 | coproc_exp               { $1 }
-| IDENT VALUE              { Var $1 }
 ;
 coproc_exp:
 | NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }
-| var FROM coproc               { Coproc_exp ($3, $1, []) }
+| IDENT FROM coproc             { Coproc_exp ($3, $1, []) }
 ;
 binop_exp:
 | exp AND exp    { BinOp ($1, $2, $3) }
@@ -160,8 +155,6 @@ binop_exp:
 | exp EOR exp    { BinOp ($1, $2, $3) }
 | exp STAR exp   { BinOp ($1, $2, $3) }
 | exp ROR exp    { BinOp ($1, $2, $3) }
-| exp IS exp     { BinOp ($1, $2, $3) }
-| exp ISNOT exp  { BinOp ($1, $2, $3) }
 | exp OR exp     { BinOp ($1, $2, $3) }
 | exp BOR exp    { BinOp ($1, $2, $3) }
 | exp LSL exp    { BinOp ($1, $2, $3) }
@@ -187,5 +180,4 @@ item:
 | IDENT    { $1 }
 | FLAG     { $1 }
 | RESERVED { $1 }
-| VALUE    { "value" }
 ;

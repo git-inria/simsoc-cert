@@ -40,17 +40,15 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
       "LR", REG (Reg (Num "14", None)); "PC", REG (Reg (Num "15", None));
-      "pc", REG (Reg (Num "15", None));
+      "pc", REG (Reg (Num "15", None)); "or", OR "or"; "and", AND "and";
       "CPSR", Parser.CPSR; "AND", BAND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
-      "is", IS "is"; "or", OR "or"; "is_not", ISNOT "is_not";
-      "is_even_numbered", EVEN "is_even_numbered"; "and", AND "and";
       "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", BOR "OR";
       "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
       "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"; "from", FROM;
       "SPSR", SPSR_MODE None; "Memory", MEMORY; "load", LOAD; "send", SEND;
-      "Coprocessor", COPROC; "NotFinished", NOT_FINISHED; "value", VALUE]);;
+      "Coprocessor", COPROC; "NotFinished", NOT_FINISHED]);;
 
 let incr_line_number lexbuf =
   let ln = lexbuf.lex_curr_p.pos_lnum

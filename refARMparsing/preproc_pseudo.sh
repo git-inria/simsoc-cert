@@ -27,8 +27,10 @@ sed \
     -e 's|-\([A-Za-z]\)| \1|g' \
     -e 's|bit position|bit_position|' \
     -e 's|address of|address_of|' \
-    -e 's|is even numbered|is_even_numbered|' \
-    -e 's|is not|is_not|' \
+    -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
+    -e 's|is not|!=|' \
+    -e 's|is R15|== 15|' \
+    -e 's|value to|to|' \
     -e 's|v5 and above|v5_and_above|' \
     -e 's|architecture version 5 or above|v5_and_above|' \
     -e 's|v4 and earlier|v4_and_earlier|' \
