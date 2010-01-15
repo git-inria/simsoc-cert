@@ -56,7 +56,8 @@ let incr_line_number lexbuf =
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 			     pos_lnum = ln+1; pos_bol = off };;
 
-let is_register s = s <> "" && s.[0] = 'R';;
+let is_register s =
+  String.length s > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z';;
 
 let ident s =
   try Hashtbl.find keyword_table s
@@ -108,7 +109,7 @@ rule token = parse
   | num as s { NUM s }
   | bin as s { BIN s }
   | hex as s { HEX s }
-  | ident as s { try Hashtbl.find keyword_table s with Not_found -> IDENT s }
+  | ident as s { ident s }
   | eof { EOF }
   | _ { raise Parsing.Parse_error }
 
