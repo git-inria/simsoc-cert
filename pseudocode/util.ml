@@ -30,6 +30,8 @@ module StrSet = Set.Make (StrOrd);;
 
 let string b s = bprintf b "%s" s;;
 
+let prefix p f b x = bprintf b "%s%a" p f x;;
+
 let postfix p f b x = bprintf b "%a%s" f x p;;
 
 let endline f b x = postfix "\n" f b x;;
@@ -43,8 +45,8 @@ let list sep f =
     | x :: xs -> bprintf b "%a%s%a" f x sep aux xs
   in aux;;
 
-let option f b = function
+let option p f b = function
   | None -> ()
-  | Some x -> f b x;;
+  | Some x -> prefix p f b x;;
 
 let par f b x = bprintf b "(%a)" f x;;

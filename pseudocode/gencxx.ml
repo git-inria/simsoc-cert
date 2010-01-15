@@ -60,9 +60,6 @@ let specials = ["CP15_reg1_EEbit"; "Memory"; "Ri"; "Ri_usr";
 
 let var_type v expr =
   match expr with
-(*REMOVE:    | Range (Var "Memory", Index [_; Num "1"]) -> "uint8_t"
-    | Range (Var "Memory", Index [_; Num "2"]) -> "uint16_t"
-    | Range (Var "Memory", Index [_; Num "4"]) -> "uint32_t"*)
     | Memory (_, "1") -> "uint8_t"
     | Memory (_, "2") -> "uint16_t"
     | Memory (_, "4") -> "uint32_t"
@@ -221,8 +218,10 @@ let rec generate_exp buffer expression =
   | If (condition, expr1, expr2) -> bprintf buffer "(%a? %a: %a)"
       generate_exp condition generate_exp expr1 generate_exp expr2
   | BinOp (Var "Rd", "==", Num "15") -> string buffer "Rd==ARM_Processor::PC"
-  | BinOp (Var "Rd", "is", Reg ("15", None)) -> string buffer "Rd==ARM_Processor::PC"
-  | BinOp (Var "Rd", "is_not", Reg ("14", None)) -> string buffer "Rd!=ARM_Processor::LR"
+  | BinOp (Var "Rd", "is", Reg (Num "15", None)) ->
+      string buffer "Rd==ARM_Processor::PC"
+  | BinOp (Var "Rd", "is_not", Reg (Num "14", None)) ->
+      string buffer "Rd!=ARM_Processor::LR"
   | BinOp (expr1, "Rotate_Right", expr2) ->
       generate_exp buffer (Fun ("rotate_right", [expr1; expr2]))
   | BinOp (expr1, "<<", Num "32") ->
@@ -240,10 +239,9 @@ let rec generate_exp buffer expression =
   | CPSR -> string buffer "proc.cpsr"
   | SPSR None -> string buffer "proc.spsr()"
   | SPSR (Some m) -> bprintf buffer "proc.spsr(%s)" (mode m)
-  | Reg (n, None) -> bprintf buffer "proc.reg(%s)" (reg_id n)
-  | Reg (n, Some m) -> bprintf buffer "proc.reg(%s,%s)"(reg_id n) (mode m)
+  | Reg (Num n, None) -> bprintf buffer "proc.reg(%s)" (reg_id n)
+  | Reg (Num n, Some m) -> bprintf buffer "proc.reg(%s,%s)"(reg_id n) (mode m)
   | Var str -> string buffer (generate_var str)
-  | RdPlus1 -> string buffer "proc.reg(Rd+1)"
   | Range (CPSR, Flag (str1,_)) ->
       bprintf buffer "proc.cpsr.%s_flag" str1
   | Range (expr1, Index expr2) ->
@@ -332,17 +330,16 @@ and generate_affect buffer dst src =
                 generate_inst buffer (Proc (fct, [addr; src]))
           | Range (expr1, Index num1) ->
               generate_inst buffer (Proc ("set_bit", [expr1; num1; src]))
-          | (Reg ("15", None)) ->
+          | (Reg (Num "15", None)) ->
               bprintf buffer "proc.set_pc_raw(%a);\n" generate_exp src
-          | (Reg ("15", Some _)) ->
+          | (Reg (Num "15", Some _)) ->
               string buffer "TODO(\"set_pc_with_mode\");\n"
-          | (Reg (num, None)) ->
-              bprintf buffer "proc.reg(%s) = %a;\n" (reg_id num) generate_exp src
-          | (Reg (num, Some m)) ->
+          | (Reg (Num num, None)) ->
+              bprintf buffer "proc.reg(%s) = %a;\n"
+		(reg_id num) generate_exp src
+          | (Reg (Num num, Some m)) ->
               bprintf buffer "proc.reg(%s,%s) = %a;\n"
                 (reg_id num) (mode m) generate_exp src
-          | RdPlus1 ->
-              bprintf buffer "proc.reg(Rd+1) = %a;\n" generate_exp src
           | _ -> string buffer "TODO(\"Affect\");\n"
       );;
 
@@ -365,10 +362,10 @@ let generate_inreg_load buffer str =
 
 let ident_in_comment b i =
   bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
-    (option version_in_comment) i.iversion
+    (option "" version_in_comment) i.iversion
 
 let ident b i =
-  bprintf b "%s%a" i.iname (option version_in_name) i.iversion
+  bprintf b "%s%a" i.iname (option "" version_in_name) i.iversion
 
 let generate_comment buffer p =
   bprintf buffer "// %s %a\n"

@@ -39,7 +39,8 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
-      "LR", REG ("14", None); "PC", REG ("15", None); "pc", REG ("15", None);
+      "LR", REG (Reg (Num "14", None)); "PC", REG (Reg (Num "15", None));
+      "pc", REG (Reg (Num "15", None));
       "CPSR", Parser.CPSR; "AND", BAND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
       "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
@@ -57,12 +58,22 @@ let incr_line_number lexbuf =
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 			     pos_lnum = ln+1; pos_bol = off };;
 
+let is_register s = s <> "" && s.[0] = 'R';;
+
+let ident s =
+  try Hashtbl.find keyword_table s
+  with Not_found ->
+    if is_register s then
+      let s = String.sub s 1 (String.length s - 1) in
+	REG (Reg (Var s, None))
+    else IDENT s
+
 }
 
 let mode = "fiq" | "irq" | "svc" | "abt" | "und"
 
 let digit = ['0'-'9']
-let letter = ['a'-'z' 'A'-'Z' '_' '.' '\'']
+let letter = ['a'-'z' 'A'-'Z' '_' '.']
 
 let ident = letter (letter|digit)*
 
@@ -93,9 +104,9 @@ rule token = parse
   | ">=" as s { GTEQ s }
   | "!=" as s { BANGEQ s }
   | "SPSR_" (mode as m) { SPSR_MODE (Some (mode_of_string m)) }
-  | "R" (num as s) { REG (s, None) }
-  | "R" (num as s) "_" (mode as m) { REG (s, Some (mode_of_string m)) }
-  | "R(d+1)" { RDPLUS1 }
+  | "R" (num as s) { REG (Reg (Num s, None)) }
+  | "R" (num as s) "_" (mode as m)
+      { REG (Reg (Num s, Some (mode_of_string m))) }
   | num as s { NUM s }
   | bin as s { BIN s }
   | hex as s { HEX s }

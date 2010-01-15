@@ -44,11 +44,9 @@ let rec exp b = function
   | CPSR -> string b "CPSR"
   | SPSR None -> string b "SPSR"
   | SPSR (Some m) -> bprintf b "SPSR_%a" mode m
-  | Reg ("14", None) -> string b "LR"
-  | Reg (n, None) -> bprintf b "R%a" num n
-  | Reg (n, Some m) -> bprintf b "R%a_%a" num n mode m
+  | Reg (Num "14", None) -> string b "LR"
+  | Reg (e, o) -> bprintf b "R%a%a" exp e (option "_" mode) o
   | Var s -> string b s
-  | RdPlus1 -> string b "R(d+1)"
   | Range (CPSR, (Flag _ as r)) -> bprintf b "%a" range r
   | Range (e, (Flag _ as r)) -> bprintf b "%a %a" pexp e range r
   | Range (e, r) -> bprintf b "%a%a" pexp e range r
@@ -89,7 +87,7 @@ and inst_aux k b = function
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
   | Unpredictable -> bprintf b "UNPREDICTABLE"
-  | Affect (Reg ("15", None), e) -> bprintf b "PC = %a" exp e
+  | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
   | IfThenElse (e, i, None) ->
       bprintf b "if %a then\n%a" exp e (inst (k+4)) i
@@ -106,12 +104,13 @@ and inst_aux k b = function
   | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
   | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s;;
 
-let version b k = bprintf b " (%s)" k;;
+let version b k = bprintf b "(%s)" k;;
 
 let var b s = bprintf b "<%s>" s;;
 
 let ident b i =
-  bprintf b "%s%a%a" i.iname (list "" var) i.ivars (option version) i.iversion;;
+  bprintf b "%s%a%a" i.iname (list "" var) i.ivars
+    (option " " version) i.iversion;;
 
 let prog b p =
   bprintf b "%s %a\n%a\n" p.pref

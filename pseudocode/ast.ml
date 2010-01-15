@@ -25,9 +25,8 @@ type exp =
 | Other of string list
 | CPSR
 | SPSR of processor_exception_mode option
-| Reg of (num * processor_exception_mode option)
+| Reg of exp * processor_exception_mode option
 | Var of string
-| RdPlus1
 | Range of exp * range
 | Unaffected
 | UnpredictableValue

@@ -25,7 +25,6 @@ let rec vars_exp = function
 | Fun (_, es) -> vars_exps es
 | BinOp (e1, _, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
 | Var s -> StrSet.singleton s
-| RdPlus1 -> StrSet.singleton "Rd"
 | Range (e, r) -> StrSet.union (vars_exp e) (vars_range r)
 | Memory (e, _) | Val e -> vars_exp e
 | Coproc_exp (e, _, es) -> StrSet.union (vars_exp e) (vars_exps es)
@@ -92,9 +91,8 @@ let rec exp p =
            [BinOp (e, "*", Num "2"); Num n]) ->
         Fun ((sprintf "%s_double%s" f n), [exp e])
     | Fun (f, es) -> Fun (f, List.map exp es)
-    | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, Num n)
-    | BinOp (e1, f, e2) -> (*Fun (f, List.map exp [e1; e2])*)
-	BinOp (exp e1, f, exp e2)
+    | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, n)
+    | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
     | Other ss -> Fun (func p ss, [])
     | Range (e, r) -> Range (exp e, range p r)
     | UnpredictableValue ->

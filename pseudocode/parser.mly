@@ -24,7 +24,7 @@ Pseudocode parser.
 %token CPSR RDPLUS1 MEMORY
 %token COPROC LOAD SEND VALUE NOT_FINISHED FROM
 %token <Ast.processor_exception_mode option> SPSR_MODE
-%token <Ast.num * Ast.processor_exception_mode option> REG
+%token <Ast.exp> REG
 %token <string> BIN HEX
 %token <Ast.num> NUM
 %token <string> IDENT FLAG RESERVED
@@ -119,6 +119,7 @@ simple_exp:
 | CPSR          { CPSR }
 | UNAFFECTED    { Unaffected }
 | UNPREDICTABLE { UnpredictableValue }
+| REG           { $1 }
 ;
 var:
 | IDENT         { $1 }
@@ -135,8 +136,6 @@ exp:
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | IDENT EVEN               { Fun ($2, [Var $1]) }
 | SPSR_MODE                { SPSR $1 }
-| REG                      { Reg $1 }
-| RDPLUS1                  { RdPlus1 }
 | IDENT FLAG               { Range (CPSR, Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
