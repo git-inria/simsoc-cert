@@ -23,7 +23,17 @@ struct ARM_MMU {
   void write_word(uint32_t addr, uint32_t data);
 };
 
-struct ARM_SystemCoprocessor {
+struct ARM_Coprocessor {
+  virtual void dependent_operation();
+  virtual void load(uint32_t);
+  virtual void send(uint32_t);
+  virtual bool NotFinished() const;
+  virtual uint32_t first_value();
+  virtual uint32_t second_value();
+  virtual uint32_t value();
+};
+
+struct ARM_SystemCoprocessor: ARM_Coprocessor {
   bool get_reg1_EEbit() const;
   bool get_reg1_Ubit() const;
 };
@@ -56,6 +66,7 @@ struct ARM_Processor {
   static const uint8_t PC = 15;
   static const uint8_t LR = 14;
   static const uint8_t SP = 13;
+  static const bool v5_and_above = true;
 
   // members
   ARM_MMU mmu;
@@ -74,6 +85,7 @@ struct ARM_Processor {
   bool current_mode_has_spsr() const;
   StatusRegister &spsr();
   StatusRegister &spsr(Mode);
+  ARM_Coprocessor *coproc(uint8_t cp_num);
 
   // static methods
   static uint32_t msr_UnallocMask();
@@ -106,13 +118,13 @@ struct ARM_ISS_Base {
 
   bool BKPT_not_overridden_by_debug_hardware();
   bool BXJ_JE_bit_of_Main_Configuration_register();
-  uint32_t BXJ_SUB_ARCHITECTURE_DEFINED_value();
+  uint32_t BXJ_SUBARCHITECTURE_DEFINED_value();
   bool BXJ_Jazelle_Extension_accepts_opcode_at_jpc();
   bool BXJ_CV_bit_of_Jazelle_OS_Control_register();
   void BXJ_Start_opcode_execution_at_jpc();
   bool BXJ_IMPLEMENTATION_DEFINED_CONDITION();
   void CDP_Coprocessor_cp_num_dependent_operation();
-  uint32_t CLZ_bit_position_of_most_significant1_in_Rm();
+  uint32_t bit_position_of_most_significant_1(uint8_t reg_id);
   uint32_t SETEND_CPSR_with_specified_E_bit_modification();
 
   void LDC_load_Memoryaddress4_for_Coprocessor_cp_num();
@@ -127,6 +139,7 @@ struct ARM_ISS_Base {
   uint32_t MRRC_first_value_from_Coprocessor_cp_num();
   uint32_t MRRC_second_value_from_Coprocessor_cp_num();
 
+  static bool is_even(uint8_t x) {return !(x&1);}
   static bool CarryFrom8_add2(uint8_t, uint8_t);
   static bool CarryFrom16_add2(uint16_t, uint16_t);
   static bool CarryFrom_add2(uint32_t, uint32_t);
