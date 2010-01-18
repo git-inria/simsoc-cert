@@ -95,8 +95,8 @@ let rec exp_variables (parameters,locals) expression =
 
 let rec inst_variables (parameters,locals) instruction =
   match instruction with
-    | Block insructions ->
-        List.fold_left inst_variables (parameters,locals) insructions
+    | Block instructions ->
+        List.fold_left inst_variables (parameters,locals) instructions
     | IfThenElse (condition, instruction, None) ->
         let variables = exp_variables (parameters,locals) condition in
           inst_variables variables instruction
@@ -274,9 +274,9 @@ let rec generate_exp buffer expression =
 
 let rec generate_inst buffer instruction =
   match instruction with
-    | Block insructions ->
+    | Block instructions ->
         bprintf buffer "%a"
-          (list "" generate_inst) insructions
+          (list "" generate_inst) instructions
     | Unpredictable -> string buffer "unpredictable();\n"
     | Affect (dst, src) -> generate_affect buffer dst src
     | IfThenElse (condition, instruction, None) ->
