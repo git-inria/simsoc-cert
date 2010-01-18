@@ -38,7 +38,7 @@ let cxx_type_of = function
   | "opcode" | "byte_mask" | "mask" | "sum" | "diff" -> "uint32_t"
   | "operand1" | "operand2" | "product1" | "product2" | "temp" -> "uint32_t"
   | "diff1" | "diff2" | "diff3" | "diff4" -> "uint32_t"
-  | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "i_usr" -> "uint8_t"
+  | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "uint8_t"
   | "cond" -> "ARM_Processor::Condition"
   | "mode" -> "ARM_Processor::Mode"
   | "imod" | "immed_8" | "rotate_imm" | "field_mask" -> "uint8_t"
