@@ -42,6 +42,7 @@ sed \
     -e 's|dependent operation|dependent_operation|' \
     -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
+    -e 's|Start opcode execution at \(.*\);|Start_opcode_execution_at(\1);|' \
     -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|8_bit_immediate|immed_8|' \
     -e 's|^\( *\)If |\1if |' \
