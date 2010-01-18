@@ -67,9 +67,9 @@ let  string_of_op = function
   | "-" -> "sub"
   | s -> s;;
 
-let func p ss =
+let func ss =
   let b = Buffer.create 100 in
-    list "_" string b (ident p.pident :: ss);
+    list "_" string b ss;
     Buffer.contents b;;
 
 let rec exp p =
@@ -92,7 +92,7 @@ let rec exp p =
     | Fun (f, es) -> Fun (f, List.map exp es)
     | BinOp (e, ("==" as f), Reg (n, None)) -> BinOp (exp e, f, n)
     | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
-    | Other ss -> Fun (func p ss, [])
+    | Other ss -> Fun (func ss, [])
     | Range (e, r) -> Range (exp e, range p r)
     | UnpredictableValue ->
 	Fun (sprintf "%s_UnpredictableValue" (ident p.pident), [])
@@ -129,7 +129,7 @@ let inst p =
     | While (e, i) -> While (exp e, inst i)
     | Assert _ -> nop
     | For (s, n, p, i) -> For (s, n, p, inst i)
-    | Misc ss -> Proc (func p ss, [])
+    | Misc ss -> Proc (func ss, [])
     | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
   in inst
 
