@@ -33,11 +33,11 @@ sed \
     -e 's|value to|to|' \
     -e 's|v5 and above|v5_and_above|' \
     -e 's|architecture version 5 or above|v5_and_above|' \
+    -e 's|ARMv5 or above|v5_and_above|' \
     -e 's|v4 and earlier|v4_and_earlier|' \
     -e 's|first value|first_value|' \
     -e 's|second value|second_value|' \
     -e 's|CPSR with|CPSR_with|' \
-    -e 's|or above|or_above|' \
     -e 's|dependent operation|dependent_operation|' \
     -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
