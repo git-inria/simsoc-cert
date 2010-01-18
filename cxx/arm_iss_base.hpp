@@ -121,7 +121,7 @@ struct ARM_ISS_Base {
   uint32_t SUBARCHITECTURE_DEFINED_value();
   bool Jazelle_Extension_accepts_opcode_at_jpc();
   bool CV_bit_of_Jazelle_OS_Control_register();
-  void Start_opcode_execution_at_jpc();
+  void Start_opcode_execution_at(uint32_t);
   bool IMPLEMENTATION_DEFINED_CONDITION();
   uint32_t CPSR_with_specified_E_bit_modification();
 
