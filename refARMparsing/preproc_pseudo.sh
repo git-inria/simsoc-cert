@@ -25,6 +25,7 @@ sed \
     -e 's|^\( *\)while \(.*\)|\1while \2 do|' \
     -e 's|^\( *\)for \(.*\);|\1for \2 do|' \
     -e 's|-\([A-Za-z]\)| \1|g' \
+    -e 's|_usr||g' \
     -e 's|address of|address_of|' \
     -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
     -e 's|is not R|!= |' \
