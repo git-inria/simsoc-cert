@@ -29,34 +29,26 @@ let bin_to_hex = function
 (** C++ types of usual variables *)
 
 let cxx_type_of = function
-  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "shift" -> "bool"
-  | "signed_immed_24" | "H" -> "uint32_t"
-  | "shifter_operand" -> "uint32_t"
+
+  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "shift"
   | "shifter_carry_out" -> "bool"
-  | "alu_out" | "target" | "data" | "value" | "diffofproducts" -> "uint32_t"
-  | "address" | "start_address" | "physical_address" | "operand" -> "uint32_t"
-  | "opcode" | "byte_mask" | "mask" | "sum" | "diff" -> "uint32_t"
-  | "operand1" | "operand2" | "product1" | "product2" | "temp" -> "uint32_t"
-  | "diff1" | "diff2" | "diff3" | "diff4" -> "uint32_t"
-  | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "uint8_t"
+
+  | "signed_immed_24" | "H" | "shifter_operand" | "alu_out" | "target"
+  | "data" | "value" | "diffofproducts" | "address" | "start_address"
+  | "physical_address" | "operand" | "opcode" | "byte_mask" | "mask"
+  | "sum" | "diff" | "operand1" | "operand2" | "product1" | "product2"
+  | "temp" | "diff1" | "diff2" | "diff3" | "diff4" | "invalidhandler"
+  | "jpc" -> "uint32_t"
+
+  | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
+  | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num" -> "uint8_t"
+
   | "cond" -> "ARM_Processor::Condition"
   | "mode" -> "ARM_Processor::Mode"
-  | "imod" | "immed_8" | "rotate_imm" | "field_mask" -> "uint8_t"
-  | "shift_imm" | "sat_imm" | "rotate" | "cp_num" -> "uint8_t"
   | "register_list" -> "uint16_t"
   | "accvalue" | "result" -> "uint64_t"
-  | "invalidhandler" | "jpc" -> "uint32_t"
   | "processor_id" -> "size_t"
   | _ -> "TODO";;
-
-let input_registers = ["n"; "m"; "s"];;
-let output_registers = ["d"; "dHi"; "dLo"; "n"];;
-
-let specials = ["CP15_reg1_EEbit";
-                "CP15_reg1_Ubit"; "GE"; "i"; "v5_and_above";
-                "UnallocMask"; "StateMask"; "UserMask"; "PrivMask"]
-
-(** List the variables of a prog *)
 
 let var_type v expr =
   match expr with
@@ -64,6 +56,14 @@ let var_type v expr =
     | Memory (_, "2") -> "uint16_t"
     | Memory (_, "4") -> "uint32_t"
     | _ -> cxx_type_of v;;
+
+(** List the variables of a prog *)
+
+let input_registers = ["n"; "m"; "s"];;
+let output_registers = ["d"; "dHi"; "dLo"; "n"];;
+
+let specials = ["CP15_reg1_EEbit"; "CP15_reg1_Ubit"; "GE"; "i"; "v5_and_above";
+                "UnallocMask"; "StateMask"; "UserMask"; "PrivMask"];;
 
 let rec exp_variables (parameters,locals) expression =
   match expression with
