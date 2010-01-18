@@ -149,7 +149,9 @@ let mode = function
   | Irq -> "ARM_Processor::irq"
   | Svc -> "ARM_Processor::svc"
   | Abt -> "ARM_Processor::abt"
-  | Und -> "ARM_Processor::und";;
+  | Und -> "ARM_Processor::und"
+  | Usr -> "ARM_Processor::usr"
+  | Sys -> "ARM_Processor::sys";;
 
 let cxx_op = function
   | "and" -> "&&"

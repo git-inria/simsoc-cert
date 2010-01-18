@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Pseudocode abstract syntax tree.
 *)
 
-type processor_exception_mode = Fiq | Irq | Svc | Abt | Und;;
+type processor_exception_mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 
 type num = string;;
 

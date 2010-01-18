@@ -22,7 +22,9 @@ let string_of_mode = function
   | Irq -> "irq"
   | Svc -> "svc"
   | Abt -> "abt"
-  | Und -> "und";;
+  | Und -> "und"
+  | Usr -> "usr"
+  | Sys -> "sys";;
 
 let mode b m = string b (string_of_mode m);;
 

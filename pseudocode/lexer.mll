@@ -26,6 +26,8 @@ let mode_of_string = function
   | "svc" -> Svc
   | "abt" -> Abt
   | "und" -> Und
+  | "usr" -> Usr
+  | "sys" -> Sys
   | _ -> invalid_arg "mode_of_string";;
 
 let keyword_table = Hashtbl.create 53;;
@@ -55,17 +57,27 @@ let incr_line_number lexbuf =
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 			     pos_lnum = ln+1; pos_bol = off };;
 
-let is_register s =
+let register s =
   let n = String.length s in
-  n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z';;
+  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' then
+    if n < 4 then Some (String.sub s 1 (n-1), None)
+    else match String.sub s (n-4) 4 with
+      | "_fiq" -> Some (String.sub s 1 (n-5), Some Fiq)
+      | "_irq" -> Some (String.sub s 1 (n-5), Some Irq)
+      | "_svc" -> Some (String.sub s 1 (n-5), Some Svc)
+      | "_abt" -> Some (String.sub s 1 (n-5), Some Abt)
+      | "_und" -> Some (String.sub s 1 (n-5), Some Und)
+      | "_usr" -> Some (String.sub s 1 (n-5), Some Usr)
+      | "_sys" -> Some (String.sub s 1 (n-5), Some Sys)
+      | _ -> Some (String.sub s 1 (n-1), None)
+  else None;;
 
 let ident s =
   try Hashtbl.find keyword_table s
   with Not_found ->
-    if is_register s then
-      let s = String.sub s 1 (String.length s - 1) in
-	REG (Reg (Var s, None))
-    else IDENT s
+    match register s with
+      | None -> IDENT s
+      | Some (n, m) -> REG (Reg (Var n, m));;
 
 }
 
