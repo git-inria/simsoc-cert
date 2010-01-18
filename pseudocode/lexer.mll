@@ -33,9 +33,8 @@ let keyword_table = Hashtbl.create 53;;
 let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
   (List.map (fun s -> s, RESERVED s)
      (* words starting an English expression *)
-     ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "Jazelle";
-      "CV"; "bit_position"; "architecture"; "SUBARCHITECTURE";
-      "Start"; "CPSR_with"; "ARMv5"]
+     ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "Jazelle"; "CV";
+      "SUBARCHITECTURE"; "CPSR_with"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
@@ -57,7 +56,8 @@ let incr_line_number lexbuf =
 			     pos_lnum = ln+1; pos_bol = off };;
 
 let is_register s =
-  String.length s > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z';;
+  let n = String.length s in
+  n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z';;
 
 let ident s =
   try Hashtbl.find keyword_table s
