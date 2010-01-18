@@ -137,13 +137,11 @@ let prog_variables p =
 (** Generate the code corresponding to an expression *)
 
 let gen_fct = function
-  | "B_address_of_the_instruction_after_the_branch_instruction" -> "next_instr"
-  | "BKPT_address_of_BKPT_instruction" -> "this_instr"
-  | "BLX1_address_of_the_instruction_after_the_BLX_instruction" -> "next_instr"
-  | "BLX2_address_of_instruction_after_the_BLX_instruction" -> "next_instr"
-  | "SWI_address_of_next_instruction_after_the_SWI_instruction" -> "next_instr"
-  | "BKPT_high_vectors_configured" -> "high_vectors_configured"
-  | "SWI_high_vectors_configured" -> "high_vectors_configured"
+  | "address_of_the_instruction_after_the_branch_instruction" -> "next_instr"
+  | "address_of_BKPT_instruction" -> "this_instr"
+  | "address_of_the_instruction_after_the_BLX_instruction" -> "next_instr"
+  | "address_of_instruction_after_the_BLX_instruction" -> "next_instr"
+  | "address_of_next_instruction_after_the_SWI_instruction" -> "next_instr"
   | str -> str;;
 
 let mode = function
@@ -230,8 +228,6 @@ let rec generate_exp buffer expression =
   | BinOp (expr1, op, expr2) ->
       bprintf buffer "(%a %s %a)"
       generate_exp expr1 (cxx_op op) generate_exp expr2
-  | Fun ("LDR_ARMv5_or_above", []) ->
-      generate_exp buffer (Var "v5_and_above")
   | Fun ("is_even", [Reg (Var "d", None)]) ->
       string buffer "is_even(d)"
   | Fun (fct, expressions) ->
