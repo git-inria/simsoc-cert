@@ -104,7 +104,6 @@ struct ARM_ISS_Base {
   uint32_t next_instr() const {return proc.reg(ARM_Processor::PC)-4;}
   uint32_t this_instr() const {return proc.reg(ARM_Processor::PC)-8;}
   bool InAPrivilegedMode() const;
-  bool version_5_or_above() const;
   uint32_t TLB(uint32_t virtual_address) const;
   bool Shared(uint32_t virtual_address) const;
   bool high_vectors_configured();
@@ -141,21 +140,33 @@ struct ARM_ISS_Base {
     return OverflowFrom_sub2(a,b);}
 
   static uint32_t SignExtend_24to30(uint32_t x) {return x&(1<<23) ? 0x7f000000|x : x;}
-  static uint32_t SignExtend(uint16_t);
-  static uint32_t SignExtend(uint8_t);
+  static uint32_t SignExtend(uint16_t x) {
+    return static_cast<uint32_t>(static_cast<int32_t>(static_cast<int16_t>(x)));}
+  static uint32_t SignExtend(uint8_t x) {
+    return static_cast<uint32_t>(static_cast<int32_t>(static_cast<int8_t>(x)));}
   static uint32_t ZeroExtend(uint32_t x) {return x;}
   static uint32_t NOT(uint32_t x) {return ~x;}
-  static uint32_t rotate_right(uint32_t, uint32_t);
-  static uint32_t asr(uint32_t, uint32_t);
+  static uint32_t NOT(bool x) {return !x;}
+  static uint32_t rotate_right(uint32_t x, uint32_t n) {
+    return (x<<(32-n)) | (x>>n);}
+  static uint32_t asr(uint32_t x, uint32_t n) {
+    return static_cast<uint32_t>(static_cast<int32_t>(x)>>n);}
   static uint16_t get_half_0(uint32_t x) {return x;}
   static uint16_t get_half_1(uint32_t x) {return x>>16;}
   static uint8_t get_byte_0(uint32_t x) {return x;}
   static uint8_t get_byte_1(uint32_t x) {return x>>8;}
   static uint8_t get_byte_2(uint32_t x) {return x>>16;}
   static uint8_t get_byte_3(uint32_t x) {return x>>24;}
-  static uint32_t get_bits(uint32_t,uint32_t,uint32_t);
-  static void set_bit(uint32_t &dst, uint32_t num, bool src);
-  static void set_bit(uint8_t &dst, uint8_t num, bool src);
+  static uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
+    return (x>>b) & ((1<<(a-b))-1);}
+  static void set_bit(uint32_t &dst, uint32_t num, bool src) {
+    if (src) dst |= (1<<num);
+    else dst &=~ (1<<num);
+  }
+  static void set_bit(uint8_t &dst, uint8_t num, bool src) {
+    if (src) dst |= (1<<num);
+    else dst &=~ (1<<num);
+  }
   static void set_field(uint64_t &dst, size_t num1, size_t num, uint64_t src);
   static void set_field(uint32_t &dst, uint32_t num1, uint32_t num, uint32_t src);
   static void set_field(uint8_t &dst, uint8_t num1, uint8_t num, uint8_t src);
