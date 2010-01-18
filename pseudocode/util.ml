@@ -23,6 +23,7 @@ module StrOrd = struct
 end;;
 
 module StrSet = Set.Make (StrOrd);;
+module StrMap = Map.Make (StrOrd);;
 
 (***********************************************************************)
 (** printing in a buffer *)

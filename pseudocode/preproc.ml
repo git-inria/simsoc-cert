@@ -19,39 +19,59 @@ open Util;;
 (** program variables *)
 (***********************************************************************)
 
-let rec vars_exp = function
-| If (e1, e2, e3) ->
-    StrSet.union (vars_exp e1) (StrSet.union (vars_exp e2) (vars_exp e3))
-| Fun (_, es) -> vars_exps es
-| BinOp (e1, _, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
-| Var s -> StrSet.singleton s
-| Range (e, r) -> StrSet.union (vars_exp e) (vars_range r)
-| Memory (e, _) -> vars_exp e
-| Coproc_exp (e, _, es) -> StrSet.union (vars_exp e) (vars_exps es)
-| CPSR | SPSR _ | Reg _ | Other _ | Num _ | Bin _ | Hex _ | Unaffected
-| UnpredictableValue -> StrSet.empty
+module type Gen = sig
+  type typ;;
+  val local_type : string -> exp -> typ;;
+end;;
 
-and vars_range = function
-  | Index e -> vars_exp e
-  | Bits _ | Flag _ -> StrSet.empty
+module Make (G : Gen) = struct
 
-and vars_exps es =
-  List.fold_left (fun s e -> StrSet.union s (vars_exp e)) StrSet.empty es;;
+  let set_of_list =
+    List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
 
-let rec vars_inst = function
-  | Block is ->
-      List.fold_left (fun s i -> StrSet.union s (vars_inst i)) StrSet.empty is
-  | Affect (e1, e2) -> StrSet.union (vars_exp e1) (vars_exp e2)
-  | IfThenElse (e, i, None) -> StrSet.union (vars_exp e) (vars_inst i)
-  | IfThenElse (e, i1, Some i2) ->
-      StrSet.union (vars_exp e) (StrSet.union (vars_inst i1) (vars_inst i2))
-  | Proc (_, es) -> vars_exps es
-  | While (e, i) -> StrSet.union (vars_exp e) (vars_inst i)
-  | For (_, _, _, i) -> vars_inst i
-  | Coproc (c, _, es) -> StrSet.union (vars_exp c) (vars_exps es)
-  | Unpredictable | Misc _ | Assert _ -> StrSet.empty;;
+  let input_registers = set_of_list ["n"; "m"; "s"];;
+  let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
+  let specials = set_of_list
+    ["CP15_reg1_EEbit"; "CP15_reg1_Ubit"; "GE"; "i"; "v5_and_above";
+     "UnallocMask"; "StateMask"; "UserMask"; "PrivMask"];;
 
-let vars p = vars_inst p.pinst;;
+let rec vars_exp ((gs,ls) as acc) = function
+  | Var s ->
+      if StrSet.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+      then acc
+      else StrSet.add s gs, ls
+  | If (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
+  | Fun (_, es) -> vars_exps acc es
+  | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
+  | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
+  | Coproc_exp (e, _ , es) -> vars_exps (vars_exp acc e) es
+  | _ -> acc
+
+and vars_exps acc es = List.fold_left vars_exp acc es;;
+
+let rec vars_inst ((gs,ls) as acc) = function
+    | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
+	(if StrSet.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+	 then acc
+	 else
+	   if StrSet.mem s output_registers
+	   then StrSet.add s gs, ls
+	   else gs, StrMap.add s (G.local_type s e) ls) e
+    | Block is -> vars_insts acc is
+    | IfThenElse (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
+    | IfThenElse (e, i1, Some i2) ->
+	vars_inst (vars_inst (vars_exp acc e) i1) i2
+    | Proc (_, es) -> vars_exps acc es
+    | For (_, _, _, i) -> vars_inst acc i
+    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
+    | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
+    | _ -> (gs,ls)
+
+and vars_insts acc is = List.fold_left vars_inst acc is;;
+
+let vars p = vars_inst (StrSet.empty, StrMap.empty) p.pinst;;
+
+end;;
 
 (***********************************************************************)
 (** program preprocessing *)

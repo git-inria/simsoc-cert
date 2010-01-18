@@ -60,6 +60,19 @@ let var_type v expr =
 (** List the variables of a prog *)
 
 let input_registers = ["n"; "m"; "s"];;
+
+module G = struct
+  type typ = string;;
+  let local_type = var_type;;
+end;;
+
+module V = Preproc.Make(G);;
+
+let prog_variables p =
+  let gs, ls = V.vars p in
+    StrSet.elements gs, StrMap.fold (fun s t l -> (s,t)::l) ls [];;
+
+(*REMOVE:
 let output_registers = ["d"; "dHi"; "dLo"; "n"];;
 
 let specials = ["CP15_reg1_EEbit"; "CP15_reg1_Ubit"; "GE"; "i"; "v5_and_above";
@@ -133,6 +146,7 @@ let rec inst_variables (parameters,locals) instruction =
 
 let prog_variables p =
   inst_variables ([],[]) p.pinst;;
+*)
 
 (** Generate the code corresponding to an expression *)
 
