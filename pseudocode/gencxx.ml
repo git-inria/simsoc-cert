@@ -67,7 +67,7 @@ end;;
 
 module V = Preproc.Make(G);;
 
-let prog_variables p =
+let variables p =
   let gs, ls = V.vars p in
     StrSet.elements gs, StrMap.fold (fun s t l -> (s,t)::l) ls [];;
 
@@ -155,8 +155,8 @@ let rec exp b = function
   | BinOp (e, "<<", Num "32") ->
       bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
-(*REMOVE  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as num)) ->
-      bprintf b "d%s%s" op num*)
+(*REMOVE  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as n)) ->
+      bprintf b "d%s%s" op n*)
 (*REMOVE:  | Fun ("is_even", [Reg (Var "d", None)]) -> string b "is_even(d)"*)
   | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
   | CPSR -> string b "proc.cpsr"
@@ -169,7 +169,7 @@ let rec exp b = function
   | Reg (e, None) -> bprintf b "proc.reg(%a)" exp e
   | Reg (e, Some m) -> bprintf b "proc.reg(%a,%s)" exp e (mode m)
   | Var str -> string b (var str)
-  | Memory (e, num) -> bprintf b "proc.mmu.read_%s(%a)" (access_type num) exp e
+  | Memory (e, n) -> bprintf b "proc.mmu.read_%s(%a)" (access_type n) exp e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
   | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2
   | Range (e, Bits (n1, n2)) ->
@@ -182,8 +182,8 @@ let rec exp b = function
         | "31", "24" -> bprintf b "get_byte_3(%a)" exp e
         | _ -> bprintf b "get_bits(%a,%s,%s)" exp e n1 n2
       end
-  | Coproc_exp (e, fct, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func fct) (list ", " exp) es
+  | Coproc_exp (e, f, es) ->
+      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
   | _ -> string b "TODO(\"exp\")";;
 
 (** Generate the body of an instruction function *)
@@ -222,16 +222,15 @@ and affect b dst src =
     | SPSR _ as e -> bprintf b "%a = %a;\n" exp e exp src
     | Range (CPSR, Flag (s,_)) ->
         bprintf b "proc.cpsr.%s_flag = %a;\n" s exp src
-    | Range (CPSR, Index (Num num)) ->
-        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_flag num) exp src
-    | Range (CPSR, Bits (num1, num2)) ->
-        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_field (num1,num2)) exp src
-    | Range (e1, Bits (num1, num2)) ->
-        inst b (Proc ("set_field", [e1; Num num1; Num num2; src]))
-    | Memory (addr, num) ->
-        inst b (Proc ("proc.mmu.write_" ^ access_type num, [addr; src]))
-    | Range (e1, Index num1) ->
-        inst b (Proc ("set_bit", [e1; num1; src]))
+    | Range (CPSR, Index (Num n)) ->
+        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_flag n) exp src
+    | Range (CPSR, Bits (n1, n2)) ->
+        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_field (n1,n2)) exp src
+    | Range (e1, Bits (n1, n2)) ->
+        inst b (Proc ("set_field", [e1; Num n1; Num n2; src]))
+    | Memory (addr, n) ->
+        inst b (Proc ("proc.mmu.write_" ^ access_type n, [addr; src]))
+    | Range (e, Index n) -> inst b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\");\n";;
 
 (** Generate a function modeling an instruction of the processor *)
@@ -259,26 +258,27 @@ let comment b p =
   bprintf b "// %s %a\n"
     p.pref (list ", " ident_in_comment) (p.pident :: p.paltidents);;
 
-(*FIXME: optimize: pass prog_variables as argument!*)
-
-let prog b p =
-  let parameters, locals = prog_variables p in
-  let inregs = List.filter (fun x -> List.mem x input_registers) parameters in
+let prog gs ls b p =
+  let inregs = List.filter (fun x -> List.mem x input_registers) gs in
     bprintf b "%avoid ARM_ISS::%a(%a) {\n%a%a%a}\n" comment p
       (list "_" ident) (p.pident :: p.paltidents)
-      (list ",\n    " prog_arg) parameters
+      (list ",\n    " prog_arg) gs
       (list "" inreg_load) inregs
-      (list "" local_decl) locals
+      (list "" local_decl) ls
       inst p.pinst;;
 
-let decl b p =
-  let parameters, _ = prog_variables p in
-    bprintf b "  %a  void %a(%a);\n" comment p
-      (list "_" ident) (p.pident :: p.paltidents)
-      (list ",\n    " prog_arg) parameters;;
+let decl gs b p =
+  bprintf b "  %a  void %a(%a);\n" comment p
+    (list "_" ident) (p.pident :: p.paltidents)
+    (list ",\n    " prog_arg) gs;;
 
 let lib b ps =
-  bprintf b
+  let b2 = Buffer.create 10000 in
+  let decl_and_prog b p =
+    let gs, ls = variables p in
+      bprintf b "%a\n" (decl gs) p;
+      bprintf b2 "%a\n" (prog gs ls) p
+  in
+    bprintf b
 "#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
-    (list "\n" decl) ps
-    (list "\n" prog) ps;;
+    (list "" decl_and_prog) ps Buffer.add_buffer b2;;
