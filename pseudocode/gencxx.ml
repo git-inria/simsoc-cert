@@ -17,7 +17,7 @@ open Util;;
 
 let num = string;;
 
-let bin_to_hex = function
+let hex_of_bin = function
   | "0b00" | "0b0" -> "0"
   | "0b01" | "0b1" -> "1"
   | "0b10" -> "2"
@@ -28,7 +28,7 @@ let bin_to_hex = function
 
 (** C++ types of usual variables *)
 
-let cxx_type_of = function
+let type_of_var = function
 
   | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "shift"
   | "shifter_carry_out" -> "bool"
@@ -50,18 +50,19 @@ let cxx_type_of = function
   | "processor_id" -> "size_t"
   | _ -> "TODO";;
 
-let var_type v expr =
-  match expr with
-    | Memory (_, "1") -> "uint8_t"
-    | Memory (_, "2") -> "uint16_t"
-    | Memory (_, "4") -> "uint32_t"
-    | _ -> cxx_type_of v;;
-
 (** List the variables of a prog *)
 
 module G = struct
+
   type typ = string;;
-  let local_type = var_type;;
+
+  let local_type s e =
+    match e with
+      | Memory (_, "1") -> "uint8_t"
+      | Memory (_, "2") -> "uint16_t"
+      | Memory (_, "4") -> "uint32_t"
+      | _ -> type_of_var s;;
+
 end;;
 
 module V = Preproc.Make(G);;
@@ -72,24 +73,17 @@ let prog_variables p =
 
 (** Generate the code corresponding to an expression *)
 
-let gen_fct = function
-  | "address_of_the_instruction_after_the_branch_instruction" -> "next_instr"
+let func = function
   | "address_of_BKPT_instruction" -> "this_instr"
-  | "address_of_the_instruction_after_the_BLX_instruction" -> "next_instr"
-  | "address_of_instruction_after_the_BLX_instruction" -> "next_instr"
+  | "address_of_the_instruction_after_the_branch_instruction"
+  | "address_of_the_instruction_after_the_BLX_instruction"
+  | "address_of_instruction_after_the_BLX_instruction"
   | "address_of_next_instruction_after_the_SWI_instruction" -> "next_instr"
-  | str -> str;;
+  | s -> s;;
 
-let mode = function
-  | Fiq -> "ARM_Processor::fiq"
-  | Irq -> "ARM_Processor::irq"
-  | Svc -> "ARM_Processor::svc"
-  | Abt -> "ARM_Processor::abt"
-  | Und -> "ARM_Processor::und"
-  | Usr -> "ARM_Processor::usr"
-  | Sys -> "ARM_Processor::sys";;
+let mode m = "ARM_Processor::" ^ Genpc.string_of_mode m;;
 
-let cxx_op = function
+let binop = function
   | "and" -> "&&"
   | "or" -> "||"
   | "AND" -> "&"
@@ -105,13 +99,15 @@ let cxx_op = function
   | "-" -> "-"
   | "<<" -> "<<"
   | "*" -> "*"
+  | "Rotate_Right" -> "rotate_right"
+  | "Arithmetic_Shift_Right" -> "asr"
   | _ -> "TODO";;
 
 let reg_id = function
   | "15" -> "ARM_Processor::PC"
   | "14" -> "ARM_Processor::LR"
   | "13" -> "ARM_Processor::SP"
-  | num -> num;;
+  | n -> n;;
 
 let cpsr_flag = function
   | "31" -> "N_flag"
@@ -146,23 +142,23 @@ let var = function
   | "UnallocMask" -> "proc.msr_UnallocMask()"
   | "GE" -> "proc.cpsr.GE"
   | "v5_and_above" -> "proc.v5_and_above"
-  | str -> str;;
+  | s -> s;;
 
 let input_registers = ["n"; "m"; "s"];;
 
 let rec exp b = function
-  | Bin s -> string b (bin_to_hex s)
+  | Bin s -> string b (hex_of_bin s)
   | Hex s | Num s -> string b s
   | If (e1, e2, e3) -> bprintf b "(%a? %a: %a)" exp e1 exp e2 exp e3
-  | BinOp (e1, "Rotate_Right", e2) -> exp b (Fun ("rotate_right", [e1; e2]))
-  | BinOp (e1, "<<", Num "32") ->
-      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e1
-  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as num)) ->
-      bprintf b "d%s%s" op num
-  | BinOp (e1, "Arithmetic_Shift_Right", e2) -> exp b (Fun ("asr", [e1; e2]))
-  | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (cxx_op op) exp e2
-  | Fun ("is_even", [Reg (Var "d", None)]) -> string b "is_even(d)"
-  | Fun (fct, es) -> bprintf b "%s(%a)" (gen_fct fct) (list ", " exp) es
+  | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
+      exp b (Fun (binop op, [e1; e2]))
+  | BinOp (e, "<<", Num "32") ->
+      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
+  | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
+(*REMOVE  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as num)) ->
+      bprintf b "d%s%s" op num*)
+(*REMOVE:  | Fun ("is_even", [Reg (Var "d", None)]) -> string b "is_even(d)"*)
+  | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
   | CPSR -> string b "proc.cpsr"
   | SPSR None -> string b "proc.spsr()"
   | SPSR (Some m) -> bprintf b "proc.spsr(%s)" (mode m)
@@ -173,22 +169,22 @@ let rec exp b = function
   | Reg (e, None) -> bprintf b "proc.reg(%a)" exp e
   | Reg (e, Some m) -> bprintf b "proc.reg(%a,%s)" exp e (mode m)
   | Var str -> string b (var str)
+  | Memory (e, num) -> bprintf b "proc.mmu.read_%s(%a)" (access_type num) exp e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
   | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2
-  | Memory (e, num) -> bprintf b "proc.mmu.read_%s(%a)" (access_type num) exp e
-  | Range (e, Bits (num1, num2)) ->
-      begin match num1, num2 with
+  | Range (e, Bits (n1, n2)) ->
+      begin match n1, n2 with
         | "15", "0" -> bprintf b "get_half_0(%a)" exp e
         | "31", "16" -> bprintf b "get_half_1(%a)" exp e
         | "7", "0" -> bprintf b "get_byte_0(%a)" exp e
         | "15", "8" -> bprintf b "get_byte_1(%a)" exp e
         | "23", "16" -> bprintf b "get_byte_2(%a)" exp e
         | "31", "24" -> bprintf b "get_byte_3(%a)" exp e
-        | _ -> bprintf b "get_bits(%a,%s,%s)" exp e num1 num2
+        | _ -> bprintf b "get_bits(%a,%s,%s)" exp e n1 n2
       end
   | Coproc_exp (e, fct, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (gen_fct fct) (list ", " exp) es
-  | _ -> string b "TODO(\"?\")";;
+      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func fct) (list ", " exp) es
+  | _ -> string b "TODO(\"exp\")";;
 
 (** Generate the body of an instruction function *)
 
@@ -208,41 +204,35 @@ let rec inst b = function
       bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a}\n"
         counter num min counter num max counter inst i
   | Coproc (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a);\n"
-	exp e (gen_fct f) (list ", " exp) es
-  | _ -> string b "TODO(\"?\");\n"
+      bprintf b "proc.coproc(%a)->%s(%a);\n" exp e (func f) (list ", " exp) es
+  | _ -> string b "TODO(\"inst\");\n"
 
 and affect b dst src =
-  match src with
-    | Fun ("LDRH_UnpredictableValue", []) -> string b "unpredictable();\n"
-    | Fun ("LDRSH_UnpredictableValue", []) -> string b "unpredictable();\n"
-    | Fun ("STRH_UnpredictableValue", []) -> string b "unpredictable();\n"
-    | _ ->
-        begin match dst with
-          | Reg (Var "d", _) -> bprintf b
+  if src = UnpredictableValue then string b "unpredictable();\n"
+  else match dst with
+    | Reg (Var "d", _) -> bprintf b
 "if (d==ARM_Processor::PC)\n proc.set_pc_raw(%a);\nelse\n proc.reg(d) = %a;\n"
-              exp src exp src
-          | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a);\n" exp src
-          | Reg (e, None) -> bprintf b "proc.reg(%a) = %a;\n" exp e exp src
-          | Reg (e, Some m) ->
-	      bprintf b "proc.reg(%a,%s) = %a;\n" exp e (mode m) exp src
-          | Var v -> bprintf b "%a = %a;\n" exp (Var v) exp src
-          | CPSR -> bprintf b "proc.cpsr = %a;\n" exp src
-          | SPSR _ as e -> bprintf b "%a = %a;\n" exp e exp src
-          | Range (CPSR, Flag (s,_)) ->
-              bprintf b "proc.cpsr.%s_flag = %a;\n" s exp src
-          | Range (CPSR, Index (Num num)) ->
-              bprintf b "proc.cpsr.%s = %a;\n" (cpsr_flag num) exp src
-          | Range (CPSR, Bits (num1, num2)) ->
-              bprintf b "proc.cpsr.%s = %a;\n" (cpsr_field (num1,num2)) exp src
-          | Range (e1, Bits (num1, num2)) ->
-              inst b (Proc ("set_field", [e1; Num num1; Num num2; src]))
-          | Memory (addr, num) ->
-              inst b (Proc ("proc.mmu.write_" ^ access_type num, [addr; src]))
-          | Range (e1, Index num1) ->
-              inst b (Proc ("set_bit", [e1; num1; src]))
-          | _ -> string b "TODO(\"Affect\");\n"
-	end;;
+        exp src exp src
+    | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a);\n" exp src
+    | Reg (e, None) -> bprintf b "proc.reg(%a) = %a;\n" exp e exp src
+    | Reg (e, Some m) ->
+	bprintf b "proc.reg(%a,%s) = %a;\n" exp e (mode m) exp src
+    | Var v -> bprintf b "%a = %a;\n" exp (Var v) exp src
+    | CPSR -> bprintf b "proc.cpsr = %a;\n" exp src
+    | SPSR _ as e -> bprintf b "%a = %a;\n" exp e exp src
+    | Range (CPSR, Flag (s,_)) ->
+        bprintf b "proc.cpsr.%s_flag = %a;\n" s exp src
+    | Range (CPSR, Index (Num num)) ->
+        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_flag num) exp src
+    | Range (CPSR, Bits (num1, num2)) ->
+        bprintf b "proc.cpsr.%s = %a;\n" (cpsr_field (num1,num2)) exp src
+    | Range (e1, Bits (num1, num2)) ->
+        inst b (Proc ("set_field", [e1; Num num1; Num num2; src]))
+    | Memory (addr, num) ->
+        inst b (Proc ("proc.mmu.write_" ^ access_type num, [addr; src]))
+    | Range (e1, Index num1) ->
+        inst b (Proc ("set_bit", [e1; num1; src]))
+    | _ -> string b "TODO(\"affect\");\n";;
 
 (** Generate a function modeling an instruction of the processor *)
 
@@ -252,7 +242,7 @@ let version_in_name b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
-let prog_arg b s = bprintf b "const %s %s" (cxx_type_of s) s;;
+let prog_arg b s = bprintf b "const %s %s" (type_of_var s) s;;
 
 let local_decl b (var, vtype) = bprintf b "%s %s;\n" vtype var;;
 
