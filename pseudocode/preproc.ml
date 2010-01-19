@@ -19,12 +19,12 @@ open Util;;
 (** program variables *)
 (***********************************************************************)
 
-module type Gen = sig
+module type Var = sig
   type typ;;
   val local_type : string -> exp -> typ;;
 end;;
 
-module Make (G : Gen) = struct
+module Make (G : Var) = struct
 
   let set_of_list =
     List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
@@ -92,53 +92,47 @@ let func ss =
     list "_" string b ss;
     Buffer.contents b;;
 
-let rec exp p =
-  let rec exp = function
+let rec exp = function
 
-    (* we only consider ARMv5 and above *)
-    | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
+  (* we only consider ARMv5 and above *)
+  | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
 
-    (* replace the incorrect function call to R by a register value *)
-    | Fun ("R", e :: _) -> Reg (e, None)
+  (* replace the incorrect function call to R by a register value *)
+  | Fun ("R", e :: _) -> Reg (e, None)
 
-    (* rename some function calls depending on the argument,
-       and change the argument into a list of arguments,
-       e.g. CarrayFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
-    | Fun (("OverflowFrom"|"BorrowFrom"
-	   |"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
-	   [BinOp (_, op, _) as e]) -> let es = args e in
-	Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
-	     List.map exp es)
-    | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
-        Fun ("SignExtend_24to30", List.map exp es)
-    | Fun (("SignedSat"|"UnsignedSat"|"SignedDoesSat"|"UnsignedDoesSat" as f),
-           [BinOp (e1, ("+"|"-" as op), e2); Num n]) ->
-        Fun (sprintf "%s_%s%s" f (string_of_op op) n, [exp e1; exp e2])
-    | Fun (("SignedSat"|"SignedDoesSat" as f),
-	   [BinOp (e, "*", Num "2"); Num n]) ->
-        Fun (sprintf "%s_double%s" f n, [exp e])
+  (* rename some function calls depending on the argument,
+     and change the argument into a list of arguments,
+     e.g. CarrayFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
+  | Fun (("OverflowFrom"|"BorrowFrom"
+	 |"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
+	 [BinOp (_, op, _) as e]) -> let es = args e in
+      Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
+	   List.map exp es)
+  | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
+      Fun ("SignExtend_24to30", List.map exp es)
+  | Fun (("SignedSat"|"UnsignedSat"|"SignedDoesSat"|"UnsignedDoesSat" as f),
+         [BinOp (e1, ("+"|"-" as op), e2); Num n]) ->
+      Fun (sprintf "%s_%s%s" f (string_of_op op) n, [exp e1; exp e2])
+  | Fun (("SignedSat"|"SignedDoesSat" as f),
+	 [BinOp (e, "*", Num "2"); Num n]) ->
+      Fun (sprintf "%s_double%s" f n, [exp e])
 
-    (* replace an English expression by a function call *)
-    | Other ss -> Fun (func ss, [])
+  (* replace English expressions by function calls *)
+  | Other ss -> Fun (func ss, [])
 
-    (* transform reserved words into function calls *)
-    | UnpredictableValue ->
-	Fun (sprintf "%s_UnpredictableValue" (ident p.pident), [])
+  (* recursive expressions *)
+  | Fun (f, es) -> Fun (f, List.map exp es)
+  | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
+  | Range (e1, Index e2) -> Range (exp e1, Index (exp e2))
+  | Range (e, r) -> Range (exp e, r)
+  | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
+  | Memory (e, n) -> Memory (exp e, n)
+  | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
+  | Reg (e, m) -> Reg (exp e, m)
 
-    (* recursive expressions *)
-    | Fun (f, es) -> Fun (f, List.map exp es)
-    | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
-    | Range (e1, Index e2) -> Range (exp e1, Index (exp e2))
-    | Range (e, r) -> Range (exp e, r)
-    | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
-    | Memory (e, n) -> Memory (exp e, n)
-    | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
-    | Reg (e, m) -> Reg (exp e, m)
-
-    (* non-recursive expressions *)
-    | (Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected as e) -> e
-
-  in exp;;
+  (* non-recursive expressions *)
+  | (Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|UnpredictableValue as e) ->
+      e;;
 
 let nop = Block [];;
 
@@ -146,53 +140,47 @@ let is_nop = (=) nop;;
 
 let remove_nops = List.filter ((<>) nop);;
 
-let inst p =
+let rec inst = function
 
-  let exp = exp p in
+  (* remove blocks reduced to one instruction *)
+  | Block is ->
+      begin match remove_nops (List.map inst is) with
+	| [i] -> i
+	| is -> Block is
+      end
 
-  let rec inst = function
+  (* replace affectations to Unaffected by nop's *)
+  | Affect (e1, e2) -> let e2 = exp e2 in
+      if e2 = Unaffected then nop else Affect (exp e1, e2)
 
-    (* remove blocks reduced to one instruction *)
-    | Block is ->
-	begin match remove_nops (List.map inst is) with
-	  | [i] -> i
-	  | is -> Block is
-	end
+  (* simplify conditional instructions wrt nop's *)
+  | IfThenElse (e, i, None) ->
+      let i = inst i in
+	if is_nop i then nop else IfThenElse (exp e, i, None)
+  | IfThenElse (e, i1, Some i2) ->
+      let i1 = inst i1 and i2 = inst i2 in
+	if is_nop i2 then
+	  if is_nop i1
+	  then nop
+	  else IfThenElse (exp e, i1, None)
+	else
+	  if is_nop i1
+	  then IfThenElse (Fun ("NOT", [exp e]), i2, None)
+	  else IfThenElse (exp e, i1, Some i2)
 
-    (* replace affectations to Unaffected by nop's *)
-    | Affect (e1, e2) -> let e2 = exp e2 in
-	if e2 = Unaffected then nop else Affect (exp e1, e2)
+  (* replace assert's and memory access indications by nop's *)
+  | Proc ("MemoryAccess", _) | Assert _ -> nop
 
-    (* simplify conditional instructions wrt nop's *)
-    | IfThenElse (e, i, None) ->
-	let i = inst i in
-	  if is_nop i then nop else IfThenElse (exp e, i, None)
-    | IfThenElse (e, i1, Some i2) ->
-	let i1 = inst i1 and i2 = inst i2 in
-	  if is_nop i2 then
-	    if is_nop i1
-	    then nop
-	    else IfThenElse (exp e, i1, None)
-	  else
-	    if is_nop i1
-	    then IfThenElse (Fun ("NOT", [exp e]), i2, None)
-	    else IfThenElse (exp e, i1, Some i2)
+  (* replace English expressions by procedure calls *)
+  | Misc ss -> Proc (func ss, [])
 
-    (* replace assert's and memory access indications by nop's *)
-    | Proc ("MemoryAccess", _) | Assert _ -> nop
+  (* recursive instructions *)
+  | Proc (f, es) -> Proc (f, List.map exp es)
+  | While (e, i) -> While (exp e, inst i)
+  | For (s, n, p, i) -> For (s, n, p, inst i)
+  | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
 
-    (* replace English expressions by procedure calls *)
-    | Misc ss -> Proc (func ss, [])
+  (* non-recursive instructions *)
+  | Unpredictable -> Unpredictable;;
 
-    (* recursive instructions *)
-    | Proc (f, es) -> Proc (f, List.map exp es)
-    | While (e, i) -> While (exp e, inst i)
-    | For (s, n, p, i) -> For (s, n, p, inst i)
-    | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
-
-    (* non-recursive instructions *)
-    | Unpredictable -> Unpredictable
-
-  in inst
-
-let prog p = {p with pinst = inst p p.pinst};;
+let prog p = { p with pinst = inst p.pinst };;
