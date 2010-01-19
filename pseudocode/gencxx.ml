@@ -59,8 +59,6 @@ let var_type v expr =
 
 (** List the variables of a prog *)
 
-let input_registers = ["n"; "m"; "s"];;
-
 module G = struct
   type typ = string;;
   let local_type = var_type;;
@@ -139,7 +137,7 @@ let access_type = function
   | "4" -> "word"
   | _ -> "TODO";;
 
-let generate_var = function
+let var = function
   | "CP15_reg1_EEbit" -> "proc.cp15.get_reg1_EEbit()"
   | "CP15_reg1_Ubit" -> "proc.cp15.get_reg1_Ubit()"
   | "PrivMask" -> "proc.msr_PrivMask()"
@@ -150,146 +148,101 @@ let generate_var = function
   | "v5_and_above" -> "proc.v5_and_above"
   | str -> str;;
 
-let rec generate_exp buffer expression =
-  match expression with
-  | Bin s -> string buffer (bin_to_hex s)
-  | Hex s | Num s -> string buffer s
-  | If (condition, expr1, expr2) -> bprintf buffer "(%a? %a: %a)"
-      generate_exp condition generate_exp expr1 generate_exp expr2
-  | BinOp (expr1, "Rotate_Right", expr2) ->
-      generate_exp buffer (Fun ("rotate_right", [expr1; expr2]))
-  | BinOp (expr1, "<<", Num "32") ->
-      bprintf buffer "(static_cast<uint64_t>(%a) << 32)"
-      generate_exp expr1
+let input_registers = ["n"; "m"; "s"];;
+
+let rec exp b = function
+  | Bin s -> string b (bin_to_hex s)
+  | Hex s | Num s -> string b s
+  | If (e1, e2, e3) -> bprintf b "(%a? %a: %a)" exp e1 exp e2 exp e3
+  | BinOp (e1, "Rotate_Right", e2) -> exp b (Fun ("rotate_right", [e1; e2]))
+  | BinOp (e1, "<<", Num "32") ->
+      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e1
   | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as num)) ->
-      bprintf buffer "d%s%s" op num
-  | BinOp (expr1, "Arithmetic_Shift_Right", expr2) ->
-      generate_exp buffer (Fun ("asr", [expr1; expr2]))
-  | BinOp (expr1, op, expr2) ->
-      bprintf buffer "(%a %s %a)"
-      generate_exp expr1 (cxx_op op) generate_exp expr2
-  | Fun ("is_even", [Reg (Var "d", None)]) ->
-      string buffer "is_even(d)"
-  | Fun (fct, expressions) ->
-      bprintf buffer "%s(%a)"
-        (gen_fct fct) (list ", " generate_exp) expressions
-  | CPSR -> string buffer "proc.cpsr"
-  | SPSR None -> string buffer "proc.spsr()"
-  | SPSR (Some m) -> bprintf buffer "proc.spsr(%s)" (mode m)
+      bprintf b "d%s%s" op num
+  | BinOp (e1, "Arithmetic_Shift_Right", e2) -> exp b (Fun ("asr", [e1; e2]))
+  | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (cxx_op op) exp e2
+  | Fun ("is_even", [Reg (Var "d", None)]) -> string b "is_even(d)"
+  | Fun (fct, es) -> bprintf b "%s(%a)" (gen_fct fct) (list ", " exp) es
+  | CPSR -> string b "proc.cpsr"
+  | SPSR None -> string b "proc.spsr()"
+  | SPSR (Some m) -> bprintf b "proc.spsr(%s)" (mode m)
   | Reg (Var s, None) ->
-      if (List.mem s input_registers)
-      then bprintf buffer "old_R%s" s
-      else bprintf buffer "proc.reg(%s)" s
-  | Reg (expr, None) -> bprintf buffer "proc.reg(%a)" generate_exp expr
-  | Reg (expr, Some m) ->
-      bprintf buffer "proc.reg(%a,%s)" generate_exp expr (mode m)
-  | Var str -> string buffer (generate_var str)
-  | Range (CPSR, Flag (str1,_)) ->
-      bprintf buffer "proc.cpsr.%s_flag" str1
-  | Range (expr1, Index expr2) ->
-      bprintf buffer "((%a>>%a)&1)" generate_exp expr1 generate_exp expr2
-  | Memory (expr, num) ->
-      bprintf buffer "proc.mmu.read_%s(%a)" (access_type num) generate_exp expr
-  | Range (expr, Bits (num1, num2)) -> (
-      match num1, num2 with
-        | "15", "0" -> bprintf buffer "get_half_0(%a)" generate_exp expr
-        | "31", "16" -> bprintf buffer "get_half_1(%a)" generate_exp expr
-        | "7", "0" -> bprintf buffer "get_byte_0(%a)" generate_exp expr
-        | "15", "8" -> bprintf buffer "get_byte_1(%a)" generate_exp expr
-        | "23", "16" -> bprintf buffer "get_byte_2(%a)" generate_exp expr
-        | "31", "24" -> bprintf buffer "get_byte_3(%a)" generate_exp expr
-        | _ -> bprintf buffer "get_bits(%a,%s,%s)"
-            generate_exp expr num1 num2
-    )
-  | Coproc_exp (expr, fct, expressions) ->
-      bprintf buffer "proc.coproc(%a)->%s(%a)"
-        generate_exp expr
-        (gen_fct fct)
-        (list ", " generate_exp) expressions
-  | _ -> string buffer "TODO(\"?\")";;
+      if List.mem s input_registers
+      then bprintf b "old_R%s" s
+      else bprintf b "proc.reg(%s)" s
+  | Reg (e, None) -> bprintf b "proc.reg(%a)" exp e
+  | Reg (e, Some m) -> bprintf b "proc.reg(%a,%s)" exp e (mode m)
+  | Var str -> string b (var str)
+  | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
+  | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2
+  | Memory (e, num) -> bprintf b "proc.mmu.read_%s(%a)" (access_type num) exp e
+  | Range (e, Bits (num1, num2)) ->
+      begin match num1, num2 with
+        | "15", "0" -> bprintf b "get_half_0(%a)" exp e
+        | "31", "16" -> bprintf b "get_half_1(%a)" exp e
+        | "7", "0" -> bprintf b "get_byte_0(%a)" exp e
+        | "15", "8" -> bprintf b "get_byte_1(%a)" exp e
+        | "23", "16" -> bprintf b "get_byte_2(%a)" exp e
+        | "31", "24" -> bprintf b "get_byte_3(%a)" exp e
+        | _ -> bprintf b "get_bits(%a,%s,%s)" exp e num1 num2
+      end
+  | Coproc_exp (e, fct, es) ->
+      bprintf b "proc.coproc(%a)->%s(%a)" exp e (gen_fct fct) (list ", " exp) es
+  | _ -> string b "TODO(\"?\")";;
 
 (** Generate the body of an instruction function *)
 
-let rec generate_inst buffer instruction =
-  match instruction with
-    | Block instructions ->
-        bprintf buffer "%a"
-          (list "" generate_inst) instructions
-    | Unpredictable -> string buffer "unpredictable();\n"
-    | Affect (dst, src) -> generate_affect buffer dst src
-    | IfThenElse (condition, instruction, None) ->
-        bprintf buffer "if (%a) {\n%a}\n"
-          generate_exp condition
-          generate_inst instruction
-    | IfThenElse (condition, instruction1, Some instruction2) ->
-        bprintf buffer "if (%a) {\n%a} else {\n%a}\n"
-          generate_exp condition
-          generate_inst instruction1
-          generate_inst instruction2
-    | Proc ("MemoryAccess", _) -> string buffer "// MemoryAcess(B-bit, E-bit);\n"
-    | Proc (fct, expressions) ->
-        bprintf buffer "%s(%a);\n" fct
-        (list ", " generate_exp) expressions
-    | While (condition, instruction) ->
-        bprintf buffer "while (%a)\n%a"
-          generate_exp condition
-          generate_inst instruction
-    | Assert expr ->
-        bprintf buffer "assert(%a);\n"
-          generate_exp expr
-    | For (counter, min, max, instruction) ->
-        bprintf buffer "for (size_t %s = %a; %s<%a; ++%s) {\n%a}\n"
-          counter num min counter num max counter
-          generate_inst instruction
-    | Coproc (expr, fct, expressions) ->
-      bprintf buffer "proc.coproc(%a)->%s(%a);\n"
-        generate_exp expr
-        (gen_fct fct)
-        (list ", " generate_exp) expressions
-    | _ -> string buffer "TODO(\"?\");\n"
+let rec inst b = function
+  | Block is -> bprintf b "%a" (list "" inst) is
+  | Unpredictable -> string b "unpredictable();\n"
+  | Affect (dst, src) -> affect b dst src
+  | IfThenElse (condition, i, None) ->
+      bprintf b "if (%a) {\n%a}\n" exp condition inst i
+  | IfThenElse (e, i1, Some i2) ->
+      bprintf b "if (%a) {\n%a} else {\n%a}\n" exp e inst i1 inst i2
+  | Proc ("MemoryAccess", _) -> string b "// MemoryAcess(B-bit, E-bit);\n"
+  | Proc (f, es) -> bprintf b "%s(%a);\n" f (list ", " exp) es
+  | While (e, i) -> bprintf b "while (%a)\n%a" exp e inst i
+  | Assert e -> bprintf b "assert(%a);\n" exp e
+  | For (counter, min, max, i) ->
+      bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a}\n"
+        counter num min counter num max counter inst i
+  | Coproc (e, f, es) ->
+      bprintf b "proc.coproc(%a)->%s(%a);\n"
+	exp e (gen_fct f) (list ", " exp) es
+  | _ -> string b "TODO(\"?\");\n"
 
-and generate_affect buffer dst src =
+and affect b dst src =
   match src with
-    | Fun ("LDRH_UnpredictableValue", []) -> string buffer "unpredictable();\n"
-    | Fun ("LDRSH_UnpredictableValue", []) -> string buffer "unpredictable();\n"
-    | Fun ("STRH_UnpredictableValue", []) -> string buffer "unpredictable();\n"
-    | _ -> (
-        match dst with
-          | Reg (Var "d",_) -> bprintf buffer
-         "if (d==ARM_Processor::PC)\n proc.set_pc_raw(%a);\nelse\n proc.reg(d) = %a;\n"
-                generate_exp src generate_exp src
-          | (Reg (Num "15", None)) ->
-              bprintf buffer "proc.set_pc_raw(%a);\n" generate_exp src
-          | Reg (expr, None) ->
-              bprintf buffer "proc.reg(%a) = %a;\n"
-                generate_exp expr generate_exp src
-          | Reg (expr, Some m) ->
-              bprintf buffer "proc.reg(%a,%s) = %a;\n"
-                generate_exp expr (mode m) generate_exp src
-          | Var v ->
-              bprintf buffer "%a = %a;\n" generate_exp (Var v) generate_exp src
-          | CPSR ->
-              bprintf buffer "proc.cpsr = %a;\n" generate_exp src
-          | SPSR _ as expr1 ->
-              bprintf buffer "%a = %a;\n" generate_exp expr1 generate_exp src
-          | Range (CPSR, Flag (str1,_)) ->
-              bprintf buffer "proc.cpsr.%s_flag = %a;\n" str1 generate_exp src
+    | Fun ("LDRH_UnpredictableValue", []) -> string b "unpredictable();\n"
+    | Fun ("LDRSH_UnpredictableValue", []) -> string b "unpredictable();\n"
+    | Fun ("STRH_UnpredictableValue", []) -> string b "unpredictable();\n"
+    | _ ->
+        begin match dst with
+          | Reg (Var "d", _) -> bprintf b
+"if (d==ARM_Processor::PC)\n proc.set_pc_raw(%a);\nelse\n proc.reg(d) = %a;\n"
+              exp src exp src
+          | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a);\n" exp src
+          | Reg (e, None) -> bprintf b "proc.reg(%a) = %a;\n" exp e exp src
+          | Reg (e, Some m) ->
+	      bprintf b "proc.reg(%a,%s) = %a;\n" exp e (mode m) exp src
+          | Var v -> bprintf b "%a = %a;\n" exp (Var v) exp src
+          | CPSR -> bprintf b "proc.cpsr = %a;\n" exp src
+          | SPSR _ as e -> bprintf b "%a = %a;\n" exp e exp src
+          | Range (CPSR, Flag (s,_)) ->
+              bprintf b "proc.cpsr.%s_flag = %a;\n" s exp src
           | Range (CPSR, Index (Num num)) ->
-              bprintf buffer "proc.cpsr.%s = %a;\n"
-		(cpsr_flag num) generate_exp src
+              bprintf b "proc.cpsr.%s = %a;\n" (cpsr_flag num) exp src
           | Range (CPSR, Bits (num1, num2)) ->
-              bprintf buffer "proc.cpsr.%s = %a;\n"
-                (cpsr_field (num1,num2)) generate_exp src
-          | Range (expr1, Bits (num1, num2)) ->
-              generate_inst buffer
-                (Proc ("set_field", [expr1; Num num1; Num num2; src]))
+              bprintf b "proc.cpsr.%s = %a;\n" (cpsr_field (num1,num2)) exp src
+          | Range (e1, Bits (num1, num2)) ->
+              inst b (Proc ("set_field", [e1; Num num1; Num num2; src]))
           | Memory (addr, num) ->
-              let fct = "proc.mmu.write_" ^ (access_type num) in
-                generate_inst buffer (Proc (fct, [addr; src]))
-          | Range (expr1, Index num1) ->
-              generate_inst buffer (Proc ("set_bit", [expr1; num1; src]))
-          | _ -> string buffer "TODO(\"Affect\");\n"
-      );;
+              inst b (Proc ("proc.mmu.write_" ^ access_type num, [addr; src]))
+          | Range (e1, Index num1) ->
+              inst b (Proc ("set_bit", [e1; num1; src]))
+          | _ -> string b "TODO(\"Affect\");\n"
+	end;;
 
 (** Generate a function modeling an instruction of the processor *)
 
@@ -299,48 +252,43 @@ let version_in_name b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
-let prog_arg buffer str =
-  bprintf buffer "const %s %s" (cxx_type_of str) str;;
+let prog_arg b s = bprintf b "const %s %s" (cxx_type_of s) s;;
 
-let generate_local_decl buffer (var, vtype) =
-  bprintf buffer "%s %s;\n" vtype var;;
+let local_decl b (var, vtype) = bprintf b "%s %s;\n" vtype var;;
 
-let generate_inreg_load buffer str =
-  bprintf buffer "const uint32_t old_R%s = proc.reg(%s);\n" str str;;
+let inreg_load b s = bprintf b "const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
 let ident_in_comment b i =
   bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
     (option "" version_in_comment) i.iversion
 
 let ident b i =
-  bprintf b "%s%a" i.iname (option "" version_in_name) i.iversion
+  bprintf b "%s%a" i.iname (option "" version_in_name) i.iversion;;
 
-let generate_comment buffer p =
-  bprintf buffer "// %s %a\n"
-    p.pref (list ", " ident_in_comment) (p.pident::p.paltidents);;
+let comment b p =
+  bprintf b "// %s %a\n"
+    p.pref (list ", " ident_in_comment) (p.pident :: p.paltidents);;
 
-let generate_prog buffer p =
+(*FIXME: optimize: pass prog_variables as argument!*)
+
+let prog b p =
   let parameters, locals = prog_variables p in
   let inregs = List.filter (fun x -> List.mem x input_registers) parameters in
-    bprintf buffer
-      "%avoid ARM_ISS::%a(%a) {\n%a%a%a}\n"
-      generate_comment p
+    bprintf b "%avoid ARM_ISS::%a(%a) {\n%a%a%a}\n" comment p
       (list "_" ident) (p.pident :: p.paltidents)
       (list ",\n    " prog_arg) parameters
-      (list "" generate_inreg_load) inregs
-      (list "" generate_local_decl) locals
-      generate_inst p.pinst;;
+      (list "" inreg_load) inregs
+      (list "" local_decl) locals
+      inst p.pinst;;
 
-let generate_decl buffer p =
+let decl b p =
   let parameters, _ = prog_variables p in
-    bprintf buffer
-      "  %a  void %a(%a);\n"
-      generate_comment p
+    bprintf b "  %a  void %a(%a);\n" comment p
       (list "_" ident) (p.pident :: p.paltidents)
       (list ",\n    " prog_arg) parameters;;
 
-let lib buffer progs =
-  bprintf buffer
-    "#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
-    (list "\n" generate_decl) progs
-    (list "\n" generate_prog) progs;;
+let lib b ps =
+  bprintf b
+"#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
+    (list "\n" decl) ps
+    (list "\n" prog) ps;;
