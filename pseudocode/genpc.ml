@@ -40,7 +40,6 @@ let rec exp b = function
   | Bin s | Hex s | Num s -> string b s
   | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (_, f, _) as e -> pexp_level (level f) b e
-  | Fun (("is_even_numbered" as f), [e]) -> bprintf b "%a %s" exp e f
   | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | Other ss -> list " " string b ss
   | CPSR -> string b "CPSR"
