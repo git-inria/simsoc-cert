@@ -1,5 +1,19 @@
 #!/bin/sh
 
+# this script does the following modifications:
+
+# add semi-colons at the end of various expressions
+# permute comments and semi-colons
+# add missing "then" avec some "if"
+# add "do" after "while" and "for"
+# in names, replace a dash by a space 
+# replace "is" by "==", and "is not" by "!="
+# replace "== R15" by "== 15"
+# remove "value" of a register
+# replace some English expressions by a function call
+# fixed English typos
+# replace a strange dash character by a usual dash
+
 # REMARK: do not remove the last strange -e command !
 # due to a strange dash character
 
@@ -25,25 +39,25 @@ sed \
     -e 's|^\( *\)while \(.*\)|\1while \2 do|' \
     -e 's|^\( *\)for \(.*\);|\1for \2 do|' \
     -e 's|-\([A-Za-z]\)| \1|g' \
-    -e 's|address of|address_of|' \
-    -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
-    -e 's|is not R|!= |' \
     -e 's|is R|== |' \
+    -e 's|is not R|!= |' \
     -e 's|== R|== |' \
     -e 's|value to|to|' \
+    -e 's|first value|first_value|' \
+    -e 's|second value|second_value|' \
+    -e 's|v4 and earlier|v4_and_earlier|' \
     -e 's|v5 and above|v5_and_above|' \
     -e 's|architecture version 5 or above|v5_and_above|' \
     -e 's|ARMv5 or above|v5_and_above|' \
-    -e 's|v4 and earlier|v4_and_earlier|' \
-    -e 's|first value|first_value|' \
-    -e 's|second value|second_value|' \
     -e 's|CPSR with|CPSR_with|' \
+    -e 's|address of|address_of|' \
     -e 's|dependent operation|dependent_operation|' \
     -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|Start opcode execution at \(.*\);|Start_opcode_execution_at(\1);|' \
-    -e 's|coprocessor\[|Coprocessor[|' \
+    -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
     -e 's|8_bit_immediate|immed_8|' \
+    -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
