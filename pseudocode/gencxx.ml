@@ -213,7 +213,7 @@ and inst_aux k b = function
 and affect k b dst src =
   if src = Unpredictable_exp then string b "unpredictable();"
   else match dst with
-    | Reg (Var _, _) -> (*MOVE to Preproc? inst k b
+    | Reg (Var "d", _) -> (*MOVE to Preproc? inst k b
 	(If (BinOp (v, "==", Num "15"),
 		     Affect (Reg (Num "15", None), src),
 		     Some (Affect (dst, src))))*)
