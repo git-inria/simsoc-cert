@@ -39,9 +39,10 @@ sed \
     -e 's|^\( *\)while \(.*\)|\1while \2 do|' \
     -e 's|^\( *\)for \(.*\);|\1for \2 do|' \
     -e 's|-\([A-Za-z]\)| \1|g' \
-    -e 's|is R|== |' \
-    -e 's|is not R|!= |' \
-    -e 's|== R|== |' \
+    -e 's|R\(.*\) is even numbered|is_even(\1)|' \
+    -e 's|R\(.*\) is R|\1 == |' \
+    -e 's|R\(.*\) is not R|\1 != |' \
+    -e 's|R\(.*\) == R|\1 == |' \
     -e 's|value to|to|' \
     -e 's|first value|first_value|' \
     -e 's|second value|second_value|' \
@@ -51,11 +52,10 @@ sed \
     -e 's|ARMv5 or above|v5_and_above|' \
     -e 's|CPSR with|CPSR_with|' \
     -e 's|address of|address_of|' \
-    -e 's|dependent operation|dependent_operation|' \
-    -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|' \
+    -e 's|dependent operation|dependent_operation|g' \
+    -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|g' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|Start opcode execution at \(.*\);|Start_opcode_execution_at(\1);|' \
-    -e 's|(\(.*\) is even numbered)|(is_even(\1))|' \
     -e 's|8_bit_immediate|immed_8|' \
     -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|^\( *\)If |\1if |' \
