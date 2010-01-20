@@ -38,7 +38,8 @@ let level = function
 
 let rec exp b = function
   | Bin s | Hex s | Num s -> string b s
-  | If (e1, e2, e3) -> bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+  | If_exp (e1, e2, e3) ->
+      bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (_, f, _) as e -> pexp_level (level f) b e
   | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | Other ss -> list " " string b ss
@@ -51,7 +52,7 @@ let rec exp b = function
   | Range (CPSR, (Flag _ as r)) -> bprintf b "%a" range r
   | Range (e, (Flag _ as r)) -> bprintf b "%a %a" pexp e range r
   | Range (e, r) -> bprintf b "%a%a" pexp e range r
-  | UnpredictableValue -> string b "UNPREDICTABLE"
+  | Unpredictable_exp -> string b "UNPREDICTABLE"
   | Unaffected -> string b "unaffected"
   | Memory (e, n) -> bprintf b "Memory[%a,%a]" exp e num n
   | Coproc_exp (e, "NotFinished", _) -> bprintf b "NotFinished(%a)" coproc e
@@ -61,7 +62,7 @@ and coproc b e = bprintf b "Coprocessor[%a]" exp e
 
 and pexp b e =
   match e with
-    | If _ | BinOp _ | Other _ -> par exp b e
+    | If_exp _ | BinOp _ | Other _ -> par exp b e
     | _ -> exp b e
 
 and pexp_level k b = function
@@ -89,9 +90,8 @@ and inst_aux k b = function
   | Unpredictable -> bprintf b "UNPREDICTABLE"
   | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
-  | IfThenElse (e, i, None) ->
-      bprintf b "if %a then\n%a" exp e (inst (k+4)) i
-  | IfThenElse (e, i1, Some i2) ->
+  | If (e, i, None) -> bprintf b "if %a then\n%a" exp e (inst (k+4)) i
+  | If (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
 	exp e (inst (k+4)) i1 indent k (inst_sc k) i2
   | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es

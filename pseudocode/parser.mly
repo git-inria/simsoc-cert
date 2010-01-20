@@ -96,8 +96,8 @@ coproc:
 | COPROC LSQB exp RSQB { $3 }
 ;
 cond_inst:
-| IF exp THEN block                { IfThenElse ($2, $4, None) }
-| IF exp THEN block ELSE block     { IfThenElse ($2, $4, Some $6) }
+| IF exp THEN block                { If ($2, $4, None) }
+| IF exp THEN block ELSE block     { If ($2, $4, Some $6) }
 | WHILE exp DO block               { While ($2, $4) }
 | FOR IDENT EQ NUM TO NUM DO block { For ($2, $4, $6, $8) }
 ;
@@ -119,7 +119,7 @@ simple_exp:
 | IDENT         { Var $1 }
 | CPSR          { CPSR }
 | UNAFFECTED    { Unaffected }
-| UNPREDICTABLE { UnpredictableValue }
+| UNPREDICTABLE { Unpredictable_exp }
 | REG           { $1 }
 ;
 exp:
@@ -127,7 +127,7 @@ exp:
 | HEX                      { Hex $1 }
 | SPSR_MODE                { SPSR $1 }
 | LPAR exp RPAR            { $2 }
-| IF exp THEN exp ELSE exp { If ($2, $4, $6) }
+| IF exp THEN exp ELSE exp { If_exp ($2, $4, $6) }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
 | MEMORY LSQB exp COMA NUM RSQB { Memory ($3, $5) }
@@ -138,7 +138,7 @@ exp:
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
 | RESERVED items           { Other ($1 :: $2) }
-| simple_exp IN IDENT COMA simple_exp IN IDENT { If (Var $3, $1, $5) }
+| simple_exp IN IDENT COMA simple_exp IN IDENT { If_exp (Var $3, $1, $5) }
 ;
 coproc_exp:
 | NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }

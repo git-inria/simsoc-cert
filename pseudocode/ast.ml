@@ -19,7 +19,7 @@ type exp =
 | Num of num
 | Bin of string
 | Hex of string
-| If of exp * exp * exp
+| If_exp of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
 | Other of string list
@@ -29,7 +29,7 @@ type exp =
 | Var of string
 | Range of exp * range
 | Unaffected
-| UnpredictableValue
+| Unpredictable_exp
 | Memory of exp * num
 | Coproc_exp of exp * string * exp list
 
@@ -42,7 +42,7 @@ type inst =
 | Block of inst list
 | Unpredictable
 | Affect of exp * exp
-| IfThenElse of exp * inst * inst option
+| If of exp * inst * inst option
 | Proc of string * exp list
 | While of exp * inst
 | Assert of exp

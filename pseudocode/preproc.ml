@@ -40,7 +40,7 @@ let rec vars_exp ((gs,ls) as acc) = function
       if StrSet.mem s gs || StrMap.mem s ls || StrSet.mem s specials
       then acc
       else StrSet.add s gs, ls
-  | If (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
+  | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
   | Fun (_, es) -> vars_exps acc es
   | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
   | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
@@ -58,8 +58,8 @@ let rec vars_inst ((gs,ls) as acc) = function
 	   then StrSet.add s gs, ls
 	   else gs, StrMap.add s (G.local_type s e) ls) e
     | Block is -> vars_insts acc is
-    | IfThenElse (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
-    | IfThenElse (e, i1, Some i2) ->
+    | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
+    | If (e, i1, Some i2) ->
 	vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es
     | For (_, _, _, i) -> vars_inst acc i
@@ -95,7 +95,7 @@ let func ss =
 let rec exp = function
 
   (* we only consider ARMv5 and above *)
-  | If (Var "v5_and_above", Unaffected, UnpredictableValue) -> Unaffected
+  | If_exp (Var "v5_and_above", Unaffected, _) -> Unaffected
 
   (* replace the incorrect function call to R by a register value *)
   | Fun ("R", e :: _) -> Reg (e, None)
@@ -125,13 +125,13 @@ let rec exp = function
   | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
   | Range (e1, Index e2) -> Range (exp e1, Index (exp e2))
   | Range (e, r) -> Range (exp e, r)
-  | If (e1, e2 ,e3) -> If (exp e1, exp e2, exp e3)
+  | If_exp (e1, e2 ,e3) -> If_exp (exp e1, exp e2, exp e3)
   | Memory (e, n) -> Memory (exp e, n)
   | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  | (Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|UnpredictableValue as e) ->
+  | (Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e) ->
       e;;
 
 let nop = Block [];;
@@ -153,20 +153,23 @@ let rec inst = function
   | Affect (e1, e2) -> let e2 = exp e2 in
       if e2 = Unaffected then nop else Affect (exp e1, e2)
 
+  (* we only consider ARMv5 and above *)
+  | If (Var "v5_and_above", i, _) -> inst i
+
   (* simplify conditional instructions wrt nop's *)
-  | IfThenElse (e, i, None) ->
+  | If (e, i, None) ->
       let i = inst i in
-	if is_nop i then nop else IfThenElse (exp e, i, None)
-  | IfThenElse (e, i1, Some i2) ->
+	if is_nop i then nop else If (exp e, i, None)
+  | If (e, i1, Some i2) ->
       let i1 = inst i1 and i2 = inst i2 in
 	if is_nop i2 then
 	  if is_nop i1
 	  then nop
-	  else IfThenElse (exp e, i1, None)
+	  else If (exp e, i1, None)
 	else
 	  if is_nop i1
-	  then IfThenElse (Fun ("NOT", [exp e]), i2, None)
-	  else IfThenElse (exp e, i1, Some i2)
+	  then If (Fun ("NOT", [exp e]), i2, None)
+	  else If (exp e, i1, Some i2)
 
   (* replace assert's and memory access indications by nop's *)
   | Proc ("MemoryAccess", _) | Assert _ -> nop

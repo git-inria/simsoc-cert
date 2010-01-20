@@ -57,8 +57,7 @@ let rec options () = [
   "-pcc", Unit (fun () -> set_action GenPCC),
   "generate pseudocode and reparse it";
   "-pre", Unit (fun () -> set_action GenPre), "preprocess pseudocode";
-  "-cxx", Unit (fun () -> set_action GenCxx),
-  "generate simulation code";
+  "-cxx", Unit (fun () -> set_action GenCxx), "generate simulation code";
 ]
 
 and print_options oc () =

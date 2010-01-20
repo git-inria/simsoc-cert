@@ -149,7 +149,7 @@ let input_registers = ["n"; "m"; "s"];;
 let rec exp b = function
   | Bin s -> string b (hex_of_bin s)
   | Hex s | Num s -> string b s
-  | If (e1, e2, e3) -> bprintf b "(%a? %a: %a)" exp e1 exp e2 exp e3
+  | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" exp e1 exp e2 exp e3
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
       exp b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
@@ -195,9 +195,8 @@ and inst_aux k b = function
       bprintf b "{\n%a%a}" (list "" (postfix "\n" (inst k))) is Genpc.indent k
   | Unpredictable -> string b "unpredictable();"
   | Affect (dst, src) -> affect k b dst src
-  | IfThenElse (e, i, None) ->
-      bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
-  | IfThenElse (e, i1, Some i2) ->
+  | If (e, i, None) -> bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
+  | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
 	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
   | Proc ("MemoryAccess", _) -> string b "// MemoryAcess(B-bit, E-bit);"
@@ -212,10 +211,10 @@ and inst_aux k b = function
   | _ -> string b "TODO(\"inst\");"
 
 and affect k b dst src =
-  if src = UnpredictableValue then string b "unpredictable();"
+  if src = Unpredictable_exp then string b "unpredictable();"
   else match dst with
     | Reg (Var _, _) -> (*MOVE to Preproc? inst k b
-	(IfThenElse (BinOp (v, "==", Num "15"),
+	(If (BinOp (v, "==", Num "15"),
 		     Affect (Reg (Num "15", None), src),
 		     Some (Affect (dst, src))))*)
 	bprintf b
