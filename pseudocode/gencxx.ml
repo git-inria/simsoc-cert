@@ -213,13 +213,9 @@ and inst_aux k b = function
 and affect k b dst src =
   if src = Unpredictable_exp then string b "unpredictable();"
   else match dst with
-    | Reg (Var "d", _) -> (*MOVE to Preproc? inst k b
-	(If (BinOp (v, "==", Num "15"),
-		     Affect (Reg (Num "15", None), src),
-		     Some (Affect (dst, src))))*)
-	bprintf b
+    | Reg (Var "d", _) -> bprintf b
 "if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a;"
-          Genpc.indent (k+2) exp src Genpc.indent k Genpc.indent (k+2) exp src
+        Genpc.indent (k+2) exp src Genpc.indent k Genpc.indent (k+2) exp src
     | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a);" exp src
     | Reg (e, None) -> bprintf b "proc.reg(%a) = %a;" exp e exp src
     | Reg (e, Some m) ->
