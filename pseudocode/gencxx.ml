@@ -188,53 +188,74 @@ let rec exp b = function
 
 (** Generate the body of an instruction function *)
 
-let rec inst k b i = Genpc.indent b k; inst_aux k b i
+let rec inst k b = function
+  | Block _ | For _ | While _ | If _ as i ->
+      bprintf b "%a%a" Genpc.indent k (inst_aux k) i
+  | i -> bprintf b "%a%a;" Genpc.indent k (inst_aux k) i
 
 and inst_aux k b = function
-  | Block is ->
-      bprintf b "{\n%a%a}" (list "" (postfix "\n" (inst k))) is Genpc.indent k
-  | Unpredictable -> string b "unpredictable();"
+  | Unpredictable -> string b "unpredictable()"
   | Affect (dst, src) -> affect k b dst src
-  | If (e, i, None) -> bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
-  | If (e, i1, Some i2) ->
-      bprintf b "if (%a)\n%a\n%aelse\n%a"
-	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
-  | Proc ("MemoryAccess", _) -> string b "// MemoryAcess(B-bit, E-bit);"
-  | Proc (f, es) -> bprintf b "%s(%a);" f (list ", " exp) es
+  | Proc ("MemoryAccess", _) -> string b "// MemoryAcess(B-bit, E-bit)"
+  | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
+  | Assert e -> bprintf b "assert(%a)" exp e
+  | Coproc (e, f, es) ->
+      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
+
+  | Block [] -> ()
+  | Block (i :: is) ->
+      bprintf b "%a\n%a" (inst_aux k) i (list "\n" (inst k)) is
+
   | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
-  | Assert e -> bprintf b "assert(%a);" exp e
+
   | For (counter, min, max, i) ->
       bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a}"
         counter num min counter num max counter (inst (k+2)) i
-  | Coproc (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a);" exp e (func f) (list ", " exp) es
-  | _ -> string b "TODO(\"inst\");"
+
+  | If (e, (Block _|If _ as i), None) ->
+      bprintf b "if (%a) {\n%a\n%a}" exp e (inst (k+2)) i Genpc.indent k
+  | If (e, i, None) -> bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
+
+  | If (e, (Block _|If _ as i1), Some (Block _|If _ as i2)) ->
+      bprintf b "if (%a) {\n%a\n%a} else {\n%a\n%a}"
+	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2 Genpc.indent k
+  | If (e, (Block _|If _ as i1), Some i2) ->
+      bprintf b "if (%a) {\n%a\n%a} else\n%a"
+	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
+  | If (e, i1, Some (Block _|If _ as i2)) ->
+      bprintf b "if (%a)\n%a\n%aelse {\n%a\n%a}"
+	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2 Genpc.indent k
+  | If (e, i1, Some i2) ->
+      bprintf b "if (%a)\n%a\n%aelse\n%a"
+	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
+
+  | _ -> string b "TODO(\"inst\")"
 
 and affect k b dst src =
-  if src = Unpredictable_exp then string b "unpredictable();"
+  if src = Unpredictable_exp then string b "unpredictable()"
   else match dst with
     | Reg (Var "d", _) -> bprintf b
-"if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a;"
+"if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a"
         Genpc.indent (k+2) exp src Genpc.indent k Genpc.indent (k+2) exp src
-    | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a);" exp src
-    | Reg (e, None) -> bprintf b "proc.reg(%a) = %a;" exp e exp src
+    | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a)" exp src
+    | Reg (e, None) -> bprintf b "proc.reg(%a) = %a" exp e exp src
     | Reg (e, Some m) ->
-	bprintf b "proc.reg(%a,%s) = %a;" exp e (mode m) exp src
-    | Var v -> bprintf b "%a = %a;" exp (Var v) exp src
-    | CPSR -> bprintf b "proc.cpsr = %a;" exp src
-    | SPSR _ as e -> bprintf b "%a = %a;" exp e exp src
+	bprintf b "proc.reg(%a,%s) = %a" exp e (mode m) exp src
+    | Var v -> bprintf b "%a = %a" exp (Var v) exp src
+    | CPSR -> bprintf b "proc.cpsr = %a" exp src
+    | SPSR _ as e -> bprintf b "%a = %a" exp e exp src
     | Range (CPSR, Flag (s,_)) ->
-        bprintf b "proc.cpsr.%s_flag = %a;" s exp src
+        bprintf b "proc.cpsr.%s_flag = %a" s exp src
     | Range (CPSR, Index (Num n)) ->
-        bprintf b "proc.cpsr.%s = %a;" (cpsr_flag n) exp src
+        bprintf b "proc.cpsr.%s = %a" (cpsr_flag n) exp src
     | Range (CPSR, Bits (n1, n2)) ->
-        bprintf b "proc.cpsr.%s = %a;" (cpsr_field (n1,n2)) exp src
+        bprintf b "proc.cpsr.%s = %a" (cpsr_field (n1,n2)) exp src
     | Range (e1, Bits (n1, n2)) ->
         inst k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
         inst k b (Proc ("proc.mmu.write_" ^ access_type n, [addr; src]))
     | Range (e, Index n) -> inst k b (Proc ("set_bit", [e; n; src]))
-    | _ -> string b "TODO(\"affect\");";;
+    | _ -> string b "TODO(\"affect\")";;
 
 (** Generate a function modeling an instruction of the processor *)
 
