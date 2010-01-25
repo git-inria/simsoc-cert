@@ -1,0 +1,19 @@
+DiGraph dependencies {
+APIDefense -> { SubXor }
+APIfaux -> { SubXor }
+CompareTerms -> { WeightTerms }
+Contexts -> { GenericTactics; Terms }
+Empty -> { Separable }
+Lasagna -> { Empty; LasagnaTerms; Nat2 }
+LasagnaTerms -> { Terms }
+Misc -> { GenericTactics }
+NXLayer -> { LasagnaTerms; Separable }
+Norm -> { GenericTactics; Terms }
+RewriteTerms -> { CompareTerms }
+Separable -> { RelProps }
+SortedLasagna -> { Lasagna; NXLayer; XorLayer }
+SubXor -> { Norm }
+SuperIntuitionTests -> { GenericTactics }
+WeightTerms -> { Contexts; Misc }
+XorLayer -> { LasagnaTerms; Separable }
+}

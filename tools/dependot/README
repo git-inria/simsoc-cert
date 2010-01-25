@@ -1,0 +1,19 @@
+Construction of a dot file from Makefile dependence specifications 
+Transitive dependencies are removed                                
+Author: JF Monin, Verimag and University Joseph Fourier, Grenoble 
+        http://www-verimag.imag.fr/~monin/ 
+Licence: CeCILL, http://www.cecill.info/index.en.html              
+2005, 2006 
+
+Install: you need Objective Caml
+
+Default install dir : $(HOME)/bin
+(otherwise: change the Makefile).
+
+make
+make install
+
+
+Use: stdin -> dependot -> stdout
+example: see Makefile, make check
+
