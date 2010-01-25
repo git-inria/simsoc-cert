@@ -1,0 +1,4 @@
+Directory tools contains
+- dependot: construction of a dot file from Makefile 
+  dependence specifications, transitive dependencies are removed
+  NB: install -> tools/bin
