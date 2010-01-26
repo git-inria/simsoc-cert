@@ -46,10 +46,6 @@ Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
 
-(* test to zero *)
-(*REMOVE:Definition eq_0 (w : word) : word := word_of_bool (zeq 0 w).
-Definition ne_0 (w : word) : word := word_of_bool (zne 0 w).*)
-
 (* mask made of the bits [n] to [n+k] *)
 Fixpoint masks_aux (n k : nat) : Z :=
   match k with
