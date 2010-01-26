@@ -13,6 +13,8 @@ Require Import Bool.
 Open Scope Z_scope.
 
 (****************************************************************************)
+(** boolean comparison functions on integers *)
+(****************************************************************************)
 
 Definition zeq (x y : Z) : bool := if Z_eq_dec x y then true else false.
 Definition zne (x y : Z) : bool := negb (zeq x y).
@@ -22,11 +24,15 @@ Definition zgt (x y : Z) : bool := zlt y x.
 Definition zle (x y : Z) : bool := negb (zgt x y).
 
 (****************************************************************************)
+(** boolean comparison functions on booleans *)
+(****************************************************************************)
 
 Notation beq := eqb.
 
 Definition bne (x y : bool) : bool := negb (eqb x y).
 
+(****************************************************************************)
+(** decidability of a <= _ <= b *)
 (****************************************************************************)
 
 Lemma between_dec : forall a x b, {a <= x <= b}+{~(a <= x <= b)}.
@@ -37,6 +43,8 @@ left. auto. right. intros [h1 h2]. contradiction.
 right. intros [h1 h2]. contradiction.
 Defined.
 
+(****************************************************************************)
+(** converts a positive integer into a natural number *)
 (****************************************************************************)
 
 Definition nat_of_Z (x : Z) : nat :=
@@ -54,6 +62,8 @@ Proof.
     compute. intro n; case n; reflexivity.
 Qed.
 
+(****************************************************************************)
+(** generic update function *)
 (****************************************************************************)
 
 Section update_map.
