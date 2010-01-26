@@ -902,19 +902,19 @@ void ARM_ISS::ADC(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((old_Rn + shifter_operand) + proc.cpsr.C_flag));
     else
       proc.reg(d) = ((old_Rn + shifter_operand) + proc.cpsr.C_flag);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -931,19 +931,19 @@ void ARM_ISS::ADD(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn + shifter_operand));
     else
       proc.reg(d) = (old_Rn + shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -961,19 +961,19 @@ void ARM_ISS::AND(const bool S,
                   const uint8_t d,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn & shifter_operand));
     else
       proc.reg(d) = (old_Rn & shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -987,11 +987,11 @@ void ARM_ISS::AND(const bool S,
 // A4.1.5 B, BL
 void ARM_ISS::B_BL(const bool L,
                    const ARM_Processor::Condition cond,
-                   const uint32_t signed_immed_24) {
+                   const uint32_t signed_immed_24)
+{
   if (ConditionPassed(cond)) {
-    if ((L == 1)) {
+    if ((L == 1))
       proc.reg(14) = next_instr();
-    }
     proc.set_pc_raw((proc.reg(15) + (SignExtend_24to30(signed_immed_24) << 2)));
   }
 }
@@ -1002,19 +1002,19 @@ void ARM_ISS::BIC(const bool S,
                   const uint8_t d,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn & NOT(shifter_operand)));
     else
       proc.reg(d) = (old_Rn & NOT(shifter_operand));
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -1026,7 +1026,8 @@ void ARM_ISS::BIC(const bool S,
 }
 
 // A4.1.7 BKPT
-void ARM_ISS::BKPT() {
+void ARM_ISS::BKPT()
+{
   if (not_overridden_by_debug_hardware()) {
     proc.reg(14,ARM_Processor::abt) = (this_instr() + 4);
     proc.spsr(ARM_Processor::abt) = proc.cpsr;
@@ -1035,17 +1036,17 @@ void ARM_ISS::BKPT() {
     proc.cpsr.I_flag = 1;
     proc.cpsr.A_flag = 1;
     proc.cpsr.E_flag = proc.cp15.get_reg1_EEbit();
-    if (high_vectors_configured()) {
+    if (high_vectors_configured())
       proc.set_pc_raw(0xFFFF000C);
-    } else {
+    else
       proc.set_pc_raw(0x0000000C);
-    }
   }
 }
 
 // A4.1.8 BLX (1)
 void ARM_ISS::BLX_1(const uint32_t H,
-                    const uint32_t signed_immed_24) {
+                    const uint32_t signed_immed_24)
+{
   proc.reg(14) = next_instr();
   proc.cpsr.T_flag = 1;
   proc.set_pc_raw(((proc.reg(15) + (SignExtend_24to30(signed_immed_24) << 2)) + (H << 1)));
@@ -1053,7 +1054,8 @@ void ARM_ISS::BLX_1(const uint32_t H,
 
 // A4.1.9 BLX (2)
 void ARM_ISS::BLX_2(const ARM_Processor::Condition cond,
-                    const uint8_t m) {
+                    const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t target;
   if (ConditionPassed(cond)) {
@@ -1066,7 +1068,8 @@ void ARM_ISS::BLX_2(const ARM_Processor::Condition cond,
 
 // A4.1.10 BX
 void ARM_ISS::BX(const ARM_Processor::Condition cond,
-                 const uint8_t m) {
+                 const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     proc.cpsr.T_flag = ((old_Rm>>0)&1);
@@ -1076,7 +1079,8 @@ void ARM_ISS::BX(const ARM_Processor::Condition cond,
 
 // A4.1.11 BXJ
 void ARM_ISS::BXJ(const ARM_Processor::Condition cond,
-                  const uint8_t m) {
+                  const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t jpc;
   uint32_t invalidhandler;
@@ -1088,16 +1092,16 @@ void ARM_ISS::BXJ(const ARM_Processor::Condition cond,
       jpc = SUBARCHITECTURE_DEFINED_value();
       invalidhandler = SUBARCHITECTURE_DEFINED_value();
       if (Jazelle_Extension_accepts_opcode_at_jpc()) {
-        if ((CV_bit_of_Jazelle_OS_Control_register() == 0)) {
+        if ((CV_bit_of_Jazelle_OS_Control_register() == 0))
           proc.set_pc_raw(invalidhandler);
-        } else {
+        else {
           proc.cpsr.J_flag = 1;
           Start_opcode_execution_at(jpc);
         }
       } else {
-        if (((CV_bit_of_Jazelle_OS_Control_register() == 0) & IMPLEMENTATION_DEFINED_CONDITION())) {
+        if (((CV_bit_of_Jazelle_OS_Control_register() == 0) & IMPLEMENTATION_DEFINED_CONDITION()))
           proc.set_pc_raw(invalidhandler);
-        } else {
+        else {
           proc.cpsr.T_flag = ((old_Rm>>0)&1);
           proc.set_pc_raw((old_Rm & 0xFFFFFFFE));
         }
@@ -1108,33 +1112,34 @@ void ARM_ISS::BXJ(const ARM_Processor::Condition cond,
 
 // A4.1.12 CDP
 void ARM_ISS::CDP(const ARM_Processor::Condition cond,
-                  const uint8_t cp_num) {
-  if (ConditionPassed(cond)) {
+                  const uint8_t cp_num)
+{
+  if (ConditionPassed(cond))
     proc.coproc(cp_num)->dependent_operation();
-  }
 }
 
 // A4.1.13 CLZ
 void ARM_ISS::CLZ(const uint8_t d,
-                  const uint8_t m) {
+                  const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
-  if ((old_Rm == 0)) {
+  if ((old_Rm == 0))
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(32);
     else
       proc.reg(d) = 32;
-  } else {
+  else
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((31 - bit_position_of_most_significant_1(old_Rm)));
     else
       proc.reg(d) = (31 - bit_position_of_most_significant_1(old_Rm));
-  }
 }
 
 // A4.1.14 CMN
 void ARM_ISS::CMN(const ARM_Processor::Condition cond,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   uint32_t alu_out;
   if (ConditionPassed(cond)) {
@@ -1149,7 +1154,8 @@ void ARM_ISS::CMN(const ARM_Processor::Condition cond,
 // A4.1.15 CMP
 void ARM_ISS::CMP(const ARM_Processor::Condition cond,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   uint32_t alu_out;
   if (ConditionPassed(cond)) {
@@ -1167,36 +1173,33 @@ void ARM_ISS::CPS(const bool A,
                   const bool I,
                   const uint8_t imod,
                   const bool mmod,
-                  const ARM_Processor::Mode mode) {
+                  const ARM_Processor::Mode mode)
+{
   if (InAPrivilegedMode()) {
     if ((((imod>>1)&1) == 1)) {
-      if ((A == 1)) {
+      if ((A == 1))
         proc.cpsr.A_flag = ((imod>>0)&1);
-      }
-      if ((I == 1)) {
+      if ((I == 1))
         proc.cpsr.I_flag = ((imod>>0)&1);
-      }
-      if ((F == 1)) {
+      if ((F == 1))
         proc.cpsr.F_flag = ((imod>>0)&1);
-      }
     }
-    if ((mmod == 1)) {
+    if ((mmod == 1))
       proc.cpsr.mode = mode;
-    }
   }
 }
 
 // A4.1.17 CPY
 void ARM_ISS::CPY(const ARM_Processor::Condition cond,
                   const uint8_t d,
-                  const uint8_t m) {
+                  const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
-  if (ConditionPassed(cond)) {
+  if (ConditionPassed(cond))
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(old_Rm);
     else
       proc.reg(d) = old_Rm;
-  }
 }
 
 // A4.1.18 EOR
@@ -1205,19 +1208,19 @@ void ARM_ISS::EOR(const bool S,
                   const uint8_t d,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn ^ shifter_operand));
     else
       proc.reg(d) = (old_Rn ^ shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -1231,7 +1234,8 @@ void ARM_ISS::EOR(const bool S,
 // A4.1.19 LDC
 void ARM_ISS::LDC(const ARM_Processor::Condition cond,
                   const uint8_t cp_num,
-                  const uint32_t start_address) {
+                  const uint32_t start_address)
+{
   uint32_t address;
   if (ConditionPassed(cond)) {
     address = start_address;
@@ -1245,7 +1249,8 @@ void ARM_ISS::LDC(const ARM_Processor::Condition cond,
 // A4.1.20 LDM (1)
 void ARM_ISS::LDM_1(const ARM_Processor::Condition cond,
                     const uint16_t register_list,
-                    const uint32_t start_address) {
+                    const uint32_t start_address)
+{
   uint32_t value;
   uint32_t address;
   if (ConditionPassed(cond)) {
@@ -1258,12 +1263,8 @@ void ARM_ISS::LDM_1(const ARM_Processor::Condition cond,
     }
     if ((((register_list>>15)&1) == 1)) {
       value = proc.mmu.read_word(address);
-      if (proc.v5_and_above) {
-        proc.set_pc_raw((value & 0xFFFFFFFE));
-        proc.cpsr.T_flag = ((value>>0)&1);
-      } else {
-        proc.set_pc_raw((value & 0xFFFFFFFC));
-      }
+      proc.set_pc_raw((value & 0xFFFFFFFE));
+      proc.cpsr.T_flag = ((value>>0)&1);
       address = (address + 4);
     }
   }
@@ -1272,7 +1273,8 @@ void ARM_ISS::LDM_1(const ARM_Processor::Condition cond,
 // A4.1.21 LDM (2)
 void ARM_ISS::LDM_2(const ARM_Processor::Condition cond,
                     const uint16_t register_list,
-                    const uint32_t start_address) {
+                    const uint32_t start_address)
+{
   uint32_t address;
   if (ConditionPassed(cond)) {
     address = start_address;
@@ -1288,7 +1290,8 @@ void ARM_ISS::LDM_2(const ARM_Processor::Condition cond,
 // A4.1.22 LDM (3)
 void ARM_ISS::LDM_3(const ARM_Processor::Condition cond,
                     const uint16_t register_list,
-                    const uint32_t start_address) {
+                    const uint32_t start_address)
+{
   uint32_t value;
   uint32_t address;
   if (ConditionPassed(cond)) {
@@ -1299,11 +1302,10 @@ void ARM_ISS::LDM_3(const ARM_Processor::Condition cond,
         address = (address + 4);
       }
     }
-    if (CurrentModeHasSPSR()) {
+    if (CurrentModeHasSPSR())
       proc.cpsr = proc.spsr();
-    } else {
+    else
       unpredictable();
-    }
     value = proc.mmu.read_word(address);
     proc.set_pc_raw(value);
     address = (address + 4);
@@ -1313,47 +1315,43 @@ void ARM_ISS::LDM_3(const ARM_Processor::Condition cond,
 // A4.1.23 LDR
 void ARM_ISS::LDR(const uint32_t address,
                   const ARM_Processor::Condition cond,
-                  const uint8_t d) {
+                  const uint8_t d)
+{
   uint32_t data;
   if (ConditionPassed(cond)) {
-    if ((proc.cp15.get_reg1_Ubit() == 0)) {
+    if ((proc.cp15.get_reg1_Ubit() == 0))
       data = rotate_right(proc.mmu.read_word(address), (8 * get_bits(address,1,0)));
-    } else {
+    else
       data = proc.mmu.read_word(address);
-    }
-    if (d==15) {
-      if (proc.v5_and_above) {
-        proc.set_pc_raw((data & 0xFFFFFFFE));
-        proc.cpsr.T_flag = ((data>>0)&1);
-      } else {
-        proc.set_pc_raw((data & 0xFFFFFFFC));
-      }
-    } else {
+    if ((d == 15)) {
+      proc.set_pc_raw((data & 0xFFFFFFFE));
+      proc.cpsr.T_flag = ((data>>0)&1);
+    } else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(data);
       else
         proc.reg(d) = data;
-    }
   }
 }
 
 // A4.1.24 LDRB
 void ARM_ISS::LDRB(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
-  if (ConditionPassed(cond)) {
+                   const uint8_t d)
+{
+  if (ConditionPassed(cond))
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(proc.mmu.read_byte(address));
     else
       proc.reg(d) = proc.mmu.read_byte(address);
-  }
 }
 
 // A4.1.25 LDRBT
 void ARM_ISS::LDRBT(const uint32_t address,
                     const ARM_Processor::Condition cond,
                     const uint8_t d,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
@@ -1367,24 +1365,25 @@ void ARM_ISS::LDRBT(const uint32_t address,
 // A4.1.26 LDRD
 void ARM_ISS::LDRD(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   if (ConditionPassed(cond)) {
-    if ((((is_even(d) && d!=14) && (get_bits(address,1,0) == 0)) && ((proc.cp15.get_reg1_Ubit() == 1) || (((address>>2)&1) == 0)))) {
+    if ((((is_even(d) && (d != 14)) && (get_bits(address,1,0) == 0)) && ((proc.cp15.get_reg1_Ubit() == 1) || (((address>>2)&1) == 0)))) {
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(proc.mmu.read_word(address));
       else
         proc.reg(d) = proc.mmu.read_word(address);
       proc.reg((d + 1)) = proc.mmu.read_word((address + 4));
-    } else {
+    } else
       unpredictable();
-    }
   }
 }
 
 // A4.1.27 LDREX
 void ARM_ISS::LDREX(const ARM_Processor::Condition cond,
                     const uint8_t d,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rn = proc.reg(n);
   size_t processor_id;
   uint32_t physical_address;
@@ -1395,9 +1394,8 @@ void ARM_ISS::LDREX(const ARM_Processor::Condition cond,
     else
       proc.reg(d) = proc.mmu.read_word(old_Rn);
     physical_address = TLB(old_Rn);
-    if ((Shared(old_Rn) == 1)) {
+    if ((Shared(old_Rn) == 1))
       MarkExclusiveGlobal(physical_address, processor_id, 4);
-    }
     MarkExclusiveLocal(physical_address, processor_id, 4);
   }
 }
@@ -1405,18 +1403,17 @@ void ARM_ISS::LDREX(const ARM_Processor::Condition cond,
 // A4.1.28 LDRH
 void ARM_ISS::LDRH(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   uint16_t data;
   if (ConditionPassed(cond)) {
     if ((proc.cp15.get_reg1_Ubit() == 0)) {
-      if ((((address>>0)&1) == 0)) {
+      if ((((address>>0)&1) == 0))
         data = proc.mmu.read_half(address);
-      } else {
+      else
         unpredictable();
-      }
-    } else {
+    } else
       data = proc.mmu.read_half(address);
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(ZeroExtend(get_half_0(data)));
     else
@@ -1427,7 +1424,8 @@ void ARM_ISS::LDRH(const uint32_t address,
 // A4.1.29 LDRSB
 void ARM_ISS::LDRSB(const uint32_t address,
                     const ARM_Processor::Condition cond,
-                    const uint8_t d) {
+                    const uint8_t d)
+{
   uint8_t data;
   if (ConditionPassed(cond)) {
     data = proc.mmu.read_byte(address);
@@ -1441,18 +1439,17 @@ void ARM_ISS::LDRSB(const uint32_t address,
 // A4.1.30 LDRSH
 void ARM_ISS::LDRSH(const uint32_t address,
                     const ARM_Processor::Condition cond,
-                    const uint8_t d) {
+                    const uint8_t d)
+{
   uint16_t data;
   if (ConditionPassed(cond)) {
     if ((proc.cp15.get_reg1_Ubit() == 0)) {
-      if ((((address>>0)&1) == 0)) {
+      if ((((address>>0)&1) == 0))
         data = proc.mmu.read_half(address);
-      } else {
+      else
         unpredictable();
-      }
-    } else {
+    } else
       data = proc.mmu.read_half(address);
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(SignExtend(get_half_0(data)));
     else
@@ -1463,36 +1460,37 @@ void ARM_ISS::LDRSH(const uint32_t address,
 // A4.1.31 LDRT
 void ARM_ISS::LDRT(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   if (ConditionPassed(cond)) {
-    if ((proc.cp15.get_reg1_Ubit() == 0)) {
+    if ((proc.cp15.get_reg1_Ubit() == 0))
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(rotate_right(proc.mmu.read_word(address), (8 * get_bits(address,1,0))));
       else
         proc.reg(d) = rotate_right(proc.mmu.read_word(address), (8 * get_bits(address,1,0)));
-    } else {
+    else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(proc.mmu.read_word(address));
       else
         proc.reg(d) = proc.mmu.read_word(address);
-    }
   }
 }
 
 // A4.1.32 MCR
 void ARM_ISS::MCR(const ARM_Processor::Condition cond,
                   const uint8_t cp_num,
-                  const uint8_t d) {
-  if (ConditionPassed(cond)) {
+                  const uint8_t d)
+{
+  if (ConditionPassed(cond))
     proc.coproc(cp_num)->send(proc.reg(d));
-  }
 }
 
 // A4.1.33 MCRR
 void ARM_ISS::MCRR(const ARM_Processor::Condition cond,
                    const uint8_t cp_num,
                    const uint8_t d,
-                   const uint8_t n) {
+                   const uint8_t n)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     proc.coproc(cp_num)->send(proc.reg(d));
@@ -1506,7 +1504,8 @@ void ARM_ISS::MLA(const bool S,
                   const uint8_t d,
                   const uint8_t m,
                   const uint8_t n,
-                  const uint8_t s) {
+                  const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
@@ -1527,18 +1526,18 @@ void ARM_ISS::MOV(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(shifter_operand);
     else
       proc.reg(d) = shifter_operand;
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -1552,21 +1551,21 @@ void ARM_ISS::MOV(const bool S,
 // A4.1.36 MRC
 void ARM_ISS::MRC(const ARM_Processor::Condition cond,
                   const uint8_t cp_num,
-                  const uint8_t d) {
+                  const uint8_t d)
+{
   uint32_t data;
   if (ConditionPassed(cond)) {
     data = proc.coproc(cp_num)->value();
-    if (d==15) {
+    if ((d == 15)) {
       proc.cpsr.N_flag = ((data>>31)&1);
       proc.cpsr.Z_flag = ((data>>30)&1);
       proc.cpsr.C_flag = ((data>>29)&1);
       proc.cpsr.V_flag = ((data>>28)&1);
-    } else {
+    } else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(data);
       else
         proc.reg(d) = data;
-    }
   }
 }
 
@@ -1574,7 +1573,8 @@ void ARM_ISS::MRC(const ARM_Processor::Condition cond,
 void ARM_ISS::MRRC(const ARM_Processor::Condition cond,
                    const uint8_t cp_num,
                    const uint8_t d,
-                   const uint8_t n) {
+                   const uint8_t n)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
@@ -1588,19 +1588,19 @@ void ARM_ISS::MRRC(const ARM_Processor::Condition cond,
 // A4.1.38 MRS
 void ARM_ISS::MRS(const bool R,
                   const ARM_Processor::Condition cond,
-                  const uint8_t d) {
+                  const uint8_t d)
+{
   if (ConditionPassed(cond)) {
-    if ((R == 1)) {
+    if ((R == 1))
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(proc.spsr());
       else
         proc.reg(d) = proc.spsr();
-    } else {
+    else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(proc.cpsr);
       else
         proc.reg(d) = proc.cpsr;
-    }
   }
 }
 
@@ -1611,39 +1611,35 @@ void ARM_ISS::MSR(const bool R,
                   const uint8_t immed_8,
                   const uint8_t m,
                   const uint32_t opcode,
-                  const uint8_t rotate_imm) {
+                  const uint8_t rotate_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand;
   uint32_t mask;
   uint32_t byte_mask;
   if (ConditionPassed(cond)) {
-    if ((((opcode>>25)&1) == 1)) {
+    if ((((opcode>>25)&1) == 1))
       operand = rotate_right(immed_8, (rotate_imm * 2));
-    } else {
+    else
       operand = old_Rm;
-    }
-    if (((operand & proc.msr_UnallocMask()) != 0)) {
+    if (((operand & proc.msr_UnallocMask()) != 0))
       unpredictable();
-    }
     byte_mask = (((((((field_mask>>0)&1) == 1)? 0x000000FF: 0x00000000) | ((((field_mask>>1)&1) == 1)? 0x0000FF00: 0x00000000)) | ((((field_mask>>2)&1) == 1)? 0x00FF0000: 0x00000000)) | ((((field_mask>>3)&1) == 1)? 0xFF000000: 0x00000000));
     if ((R == 0)) {
       if (InAPrivilegedMode()) {
-        if (((operand & proc.msr_StateMask()) != 0)) {
+        if (((operand & proc.msr_StateMask()) != 0))
           unpredictable();
-        } else {
+        else
           mask = (byte_mask & (proc.msr_UserMask() | proc.msr_PrivMask()));
-        }
-      } else {
+      } else
         mask = (byte_mask & proc.msr_UserMask());
-      }
       proc.cpsr = ((proc.cpsr & NOT(mask)) | (operand & mask));
     } else {
       if (CurrentModeHasSPSR()) {
         mask = (byte_mask & ((proc.msr_UserMask() | proc.msr_PrivMask()) | proc.msr_StateMask()));
         proc.spsr() = ((proc.spsr() & NOT(mask)) | (operand & mask));
-      } else {
+      } else
         unpredictable();
-      }
     }
   }
 }
@@ -1653,7 +1649,8 @@ void ARM_ISS::MUL(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t m,
-                  const uint8_t s) {
+                  const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   if (ConditionPassed(cond)) {
@@ -1673,18 +1670,18 @@ void ARM_ISS::MVN(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(NOT(shifter_operand));
     else
       proc.reg(d) = NOT(shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -1701,19 +1698,19 @@ void ARM_ISS::ORR(const bool S,
                   const uint8_t d,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn | shifter_operand));
     else
       proc.reg(d) = (old_Rn | shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -1729,7 +1726,8 @@ void ARM_ISS::PKHBT(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t shift_imm) {
+                    const uint8_t shift_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1743,32 +1741,34 @@ void ARM_ISS::PKHTB(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t shift_imm) {
+                    const uint8_t shift_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if ((shift_imm == 0)) {
-      if ((((old_Rm>>31)&1) == 0)) {
+      if ((((old_Rm>>31)&1) == 0))
         set_field(proc.reg(d), 15, 0, 0x0000);
-      } else {
+      else
         set_field(proc.reg(d), 15, 0, 0xFFFF);
-      }
-    } else {
+    } else
       set_field(proc.reg(d), 15, 0, get_half_0(asr(old_Rm, shift_imm)));
-    }
     set_field(proc.reg(d), 31, 16, get_half_1(old_Rn));
   }
 }
 
 // A4.1.45 PLD
-void ARM_ISS::PLD() {
+void ARM_ISS::PLD()
+{
+
 }
 
 // A4.1.46 QADD
 void ARM_ISS::QADD(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t n) {
+                   const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1776,9 +1776,8 @@ void ARM_ISS::QADD(const ARM_Processor::Condition cond,
       proc.set_pc_raw(SignedSat_add32(old_Rm, old_Rn));
     else
       proc.reg(d) = SignedSat_add32(old_Rm, old_Rn);
-    if (SignedDoesSat_add32(old_Rm, old_Rn)) {
+    if (SignedDoesSat_add32(old_Rm, old_Rn))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -1786,7 +1785,8 @@ void ARM_ISS::QADD(const ARM_Processor::Condition cond,
 void ARM_ISS::QADD16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1799,7 +1799,8 @@ void ARM_ISS::QADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::QADD8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1814,7 +1815,8 @@ void ARM_ISS::QADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::QADDSUBX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1827,7 +1829,8 @@ void ARM_ISS::QADDSUBX(const ARM_Processor::Condition cond,
 void ARM_ISS::QDADD(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1835,9 +1838,8 @@ void ARM_ISS::QDADD(const ARM_Processor::Condition cond,
       proc.set_pc_raw(SignedSat_add32(old_Rm, SignedSat_double32(old_Rn)));
     else
       proc.reg(d) = SignedSat_add32(old_Rm, SignedSat_double32(old_Rn));
-    if ((SignedDoesSat_add32(old_Rm, SignedSat_double32(old_Rn)) || SignedDoesSat_double32(old_Rn))) {
+    if ((SignedDoesSat_add32(old_Rm, SignedSat_double32(old_Rn)) || SignedDoesSat_double32(old_Rn)))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -1845,7 +1847,8 @@ void ARM_ISS::QDADD(const ARM_Processor::Condition cond,
 void ARM_ISS::QDSUB(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1853,9 +1856,8 @@ void ARM_ISS::QDSUB(const ARM_Processor::Condition cond,
       proc.set_pc_raw(SignedSat_sub32(old_Rm, SignedSat_double32(old_Rn)));
     else
       proc.reg(d) = SignedSat_sub32(old_Rm, SignedSat_double32(old_Rn));
-    if ((SignedDoesSat_sub32(old_Rm, SignedSat_double32(old_Rn)) || SignedDoesSat_double32(old_Rn))) {
+    if ((SignedDoesSat_sub32(old_Rm, SignedSat_double32(old_Rn)) || SignedDoesSat_double32(old_Rn)))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -1863,7 +1865,8 @@ void ARM_ISS::QDSUB(const ARM_Processor::Condition cond,
 void ARM_ISS::QSUB(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t n) {
+                   const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1871,9 +1874,8 @@ void ARM_ISS::QSUB(const ARM_Processor::Condition cond,
       proc.set_pc_raw(SignedSat_sub32(old_Rm, old_Rn));
     else
       proc.reg(d) = SignedSat_sub32(old_Rm, old_Rn);
-    if (SignedDoesSat_sub32(old_Rm, old_Rn)) {
+    if (SignedDoesSat_sub32(old_Rm, old_Rn))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -1881,7 +1883,8 @@ void ARM_ISS::QSUB(const ARM_Processor::Condition cond,
 void ARM_ISS::QSUB16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1894,7 +1897,8 @@ void ARM_ISS::QSUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::QSUB8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1909,7 +1913,8 @@ void ARM_ISS::QSUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::QSUBADDX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -1921,7 +1926,8 @@ void ARM_ISS::QSUBADDX(const ARM_Processor::Condition cond,
 // A4.1.56 REV
 void ARM_ISS::REV(const ARM_Processor::Condition cond,
                   const uint8_t d,
-                  const uint8_t m) {
+                  const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     set_field(proc.reg(d), 31, 24, get_byte_0(old_Rm));
@@ -1934,7 +1940,8 @@ void ARM_ISS::REV(const ARM_Processor::Condition cond,
 // A4.1.57 REV16
 void ARM_ISS::REV16(const ARM_Processor::Condition cond,
                     const uint8_t d,
-                    const uint8_t m) {
+                    const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     set_field(proc.reg(d), 15, 8, get_byte_0(old_Rm));
@@ -1947,30 +1954,30 @@ void ARM_ISS::REV16(const ARM_Processor::Condition cond,
 // A4.1.58 REVSH
 void ARM_ISS::REVSH(const ARM_Processor::Condition cond,
                     const uint8_t d,
-                    const uint8_t m) {
+                    const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     set_field(proc.reg(d), 15, 8, get_byte_0(old_Rm));
     set_field(proc.reg(d), 7, 0, get_byte_1(old_Rm));
-    if ((((old_Rm>>7)&1) == 1)) {
+    if ((((old_Rm>>7)&1) == 1))
       set_field(proc.reg(d), 31, 16, 0xFFFF);
-    } else {
+    else
       set_field(proc.reg(d), 31, 16, 0x0000);
-    }
   }
 }
 
 // A4.1.59 RFE
-void ARM_ISS::RFE(const uint32_t start_address) {
+void ARM_ISS::RFE(const uint32_t start_address)
+{
   uint32_t value;
   uint32_t address;
   address = start_address;
   value = proc.mmu.read_word(address);
-  if (InAPrivilegedMode()) {
+  if (InAPrivilegedMode())
     proc.cpsr = proc.mmu.read_word((address + 4));
-  } else {
+  else
     unpredictable();
-  }
   proc.set_pc_raw(value);
 }
 
@@ -1979,19 +1986,19 @@ void ARM_ISS::RSB(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((shifter_operand - old_Rn));
     else
       proc.reg(d) = (shifter_operand - old_Rn);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -2008,19 +2015,19 @@ void ARM_ISS::RSC(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((shifter_operand - old_Rn) - NOT(proc.cpsr.C_flag)));
     else
       proc.reg(d) = ((shifter_operand - old_Rn) - NOT(proc.cpsr.C_flag));
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -2036,7 +2043,8 @@ void ARM_ISS::RSC(const bool S,
 void ARM_ISS::SADD16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2054,7 +2062,8 @@ void ARM_ISS::SADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::SADD8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2078,7 +2087,8 @@ void ARM_ISS::SADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::SADDSUBX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2098,19 +2108,19 @@ void ARM_ISS::SBC(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((old_Rn - shifter_operand) - NOT(proc.cpsr.C_flag)));
     else
       proc.reg(d) = ((old_Rn - shifter_operand) - NOT(proc.cpsr.C_flag));
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -2126,7 +2136,8 @@ void ARM_ISS::SBC(const bool S,
 void ARM_ISS::SEL(const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t m,
-                  const uint8_t n) {
+                  const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -2138,7 +2149,8 @@ void ARM_ISS::SEL(const ARM_Processor::Condition cond,
 }
 
 // A4.1.67 SETEND
-void ARM_ISS::SETEND() {
+void ARM_ISS::SETEND()
+{
   proc.cpsr = CPSR_with_specified_E_bit_modification();
 }
 
@@ -2146,7 +2158,8 @@ void ARM_ISS::SETEND() {
 void ARM_ISS::SHADD16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2162,7 +2175,8 @@ void ARM_ISS::SHADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::SHADD8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2182,7 +2196,8 @@ void ARM_ISS::SHADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::SHADDSUBX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2199,7 +2214,8 @@ void ARM_ISS::SHADDSUBX(const ARM_Processor::Condition cond,
 void ARM_ISS::SHSUB16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -2215,7 +2231,8 @@ void ARM_ISS::SHSUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::SHSUB8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -2235,7 +2252,8 @@ void ARM_ISS::SHSUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::SHSUBADDX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2255,30 +2273,28 @@ void ARM_ISS::SMLA(const ARM_Processor::Condition cond,
                    const uint8_t n,
                    const uint8_t s,
                    const bool x,
-                   const bool y) {
+                   const bool y)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t operand2;
   uint32_t operand1;
   if (ConditionPassed(cond)) {
-    if ((x == 0)) {
+    if ((x == 0))
       operand1 = SignExtend(get_half_0(old_Rm));
-    } else {
+    else
       operand1 = SignExtend(get_half_1(old_Rm));
-    }
-    if ((y == 0)) {
+    if ((y == 0))
       operand2 = SignExtend(get_half_0(old_Rs));
-    } else {
+    else
       operand2 = SignExtend(get_half_1(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((operand1 * operand2) + old_Rn));
     else
       proc.reg(d) = ((operand1 * operand2) + old_Rn);
-    if (OverflowFrom_add2((operand1 * operand2), old_Rn)) {
+    if (OverflowFrom_add2((operand1 * operand2), old_Rn))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2288,7 +2304,8 @@ void ARM_ISS::SMLAD(const bool X,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
@@ -2296,20 +2313,18 @@ void ARM_ISS::SMLAD(const bool X,
   uint32_t product1;
   uint32_t operand2;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
     product2 = (get_half_1(old_Rm) * get_half_1(operand2));
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((old_Rn + product1) + product2));
     else
       proc.reg(d) = ((old_Rn + product1) + product2);
-    if (OverflowFrom_add3(old_Rn, product1, product2)) {
+    if (OverflowFrom_add3(old_Rn, product1, product2))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2319,7 +2334,8 @@ void ARM_ISS::SMLAL(const bool S,
                     const uint8_t dHi,
                     const uint8_t dLo,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   if (ConditionPassed(cond)) {
@@ -2339,22 +2355,21 @@ void ARM_ISS::SMLAL(const ARM_Processor::Condition cond,
                     const uint8_t m,
                     const uint8_t s,
                     const bool x,
-                    const bool y) {
+                    const bool y)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t operand2;
   uint32_t operand1;
   if (ConditionPassed(cond)) {
-    if ((x == 0)) {
+    if ((x == 0))
       operand1 = SignExtend(get_half_0(old_Rm));
-    } else {
+    else
       operand1 = SignExtend(get_half_1(old_Rm));
-    }
-    if ((y == 0)) {
+    if ((y == 0))
       operand2 = SignExtend(get_half_0(old_Rs));
-    } else {
+    else
       operand2 = SignExtend(get_half_1(old_Rs));
-    }
     proc.reg(dLo) = (proc.reg(dLo) + (operand1 * operand2));
     proc.reg(dHi) = ((proc.reg(dHi) + (((operand1 * operand2) < 0)? 0xFFFFFFFF: 0)) + CarryFrom_add2(proc.reg(dLo), (operand1 * operand2)));
   }
@@ -2366,7 +2381,8 @@ void ARM_ISS::SMLALD(const bool X,
                      const uint8_t dHi,
                      const uint8_t dLo,
                      const uint8_t m,
-                     const uint8_t s) {
+                     const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint64_t result;
@@ -2375,11 +2391,10 @@ void ARM_ISS::SMLALD(const bool X,
   uint32_t operand2;
   uint64_t accvalue;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     set_field(accvalue, 31, 0, proc.reg(dLo));
     set_field(accvalue, 63, 32, proc.reg(dHi));
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
@@ -2396,24 +2411,23 @@ void ARM_ISS::SMLAW(const ARM_Processor::Condition cond,
                     const uint8_t m,
                     const uint8_t n,
                     const uint8_t s,
-                    const bool y) {
+                    const bool y)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t operand2;
   if (ConditionPassed(cond)) {
-    if ((y == 0)) {
+    if ((y == 0))
       operand2 = SignExtend(get_half_0(old_Rs));
-    } else {
+    else
       operand2 = SignExtend(get_half_1(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((get_bits((old_Rm * operand2),47,16) + old_Rn));
     else
       proc.reg(d) = (get_bits((old_Rm * operand2),47,16) + old_Rn);
-    if (OverflowFrom_add2(get_bits((old_Rm * operand2),47,16), old_Rn)) {
+    if (OverflowFrom_add2(get_bits((old_Rm * operand2),47,16), old_Rn))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2423,7 +2437,8 @@ void ARM_ISS::SMLSD(const bool X,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
@@ -2432,11 +2447,10 @@ void ARM_ISS::SMLSD(const bool X,
   uint32_t operand2;
   uint32_t diffofproducts;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
     product2 = (get_half_1(old_Rm) * get_half_1(operand2));
     diffofproducts = (product1 - product2);
@@ -2444,9 +2458,8 @@ void ARM_ISS::SMLSD(const bool X,
       proc.set_pc_raw((old_Rn + diffofproducts));
     else
       proc.reg(d) = (old_Rn + diffofproducts);
-    if (OverflowFrom_add2(old_Rn, diffofproducts)) {
+    if (OverflowFrom_add2(old_Rn, diffofproducts))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2456,7 +2469,8 @@ void ARM_ISS::SMLSLD(const bool X,
                      const uint8_t dHi,
                      const uint8_t dLo,
                      const uint8_t m,
-                     const uint8_t s) {
+                     const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint64_t result;
@@ -2465,11 +2479,10 @@ void ARM_ISS::SMLSLD(const bool X,
   uint32_t operand2;
   uint64_t accvalue;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     set_field(accvalue, 31, 0, proc.reg(dLo));
     set_field(accvalue, 63, 32, proc.reg(dHi));
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
@@ -2486,24 +2499,24 @@ void ARM_ISS::SMMLA(const bool R,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t value;
   if (ConditionPassed(cond)) {
     value = (old_Rm * old_Rs);
-    if ((R == 1)) {
+    if ((R == 1))
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(get_bits((((static_cast<uint64_t>(old_Rn) << 32) + value) + 0x80000000),63,32));
       else
         proc.reg(d) = get_bits((((static_cast<uint64_t>(old_Rn) << 32) + value) + 0x80000000),63,32);
-    } else {
+    else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(get_bits(((static_cast<uint64_t>(old_Rn) << 32) + value),63,32));
       else
         proc.reg(d) = get_bits(((static_cast<uint64_t>(old_Rn) << 32) + value),63,32);
-    }
   }
 }
 
@@ -2513,24 +2526,24 @@ void ARM_ISS::SMMLS(const bool R,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t value;
   if (ConditionPassed(cond)) {
     value = (old_Rm * old_Rs);
-    if ((R == 1)) {
+    if ((R == 1))
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(get_bits((((static_cast<uint64_t>(old_Rn) << 32) - value) + 0x80000000),63,32));
       else
         proc.reg(d) = get_bits((((static_cast<uint64_t>(old_Rn) << 32) - value) + 0x80000000),63,32);
-    } else {
+    else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(get_bits(((static_cast<uint64_t>(old_Rn) << 32) - value),63,32));
       else
         proc.reg(d) = get_bits(((static_cast<uint64_t>(old_Rn) << 32) - value),63,32);
-    }
   }
 }
 
@@ -2539,16 +2552,16 @@ void ARM_ISS::SMMUL(const bool R,
                     const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t value;
   if (ConditionPassed(cond)) {
-    if ((R == 1)) {
+    if ((R == 1))
       value = ((old_Rm * old_Rs) + 0x80000000);
-    } else {
+    else
       value = (old_Rm * old_Rs);
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(get_bits(value,63,32));
     else
@@ -2561,27 +2574,26 @@ void ARM_ISS::SMUAD(const bool X,
                     const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t product2;
   uint32_t product1;
   uint32_t operand2;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
     product2 = (get_half_1(old_Rm) * get_half_1(operand2));
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((product1 + product2));
     else
       proc.reg(d) = (product1 + product2);
-    if (OverflowFrom_add2(product1, product2)) {
+    if (OverflowFrom_add2(product1, product2))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2591,22 +2603,21 @@ void ARM_ISS::SMUL(const ARM_Processor::Condition cond,
                    const uint8_t m,
                    const uint8_t s,
                    const bool x,
-                   const bool y) {
+                   const bool y)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t operand2;
   uint32_t operand1;
   if (ConditionPassed(cond)) {
-    if ((x == 0)) {
+    if ((x == 0))
       operand1 = SignExtend(get_half_0(old_Rm));
-    } else {
+    else
       operand1 = SignExtend(get_half_1(old_Rm));
-    }
-    if ((y == 0)) {
+    if ((y == 0))
       operand2 = SignExtend(get_half_0(old_Rs));
-    } else {
+    else
       operand2 = SignExtend(get_half_1(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((operand1 * operand2));
     else
@@ -2620,7 +2631,8 @@ void ARM_ISS::SMULL(const bool S,
                     const uint8_t dHi,
                     const uint8_t dLo,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   if (ConditionPassed(cond)) {
@@ -2638,16 +2650,16 @@ void ARM_ISS::SMULW(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t s,
-                    const bool y) {
+                    const bool y)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t operand2;
   if (ConditionPassed(cond)) {
-    if ((y == 0)) {
+    if ((y == 0))
       operand2 = SignExtend(get_half_0(old_Rs));
-    } else {
+    else
       operand2 = SignExtend(get_half_1(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(get_bits((old_Rm * operand2),47,16));
     else
@@ -2660,18 +2672,18 @@ void ARM_ISS::SMUSD(const bool X,
                     const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t product2;
   uint32_t product1;
   uint32_t operand2;
   if (ConditionPassed(cond)) {
-    if ((X == 1)) {
+    if ((X == 1))
       operand2 = rotate_right(old_Rs, 16);
-    } else {
+    else
       operand2 = old_Rs;
-    }
     product1 = (get_half_0(old_Rm) * get_half_0(operand2));
     product2 = (get_half_1(old_Rm) * get_half_1(operand2));
     if (d==ARM_Processor::PC)
@@ -2682,7 +2694,8 @@ void ARM_ISS::SMUSD(const bool X,
 }
 
 // A4.1.90 SRS
-void ARM_ISS::SRS(const uint32_t start_address) {
+void ARM_ISS::SRS(const uint32_t start_address)
+{
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -2699,9 +2712,8 @@ void ARM_ISS::SRS(const uint32_t start_address) {
       physical_address = TLB((address + 4));
       ClearExclusiveByAddress(physical_address, processor_id, 4);
     }
-  } else {
+  } else
     unpredictable();
-  }
 }
 
 // A4.1.91 SSAT
@@ -2710,26 +2722,24 @@ void ARM_ISS::SSAT(const ARM_Processor::Condition cond,
                    const uint8_t m,
                    const uint8_t sat_imm,
                    const bool shift,
-                   const uint8_t shift_imm) {
+                   const uint8_t shift_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand;
   if (ConditionPassed(cond)) {
     if ((shift == 1)) {
-      if ((shift_imm == 0)) {
+      if ((shift_imm == 0))
         operand = get_bits(asr(old_Rm, 32),31,0);
-      } else {
+      else
         operand = get_bits(asr(old_Rm, shift_imm),31,0);
-      }
-    } else {
+    } else
       operand = get_bits((old_Rm << shift_imm),31,0);
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(SignedSat(operand, (sat_imm + 1)));
     else
       proc.reg(d) = SignedSat(operand, (sat_imm + 1));
-    if (SignedDoesSat(operand, (sat_imm + 1))) {
+    if (SignedDoesSat(operand, (sat_imm + 1)))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2737,14 +2747,14 @@ void ARM_ISS::SSAT(const ARM_Processor::Condition cond,
 void ARM_ISS::SSAT16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t sat_imm) {
+                     const uint8_t sat_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     set_field(proc.reg(d), 15, 0, SignedSat(get_half_0(old_Rm), (sat_imm + 1)));
     set_field(proc.reg(d), 31, 16, SignedSat(get_half_1(old_Rm), (sat_imm + 1)));
-    if ((SignedDoesSat(get_half_0(old_Rm), (sat_imm + 1)) | SignedDoesSat(get_half_1(old_Rm), (sat_imm + 1)))) {
+    if ((SignedDoesSat(get_half_0(old_Rm), (sat_imm + 1)) | SignedDoesSat(get_half_1(old_Rm), (sat_imm + 1))))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -2752,7 +2762,8 @@ void ARM_ISS::SSAT16(const ARM_Processor::Condition cond,
 void ARM_ISS::SSUB16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -2770,7 +2781,8 @@ void ARM_ISS::SSUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::SSUB8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -2794,7 +2806,8 @@ void ARM_ISS::SSUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::SSUBADDX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -2812,7 +2825,8 @@ void ARM_ISS::SSUBADDX(const ARM_Processor::Condition cond,
 // A4.1.96 STC
 void ARM_ISS::STC(const ARM_Processor::Condition cond,
                   const uint8_t cp_num,
-                  const uint32_t start_address) {
+                  const uint32_t start_address)
+{
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -2837,7 +2851,8 @@ void ARM_ISS::STC(const ARM_Processor::Condition cond,
 // A4.1.97 STM (1)
 void ARM_ISS::STM_1(const ARM_Processor::Condition cond,
                     const uint16_t register_list,
-                    const uint32_t start_address) {
+                    const uint32_t start_address)
+{
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -2860,7 +2875,8 @@ void ARM_ISS::STM_1(const ARM_Processor::Condition cond,
 // A4.1.98 STM (2)
 void ARM_ISS::STM_2(const ARM_Processor::Condition cond,
                     const uint16_t register_list,
-                    const uint32_t start_address) {
+                    const uint32_t start_address)
+{
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -2883,7 +2899,8 @@ void ARM_ISS::STM_2(const ARM_Processor::Condition cond,
 // A4.1.99 STR
 void ARM_ISS::STR(const uint32_t address,
                   const ARM_Processor::Condition cond,
-                  const uint8_t d) {
+                  const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
@@ -2899,7 +2916,8 @@ void ARM_ISS::STR(const uint32_t address,
 // A4.1.100 STRB
 void ARM_ISS::STRB(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
@@ -2915,7 +2933,8 @@ void ARM_ISS::STRB(const uint32_t address,
 // A4.1.101 STRBT
 void ARM_ISS::STRBT(const uint32_t address,
                     const ARM_Processor::Condition cond,
-                    const uint8_t d) {
+                    const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
@@ -2931,17 +2950,17 @@ void ARM_ISS::STRBT(const uint32_t address,
 // A4.1.102 STRD
 void ARM_ISS::STRD(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
   if (ConditionPassed(cond)) {
-    if ((((is_even(d) && d!=14) && (get_bits(address,1,0) == 0)) && ((proc.cp15.get_reg1_Ubit() == 1) || (((address>>2)&1) == 0)))) {
+    if ((((is_even(d) && (d != 14)) && (get_bits(address,1,0) == 0)) && ((proc.cp15.get_reg1_Ubit() == 1) || (((address>>2)&1) == 0)))) {
       proc.mmu.write_word(address, proc.reg(d));
       proc.mmu.write_word((address + 4), proc.reg((d + 1)));
-    } else {
+    } else
       unpredictable();
-    }
     if (Shared(address)) {
       physical_address = TLB(address);
       ClearExclusiveByAddress(physical_address, processor_id, 4);
@@ -2957,7 +2976,8 @@ void ARM_ISS::STRD(const uint32_t address,
 void ARM_ISS::STREX(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   size_t processor_id;
@@ -2974,12 +2994,11 @@ void ARM_ISS::STREX(const ARM_Processor::Condition cond,
           else
             proc.reg(d) = 0;
           ClearExclusiveByAddress(physical_address, processor_id, 4);
-        } else {
+        } else
           if (d==ARM_Processor::PC)
             proc.set_pc_raw(1);
           else
             proc.reg(d) = 1;
-        }
       } else {
         proc.mmu.write_word(old_Rn, old_Rm);
         if (d==ARM_Processor::PC)
@@ -2987,12 +3006,11 @@ void ARM_ISS::STREX(const ARM_Processor::Condition cond,
         else
           proc.reg(d) = 0;
       }
-    } else {
+    } else
       if (d==ARM_Processor::PC)
         proc.set_pc_raw(1);
       else
         proc.reg(d) = 1;
-    }
     ClearExclusiveLocal(processor_id);
   }
 }
@@ -3000,20 +3018,19 @@ void ARM_ISS::STREX(const ARM_Processor::Condition cond,
 // A4.1.104 STRH
 void ARM_ISS::STRH(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
   if (ConditionPassed(cond)) {
     if ((proc.cp15.get_reg1_Ubit() == 0)) {
-      if ((((address>>0)&1) == 0)) {
+      if ((((address>>0)&1) == 0))
         proc.mmu.write_half(address, get_half_0(proc.reg(d)));
-      } else {
+      else
         unpredictable();
-      }
-    } else {
+    } else
       proc.mmu.write_half(address, get_half_0(proc.reg(d)));
-    }
     if (Shared(address)) {
       physical_address = TLB(address);
       ClearExclusiveByAddress(physical_address, processor_id, 2);
@@ -3024,7 +3041,8 @@ void ARM_ISS::STRH(const uint32_t address,
 // A4.1.105 STRT
 void ARM_ISS::STRT(const uint32_t address,
                    const ARM_Processor::Condition cond,
-                   const uint8_t d) {
+                   const uint8_t d)
+{
   size_t processor_id;
   uint32_t physical_address;
   processor_id = ExecutingProcessor();
@@ -3042,19 +3060,19 @@ void ARM_ISS::SUB(const bool S,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
                   const uint8_t n,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((old_Rn - shifter_operand));
     else
       proc.reg(d) = (old_Rn - shifter_operand);
-    if (((S == 1) && d==15)) {
-      if (CurrentModeHasSPSR()) {
+    if (((S == 1) && (d == 15))) {
+      if (CurrentModeHasSPSR())
         proc.cpsr = proc.spsr();
-      } else {
+      else
         unpredictable();
-      }
     } else {
       if ((S == 1)) {
         proc.cpsr.N_flag = ((proc.reg(d)>>31)&1);
@@ -3067,7 +3085,8 @@ void ARM_ISS::SUB(const bool S,
 }
 
 // A4.1.107 SWI
-void ARM_ISS::SWI(const ARM_Processor::Condition cond) {
+void ARM_ISS::SWI(const ARM_Processor::Condition cond)
+{
   if (ConditionPassed(cond)) {
     proc.reg(14,ARM_Processor::svc) = next_instr();
     proc.spsr(ARM_Processor::svc) = proc.cpsr;
@@ -3075,11 +3094,10 @@ void ARM_ISS::SWI(const ARM_Processor::Condition cond) {
     proc.cpsr.T_flag = 0;
     proc.cpsr.I_flag = 1;
     proc.cpsr.E_flag = proc.cp15.get_reg1_EEbit();
-    if (high_vectors_configured()) {
+    if (high_vectors_configured())
       proc.set_pc_raw(0xFFFF0008);
-    } else {
+    else
       proc.set_pc_raw(0x00000008);
-    }
   }
 }
 
@@ -3087,7 +3105,8 @@ void ARM_ISS::SWI(const ARM_Processor::Condition cond) {
 void ARM_ISS::SWP(const uint32_t address,
                   const ARM_Processor::Condition cond,
                   const uint8_t d,
-                  const uint8_t m) {
+                  const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t temp;
   size_t processor_id;
@@ -3120,7 +3139,8 @@ void ARM_ISS::SWP(const uint32_t address,
 void ARM_ISS::SWPB(const uint32_t address,
                    const ARM_Processor::Condition cond,
                    const uint8_t d,
-                   const uint8_t m) {
+                   const uint8_t m)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint8_t temp;
   size_t processor_id;
@@ -3145,7 +3165,8 @@ void ARM_ISS::SXTAB(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t rotate) {
+                    const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3163,7 +3184,8 @@ void ARM_ISS::SXTAB16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
                       const uint8_t n,
-                      const uint8_t rotate) {
+                      const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3179,7 +3201,8 @@ void ARM_ISS::SXTAH(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t rotate) {
+                    const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3196,7 +3219,8 @@ void ARM_ISS::SXTAH(const ARM_Processor::Condition cond,
 void ARM_ISS::SXTB(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t rotate) {
+                   const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand2;
   if (ConditionPassed(cond)) {
@@ -3209,7 +3233,8 @@ void ARM_ISS::SXTB(const ARM_Processor::Condition cond,
 void ARM_ISS::SXTB16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t rotate) {
+                     const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand2;
   if (ConditionPassed(cond)) {
@@ -3223,7 +3248,8 @@ void ARM_ISS::SXTB16(const ARM_Processor::Condition cond,
 void ARM_ISS::SXTH(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t rotate) {
+                   const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand2;
   if (ConditionPassed(cond)) {
@@ -3236,7 +3262,8 @@ void ARM_ISS::SXTH(const ARM_Processor::Condition cond,
 void ARM_ISS::TEQ(const ARM_Processor::Condition cond,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   uint32_t alu_out;
   if (ConditionPassed(cond)) {
@@ -3251,7 +3278,8 @@ void ARM_ISS::TEQ(const ARM_Processor::Condition cond,
 void ARM_ISS::TST(const ARM_Processor::Condition cond,
                   const uint8_t n,
                   const bool shifter_carry_out,
-                  const uint32_t shifter_operand) {
+                  const uint32_t shifter_operand)
+{
   const uint32_t old_Rn = proc.reg(n);
   uint32_t alu_out;
   if (ConditionPassed(cond)) {
@@ -3266,7 +3294,8 @@ void ARM_ISS::TST(const ARM_Processor::Condition cond,
 void ARM_ISS::UADD16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3281,7 +3310,8 @@ void ARM_ISS::UADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::UADD8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3300,7 +3330,8 @@ void ARM_ISS::UADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::UADDSUBX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3319,7 +3350,8 @@ void ARM_ISS::UADDSUBX(const ARM_Processor::Condition cond,
 void ARM_ISS::UHADD16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3335,7 +3367,8 @@ void ARM_ISS::UHADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::UHADD8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3355,7 +3388,8 @@ void ARM_ISS::UHADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::UHADDSUBX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3372,7 +3406,8 @@ void ARM_ISS::UHADDSUBX(const ARM_Processor::Condition cond,
 void ARM_ISS::UHSUB16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -3388,7 +3423,8 @@ void ARM_ISS::UHSUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::UHSUB8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t diff;
@@ -3408,7 +3444,8 @@ void ARM_ISS::UHSUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::UHSUBADDX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3426,7 +3463,8 @@ void ARM_ISS::UMAAL(const ARM_Processor::Condition cond,
                     const uint8_t dHi,
                     const uint8_t dLo,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint64_t result;
@@ -3443,7 +3481,8 @@ void ARM_ISS::UMLAL(const bool S,
                     const uint8_t dHi,
                     const uint8_t dLo,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   if (ConditionPassed(cond)) {
@@ -3462,7 +3501,8 @@ void ARM_ISS::UMULL(const bool S,
                     const uint8_t dHi,
                     const uint8_t dLo,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   if (ConditionPassed(cond)) {
@@ -3479,7 +3519,8 @@ void ARM_ISS::UMULL(const bool S,
 void ARM_ISS::UQADD16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3492,7 +3533,8 @@ void ARM_ISS::UQADD16(const ARM_Processor::Condition cond,
 void ARM_ISS::UQADD8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3507,7 +3549,8 @@ void ARM_ISS::UQADD8(const ARM_Processor::Condition cond,
 void ARM_ISS::UQADDSUBX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3520,7 +3563,8 @@ void ARM_ISS::UQADDSUBX(const ARM_Processor::Condition cond,
 void ARM_ISS::UQSUB16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
-                      const uint8_t n) {
+                      const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3533,7 +3577,8 @@ void ARM_ISS::UQSUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::UQSUB8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3548,7 +3593,8 @@ void ARM_ISS::UQSUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::UQSUBADDX(const ARM_Processor::Condition cond,
                         const uint8_t d,
                         const uint8_t m,
-                        const uint8_t n) {
+                        const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3561,7 +3607,8 @@ void ARM_ISS::UQSUBADDX(const ARM_Processor::Condition cond,
 void ARM_ISS::USAD8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t s) {
+                    const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
   uint32_t diff4;
@@ -3569,26 +3616,22 @@ void ARM_ISS::USAD8(const ARM_Processor::Condition cond,
   uint32_t diff2;
   uint32_t diff1;
   if (ConditionPassed(cond)) {
-    if ((get_byte_0(old_Rm) < get_byte_0(old_Rs))) {
+    if ((get_byte_0(old_Rm) < get_byte_0(old_Rs)))
       diff1 = (get_byte_0(old_Rs) - get_byte_0(old_Rm));
-    } else {
+    else
       diff1 = (get_byte_0(old_Rm) - get_byte_0(old_Rs));
-    }
-    if ((get_byte_1(old_Rm) < get_byte_1(old_Rs))) {
+    if ((get_byte_1(old_Rm) < get_byte_1(old_Rs)))
       diff2 = (get_byte_1(old_Rs) - get_byte_1(old_Rm));
-    } else {
+    else
       diff2 = (get_byte_1(old_Rm) - get_byte_1(old_Rs));
-    }
-    if ((get_byte_2(old_Rm) < get_byte_2(old_Rs))) {
+    if ((get_byte_2(old_Rm) < get_byte_2(old_Rs)))
       diff3 = (get_byte_2(old_Rs) - get_byte_2(old_Rm));
-    } else {
+    else
       diff3 = (get_byte_2(old_Rm) - get_byte_2(old_Rs));
-    }
-    if ((get_byte_3(old_Rm) < get_byte_3(old_Rs))) {
+    if ((get_byte_3(old_Rm) < get_byte_3(old_Rs)))
       diff4 = (get_byte_3(old_Rs) - get_byte_3(old_Rm));
-    } else {
+    else
       diff4 = (get_byte_3(old_Rm) - get_byte_3(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw((((ZeroExtend(diff1) + ZeroExtend(diff2)) + ZeroExtend(diff3)) + ZeroExtend(diff4)));
     else
@@ -3601,7 +3644,8 @@ void ARM_ISS::USADA8(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
                      const uint8_t n,
-                     const uint8_t s) {
+                     const uint8_t s)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   const uint32_t old_Rs = proc.reg(s);
@@ -3610,26 +3654,22 @@ void ARM_ISS::USADA8(const ARM_Processor::Condition cond,
   uint32_t diff2;
   uint32_t diff1;
   if (ConditionPassed(cond)) {
-    if ((get_byte_0(old_Rm) < get_byte_0(old_Rs))) {
+    if ((get_byte_0(old_Rm) < get_byte_0(old_Rs)))
       diff1 = (get_byte_0(old_Rs) - get_byte_0(old_Rm));
-    } else {
+    else
       diff1 = (get_byte_0(old_Rm) - get_byte_0(old_Rs));
-    }
-    if ((get_byte_1(old_Rm) < get_byte_1(old_Rs))) {
+    if ((get_byte_1(old_Rm) < get_byte_1(old_Rs)))
       diff2 = (get_byte_1(old_Rs) - get_byte_1(old_Rm));
-    } else {
+    else
       diff2 = (get_byte_1(old_Rm) - get_byte_1(old_Rs));
-    }
-    if ((get_byte_2(old_Rm) < get_byte_2(old_Rs))) {
+    if ((get_byte_2(old_Rm) < get_byte_2(old_Rs)))
       diff3 = (get_byte_2(old_Rs) - get_byte_2(old_Rm));
-    } else {
+    else
       diff3 = (get_byte_2(old_Rm) - get_byte_2(old_Rs));
-    }
-    if ((get_byte_3(old_Rm) < get_byte_3(old_Rs))) {
+    if ((get_byte_3(old_Rm) < get_byte_3(old_Rs)))
       diff4 = (get_byte_3(old_Rs) - get_byte_3(old_Rm));
-    } else {
+    else
       diff4 = (get_byte_3(old_Rm) - get_byte_3(old_Rs));
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(((((old_Rn + ZeroExtend(diff1)) + ZeroExtend(diff2)) + ZeroExtend(diff3)) + ZeroExtend(diff4)));
     else
@@ -3643,26 +3683,24 @@ void ARM_ISS::USAT(const ARM_Processor::Condition cond,
                    const uint8_t m,
                    const uint8_t sat_imm,
                    const bool shift,
-                   const uint8_t shift_imm) {
+                   const uint8_t shift_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   uint32_t operand;
   if (ConditionPassed(cond)) {
     if ((shift == 1)) {
-      if ((shift_imm == 0)) {
+      if ((shift_imm == 0))
         operand = get_bits(asr(old_Rm, 32),31,0);
-      } else {
+      else
         operand = get_bits(asr(old_Rm, shift_imm),31,0);
-      }
-    } else {
+    } else
       operand = get_bits((old_Rm << shift_imm),31,0);
-    }
     if (d==ARM_Processor::PC)
       proc.set_pc_raw(UnsignedSat(operand, sat_imm));
     else
       proc.reg(d) = UnsignedSat(operand, sat_imm);
-    if (UnsignedDoesSat(operand, sat_imm)) {
+    if (UnsignedDoesSat(operand, sat_imm))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -3670,14 +3708,14 @@ void ARM_ISS::USAT(const ARM_Processor::Condition cond,
 void ARM_ISS::USAT16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t sat_imm) {
+                     const uint8_t sat_imm)
+{
   const uint32_t old_Rm = proc.reg(m);
   if (ConditionPassed(cond)) {
     set_field(proc.reg(d), 15, 0, UnsignedSat(get_half_0(old_Rm), sat_imm));
     set_field(proc.reg(d), 31, 16, UnsignedSat(get_half_1(old_Rm), sat_imm));
-    if ((UnsignedDoesSat(get_half_0(old_Rm), sat_imm) | UnsignedDoesSat(get_half_1(old_Rm), sat_imm))) {
+    if ((UnsignedDoesSat(get_half_0(old_Rm), sat_imm) | UnsignedDoesSat(get_half_1(old_Rm), sat_imm)))
       proc.cpsr.Q_flag = 1;
-    }
   }
 }
 
@@ -3685,7 +3723,8 @@ void ARM_ISS::USAT16(const ARM_Processor::Condition cond,
 void ARM_ISS::USUB16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t n) {
+                     const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3700,7 +3739,8 @@ void ARM_ISS::USUB16(const ARM_Processor::Condition cond,
 void ARM_ISS::USUB8(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
-                    const uint8_t n) {
+                    const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   if (ConditionPassed(cond)) {
@@ -3719,7 +3759,8 @@ void ARM_ISS::USUB8(const ARM_Processor::Condition cond,
 void ARM_ISS::USUBADDX(const ARM_Processor::Condition cond,
                        const uint8_t d,
                        const uint8_t m,
-                       const uint8_t n) {
+                       const uint8_t n)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t sum;
@@ -3739,7 +3780,8 @@ void ARM_ISS::UXTAB(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t rotate) {
+                    const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3757,7 +3799,8 @@ void ARM_ISS::UXTAB16(const ARM_Processor::Condition cond,
                       const uint8_t d,
                       const uint8_t m,
                       const uint8_t n,
-                      const uint8_t rotate) {
+                      const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3773,7 +3816,8 @@ void ARM_ISS::UXTAH(const ARM_Processor::Condition cond,
                     const uint8_t d,
                     const uint8_t m,
                     const uint8_t n,
-                    const uint8_t rotate) {
+                    const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t operand2;
@@ -3790,31 +3834,32 @@ void ARM_ISS::UXTAH(const ARM_Processor::Condition cond,
 void ARM_ISS::UXTB(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t rotate) {
+                   const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
-  if (ConditionPassed(cond)) {
+  if (ConditionPassed(cond))
     set_field(proc.reg(d), 31, 0, (rotate_right(old_Rm, (8 * rotate)) & 0x000000ff));
-  }
 }
 
 // A4.1.147 UXTB16
 void ARM_ISS::UXTB16(const ARM_Processor::Condition cond,
                      const uint8_t d,
                      const uint8_t m,
-                     const uint8_t rotate) {
+                     const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
-  if (ConditionPassed(cond)) {
+  if (ConditionPassed(cond))
     set_field(proc.reg(d), 31, 0, (rotate_right(old_Rm, (8 * rotate)) & 0x00ff00ff));
-  }
 }
 
 // A4.1.148 UXTH
 void ARM_ISS::UXTH(const ARM_Processor::Condition cond,
                    const uint8_t d,
                    const uint8_t m,
-                   const uint8_t rotate) {
+                   const uint8_t rotate)
+{
   const uint32_t old_Rm = proc.reg(m);
-  if (ConditionPassed(cond)) {
+  if (ConditionPassed(cond))
     set_field(proc.reg(d), 31, 0, (rotate_right(old_Rm, (8 * rotate)) & 0x0000ffff));
-  }
 }
+

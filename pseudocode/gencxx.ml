@@ -155,9 +155,6 @@ let rec exp b = function
   | BinOp (e, "<<", Num "32") ->
       bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
-(*REMOVE  | BinOp (Reg (Var "d", None), ("=="|"!=" as op), Num ("14"|"15" as n)) ->
-      bprintf b "d%s%s" op n*)
-(*REMOVE:  | Fun ("is_even", [Reg (Var "d", None)]) -> string b "is_even(d)"*)
   | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
   | CPSR -> string b "proc.cpsr"
   | SPSR None -> string b "proc.spsr()"
@@ -196,20 +193,21 @@ let rec inst k b = function
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable()"
   | Affect (dst, src) -> affect k b dst src
-  | Proc ("MemoryAccess", _) -> string b "// MemoryAcess(B-bit, E-bit)"
   | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
   | Assert e -> bprintf b "assert(%a)" exp e
   | Coproc (e, f, es) ->
       bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
 
   | Block [] -> ()
-  | Block (i :: is) ->
+  | Block (Block _ | For _ | While _ | If _ as i :: is) ->
       bprintf b "%a\n%a" (inst_aux k) i (list "\n" (inst k)) is
+  | Block (i :: is) ->
+      bprintf b "%a;\n%a" (inst_aux k) i (list "\n" (inst k)) is
 
   | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
 
   | For (counter, min, max, i) ->
-      bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a}"
+      bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a\n}"
         counter num min counter num max counter (inst (k+2)) i
 
   | If (e, (Block _|If _ as i), None) ->
@@ -251,10 +249,10 @@ and affect k b dst src =
     | Range (CPSR, Bits (n1, n2)) ->
         bprintf b "proc.cpsr.%s = %a" (cpsr_field (n1,n2)) exp src
     | Range (e1, Bits (n1, n2)) ->
-        inst k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
+        inst_aux k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
-        inst k b (Proc ("proc.mmu.write_" ^ access_type n, [addr; src]))
-    | Range (e, Index n) -> inst k b (Proc ("set_bit", [e; n; src]))
+        inst_aux k b (Proc ("proc.mmu.write_" ^ access_type n, [addr; src]))
+    | Range (e, Index n) -> inst_aux k b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\")";;
 
 (** Generate a function modeling an instruction of the processor *)
@@ -285,7 +283,7 @@ let comment b p =
 
 let prog gs ls b p =
   let inregs = List.filter (fun x -> List.mem x input_registers) gs in
-    bprintf b "%avoid ARM_ISS::%a(%a) {\n\n%a%a%a\n}\n" comment p
+    bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
       (list "_" ident) (p.pident :: p.paltidents)
       (list ",\n    " prog_arg) gs
       (list "" inreg_load) inregs

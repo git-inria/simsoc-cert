@@ -66,7 +66,6 @@ struct ARM_Processor {
   static const uint8_t PC = 15;
   static const uint8_t LR = 14;
   static const uint8_t SP = 13;
-  static const bool v5_and_above = true;
 
   // members
   ARM_MMU mmu;
