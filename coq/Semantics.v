@@ -38,34 +38,34 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 >>*)
 
-Definition Adc (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
+Definition Adc (Sbit : bool) (d n : reg_num) (so : word) (s : state)
   (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
-      if zeq Rd 15 then
+      if zeq d 15 then
         match m with
           | usr | sys => None
           | exn e =>
-            let Rn := reg_content s m Rn in
+            let Rn := reg_content s m n in
             let c := r[Cbit] in
             let v := add (add Rn so) c in
-              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m d v s))
         end
       else
-        let Rn := reg_content s m Rn in
+        let Rn := reg_content s m n in
         let c := r[Cbit] in
         let v := add (add Rn so) c in
           Some (true, update_cpsr
             (update_bit Vbit (OverflowFrom_add3 Rn so c)
-              (update_bit Cbit (CarryFrom_add3 Rn so c)
-                (update_bit Zbit (zne v 0)
-                  (update_bit Nbit v[31] r))))
-            (update_reg m Rd v s))
+            (update_bit Cbit (CarryFrom_add3 Rn so c)
+            (update_bit Zbit (zne v 0)
+            (update_bit Nbit v[31] r))))
+            (update_reg m d v s))
     else
-      let Rn := reg_content s m Rn in
+      let Rn := reg_content s m n in
       let c := r[Cbit] in
-      let v := add (add Rn so) c in Some (zne Rd 15, update_reg m Rd v s)
+      let v := add (add Rn so) c in Some (zne d 15, update_reg m d v s)
   else Some (true, s).
 
 (****************************************************************************)
@@ -86,31 +86,31 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand)
 >>*)
 
-Definition Add (Sbit : bool) (Rd Rn : reg_num) (so : word) (s : state)
+Definition Add (Sbit : bool) (d n : reg_num) (so : word) (s : state)
   (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
-      if zeq Rd 15 then
+      if zeq d 15 then
         match m with
           | usr | sys => None
           | exn e =>
-            let Rn := reg_content s m Rn in
+            let Rn := reg_content s m n in
             let v := add Rn so in
-              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m d v s))
         end
       else
-        let Rn := reg_content s m Rn in
+        let Rn := reg_content s m n in
         let v := add Rn so in
           Some (true, update_cpsr
             (update_bit Vbit (OverflowFrom_add2 Rn so)
-              (update_bit Cbit (CarryFrom_add2 Rn so)
-                (update_bit Zbit (zne v 0)
-                  (update_bit Nbit v[31] r))))
-            (update_reg m Rd v s))
+            (update_bit Cbit (CarryFrom_add2 Rn so)
+            (update_bit Zbit (zne v 0)
+            (update_bit Nbit v[31] r))))
+            (update_reg m d v s))
     else
-      let Rn := reg_content s m Rn in
-      let v := add Rn so in Some (zne Rd 15, update_reg m Rd v s)
+      let Rn := reg_content s m n in
+      let v := add Rn so in Some (zne d 15, update_reg m d v s)
   else Some (true, s).
 
 (****************************************************************************)
@@ -131,30 +131,30 @@ if ConditionPassed(cond) then
     V Flag = unaffected
 >>*)
 
-Definition And (Sbit : bool) (Rd Rn : reg_num) (so : word) (c : bool)
+Definition And (Sbit : bool) (d n : reg_num) (so : word) (c : bool)
   (s : state) (m : processor_mode) : result :=
   let r := cpsr s in
   if ConditionPassed r then
     if Sbit then
-      if zeq Rd 15 then
+      if zeq d 15 then
         match m with
           | usr | sys => None
           | exn e =>
-            let Rn := reg_content s m Rn in
+            let Rn := reg_content s m n in
             let v := and Rn so in
-              Some (false, update_cpsr (spsr s e) (update_reg m Rd v s))
+              Some (false, update_cpsr (spsr s e) (update_reg m d v s))
         end
       else
-        let Rn := reg_content s m Rn in
+        let Rn := reg_content s m n in
         let v := and Rn so in
           Some (true, update_cpsr
             (update_bit_aux Cbit c
-              (update_bit Zbit (zne v 0)
-                (update_bit Nbit v[31] r)))
-            (update_reg m Rd v s))
+            (update_bit Zbit (zne v 0)
+            (update_bit Nbit v[31] r)))
+            (update_reg m d v s))
     else
-      let Rn := reg_content s m Rn in
-      let v := and Rn so in Some (zne Rd 15, update_reg m Rd v s)
+      let Rn := reg_content s m n in
+      let v := and Rn so in Some (zne d 15, update_reg m d v s)
   else Some (true, s).
 
 (****************************************************************************)
