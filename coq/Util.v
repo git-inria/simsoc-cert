@@ -14,7 +14,12 @@ Open Scope Z_scope.
 
 (****************************************************************************)
 
-Definition zne (x y : Z) : bool := if Z_eq_dec x y then false else true.
+Definition zeq (x y : Z) : bool := if Z_eq_dec x y then true else false.
+Definition zne (x y : Z) : bool := negb (zeq x y).
+Definition zlt (x y : Z) : bool := if Z_lt_ge_dec x y then true else false.
+Definition zge (x y : Z) : bool := negb (zlt x y).
+Definition zgt (x y : Z) : bool := zlt y x.
+Definition zle (x y : Z) : bool := negb (zgt x y).
 
 (****************************************************************************)
 
