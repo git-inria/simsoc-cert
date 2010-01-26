@@ -1,0 +1,9 @@
+
+- replace (m : processor_mode) arguments by a function call
+
+- define specific more efficient functions for accessing the PC
+
+- fixed problem with SignExtend 24/30 (see Claude's mails on 10/01/26)
+
+------------------------------------------------------------------------------
+Done:
