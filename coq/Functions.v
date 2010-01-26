@@ -13,11 +13,11 @@ Pseudocode functions.
 
 Set Implicit Arguments.
 
+Require Import Coqlib.
+Require Import Integers. Import Int.
 Require Import Util.
 Require Import Bitvec.
-Require Import Integers. Import Int.
 Require Import State.
-Require Import Coqlib.
 
 (****************************************************************************)
 (** Logical_Shift_Left (p. 1129) *)
@@ -88,10 +88,10 @@ further information about an addition which occurred earlier in the
 pseudo-code. The addition is not repeated. *)
 
 Definition CarryFrom_add2 (x y : word) : word :=
-  word_of_bool (zlt max_unsigned (unsigned x + unsigned y)).
+  zlt max_unsigned (unsigned x + unsigned y).
 
 Definition CarryFrom_add3 (x y z : word) : word :=
-  word_of_bool (zlt max_unsigned (unsigned x + unsigned y + unsigned z)).
+  zlt max_unsigned (unsigned x + unsigned y + unsigned z).
 
 (****************************************************************************)
 (** OverflowFrom (p. 1131) *)
@@ -107,14 +107,16 @@ information about an addition or subtraction which occurred earlier in
 the pseudo-code.  The addition or subtraction is not repeated. *)
 
 Definition OverflowFrom_add2 (x y : word) : word :=
-  word_of_bool (zlt max_signed (signed x + signed y)).
+  let r := signed x + signed y in
+    orb (zlt r min_signed) (zgt r max_signed).
 
 (*IMPROVE: use this more efficient definition given p. 1131?*)
 Definition OverflowFrom_add2' (x y : word) (r : word) :=
-  let sx := is_neg x in (eqb sx (is_neg y)) && (bne sx (is_neg r)).
+  let sx := is_neg x in (beq sx (is_neg y)) && (bne sx (is_neg r)).
 
 Definition OverflowFrom_add3 (x y z : word) : word :=
-  word_of_bool (zlt max_signed (signed x + signed y + signed z)).
+  let r := signed x + signed y + signed z in
+    orb (zlt r min_signed) (zgt r max_signed).
 
 (****************************************************************************)
 (** A3.2 The condition field (p. 111) *)
@@ -135,14 +137,14 @@ Definition ConditionPassed (w : word) : bool :=
     | (*1001*) 9 => (* C clear or Z set *)
       orb (negb (is_set Cbit w)) (is_set Zbit w)
     | (*1010*) 10 => (* N set and V set, or N clear and V clear (N==V) *)
-      eqb (is_set Nbit w) (is_set Vbit w)
+      beq (is_set Nbit w) (is_set Vbit w)
     | (*1011*) 11 => (* N set and V clear, or N clear and V set (N!=V) *)
-      negb (eqb (is_set Nbit w) (is_set Vbit w))
+      negb (beq (is_set Nbit w) (is_set Vbit w))
     | (*1100*) 12 => (* Z clear, and either N set and V set,
          or N clear and V clear (Z==0,N==V) *)
-      andb (negb (is_set Zbit w)) (eqb (is_set Nbit w) (is_set Vbit w))
+      andb (negb (is_set Zbit w)) (beq (is_set Nbit w) (is_set Vbit w))
     | (*1101*) 13 => (* Z set, or N set and V clear, or N clear and V set
          (Z==1 or N!=V) *)
-      orb (is_set Zbit w) (negb (eqb (is_set Nbit w) (is_set Vbit w)))
+      orb (is_set Zbit w) (negb (beq (is_set Nbit w) (is_set Vbit w)))
     | _ => true
   end.
