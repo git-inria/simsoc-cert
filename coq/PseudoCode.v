@@ -116,7 +116,7 @@ with word_of_sexp (se : sexp) : word :=
 with bool_of_bexp (be : bexp) : bool :=
   match be with
     | Eq e1 e2 => zeq (word_of_exp e1) (word_of_exp e2)
-    | ConditionPassed => Functions.ConditionPassed (cpsr s0)
+    | ConditionPassed => true (*FIXME:Functions.ConditionPassed (cpsr s0)*)
     | BAnd be1 be2 => andb (bool_of_bexp be1) (bool_of_bexp be2)
   end.
 

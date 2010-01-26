@@ -19,6 +19,7 @@ Require Import Integers. Import Int.
 Require Import Functions.
 Require Import Coqlib.
 Require Import Util.
+Require Import Instructions.
 
 (****************************************************************************)
 (** A4.1.2 ADC (p. 154) *)
@@ -38,10 +39,10 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand + C Flag)
 >>*)
 
-Definition Adc (Sbit : bool) (d n : reg_num) (so : word) (s : state)
-  (m : processor_mode) : result :=
+Definition Adc (cond : opcode) (Sbit : bool) (d n : reg_num) (so : word)
+  (s : state) (m : processor_mode) : result :=
   let r := cpsr s in
-  if ConditionPassed r then
+  if ConditionPassed r cond then
     if Sbit then
       if zeq d 15 then
         match m with
@@ -86,10 +87,10 @@ if ConditionPassed(cond) then
     V Flag = OverflowFrom(Rn + shifter_operand)
 >>*)
 
-Definition Add (Sbit : bool) (d n : reg_num) (so : word) (s : state)
-  (m : processor_mode) : result :=
+Definition Add (cond : opcode) (Sbit : bool) (d n : reg_num) (so : word)
+  (s : state) (m : processor_mode) : result :=
   let r := cpsr s in
-  if ConditionPassed r then
+  if ConditionPassed r cond then
     if Sbit then
       if zeq d 15 then
         match m with
@@ -131,10 +132,10 @@ if ConditionPassed(cond) then
     V Flag = unaffected
 >>*)
 
-Definition And (Sbit : bool) (d n : reg_num) (so : word) (c : bool)
-  (s : state) (m : processor_mode) : result :=
+Definition And (cond : opcode) (Sbit : bool) (d n : reg_num) (so : word)
+  (c : bool) (s : state) (m : processor_mode) : result :=
   let r := cpsr s in
-  if ConditionPassed r then
+  if ConditionPassed r cond then
     if Sbit then
       if zeq d 15 then
         match m with
@@ -168,8 +169,9 @@ if ConditionPassed(cond) then
   PC = PC + (SignExtend_30(signed_immed_24) << 2)
 >>*)
 
-Definition Bl (L : bool) (w : word) (s : state) (m : processor_mode) : result :=
-  if ConditionPassed (cpsr s) then
+Definition Bl (cond : opcode) (L : bool) (w : word) (s : state)
+  (m : processor_mode) : result :=
+  if ConditionPassed (cpsr s) cond then
     Some (false, update_reg m PC (Logical_Shift_Left (SignExtend 30 w) w2)
       (if L then update_reg m LR (next_inst_address s m) s else s))
   else Some (true, s).

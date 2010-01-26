@@ -19,21 +19,7 @@ Require Import State.
 Require Import Functions.
 Require Import Integers. Import Int.
 Require Import Util.
-
-(****************************************************************************)
-(** Type for shifter operands *)
-(****************************************************************************)
-
-Inductive shifter : Type := LSL | LSR | ASR | ROR.
-
-Inductive shifter_value : Type :=
-| ValImm (shift_imm : word)
-| ValReg (Rs : reg_num).
-
-Inductive shifter_operand : Type :=
-| Imm (rotate_imm immed_8 : word)
-| Shift (Rm : reg_num) (s : shifter) (v : shifter_value)
-| RRX (Rm : reg_num).
+Require Import Instructions.
 
 (****************************************************************************)
 (** A5.1.1 Encoding (p. 443) *)
@@ -81,8 +67,8 @@ shifter_operand = Rm
 shifter_carry_out = C Flag
 >>*)
 
-Definition so_reg (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
-  : word * bool := (reg_content s m Rm, is_set Cbit i).
+Definition so_reg (s : state) (mo : processor_mode) (i : word) (m : reg_num)
+  : word * bool := (reg_content s mo m, is_set Cbit i).
 
 (****************************************************************************)
 (** A5.1.5 Data-processing operands - Logical shift left by immediate
@@ -98,9 +84,9 @@ shifter_operand = Rm Logical_Shift_Left shift_imm
 shifter_carry_out = Rm[32 - shift_imm]
 >>*)
 
-Definition so_LSL_imm (s : state) (m : processor_mode) (i : word)
-  (Rm : reg_num) (shift_imm : word) : word * bool :=
-  let Rm := reg_content s m Rm in
+Definition so_LSL_imm (s : state) (mo : processor_mode) (i : word)
+  (m : reg_num) (shift_imm : word) : word * bool :=
+  let Rm := reg_content s mo m in
   if zeq shift_imm 0 then (Rm, is_set Cbit i)
   else (Logical_Shift_Left Rm shift_imm,
     is_set (nat_of_Z (32 - shift_imm)) Rm).
@@ -125,10 +111,10 @@ else /* Rs[7:0] > 32 */
   shifter_carry_out = 0
 >>*)
 
-Definition so_LSL_reg (s : state) (m : processor_mode) (i : word)
-  (Rm Rs : reg_num) : word * bool :=
-  let Rm := reg_content s m Rm in
-  let Rs7 := bits 0 7 (reg_content s m Rs) in
+Definition so_LSL_reg (st : state) (mo : processor_mode) (i : word)
+  (m s : reg_num) : word * bool :=
+  let Rm := reg_content st mo m in
+  let Rs7 := bits 0 7 (reg_content st mo s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Left Rm Rs7, is_set (nat_of_Z (32 - Rs7)) Rm)
@@ -150,9 +136,9 @@ else /* shift_imm > 0 */
   shifter_carry_out = Rm[shift_imm - 1]
 >>*)
 
-Definition so_LSR_imm (s : state) (m : processor_mode) (i : word)
-  (Rm : reg_num) (shift_imm : word) : word * bool :=
-  let Rm := reg_content s m Rm in
+Definition so_LSR_imm (s : state) (mo : processor_mode) (i : word)
+  (m : reg_num) (shift_imm : word) : word * bool :=
+  let Rm := reg_content s mo m in
   if zeq shift_imm 0 then (w0, is_set 31 Rm)
   else (Logical_Shift_Right Rm shift_imm,
     is_set (pred (nat_of_Z shift_imm)) Rm).
@@ -177,10 +163,10 @@ else /* Rs[7:0] > 32 */
   shifter_carry_out = 0
 >>*)
 
-Definition so_LSR_reg (s : state) (m : processor_mode) (i : word)
-  (Rm Rs : reg_num) : word * bool :=
-  let Rm := reg_content s m Rm in
-  let Rs7 := bits 0 7 (reg_content s m Rs) in
+Definition so_LSR_reg (st : state) (mo : processor_mode) (i : word)
+  (m s : reg_num) : word * bool :=
+  let Rm := reg_content st mo m in
+  let Rs7 := bits 0 7 (reg_content st mo s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Logical_Shift_Right Rm Rs7, is_set (pred (nat_of_Z Rs7)) Rm)
@@ -206,9 +192,9 @@ else /* shift_imm > 0 */
   shifter_carry_out = Rm[shift_imm - 1]
 >>*)
 
-Definition so_ASR_imm (s : state) (m : processor_mode) (i : word)
-  (Rm : reg_num) (shift_imm : word) : word * bool :=
-  let Rm := reg_content s m Rm in
+Definition so_ASR_imm (s : state) (mo : processor_mode) (i : word)
+  (m : reg_num) (shift_imm : word) : word * bool :=
+  let Rm := reg_content s mo m in
   if zeq shift_imm 0 then
     if is_set 31 Rm then (maxu, true) else (w0, false)
   else (Arithmetic_Shift_Right Rm shift_imm,
@@ -235,10 +221,10 @@ else /* Rs[7:0] >= 32 */
     shifter_carry_out = Rm[31]
 >>*)
 
-Definition so_ASR_reg (s : state) (m : processor_mode) (i : word)
-  (Rm Rs : reg_num) : word * bool :=
-  let Rm := reg_content s m Rm in
-  let Rs7 := bits 0 7 (reg_content s m Rs) in
+Definition so_ASR_reg (st : state) (mo : processor_mode) (i : word)
+  (m s : reg_num) : word * bool :=
+  let Rm := reg_content st mo m in
+  let Rs7 := bits 0 7 (reg_content st mo s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else match Zcompare Rs7 32 with
          | Lt => (Arithmetic_Shift_Right Rm Rs7,
@@ -259,9 +245,9 @@ else /* shift_imm > 0 */
   shifter_carry_out = Rm[shift_imm - 1]
 >>*)
 
-Definition so_ROR_imm (s : state) (m : processor_mode) (i : word)
-  (Rm : reg_num) (shift_imm : word) : word * bool :=
-  let Rm := reg_content s m Rm in
+Definition so_ROR_imm (s : state) (mo : processor_mode) (i : word)
+  (m : reg_num) (shift_imm : word) : word * bool :=
+  let Rm := reg_content s mo m in
   if zeq shift_imm 0 then
     (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
       is_set 0 Rm)
@@ -283,10 +269,10 @@ else /* Rs[4:0] > 0 */
   shifter_carry_out = Rm[Rs[4:0] - 1]
 >>*)
 
-Definition so_ROR_reg (s : state) (m : processor_mode) (i : word)
-  (Rm Rs : reg_num) : word * bool :=
-  let Rm := reg_content s m Rm in
-  let Rs := reg_content s m Rs in
+Definition so_ROR_reg (st : state) (mo : processor_mode) (i : word)
+  (m s : reg_num) : word * bool :=
+  let Rm := reg_content st mo m in
+  let Rs := reg_content st mo s in
   let Rs7 := bits 0 7 Rs in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
   else let Rs4 := bits 0 4 Rs in
@@ -302,9 +288,9 @@ shifter_operand = (C Flag Logical_Shift_Left 31) OR (Rm Logical_Shift_Right 1)
 shifter_carry_out = Rm[0]
 >>*)
 
-Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
+Definition so_RRX (s : state) (mo : processor_mode) (i : word) (m : reg_num)
   : word * bool :=
-  let Rm := reg_content s m Rm in
+  let Rm := reg_content s mo m in
     (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
       is_set 0 Rm).
 
@@ -312,20 +298,20 @@ Definition so_RRX (s : state) (m : processor_mode) (i : word) (Rm : reg_num)
 (** Semantics of a shifter operand *)
 (****************************************************************************)
 
-Definition shifter_operand_value_and_carry (s : state) (m : processor_mode)
+Definition shifter_operand_value_and_carry (st : state) (mo : processor_mode)
   (i : word) (so : shifter_operand) : word * bool :=
   match so with
     | Imm rotate_imm immed_8 => so_imm i rotate_imm immed_8
-    | Shift Rm h v =>
+    | Shift m h v =>
       match h, v with
-        | LSL, ValImm shift_imm => so_LSL_imm s m i Rm shift_imm
-        | LSL, ValReg Rs => so_LSL_reg s m i Rm Rs
-        | LSR, ValImm shift_imm => so_LSR_imm s m i Rm shift_imm
-        | LSR, ValReg Rs => so_LSR_reg s m i Rm Rs
-        | ASR, ValImm shift_imm => so_ASR_imm s m i Rm shift_imm
-        | ASR, ValReg Rs => so_ASR_reg s m i Rm Rs
-        | ROR, ValImm shift_imm => so_ROR_imm s m i Rm shift_imm
-        | ROR, ValReg Rs => so_ROR_reg s m i Rm Rs
+        | LSL, ValImm shift_imm => so_LSL_imm st mo i m shift_imm
+        | LSL, ValReg s => so_LSL_reg st mo i m s
+        | LSR, ValImm shift_imm => so_LSR_imm st mo i m shift_imm
+        | LSR, ValReg s => so_LSR_reg st mo i m s
+        | ASR, ValImm shift_imm => so_ASR_imm st mo i m shift_imm
+        | ASR, ValReg s => so_ASR_reg st mo i m s
+        | ROR, ValImm shift_imm => so_ROR_imm st mo i m shift_imm
+        | ROR, ValReg s => so_ROR_reg st mo i m s
       end
-    | RRX r => so_RRX s m i r
+    | RRX r => so_RRX st mo i r
   end.

@@ -18,6 +18,7 @@ Require Import Integers. Import Int.
 Require Import Util.
 Require Import Bitvec.
 Require Import State.
+Require Import Instructions.
 
 (****************************************************************************)
 (** Logical_Shift_Left (p. 1129) *)
@@ -119,32 +120,39 @@ Definition OverflowFrom_add3 (x y z : word) : word :=
     orb (zlt r min_signed) (zgt r max_signed).
 
 (****************************************************************************)
-(** A3.2 The condition field (p. 111) *)
+(** ConditionPassed (p. 1124) *)
 (****************************************************************************)
 
-Definition ConditionPassed (w : word) : bool :=
-  match bits_val 31 28 w with
-    | (*0000*) 0 => (* Z set *) is_set Zbit w
-    | (*0001*) 1 => (* Z clear *) negb (is_set Zbit w)
-    | (*0010*) 2 => (* C set *) is_set Cbit w
-    | (*0011*) 3 => (* C clear *) negb (is_set Cbit w)
-    | (*0100*) 4 => (* N set *) is_set Cbit w
-    | (*0101*) 5 => (* N clear *) negb (is_set Cbit w)
-    | (*0110*) 6 => (* V set *) is_set Vbit w
-    | (*0111*) 7 => (* V clear *) negb (is_set Vbit w)
-    | (*1000*) 8 => (* C set and Z clear *)
+(* Returns TRUE if the state of the N, Z, C and V flags fulfils the
+condition encoded in the cond argument, and returns FALSE in all other
+cases. *)
+
+(* A3.2 The condition field (p. 111) *)
+
+Definition ConditionPassed (w : word) (op : opcode) : bool :=
+  match op with
+    | EQ => (* Z set *) is_set Zbit w
+    | NE => (* Z clear *) negb (is_set Zbit w)
+    | CS => (* C set *) is_set Cbit w
+    | CC => (* C clear *) negb (is_set Cbit w)
+    | MI => (* N set *) is_set Cbit w
+    | PL => (* N clear *) negb (is_set Cbit w)
+    | VS => (* V set *) is_set Vbit w
+    | VC => (* V clear *) negb (is_set Vbit w)
+    | HI => (* C set and Z clear *)
       andb (is_set Cbit w) (negb (is_set Zbit w))
-    | (*1001*) 9 => (* C clear or Z set *)
+    | LS => (* C clear or Z set *)
       orb (negb (is_set Cbit w)) (is_set Zbit w)
-    | (*1010*) 10 => (* N set and V set, or N clear and V clear (N==V) *)
+    | GE => (* N set and V set, or N clear and V clear (N==V) *)
       beq (is_set Nbit w) (is_set Vbit w)
-    | (*1011*) 11 => (* N set and V clear, or N clear and V set (N!=V) *)
+    | LT => (* N set and V clear, or N clear and V set (N!=V) *)
       negb (beq (is_set Nbit w) (is_set Vbit w))
-    | (*1100*) 12 => (* Z clear, and either N set and V set,
+    | GT => (* Z clear, and either N set and V set,
          or N clear and V clear (Z==0,N==V) *)
       andb (negb (is_set Zbit w)) (beq (is_set Nbit w) (is_set Vbit w))
-    | (*1101*) 13 => (* Z set, or N set and V clear, or N clear and V set
+    | LE => (* Z set, or N set and V clear, or N clear and V set
          (Z==1 or N!=V) *)
       orb (is_set Zbit w) (negb (beq (is_set Nbit w) (is_set Vbit w)))
-    | _ => true
+    | AL => true
+    | UN => true
   end.

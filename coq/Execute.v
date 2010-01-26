@@ -26,16 +26,16 @@ Require Import Exception.
 Definition execute (m : processor_mode) (w : word) (i : instruction)
   (s : state) : result :=
   match i with
-    | ADC Sbit Rd Rn so =>
+    | ADC cond Sbit Rd Rn so =>
       let (v, _) := shifter_operand_value_and_carry s m w so in
-        Adc Sbit Rd Rn v s m
-    | ADD Sbit Rd Rn so =>
+        Adc cond Sbit Rd Rn v s m
+    | ADD cond Sbit Rd Rn so =>
       let (v, _) := shifter_operand_value_and_carry s m w so in
-        Add Sbit Rd Rn v s m
-    | AND Sbit Rd Rn so =>
+        Add cond Sbit Rd Rn v s m
+    | AND cond Sbit Rd Rn so =>
       let (v, c) := shifter_operand_value_and_carry s m w so in
-        And Sbit Rd Rn v c s m
-    | BL L w => Bl L w s m
+        And cond Sbit Rd Rn v c s m
+    | BL cond L w => Bl cond L w s m
   end.
 
 Definition next (s : state) : option state :=
