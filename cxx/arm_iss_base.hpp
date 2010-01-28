@@ -13,6 +13,7 @@
 
 #include <inttypes.h>
 #include <cstdlib>
+#include <cassert>
 
 struct ARM_MMU {
   uint8_t read_byte(uint32_t addr);
@@ -123,8 +124,13 @@ struct ARM_ISS_Base {
   bool IMPLEMENTATION_DEFINED_CONDITION();
   uint32_t CPSR_with_specified_E_bit_modification();
 
+  static void See_Rotate_right_with_extend() {
+    assert(false && "Decoding error: ROR instead of RRX");}
+
   static uint32_t bit_position_of_most_significant_1(uint32_t);
   static bool is_even(uint8_t x) {return !(x&1);}
+  static uint32_t Number_Of_Set_Bits_In(uint16_t x);
+
   static bool CarryFrom8_add2(uint8_t, uint8_t);
   static bool CarryFrom16_add2(uint16_t, uint16_t);
   static bool CarryFrom_add2(uint32_t, uint32_t);

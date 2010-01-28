@@ -20,7 +20,7 @@ Pseudocode parser.
 %token LPAR RPAR LSQB RSQB BEGIN END
 %token EQ IN
 %token UNPREDICTABLE UNAFFECTED
-%token IF THEN ELSE WHILE DO ASSERT FOR TO
+%token IF THEN ELSE WHILE DO ASSERT FOR TO CASE ENDCASE OF
 %token CPSR MEMORY
 %token COPROC LOAD SEND NOT_FINISHED FROM
 %token <Ast.processor_exception_mode option> SPSR_MODE
@@ -29,13 +29,13 @@ Pseudocode parser.
 %token <Ast.num> NUM
 %token <string> IDENT FLAG RESERVED
 %token <string> NOT EVEN
-%token <string> GTEQ LT GT BANGEQ AND OR BOR LSL ASR
+%token <string> GTEQ LT GT BANGEQ AND OR BOR LSL LSR ASR
 %token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
 
 /* lowest precedence */
 %left AND OR
 %left EQEQ BANGEQ GTEQ
-%left BAND BOR EOR ROR LTLT LSL ASR
+%left BAND BOR EOR ROR LTLT LSL LSR ASR
 %left PLUS MINUS
 %left STAR
 %nonassoc NOT
@@ -56,7 +56,9 @@ progs:
 ;
 prog:
 | IDENT prog_idents block
-    { { pref = $1; pident = List.hd $2; paltidents = List.tl $2; pinst = $3 } }
+    { Instruction ($1, List.hd $2, List.tl $2, $3) }
+| IDENT operand_items MINUS operand_items block
+    { Operand ($1, $2, $4, $5) }
 ;
 prog_ident:
 | prog_name prog_vars prog_version
@@ -100,6 +102,11 @@ cond_inst:
 | IF exp THEN block ELSE block     { If ($2, $4, Some $6) }
 | WHILE exp DO block               { While ($2, $4) }
 | FOR IDENT EQ NUM TO NUM DO block { For ($2, $4, $6, $8) }
+| CASE exp OF BEGIN cases END ENDCASE        { Case ($2, $5) }
+;
+cases:
+| BIN block       { [$1, $2] }
+| BIN block cases { ($1, $2) :: $3 }
 ;
 inst:
 | simple_inst           { $1 }
@@ -158,6 +165,7 @@ binop_exp:
 | exp OR exp     { BinOp ($1, $2, $3) }
 | exp BOR exp    { BinOp ($1, $2, $3) }
 | exp LSL exp    { BinOp ($1, $2, $3) }
+| exp LSR exp    { BinOp ($1, $2, $3) }
 | exp ASR exp    { BinOp ($1, $2, $3) }
 | exp GTEQ exp   { BinOp ($1, $2, $3) }
 | exp LT exp     { BinOp ($1, $2, $3) }
@@ -178,6 +186,14 @@ items:
 ;
 item:
 | IDENT    { $1 }
+| OF       { "of" }
 | FLAG     { $1 }
 | RESERVED { $1 }
+;
+operand_items:
+| IDENT               { [$1] }
+| COPROC              { ["Coprocessor"] }
+| IDENT operand_items { $1 :: $2 }
+| AND operand_items   { "and" :: $2 }
+| OR operand_items    { "or" :: $2 }
 ;

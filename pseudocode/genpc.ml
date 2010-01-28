@@ -102,7 +102,13 @@ and inst_aux k b = function
   | Misc ss -> list " " string b ss
   | Coproc (c, "send", e :: _) -> bprintf b "send %a to %a" exp e coproc c
   | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
-  | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s;;
+  | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s
+  | Case (e, s) ->
+      bprintf b "case %a of\n%abegin\n%a%aend\n%aendcase"
+        exp e indent (k+4) (list "" (case_aux (k+4))) s indent (k+4) indent k
+
+and case_aux k b (n, i) =
+  bprintf b "%a%a\n%a\n" indent k num n (inst (k+4)) i;;
 
 let version b k = bprintf b "(%s)" k;;
 
@@ -112,8 +118,11 @@ let ident b i =
   bprintf b "%s%a%a" i.iname (list "" var) i.ivars
     (option " " version) i.iversion;;
 
-let prog b p =
-  bprintf b "%s %a\n%a\n" p.pref
-    (list ", " ident) (p.pident :: p.paltidents) (inst 9) p.pinst;;
+let prog b = function
+  | Instruction (r, id, is, i) ->
+      bprintf b "%s %a\n%a\n" r (list ", " ident) (id :: is) (inst 9) i
+  | Operand (r, c, n, i) ->
+      bprintf b "%s %a - %a\n%a\n" r
+        (list " " string) c (list " " string) n (inst 9) i;;
 
 let lib b ps = list "" prog b ps;;

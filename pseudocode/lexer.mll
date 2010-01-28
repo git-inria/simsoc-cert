@@ -44,10 +44,12 @@ let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
       "pc", REG (Reg (Num "15", None)); "or", OR "or"; "and", AND "and";
       "CPSR", Parser.CPSR; "AND", BAND "AND"; "NOT", NOT "NOT"; "do", DO;
       "EOR", EOR "EOR"; "assert", ASSERT; "while", WHILE; "for", FOR;
-      "to", TO; "Bit", FLAG "Bit"; "Rotate_Right", ROR "Rotate_Right";
-      "unaffected", UNAFFECTED; "flag", FLAG "flag"; "OR", BOR "OR";
-      "Logical_Shift_Left", LSL "Logical_Shift_Left"; "in", IN;
-      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right"; "from", FROM;
+      "to", TO; "case", CASE; "of", OF; "endcase", ENDCASE;
+      "Rotate_Right", ROR "Rotate_Right"; "unaffected", UNAFFECTED;
+      "flag", FLAG "flag"; "OR", BOR "OR"; "in", IN; "from", FROM;
+      "Logical_Shift_Left", LSL "Logical_Shift_Left"; "Bit", FLAG "Bit";
+      "Logical_Shift_Right", LSR "Logical_Shift_Right";
+      "Arithmetic_Shift_Right", ASR "Arithmetic_Shift_Right";
       "SPSR", SPSR_MODE None; "Memory", MEMORY; "load", LOAD; "send", SEND;
       "Coprocessor", COPROC; "NotFinished", NOT_FINISHED]);;
 
@@ -59,7 +61,8 @@ let incr_line_number lexbuf =
 
 let register s =
   let n = String.length s in
-  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' then
+  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' &&
+    s <> "Register" && s <> "Rotate" then
     if n < 4 then Some (String.sub s 1 (n-1), None)
     else match String.sub s (n-4) 4 with
       | "_fiq" -> Some (String.sub s 1 (n-5), Some Fiq)

@@ -48,18 +48,23 @@ type inst =
 | Assert of exp
 | For of string * num * num * inst
 | Misc of string list
-| Coproc of exp * string * exp list;;
+| Coproc of exp * string * exp list
+| Case of exp * (num * inst) list;;
 
 type ident = {
   iname : string;
   ivars : string list;
   iversion : num option };;
 
-type prog = {
-  pref : string;
-  pident : ident;
-  paltidents : ident list;
-  pinst : inst };;
+type prog =
+| Instruction of string * ident * ident list * inst
+(* Instruction: ref, ident, altidents, code *)
+| Operand of string * string list * string list * inst
+(* Operand: ref, class, name, code *)
+;;
+
+let inst_of = function
+  | Instruction (_, _, _, i) | Operand(_, _, _, i) -> i;;
 
 let args = function
   | BinOp (_, f, _) as e ->

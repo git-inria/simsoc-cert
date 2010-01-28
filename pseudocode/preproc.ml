@@ -21,7 +21,9 @@ open Util;;
 
 module type Var = sig
   type typ;;
+  val global_type : string -> typ;;
   val local_type : string -> exp -> typ;;
+  val key_type : typ;;
 end;;
 
 module Make (G : Var) = struct
@@ -37,9 +39,9 @@ module Make (G : Var) = struct
 
 let rec vars_exp ((gs,ls) as acc) = function
   | Var s ->
-      if StrSet.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+      if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
       then acc
-      else StrSet.add s gs, ls
+      else StrMap.add s (G.global_type s) gs, ls
   | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
   | Fun (_, es) -> vars_exps acc es
   | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
@@ -51,11 +53,11 @@ and vars_exps acc es = List.fold_left vars_exp acc es;;
 
 let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
-	(if StrSet.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+	(if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
 	 then acc
 	 else
 	   if StrSet.mem s output_registers
-	   then StrSet.add s gs, ls
+	   then StrMap.add s (G.global_type s) gs, ls
 	   else gs, StrMap.add s (G.local_type s e) ls) e
     | Block is -> vars_insts acc is
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
@@ -65,11 +67,17 @@ let rec vars_inst ((gs,ls) as acc) = function
     | For (_, _, _, i) -> vars_inst acc i
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
+    | Case (Var v, s) ->
+        let gs' =
+          if StrMap.mem v gs || StrMap.mem v ls || StrSet.mem v specials
+	  then gs else StrMap.add v G.key_type gs
+        and vars_case acc (_, i) = vars_inst acc i
+        in List.fold_left vars_case (gs', ls) s
     | _ -> (gs,ls)
 
 and vars_insts acc is = List.fold_left vars_inst acc is;;
 
-let vars p = vars_inst (StrSet.empty, StrMap.empty) p.pinst;;
+let vars p = vars_inst (StrMap.empty, StrMap.empty) (inst_of p);;
 
 end;;
 
@@ -182,8 +190,11 @@ let rec inst = function
   | While (e, i) -> While (exp e, inst i)
   | For (s, n, p, i) -> For (s, n, p, inst i)
   | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
+  | Case (e, s) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s)
 
   (* non-recursive instructions *)
   | Unpredictable -> Unpredictable;;
 
-let prog p = { p with pinst = inst p.pinst };;
+let prog = function
+  | Instruction (r, id, is, i) -> Instruction (r, id, is, (inst i))
+  | Operand (r, c, n, i) -> Operand (r, c, n, (inst i));;

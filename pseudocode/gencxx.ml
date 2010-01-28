@@ -30,22 +30,23 @@ let hex_of_bin = function
 
 let type_of_var = function
 
-  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "shift"
-  | "shifter_carry_out" -> "bool"
+  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
+  | "shifter_carry_out" | "shift" -> "bool"
 
   | "signed_immed_24" | "H" | "shifter_operand" | "alu_out" | "target"
   | "data" | "value" | "diffofproducts" | "address" | "start_address"
   | "physical_address" | "operand" | "opcode" | "byte_mask" | "mask"
   | "sum" | "diff" | "operand1" | "operand2" | "product1" | "product2"
   | "temp" | "diff1" | "diff2" | "diff3" | "diff4" | "invalidhandler"
-  | "jpc" -> "uint32_t"
+  | "jpc" | "index" | "end_address" -> "uint32_t"
 
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
-  | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num" -> "uint8_t"
+  | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
+  | "immedH" | "immedL" | "offset_8" -> "uint8_t"
 
   | "cond" -> "ARM_Processor::Condition"
   | "mode" -> "ARM_Processor::Mode"
-  | "register_list" -> "uint16_t"
+  | "register_list" | "offset_12" -> "uint16_t"
   | "accvalue" | "result" -> "uint64_t"
   | "processor_id" -> "size_t"
   | _ -> "TODO";;
@@ -56,6 +57,8 @@ module G = struct
 
   type typ = string;;
 
+  let global_type = type_of_var;;
+
   let local_type s e =
     match e with
       | Memory (_, "1") -> "uint8_t"
@@ -63,13 +66,16 @@ module G = struct
       | Memory (_, "4") -> "uint32_t"
       | _ -> type_of_var s;;
 
+  let key_type = "uint8_t";;
+
 end;;
 
 module V = Preproc.Make(G);;
 
 let variables p =
   let gs, ls = V.vars p in
-    StrSet.elements gs, StrMap.fold (fun s t l -> (s,t)::l) ls [];;
+    (StrMap.fold (fun s t l -> (s,t)::l) gs [],
+     StrMap.fold (fun s t l -> (s,t)::l) ls []);;
 
 (** Generate the code corresponding to an expression *)
 
@@ -91,6 +97,7 @@ let binop = function
   | "EOR" -> "^"
   | "NOT" -> "~"
   | "Logical_Shift_Left" -> "<<"
+  | "Logical_Shift_Right" -> ">>"
   | "==" -> "=="
   | "!=" -> "!="
   | ">=" -> ">="
@@ -186,7 +193,7 @@ let rec exp b = function
 (** Generate the body of an instruction function *)
 
 let rec inst k b = function
-  | Block _ | For _ | While _ | If _ as i ->
+  | Block _ | For _ | While _ | If _ | Case _ as i ->
       bprintf b "%a%a" Genpc.indent k (inst_aux k) i
   | i -> bprintf b "%a%a;" Genpc.indent k (inst_aux k) i
 
@@ -199,7 +206,7 @@ and inst_aux k b = function
       bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
 
   | Block [] -> ()
-  | Block (Block _ | For _ | While _ | If _ as i :: is) ->
+  | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
       bprintf b "%a\n%a" (inst_aux k) i (list "\n" (inst k)) is
   | Block (i :: is) ->
       bprintf b "%a;\n%a" (inst_aux k) i (list "\n" (inst k)) is
@@ -209,6 +216,10 @@ and inst_aux k b = function
   | For (counter, min, max, i) ->
       bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a\n}"
         counter num min counter num max counter (inst (k+2)) i
+
+  | Case (e, s) ->
+      bprintf b "switch (%a) {\n%a%a}"
+        exp e (list "" (case_aux k)) s Genpc.indent k
 
   | If (e, (Block _|If _ as i), None) ->
       bprintf b "if (%a) {\n%a\n%a}" exp e (inst (k+2)) i Genpc.indent k
@@ -228,6 +239,10 @@ and inst_aux k b = function
 	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
 
   | _ -> string b "TODO(\"inst\")"
+
+and case_aux k b (n, i) =
+  bprintf b "%acase %s:\n%a\n%abreak;\n"
+    Genpc.indent k (hex_of_bin n) (inst (k+2)) i Genpc.indent (k+2)
 
 and affect k b dst src =
   if src = Unpredictable_exp then string b "unpredictable()"
@@ -263,7 +278,7 @@ let version_in_name b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
-let prog_arg b s = bprintf b "const %s %s" (type_of_var s) s;;
+let prog_arg b (v,t) = bprintf b "const %s %s" t v;;
 
 let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
@@ -277,23 +292,46 @@ let ident_in_comment b i =
 let ident b i =
   bprintf b "%s%a" i.iname (option "" version_in_name) i.iversion;;
 
-let comment b p =
-  bprintf b "// %s %a\n"
-    p.pref (list ", " ident_in_comment) (p.pident :: p.paltidents);;
+let comment b = function
+  | Instruction (r, id, is, _) ->
+      bprintf b "// %s %a\n" r (list ", " ident_in_comment) (id :: is)
+  | Operand (r, c, n, _) ->
+      bprintf b "// %s %a - %a\n" r (list " " string) c (list " " string) n;;
+
+let abbrev b s =
+  if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
+  then bprintf b "%c" s.[0]
+  else bprintf b ""
 
 let prog gs ls b p =
-  let inregs = List.filter (fun x -> List.mem x input_registers) gs in
-    bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
-      (list "_" ident) (p.pident :: p.paltidents)
-      (list ",\n    " prog_arg) gs
-      (list "" inreg_load) inregs
-      (list "" local_decl) ls
-      (inst 2) p.pinst;;
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
+  let inregs = List.filter (fun x -> List.mem x input_registers) ss in
+    match p with
+      | Instruction (_ , id, is, i) ->
+          bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
+            (list "_" ident) (id :: is)
+            (list ",\n    " prog_arg) gs
+            (list "" inreg_load) inregs
+            (list "" local_decl) ls
+            (inst 2) i
+      | Operand (_, c, n, i) ->
+          bprintf b "%avoid ARM_ISS::%a_%a(%a)\n{\n%a%a%a\n}\n" comment p
+            (list "" abbrev) c
+            (list "_" string) n
+            (list ",\n    " prog_arg) gs
+            (list "" inreg_load) inregs
+            (list "" local_decl) ls
+            (inst 2) i;;
 
-let decl gs b p =
-  bprintf b "  %a  void %a(%a);\n" comment p
-    (list "_" ident) (p.pident :: p.paltidents)
-    (list ",\n    " prog_arg) gs;;
+
+let decl gs b p = match p with
+  | Instruction (_ , id, is, _) ->
+      bprintf b "  %a  void %a(%a);\n" comment p
+        (list "_" ident) (id :: is) (list ",\n    " prog_arg) gs
+  | Operand (_ , c, n, _) ->
+      bprintf b "  %a  void %a_%a(%a);\n" comment p
+        (list "" abbrev) c (list "_" string) n
+        (list ",\n    " prog_arg) gs;;
 
 let lib b ps =
   let b2 = Buffer.create 10000 in

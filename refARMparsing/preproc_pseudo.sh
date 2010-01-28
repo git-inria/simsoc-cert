@@ -6,13 +6,14 @@
 # permute comments and semi-colons
 # add missing "then" avec some "if"
 # add "do" after "while" and "for"
-# in names, replace a dash by a space 
+# in names, replace a dash by a space
 # replace "is" by "==", and "is not" by "!="
 # replace "== R15" by "== 15"
 # remove "value" of a register
 # replace some English expressions by a function call
 # fixed English typos
 # replace a strange dash character by a usual dash
+# remove the '<' and '>' around a "shift_imm"
 
 # REMARK: do not remove the last strange -e command !
 # due to a strange dash character
@@ -62,4 +63,7 @@ sed \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
     -e 's|memory\[|Memory\[|' \
+    -e 's|Data processing operands|Data Processing Operands|' \
+    -e 's|<shift_imm>|shift_imm|' \
+    -e 's|See “Data Processing Operands - Rotate right with extend” on page A5-17|See_Rotate_right_with_extend();|' \
     -e 's|–|-|'
