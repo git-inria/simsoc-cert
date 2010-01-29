@@ -897,74 +897,101 @@ struct ARM_ISS: ARM_ISS_Base {
 
   // A5.1.3 Data Processing Operands - Immediate
   void DPO_Immediate(const uint8_t rotate_imm,
-                     const uint8_t immed_8);
+                     const uint8_t immed_8,
+                     uint32_t &shifter_operand,
+                     bool &shifter_carry_out);
 
   // A5.1.4 Data Processing Operands - Register
-  void DPO_Register(const uint8_t m);
+  void DPO_Register(const uint8_t m,
+                    uint32_t &shifter_operand,
+                    bool &shifter_carry_out);
 
   // A5.1.5 Data Processing Operands - Logical shift left by immediate
   void DPO_Logical_shift_left_by_immediate(const uint8_t shift_imm,
-                                           const uint8_t m);
+                                           const uint8_t m,
+                                           uint32_t &shifter_operand,
+                                           bool &shifter_carry_out);
 
   // A5.1.6 Data Processing Operands - Logical shift left by register
   void DPO_Logical_shift_left_by_register(const uint8_t s,
-                                          const uint8_t m);
+                                          const uint8_t m,
+                                          uint32_t &shifter_operand,
+                                          bool &shifter_carry_out);
 
   // A5.1.7 Data Processing Operands - Logical shift right by immediate
   void DPO_Logical_shift_right_by_immediate(const uint8_t shift_imm,
-                                            const uint8_t m);
+                                            const uint8_t m,
+                                            uint32_t &shifter_operand,
+                                            bool &shifter_carry_out);
 
   // A5.1.8 Data Processing Operands - Logical shift right by register
   void DPO_Logical_shift_right_by_register(const uint8_t s,
-                                           const uint8_t m);
+                                           const uint8_t m,
+                                           uint32_t &shifter_operand,
+                                           bool &shifter_carry_out);
 
   // A5.1.9 Data Processing Operands - Arithmetic shift right by immediate
   void DPO_Arithmetic_shift_right_by_immediate(const uint8_t shift_imm,
-                                               const uint8_t m);
+                                               const uint8_t m,
+                                               uint32_t &shifter_operand,
+                                               bool &shifter_carry_out);
 
   // A5.1.10 Data Processing Operands - Arithmetic shift right by register
   void DPO_Arithmetic_shift_right_by_register(const uint8_t s,
-                                              const uint8_t m);
+                                              const uint8_t m,
+                                              uint32_t &shifter_operand,
+                                              bool &shifter_carry_out);
 
   // A5.1.11 Data Processing Operands - Rotate right by immediate
   void DPO_Rotate_right_by_immediate(const uint8_t shift_imm,
-                                     const uint8_t m);
+                                     const uint8_t m,
+                                     uint32_t &shifter_operand,
+                                     bool &shifter_carry_out);
 
   // A5.1.12 Data Processing Operands - Rotate right by register
   void DPO_Rotate_right_by_register(const uint8_t s,
-                                    const uint8_t m);
+                                    const uint8_t m,
+                                    uint32_t &shifter_operand,
+                                    bool &shifter_carry_out);
 
   // A5.1.13 Data Processing Operands - Rotate right with extend
-  void DPO_Rotate_right_with_extend(const uint8_t m);
+  void DPO_Rotate_right_with_extend(const uint8_t m,
+                                    uint32_t &shifter_operand,
+                                    bool &shifter_carry_out);
 
   // A5.2.2 Load and Store Word or Unsigned Byte - Immediate offset
   void LSWUB_Immediate_offset(const uint16_t offset_12,
                               const uint8_t n,
-                              const bool U);
+                              const bool U,
+                              uint32_t &address);
 
   // A5.2.3 Load and Store Word or Unsigned Byte - Register offset
   void LSWUB_Register_offset(const uint8_t n,
                              const uint8_t m,
-                             const bool U);
+                             const bool U,
+                             uint32_t &address);
 
   // A5.2.4 Load and Store Word or Unsigned Byte - Scaled register offset
   void LSWUB_Scaled_register_offset(const uint8_t shift_imm,
                                     const uint8_t shift,
                                     const uint8_t n,
                                     const uint8_t m,
-                                    const bool U);
+                                    const bool U,
+                                    uint32_t &address);
 
   // A5.2.5 Load and Store Word or Unsigned Byte - Immediate pre indexed
   void LSWUB_Immediate_pre_indexed(const uint16_t offset_12,
                                    const uint8_t n,
                                    const ARM_Processor::Condition cond,
-                                   const bool U);
+                                   const bool U,
+                                   uint32_t &address);
 
   // A5.2.6 Load and Store Word or Unsigned Byte - Register pre indexed
   void LSWUB_Register_pre_indexed(const uint8_t n,
                                   const uint8_t m,
                                   const ARM_Processor::Condition cond,
-                                  const bool U);
+                                  const bool U,
+                                  uint32_t &address);
 
   // A5.2.7 Load and Store Word or Unsigned Byte - Scaled register pre indexed
   void LSWUB_Scaled_register_pre_indexed(const uint8_t shift_imm,
@@ -972,19 +999,22 @@ struct ARM_ISS: ARM_ISS_Base {
                                          const uint8_t n,
                                          const uint8_t m,
                                          const ARM_Processor::Condition cond,
-                                         const bool U);
+                                         const bool U,
+                                         uint32_t &address);
 
   // A5.2.8 Load and Store Word or Unsigned Byte - Immediate post indexed
   void LSWUB_Immediate_post_indexed(const uint16_t offset_12,
                                     const uint8_t n,
                                     const ARM_Processor::Condition cond,
-                                    const bool U);
+                                    const bool U,
+                                    uint32_t &address);
 
   // A5.2.9 Load and Store Word or Unsigned Byte - Register post indexed
   void LSWUB_Register_post_indexed(const uint8_t n,
                                    const uint8_t m,
                                    const ARM_Processor::Condition cond,
-                                   const bool U);
+                                   const bool U,
+                                   uint32_t &address);
 
   // A5.2.10 Load and Store Word or Unsigned Byte - Scaled register post indexed
   void LSWUB_Scaled_register_post_indexed(const uint8_t shift_imm,
@@ -992,94 +1022,113 @@ struct ARM_ISS: ARM_ISS_Base {
                                           const uint8_t n,
                                           const uint8_t m,
                                           const ARM_Processor::Condition cond,
-                                          const bool U);
+                                          const bool U,
+                                          uint32_t &address);
 
   // A5.3.2 Miscellaneous Loads and Stores - Immediate offset
   void MLS_Immediate_offset(const uint8_t n,
                             const uint8_t immedL,
                             const uint8_t immedH,
-                            const bool U);
+                            const bool U,
+                            uint32_t &address);
 
   // A5.3.3 Miscellaneous Loads and Stores - Register offset
   void MLS_Register_offset(const uint8_t n,
                            const uint8_t m,
-                           const bool U);
+                           const bool U,
+                           uint32_t &address);
 
   // A5.3.4 Miscellaneous Loads and Stores - Immediate pre indexed
   void MLS_Immediate_pre_indexed(const uint8_t n,
                                  const uint8_t immedL,
                                  const uint8_t immedH,
                                  const ARM_Processor::Condition cond,
-                                 const bool U);
+                                 const bool U,
+                                 uint32_t &address);
 
   // A5.3.5 Miscellaneous Loads and Stores - Register pre indexed
   void MLS_Register_pre_indexed(const uint8_t n,
                                 const uint8_t m,
                                 const ARM_Processor::Condition cond,
-                                const bool U);
+                                const bool U,
+                                uint32_t &address);
 
   // A5.3.6 Miscellaneous Loads and Stores - Immediate post indexed
   void MLS_Immediate_post_indexed(const uint8_t n,
                                   const uint8_t immedL,
                                   const uint8_t immedH,
                                   const ARM_Processor::Condition cond,
-                                  const bool U);
+                                  const bool U,
+                                  uint32_t &address);
 
   // A5.3.7 Miscellaneous Loads and Stores - Register post indexed
   void MLS_Register_post_indexed(const uint8_t n,
                                  const uint8_t m,
                                  const ARM_Processor::Condition cond,
-                                 const bool U);
+                                 const bool U,
+                                 uint32_t &address);
 
   // A5.4.2 Load and Store Multiple - Increment after
   void LSM_Increment_after(const uint16_t register_list,
                            const uint8_t n,
                            const ARM_Processor::Condition cond,
-                           const bool W);
+                           const bool W,
+                           uint32_t &start_address);
 
   // A5.4.3 Load and Store Multiple - Increment before
   void LSM_Increment_before(const uint16_t register_list,
                             const uint8_t n,
                             const ARM_Processor::Condition cond,
-                            const bool W);
+                            const bool W,
+                            uint32_t &start_address);
 
   // A5.4.4 Load and Store Multiple - Decrement after
   void LSM_Decrement_after(const uint16_t register_list,
                            const uint8_t n,
                            const ARM_Processor::Condition cond,
-                           const bool W);
+                           const bool W,
+                           uint32_t &start_address);
 
   // A5.4.5 Load and Store Multiple - Decrement before
   void LSM_Decrement_before(const uint16_t register_list,
                             const uint8_t n,
                             const ARM_Processor::Condition cond,
-                            const bool W);
+                            const bool W,
+                            uint32_t &start_address);
 
   // A5.5.2 Load and Store Coprocessor - Immediate offset
   void LSC_Immediate_offset(const uint8_t offset_8,
                             const uint8_t n,
                             const uint8_t cp_num,
                             const ARM_Processor::Condition cond,
-                            const bool U);
+                            const bool U,
+                            uint32_t &start_address,
+                            uint32_t &address);
 
   // A5.5.3 Load and Store Coprocessor - Immediate pre indexed
   void LSC_Immediate_pre_indexed(const uint8_t offset_8,
                                  const uint8_t n,
                                  const uint8_t cp_num,
                                  const ARM_Processor::Condition cond,
-                                 const bool U);
+                                 const bool U,
+                                 uint32_t &start_address,
+                                 uint32_t &address);
 
   // A5.5.4 Load and Store Coprocessor - Immediate post indexed
   void LSC_Immediate_post_indexed(const uint8_t offset_8,
                                   const uint8_t n,
                                   const uint8_t cp_num,
                                   const ARM_Processor::Condition cond,
-                                  const bool U);
+                                  const bool U,
+                                  uint32_t &start_address,
+                                  uint32_t &address);
 
   // A5.5.5 Load and Store Coprocessor - Unindexed
   void LSC_Unindexed(const uint8_t n,
                      const uint8_t cp_num,
-                     const ARM_Processor::Condition cond);
+                     const ARM_Processor::Condition cond,
+                     uint32_t &start_address,
+                     uint32_t &address);
 
 };
 
@@ -4051,10 +4100,10 @@ void ARM_ISS::UXTH(const uint8_t rotate,
 
 // A5.1.3 Data Processing Operands - Immediate
 void ARM_ISS::DPO_Immediate(const uint8_t rotate_imm,
-                            const uint8_t immed_8)
+                            const uint8_t immed_8,
+                            uint32_t &shifter_operand,
+                            bool &shifter_carry_out)
 {
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   shifter_operand = rotate_right(immed_8, (rotate_imm * 2));
   if ((rotate_imm == 0))
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4063,22 +4112,22 @@ void ARM_ISS::DPO_Immediate(const uint8_t rotate_imm,
 }
 
 // A5.1.4 Data Processing Operands - Register
-void ARM_ISS::DPO_Register(const uint8_t m)
+void ARM_ISS::DPO_Register(const uint8_t m,
+                           uint32_t &shifter_operand,
+                           bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   shifter_operand = old_Rm;
   shifter_carry_out = proc.cpsr.C_flag;
 }
 
 // A5.1.5 Data Processing Operands - Logical shift left by immediate
 void ARM_ISS::DPO_Logical_shift_left_by_immediate(const uint8_t shift_imm,
-                                                  const uint8_t m)
+                                                  const uint8_t m,
+                                                  uint32_t &shifter_operand,
+                                                  bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((shift_imm == 0)) {
     shifter_operand = old_Rm;
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4090,12 +4139,12 @@ void ARM_ISS::DPO_Logical_shift_left_by_immediate(const uint8_t shift_imm,
 
 // A5.1.6 Data Processing Operands - Logical shift left by register
 void ARM_ISS::DPO_Logical_shift_left_by_register(const uint8_t s,
-                                                 const uint8_t m)
+                                                 const uint8_t m,
+                                                 uint32_t &shifter_operand,
+                                                 bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((get_byte_0(old_Rs) == 0)) {
     shifter_operand = old_Rm;
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4117,11 +4166,11 @@ void ARM_ISS::DPO_Logical_shift_left_by_register(const uint8_t s,
 
 // A5.1.7 Data Processing Operands - Logical shift right by immediate
 void ARM_ISS::DPO_Logical_shift_right_by_immediate(const uint8_t shift_imm,
-                                                   const uint8_t m)
+                                                   const uint8_t m,
+                                                   uint32_t &shifter_operand,
+                                                   bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((shift_imm == 0)) {
     shifter_operand = 0;
     shifter_carry_out = ((old_Rm>>31)&1);
@@ -4133,12 +4182,12 @@ void ARM_ISS::DPO_Logical_shift_right_by_immediate(const uint8_t shift_imm,
 
 // A5.1.8 Data Processing Operands - Logical shift right by register
 void ARM_ISS::DPO_Logical_shift_right_by_register(const uint8_t s,
-                                                  const uint8_t m)
+                                                  const uint8_t m,
+                                                  uint32_t &shifter_operand,
+                                                  bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((get_byte_0(old_Rs) == 0)) {
     shifter_operand = old_Rm;
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4160,11 +4209,11 @@ void ARM_ISS::DPO_Logical_shift_right_by_register(const uint8_t s,
 
 // A5.1.9 Data Processing Operands - Arithmetic shift right by immediate
 void ARM_ISS::DPO_Arithmetic_shift_right_by_immediate(const uint8_t shift_imm,
-                                                      const uint8_t m)
+                                                      const uint8_t m,
+                                                      uint32_t &shifter_operand,
+                                                      bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((shift_imm == 0)) {
     if ((((old_Rm>>31)&1) == 0)) {
       shifter_operand = 0;
@@ -4181,12 +4230,12 @@ void ARM_ISS::DPO_Arithmetic_shift_right_by_immediate(const uint8_t shift_imm,
 
 // A5.1.10 Data Processing Operands - Arithmetic shift right by register
 void ARM_ISS::DPO_Arithmetic_shift_right_by_register(const uint8_t s,
-                                                     const uint8_t m)
+                                                     const uint8_t m,
+                                                     uint32_t &shifter_operand,
+                                                     bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((get_byte_0(old_Rs) == 0)) {
     shifter_operand = old_Rm;
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4208,11 +4257,11 @@ void ARM_ISS::DPO_Arithmetic_shift_right_by_register(const uint8_t s,
 
 // A5.1.11 Data Processing Operands - Rotate right by immediate
 void ARM_ISS::DPO_Rotate_right_by_immediate(const uint8_t shift_imm,
-                                            const uint8_t m)
+                                            const uint8_t m,
+                                            uint32_t &shifter_operand,
+                                            bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((shift_imm == 0))
     See_Rotate_right_with_extend();
   else {
@@ -4223,12 +4272,12 @@ void ARM_ISS::DPO_Rotate_right_by_immediate(const uint8_t shift_imm,
 
 // A5.1.12 Data Processing Operands - Rotate right by register
 void ARM_ISS::DPO_Rotate_right_by_register(const uint8_t s,
-                                           const uint8_t m)
+                                           const uint8_t m,
+                                           uint32_t &shifter_operand,
+                                           bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rs = proc.reg(s);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   if ((get_byte_0(old_Rs) == 0)) {
     shifter_operand = old_Rm;
     shifter_carry_out = proc.cpsr.C_flag;
@@ -4244,11 +4293,11 @@ void ARM_ISS::DPO_Rotate_right_by_register(const uint8_t s,
 }
 
 // A5.1.13 Data Processing Operands - Rotate right with extend
-void ARM_ISS::DPO_Rotate_right_with_extend(const uint8_t m)
+void ARM_ISS::DPO_Rotate_right_with_extend(const uint8_t m,
+                                           uint32_t &shifter_operand,
+                                           bool &shifter_carry_out)
 {
   const uint32_t old_Rm = proc.reg(m);
-  uint32_t shifter_operand;
-  bool shifter_carry_out;
   shifter_operand = ((proc.cpsr.C_flag << 31) | (old_Rm >> 1));
   shifter_carry_out = ((old_Rm>>0)&1);
 }
@@ -4256,10 +4305,10 @@ void ARM_ISS::DPO_Rotate_right_with_extend(const uint8_t m)
 // A5.2.2 Load and Store Word or Unsigned Byte - Immediate offset
 void ARM_ISS::LSWUB_Immediate_offset(const uint16_t offset_12,
                                      const uint8_t n,
-                                     const bool U)
+                                     const bool U,
+                                     uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + offset_12);
   else
@@ -4269,11 +4318,11 @@ void ARM_ISS::LSWUB_Immediate_offset(const uint16_t offset_12,
 // A5.2.3 Load and Store Word or Unsigned Byte - Register offset
 void ARM_ISS::LSWUB_Register_offset(const uint8_t n,
                                     const uint8_t m,
-                                    const bool U)
+                                    const bool U,
+                                    uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + old_Rm);
   else
@@ -4285,12 +4334,12 @@ void ARM_ISS::LSWUB_Scaled_register_offset(const uint8_t shift_imm,
                                            const uint8_t shift,
                                            const uint8_t n,
                                            const uint8_t m,
-                                           const bool U)
+                                           const bool U,
+                                           uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t index;
-  uint32_t address;
   switch (shift) {
   case 0:
     index = (old_Rm << shift_imm);
@@ -4327,10 +4376,10 @@ void ARM_ISS::LSWUB_Scaled_register_offset(const uint8_t shift_imm,
 void ARM_ISS::LSWUB_Immediate_pre_indexed(const uint16_t offset_12,
                                           const uint8_t n,
                                           const ARM_Processor::Condition cond,
-                                          const bool U)
+                                          const bool U,
+                                          uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + offset_12);
   else
@@ -4343,11 +4392,11 @@ void ARM_ISS::LSWUB_Immediate_pre_indexed(const uint16_t offset_12,
 void ARM_ISS::LSWUB_Register_pre_indexed(const uint8_t n,
                                          const uint8_t m,
                                          const ARM_Processor::Condition cond,
-                                         const bool U)
+                                         const bool U,
+                                         uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + old_Rm);
   else
@@ -4362,12 +4411,12 @@ void ARM_ISS::LSWUB_Scaled_register_pre_indexed(const uint8_t shift_imm,
                                                 const uint8_t n,
                                                 const uint8_t m,
                                                 const ARM_Processor::Condition cond,
-                                                const bool U)
+                                                const bool U,
+                                                uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t index;
-  uint32_t address;
   switch (shift) {
   case 0:
     index = (old_Rm << shift_imm);
@@ -4406,10 +4455,10 @@ void ARM_ISS::LSWUB_Scaled_register_pre_indexed(const uint8_t shift_imm,
 void ARM_ISS::LSWUB_Immediate_post_indexed(const uint16_t offset_12,
                                            const uint8_t n,
                                            const ARM_Processor::Condition cond,
-                                           const bool U)
+                                           const bool U,
+                                           uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   address = old_Rn;
   if (ConditionPassed(cond)) {
     if ((U == 1))
@@ -4423,11 +4472,11 @@ void ARM_ISS::LSWUB_Immediate_post_indexed(const uint16_t offset_12,
 void ARM_ISS::LSWUB_Register_post_indexed(const uint8_t n,
                                           const uint8_t m,
                                           const ARM_Processor::Condition cond,
-                                          const bool U)
+                                          const bool U,
+                                          uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   address = old_Rn;
   if (ConditionPassed(cond)) {
     if ((U == 1))
@@ -4443,12 +4492,12 @@ void ARM_ISS::LSWUB_Scaled_register_post_indexed(const uint8_t shift_imm,
                                                  const uint8_t n,
                                                  const uint8_t m,
                                                  const ARM_Processor::Condition cond,
-                                                 const bool U)
+                                                 const bool U,
+                                                 uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
   uint32_t index;
-  uint32_t address;
   address = old_Rn;
   switch (shift) {
   case 0:
@@ -4488,11 +4537,11 @@ void ARM_ISS::LSWUB_Scaled_register_post_indexed(const uint8_t shift_imm,
 void ARM_ISS::MLS_Immediate_offset(const uint8_t n,
                                    const uint8_t immedL,
                                    const uint8_t immedH,
-                                   const bool U)
+                                   const bool U,
+                                   uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint8_t offset_8;
-  uint32_t address;
   offset_8 = ((immedH << 4) | immedL);
   if ((U == 1))
     address = (old_Rn + offset_8);
@@ -4503,11 +4552,11 @@ void ARM_ISS::MLS_Immediate_offset(const uint8_t n,
 // A5.3.3 Miscellaneous Loads and Stores - Register offset
 void ARM_ISS::MLS_Register_offset(const uint8_t n,
                                   const uint8_t m,
-                                  const bool U)
+                                  const bool U,
+                                  uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + old_Rm);
   else
@@ -4519,11 +4568,11 @@ void ARM_ISS::MLS_Immediate_pre_indexed(const uint8_t n,
                                         const uint8_t immedL,
                                         const uint8_t immedH,
                                         const ARM_Processor::Condition cond,
-                                        const bool U)
+                                        const bool U,
+                                        uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint8_t offset_8;
-  uint32_t address;
   offset_8 = ((immedH << 4) | immedL);
   if ((U == 1))
     address = (old_Rn + offset_8);
@@ -4537,11 +4586,11 @@ void ARM_ISS::MLS_Immediate_pre_indexed(const uint8_t n,
 void ARM_ISS::MLS_Register_pre_indexed(const uint8_t n,
                                        const uint8_t m,
                                        const ARM_Processor::Condition cond,
-                                       const bool U)
+                                       const bool U,
+                                       uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   if ((U == 1))
     address = (old_Rn + old_Rm);
   else
@@ -4555,11 +4604,11 @@ void ARM_ISS::MLS_Immediate_post_indexed(const uint8_t n,
                                          const uint8_t immedL,
                                          const uint8_t immedH,
                                          const ARM_Processor::Condition cond,
-                                         const bool U)
+                                         const bool U,
+                                         uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint8_t offset_8;
-  uint32_t address;
   address = old_Rn;
   offset_8 = ((immedH << 4) | immedL);
   if (ConditionPassed(cond)) {
@@ -4574,11 +4623,11 @@ void ARM_ISS::MLS_Immediate_post_indexed(const uint8_t n,
 void ARM_ISS::MLS_Register_post_indexed(const uint8_t n,
                                         const uint8_t m,
                                         const ARM_Processor::Condition cond,
-                                        const bool U)
+                                        const bool U,
+                                        uint32_t &address)
 {
   const uint32_t old_Rm = proc.reg(m);
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t address;
   address = old_Rn;
   if (ConditionPassed(cond)) {
     if ((U == 1))
@@ -4592,10 +4641,10 @@ void ARM_ISS::MLS_Register_post_indexed(const uint8_t n,
 void ARM_ISS::LSM_Increment_after(const uint16_t register_list,
                                   const uint8_t n,
                                   const ARM_Processor::Condition cond,
-                                  const bool W)
+                                  const bool W,
+                                  uint32_t &start_address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
   start_address = old_Rn;
   end_address = ((old_Rn + (Number_Of_Set_Bits_In(register_list) * 4)) - 4);
@@ -4607,10 +4656,10 @@ void ARM_ISS::LSM_Increment_after(const uint16_t register_list,
 void ARM_ISS::LSM_Increment_before(const uint16_t register_list,
                                    const uint8_t n,
                                    const ARM_Processor::Condition cond,
-                                   const bool W)
+                                   const bool W,
+                                   uint32_t &start_address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
   start_address = (old_Rn + 4);
   end_address = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
@@ -4622,10 +4671,10 @@ void ARM_ISS::LSM_Increment_before(const uint16_t register_list,
 void ARM_ISS::LSM_Decrement_after(const uint16_t register_list,
                                   const uint8_t n,
                                   const ARM_Processor::Condition cond,
-                                  const bool W)
+                                  const bool W,
+                                  uint32_t &start_address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
   start_address = ((old_Rn - (Number_Of_Set_Bits_In(register_list) * 4)) + 4);
   end_address = old_Rn;
@@ -4637,10 +4686,10 @@ void ARM_ISS::LSM_Decrement_after(const uint16_t register_list,
 void ARM_ISS::LSM_Decrement_before(const uint16_t register_list,
                                    const uint8_t n,
                                    const ARM_Processor::Condition cond,
-                                   const bool W)
+                                   const bool W,
+                                   uint32_t &start_address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
   start_address = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
   end_address = (old_Rn - 4);
@@ -4653,12 +4702,12 @@ void ARM_ISS::LSC_Immediate_offset(const uint8_t offset_8,
                                    const uint8_t n,
                                    const uint8_t cp_num,
                                    const ARM_Processor::Condition cond,
-                                   const bool U)
+                                   const bool U,
+                                   uint32_t &start_address,
+                                   uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
-  uint32_t address;
   if (ConditionPassed(cond)) {
     if ((U == 1))
       address = (old_Rn + (offset_8 * 4));
@@ -4676,12 +4725,12 @@ void ARM_ISS::LSC_Immediate_pre_indexed(const uint8_t offset_8,
                                         const uint8_t n,
                                         const uint8_t cp_num,
                                         const ARM_Processor::Condition cond,
-                                        const bool U)
+                                        const bool U,
+                                        uint32_t &start_address,
+                                        uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
-  uint32_t address;
   if (ConditionPassed(cond)) {
     if ((U == 1))
       proc.reg(n) = (old_Rn + (offset_8 * 4));
@@ -4700,12 +4749,12 @@ void ARM_ISS::LSC_Immediate_post_indexed(const uint8_t offset_8,
                                          const uint8_t n,
                                          const uint8_t cp_num,
                                          const ARM_Processor::Condition cond,
-                                         const bool U)
+                                         const bool U,
+                                         uint32_t &start_address,
+                                         uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
-  uint32_t address;
   if (ConditionPassed(cond)) {
     start_address = old_Rn;
     if ((U == 1))
@@ -4722,12 +4771,12 @@ void ARM_ISS::LSC_Immediate_post_indexed(const uint8_t offset_8,
 // A5.5.5 Load and Store Coprocessor - Unindexed
 void ARM_ISS::LSC_Unindexed(const uint8_t n,
                             const uint8_t cp_num,
-                            const ARM_Processor::Condition cond)
+                            const ARM_Processor::Condition cond,
+                            uint32_t &start_address,
+                            uint32_t &address)
 {
   const uint32_t old_Rn = proc.reg(n);
-  uint32_t start_address;
   uint32_t end_address;
-  uint32_t address;
   if (ConditionPassed(cond)) {
     start_address = old_Rn;
     address = start_address;

@@ -151,6 +151,8 @@ let var = function
   | "v5_and_above" -> "proc.v5_and_above"
   | s -> s;;
 
+let optemps = ["index"; "offset_8"; "end_address"];;
+
 let input_registers = ["n"; "m"; "s"];;
 
 let rec exp b = function
@@ -280,6 +282,8 @@ let prog_var b s = bprintf b "<%s>" s;;
 
 let prog_arg b (v,t) = bprintf b "const %s %s" t v;;
 
+let prog_out b (v,t) = bprintf b "%s &%s" t v;;
+
 let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
 let inreg_load b s =
@@ -303,6 +307,8 @@ let abbrev b s =
   then bprintf b "%c" s.[0]
   else bprintf b ""
 
+let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
+
 let prog gs ls b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
@@ -315,29 +321,36 @@ let prog gs ls b p =
             (list "" local_decl) ls
             (inst 2) i
       | Operand (_, c, n, i) ->
-          bprintf b "%avoid ARM_ISS::%a_%a(%a)\n{\n%a%a%a\n}\n" comment p
-            (list "" abbrev) c
-            (list "_" string) n
-            (list ",\n    " prog_arg) gs
-            (list "" inreg_load) inregs
-            (list "" local_decl) ls
-            (inst 2) i;;
+          let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
+          and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
+            bprintf b "%avoid ARM_ISS::%a_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
+              (list "" abbrev) c
+              (list "_" string) n
+              (list ",\n    " prog_arg) gs
+              (arg_sep gs os)
+              (list ",\n    " prog_out) os
+              (list "" inreg_load) inregs
+              (list "" local_decl) ls'
+              (inst 2) i;;
 
 
-let decl gs b p = match p with
+let decl gs ls b p = match p with
   | Instruction (_ , id, is, _) ->
       bprintf b "  %a  void %a(%a);\n" comment p
         (list "_" ident) (id :: is) (list ",\n    " prog_arg) gs
   | Operand (_ , c, n, _) ->
-      bprintf b "  %a  void %a_%a(%a);\n" comment p
-        (list "" abbrev) c (list "_" string) n
-        (list ",\n    " prog_arg) gs;;
+      let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
+        bprintf b "  %a  void %a_%a(%a%s%a);\n" comment p
+          (list "" abbrev) c (list "_" string) n
+          (list ",\n    " prog_arg) gs
+          (arg_sep gs os)
+          (list ",\n    " prog_out) os;;
 
 let lib b ps =
   let b2 = Buffer.create 10000 in
   let decl_and_prog b p =
     let gs, ls = variables p in
-      bprintf b "%a\n" (decl gs) p;
+      bprintf b "%a\n" (decl gs ls) p;
       bprintf b2 "%a\n" (prog gs ls) p
   in
     bprintf b
