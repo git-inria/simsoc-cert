@@ -103,17 +103,26 @@ struct ARM_ISS: ARM_ISS_Base {
   // A4.1.20 LDM (1)
   void LDM_1(const uint32_t start_address,
              const uint16_t register_list,
-             const ARM_Processor::Condition cond);
+             const uint32_t new_Rn,
+             const uint8_t n,
+             const ARM_Processor::Condition cond,
+             const bool W);
 
   // A4.1.21 LDM (2)
   void LDM_2(const uint32_t start_address,
              const uint16_t register_list,
-             const ARM_Processor::Condition cond);
+             const uint32_t new_Rn,
+             const uint8_t n,
+             const ARM_Processor::Condition cond,
+             const bool W);
 
   // A4.1.22 LDM (3)
   void LDM_3(const uint32_t start_address,
              const uint16_t register_list,
-             const ARM_Processor::Condition cond);
+             const uint32_t new_Rn,
+             const uint8_t n,
+             const ARM_Processor::Condition cond,
+             const bool W);
 
   // A4.1.23 LDR
   void LDR(const uint8_t d,
@@ -582,12 +591,18 @@ struct ARM_ISS: ARM_ISS_Base {
   // A4.1.97 STM (1)
   void STM_1(const uint32_t start_address,
              const uint16_t register_list,
-             const ARM_Processor::Condition cond);
+             const uint32_t new_Rn,
+             const uint8_t n,
+             const ARM_Processor::Condition cond,
+             const bool W);
 
   // A4.1.98 STM (2)
   void STM_2(const uint32_t start_address,
              const uint16_t register_list,
-             const ARM_Processor::Condition cond);
+             const uint32_t new_Rn,
+             const uint8_t n,
+             const ARM_Processor::Condition cond,
+             const bool W);
 
   // A4.1.99 STR
   void STR(const uint8_t d,
@@ -1071,30 +1086,26 @@ struct ARM_ISS: ARM_ISS_Base {
   // A5.4.2 Load and Store Multiple - Increment after
   void LSM_Increment_after(const uint16_t register_list,
                            const uint8_t n,
-                           const ARM_Processor::Condition cond,
-                           const bool W,
-                           uint32_t &start_address);
+                           uint32_t &start_address,
+                           uint32_t &new_Rn);
 
   // A5.4.3 Load and Store Multiple - Increment before
   void LSM_Increment_before(const uint16_t register_list,
                             const uint8_t n,
-                            const ARM_Processor::Condition cond,
-                            const bool W,
-                            uint32_t &start_address);
+                            uint32_t &start_address,
+                            uint32_t &new_Rn);
 
   // A5.4.4 Load and Store Multiple - Decrement after
   void LSM_Decrement_after(const uint16_t register_list,
                            const uint8_t n,
-                           const ARM_Processor::Condition cond,
-                           const bool W,
-                           uint32_t &start_address);
+                           uint32_t &start_address,
+                           uint32_t &new_Rn);
 
   // A5.4.5 Load and Store Multiple - Decrement before
   void LSM_Decrement_before(const uint16_t register_list,
                             const uint8_t n,
-                            const ARM_Processor::Condition cond,
-                            const bool W,
-                            uint32_t &start_address);
+                            uint32_t &start_address,
+                            uint32_t &new_Rn);
 
   // A5.5.2 Load and Store Coprocessor - Immediate offset
   void LSC_Immediate_offset(const uint8_t offset_8,
@@ -1484,8 +1495,12 @@ void ARM_ISS::LDC(const uint32_t start_address,
 // A4.1.20 LDM (1)
 void ARM_ISS::LDM_1(const uint32_t start_address,
                     const uint16_t register_list,
-                    const ARM_Processor::Condition cond)
+                    const uint32_t new_Rn,
+                    const uint8_t n,
+                    const ARM_Processor::Condition cond,
+                    const bool W)
 {
+  const uint32_t old_Rn = proc.reg(n);
   uint32_t value;
   uint32_t address;
   if (ConditionPassed(cond)) {
@@ -1502,14 +1517,20 @@ void ARM_ISS::LDM_1(const uint32_t start_address,
       proc.cpsr.T_flag = ((value>>0)&1);
       address = (address + 4);
     }
+    if (W)
+      proc.reg(n) = new_Rn;
   }
 }
 
 // A4.1.21 LDM (2)
 void ARM_ISS::LDM_2(const uint32_t start_address,
                     const uint16_t register_list,
-                    const ARM_Processor::Condition cond)
+                    const uint32_t new_Rn,
+                    const uint8_t n,
+                    const ARM_Processor::Condition cond,
+                    const bool W)
 {
+  const uint32_t old_Rn = proc.reg(n);
   uint32_t address;
   if (ConditionPassed(cond)) {
     address = start_address;
@@ -1519,14 +1540,20 @@ void ARM_ISS::LDM_2(const uint32_t start_address,
         address = (address + 4);
       }
     }
+    if (W)
+      proc.reg(n) = new_Rn;
   }
 }
 
 // A4.1.22 LDM (3)
 void ARM_ISS::LDM_3(const uint32_t start_address,
                     const uint16_t register_list,
-                    const ARM_Processor::Condition cond)
+                    const uint32_t new_Rn,
+                    const uint8_t n,
+                    const ARM_Processor::Condition cond,
+                    const bool W)
 {
+  const uint32_t old_Rn = proc.reg(n);
   uint32_t value;
   uint32_t address;
   if (ConditionPassed(cond)) {
@@ -1544,6 +1571,8 @@ void ARM_ISS::LDM_3(const uint32_t start_address,
     value = proc.mmu.read_word(address);
     proc.set_pc_raw(value);
     address = (address + 4);
+    if (W)
+      proc.reg(n) = new_Rn;
   }
 }
 
@@ -3086,8 +3115,12 @@ void ARM_ISS::STC(const uint32_t start_address,
 // A4.1.97 STM (1)
 void ARM_ISS::STM_1(const uint32_t start_address,
                     const uint16_t register_list,
-                    const ARM_Processor::Condition cond)
+                    const uint32_t new_Rn,
+                    const uint8_t n,
+                    const ARM_Processor::Condition cond,
+                    const bool W)
 {
+  const uint32_t old_Rn = proc.reg(n);
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -3104,14 +3137,20 @@ void ARM_ISS::STM_1(const uint32_t start_address,
         }
       }
     }
+    if (W)
+      proc.reg(n) = new_Rn;
   }
 }
 
 // A4.1.98 STM (2)
 void ARM_ISS::STM_2(const uint32_t start_address,
                     const uint16_t register_list,
-                    const ARM_Processor::Condition cond)
+                    const uint32_t new_Rn,
+                    const uint8_t n,
+                    const ARM_Processor::Condition cond,
+                    const bool W)
 {
+  const uint32_t old_Rn = proc.reg(n);
   size_t processor_id;
   uint32_t physical_address;
   uint32_t address;
@@ -3128,6 +3167,8 @@ void ARM_ISS::STM_2(const uint32_t start_address,
         }
       }
     }
+    if (W)
+      proc.reg(n) = new_Rn;
   }
 }
 
@@ -4640,61 +4681,53 @@ void ARM_ISS::MLS_Register_post_indexed(const uint8_t n,
 // A5.4.2 Load and Store Multiple - Increment after
 void ARM_ISS::LSM_Increment_after(const uint16_t register_list,
                                   const uint8_t n,
-                                  const ARM_Processor::Condition cond,
-                                  const bool W,
-                                  uint32_t &start_address)
+                                  uint32_t &start_address,
+                                  uint32_t &new_Rn)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint32_t end_address;
   start_address = old_Rn;
   end_address = ((old_Rn + (Number_Of_Set_Bits_In(register_list) * 4)) - 4);
-  if ((ConditionPassed(cond) && (W == 1)))
-    proc.reg(n) = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
+  new_Rn = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
 }
 
 // A5.4.3 Load and Store Multiple - Increment before
 void ARM_ISS::LSM_Increment_before(const uint16_t register_list,
                                    const uint8_t n,
-                                   const ARM_Processor::Condition cond,
-                                   const bool W,
-                                   uint32_t &start_address)
+                                   uint32_t &start_address,
+                                   uint32_t &new_Rn)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint32_t end_address;
   start_address = (old_Rn + 4);
   end_address = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
-  if ((ConditionPassed(cond) && (W == 1)))
-    proc.reg(n) = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
+  new_Rn = (old_Rn + (Number_Of_Set_Bits_In(register_list) * 4));
 }
 
 // A5.4.4 Load and Store Multiple - Decrement after
 void ARM_ISS::LSM_Decrement_after(const uint16_t register_list,
                                   const uint8_t n,
-                                  const ARM_Processor::Condition cond,
-                                  const bool W,
-                                  uint32_t &start_address)
+                                  uint32_t &start_address,
+                                  uint32_t &new_Rn)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint32_t end_address;
   start_address = ((old_Rn - (Number_Of_Set_Bits_In(register_list) * 4)) + 4);
   end_address = old_Rn;
-  if ((ConditionPassed(cond) && (W == 1)))
-    proc.reg(n) = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
+  new_Rn = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
 }
 
 // A5.4.5 Load and Store Multiple - Decrement before
 void ARM_ISS::LSM_Decrement_before(const uint16_t register_list,
                                    const uint8_t n,
-                                   const ARM_Processor::Condition cond,
-                                   const bool W,
-                                   uint32_t &start_address)
+                                   uint32_t &start_address,
+                                   uint32_t &new_Rn)
 {
   const uint32_t old_Rn = proc.reg(n);
   uint32_t end_address;
   start_address = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
   end_address = (old_Rn - 4);
-  if ((ConditionPassed(cond) && (W == 1)))
-    proc.reg(n) = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
+  new_Rn = (old_Rn - (Number_Of_Set_Bits_In(register_list) * 4));
 }
 
 // A5.5.2 Load and Store Coprocessor - Immediate offset

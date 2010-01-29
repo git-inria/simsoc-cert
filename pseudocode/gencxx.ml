@@ -38,7 +38,7 @@ let type_of_var = function
   | "physical_address" | "operand" | "opcode" | "byte_mask" | "mask"
   | "sum" | "diff" | "operand1" | "operand2" | "product1" | "product2"
   | "temp" | "diff1" | "diff2" | "diff3" | "diff4" | "invalidhandler"
-  | "jpc" | "index" | "end_address" -> "uint32_t"
+  | "jpc" | "index" | "end_address" | "new_Rn" -> "uint32_t"
 
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
@@ -346,12 +346,38 @@ let decl gs ls b p = match p with
           (arg_sep gs os)
           (list ",\n    " prog_out) os;;
 
+let lsm_hack p =
+  let rec inst = function
+    | Block is -> Block (List.map inst is)
+    | If (_, Affect ( Reg (Var "n", None), e), None) ->
+        Affect (Var "new_Rn", e)
+    | i-> i
+  in match p with
+  | Instruction (r, id, is, i) ->
+      if id.iname = "LDM" or id.iname = "STM"
+      then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+        let a = If (Var "W", Affect (Reg (Var "n", None), Var "new_Rn"), None) in
+        let i = match i with
+          | If (c, Block (is), None) ->
+              If (c, Block (is@[a]), None)
+          | Block ([x; If (c, Block (is), None)]) ->
+              Block ([x; If (c, Block (is@[a]), None)])
+          | _ -> raise (Failure ("Unexpected AST shape: "^id.iname))
+        in Instruction (r, id, is, i)
+      else p
+  | Operand (r , c, n, i) ->
+      if c = ["Load"; "and"; "Store"; "Multiple"]
+      then (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+        Operand (r , c, n, (inst i))
+      else p;;
+
 let lib b ps =
   let b2 = Buffer.create 10000 in
   let decl_and_prog b p =
-    let gs, ls = variables p in
-      bprintf b "%a\n" (decl gs ls) p;
-      bprintf b2 "%a\n" (prog gs ls) p
+    let p' = lsm_hack p in
+    let gs, ls = variables p' in
+      bprintf b "%a\n" (decl gs ls) p';
+      bprintf b2 "%a\n" (prog gs ls) p'
   in
     bprintf b
 "#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
