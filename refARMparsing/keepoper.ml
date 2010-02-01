@@ -176,26 +176,12 @@ let rec loop_instrs = parser
 	 | Continue -> loop_instrs s
        )
 
-(* 
-let rec loop_instrs = parser
-  | [< h = to_next_header; s >] -> 
-      if filpart 'A' h then 
-	begin
-	  print_header h;
-	  to_contents_instr s;
-	  in_operation s;
-          loop_instrs s
-	end
-      else if filendinstr h then ()
-      else loop_instrs s
-  | [< >] -> ()
-*)
-
 let main = parser 
     [< _ = to_given_header (filtitle alpha);
        _ = to_given_header (filtitle genotes);
        () = loop_instrs;
        _ = to_given_header (preftitle addrmodes);
+       (* 5 consecutive sections to analyze *)
        () = loop_instrs;
        () = loop_instrs;
        () = loop_instrs;

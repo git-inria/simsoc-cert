@@ -8,6 +8,9 @@ all : $(targ)
 clean :
 	rm -f *.cm* *.o *~ $(targ)
 
+check : operV6.txt
+	diff operV6.txt operV6.txt.ref5
+
 # Usage : update ARMv6.txt to the desired contents, then make patch
 # The purpose of "|| echo..." is to enforce an exit status to 0
 # (else weird make msg)
