@@ -35,12 +35,14 @@ Definition min : word := repr min_signed.
 Notation w0 := zero.
 Notation w1 := one.
 Definition w2 : word := repr 2.
+Definition w3 : word := repr 3.
 Definition w4 : word := repr 4.
 Definition w8 : word := repr 8.
 Definition w12 : word := repr 12.
 Definition w14 : word := repr 14.
 Definition w15 : word := repr 15.
 Definition w31 : word := repr 31.
+Definition w32 : word := repr 32.
 
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
