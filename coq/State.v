@@ -254,6 +254,27 @@ Record state : Type := mk_state {
    -k: reg_num *)
 Definition reg_content s m k := reg s (reg_of_mode m k).
 
+Inductive mmu_read_result : Set :=
+  | MRR_std : word -> mmu_read_result
+  | MMR_exn : state (* to be updated later *) -> mmu_read_result.
+
+Inductive mmu_write_result : Set :=
+  | MWR_std : (address -> word) -> mmu_write_result
+  | MWR_exn : state (* to be updated later *) -> mmu_write_result.
+
+(* FIXME: this MMU does not check the last two bits;
+          and the physical address is the same as the virtual address *)
+Definition mmu_read_word (s: state) (a: address) : mmu_read_result :=
+  MRR_std (mem s a).
+
+(* not finished
+Definition mmu_read_halfword (s: state) (a: address) : mmu_read_result :=
+  let all := mem s a[31#2] in
+  if a[1] then 
+  MRR_std ().
+*)
+
+
 Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s).
 Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s).
 Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s).
