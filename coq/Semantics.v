@@ -253,12 +253,17 @@ CPSR T bit = 1
 PC = PC + (SignExtend(signed_immed_24) << 2) + (H << 1)
 >>*)
 
-Definition Blx (w : word) (s : state) (m : processor_mode) : result :=
+(*FIXME: move to the good file*)
+Definition word_of_bool (b: bool) : word :=
+  if b then w1 else w0.
+
+(* length of si24 = 24 *)
+Definition Blx (si24 : word) (Hbit : bool) (s : state) (m : processor_mode) : result :=
   let old_LR := reg_content s m LR in
   let new_LR := next_inst_address s m in 
   let old_PC := reg_content s m PC in
-  let new_PC := add (add old_PC (Logical_Shift_Left (SignExtend 24 w) w2))
-                    (Logical_Shift_Left w[24] w1) in
+  let new_PC := add (add old_PC (Logical_Shift_Left (SignExtend 24 si24) w2))
+                    (Logical_Shift_Left (word_of_bool Hbit) w1) in
   Some (false, update_reg m PC new_PC
                (update_cpsr (update_bit Tbit true (cpsr s))
                (update_reg m LR new_LR s))).
@@ -273,15 +278,18 @@ if ConditionPassed(cond) then
     PC = Rm AND 0xFFFFFFFE
 >>*)
 
+(* FIXME : put in the good file.*)
+Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
+
 Definition Bx (cond : opcode) (rm : reg_num) (s : state) (m : processor_mode)
   : result :=
   let r := cpsr s in
   if ConditionPassed r cond then
     let Rm := reg_content s m rm in
     let old_PC := reg_content s m PC in
-    let new_PC := and Rm (sub max w1) in
+    let new_PC := and Rm w0xFFFFFFFE in
     Some(false, update_reg m PC new_PC 
-                (update_cpsr (update_bit Tbit Rm[0] (cpsr s)) s))
+                (update_cpsr (update_bit Tbit Rm[0] r) s))
   else Some(true, s).
 
 (****************************************************************************)
@@ -294,6 +302,10 @@ if Rm == 0
 else
      Rd = 31 - (bit position of most significant'1' in Rm)
 >>*)
+
+(* FIXME: if Rd is PC then the result should be UNPREDICTABLE *)
+
+(* FIXME: if Rm is PC then the result should be UNPREDICTABLE *)
 
 Fixpoint count (w : word) (i: nat) {struct i}: word :=
 match i with
@@ -308,7 +320,7 @@ Definition Clz (cond : opcode) (rm rd : reg_num) (w : word) (s : state)
   let r := cpsr s in
   if ConditionPassed r cond then
   let not_branch := zne rd 15 in
-    if (zne rd 15) && (zne rm 15) then
+    if (not_branch) && (zne rm 15) then
       let Rm := reg_content s m rm in
       let Rd := reg_content s m rd in
       if zeq Rm 0 then
