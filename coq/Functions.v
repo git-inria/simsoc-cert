@@ -78,6 +78,14 @@ Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
     | _ => true
   end.
 
+(* Return None if the current processor mode is User mode or System mode,
+and returns SPSR if the current mode is processor exception mode.*)
+Definition SPSR_to_CPSR (s : state) (m : processor_mode) : option word :=
+  match m with
+  | usr | sys => None
+  | exn e => Some (spsr s e)
+  end.
+
 (****************************************************************************)
 (** CarryFrom (p. 1124) *)
 (****************************************************************************)
@@ -119,6 +127,24 @@ Definition OverflowFrom_add3 (x y z : word) : word :=
   let r := signed x + signed y + signed z in
     orb (zlt r min_signed) (zgt r max_signed).
 
+Definition OverflowFrom_sub (x y : word) : word :=
+  let r := signed x - signed y in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+(****************************************************************************)
+(** BorrowFrom (p. 1131) *)
+(****************************************************************************)
+
+(* Returns 1 if the subtraction specified as its parameter caused a borrow 
+(the true result is less than 0, where the operands are treated as unsigned
+integers), and returns 0 in all other cases. This delivers further
+information about a subtraction which occurred earlier in the pseudo-code.
+The subtraction is not repeated. *)
+(**FIXME**)
+Definition BorrowFrom_sub (x y : word) : word :=
+  let r := unsigned x - unsigned y in 
+    zlt r 0.
+
 (****************************************************************************)
 (** ConditionPassed (p. 1124) *)
 (****************************************************************************)
@@ -156,3 +182,86 @@ Definition ConditionPassed (w : word) (op : opcode) : bool :=
     | AL => true
     | UN => true
   end.
+
+(****************************************************************************)
+(** SignedSat(x, n) (p. 1134) *)
+(****************************************************************************)
+
+(* Returns x saturated to the range of an n-bit signed integer. That is,
+ it returns:
+      –2^(n–1) if x < –2^(n–1)
+•
+      x if –2^(n–1) <= x <= 2^(n–1) – 1
+•
+      2^(n–1) – 1 if x > 2^(n–1) – 1.
+•
+*)
+
+Definition SignedSat (x : word) (n : nat) : word := 
+  let c1 := cmp Clt x (neg (repr (two_power_nat (n - 1)))) in
+  let c2 := cmp Cgt x (repr (two_power_nat (n - 1) - 1)) in
+  match c1 with
+   | true => neg (repr (two_power_nat (n - 1)))
+   | false => match c2 with
+                | true => repr (two_power_nat (n - 1) - 1)
+                | false => x
+              end
+  end. 
+
+(****************************************************************************)
+(** UnsignedSat(x, n) (p. 1136) *)
+(****************************************************************************)
+
+(* Returns x saturated to the range of an n-bit unsigned integer. That is,
+ it returns:
+•     0 if x < 0
+      x if 0 <= x < 2^n
+•
+      2^n – 1 if x > 2^n – 1
+•
+*)
+
+Definition UnsignedSat (x : word) (n : nat) : word :=
+  let c1 := cmp Clt x w0 in
+  let c2 := cmp Clt x (repr ((two_power_nat n) - 1)) in
+  match c1 with
+    | true => w0
+    | false => match c2 with
+                 | true => x
+                 | false => (repr ((two_power_nat n) - 1))
+               end
+  end.
+
+(****************************************************************************)
+(** SignedDoesSat(x, n) (p. 1134) *)
+(****************************************************************************)
+
+(* Returns 0 if x lies inside the range of an n-bit signed integer (that is,
+if –2(n–1) ≤ x ≤ 2(n–1) – 1), and 1 otherwise.
+This operation delivers further information about a SignedSat(x, n) 
+operation which occurred earlier in the pseudo-code. 
+Any operations used to calculate x or n are not repeated. *)
+
+Definition SignedDoesSat (x : word) (n : nat) : word :=
+  let c1 := cmp Cge x (neg (repr (two_power_nat (n - 1)))) in
+  let c2 := cmp Cle x (repr ((two_power_nat n) - 1)) in
+  let c := andb c1 c2 in
+  match c with 
+    | true => w0
+    | false => w1
+  end.
+
+(****************************************************************************)
+(** InAPrivilegedMode() (p. 1128) *)
+(****************************************************************************)
+
+(* Returns TRUE if the current processor mode is not User mode, 
+and returns FALSE if the current mode is User mode. *)
+
+Definition InAPrivilegedMode (m : processor_mode) : bool :=
+  match m with
+    | usr => true
+    | _ => false
+  end.
+
+

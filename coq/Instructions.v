@@ -28,15 +28,18 @@ Notation HS := CS.
 Notation LO := CC.
 
 (****************************************************************************)
-(** A5.1 Addressing Mode 1 - Data-processing operands *)
+(** A5.1 Addressing Mode 1 - Data-processing operands (p. 442)*)
 (****************************************************************************)
 
 Inductive shifter : Type := LSL | LSR | ASR | ROR.
 
 Inductive shifter_value : Type :=
-| ValImm (shift_imm : word)
-| ValReg (Rs : reg_num).
+| ValImm (shift_imm : word) (*Immediate operand value*)
+| ValReg (Rs : reg_num) (*Register operand value*).
 
+(* Imm : Immediate
+   Shift : Immediate shift/Register shift
+   RRX : Register/Rotate right with extend. *)
 Inductive shifter_operand : Type :=
 | Imm (rotate_imm immed_8 : word)
 | Shift (Rm : reg_num) (s : shifter) (v : shifter_value)
@@ -45,7 +48,11 @@ Inductive shifter_operand : Type :=
 (****************************************************************************)
 (* Chapter A4 - ARM Instructions (p. 151) *)
 (****************************************************************************)
-
+(* S : S bit (bit[20]) *)
+(* d : Specifieds the destination register Rd *)
+(* n : Specifies the first source operand register Rn *)
+(* L : L bit (bit[24]) *)
+(* w : target address *)
 Inductive instruction : Type :=
 | ADC (cond : opcode) (S : bool) (d n : reg_num) (so : shifter_operand)
 | ADD (cond : opcode) (S : bool) (d n : reg_num) (so : shifter_operand)

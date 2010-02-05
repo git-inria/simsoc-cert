@@ -103,7 +103,7 @@ Definition reg_of_exn_mode (m : processor_exception_mode)
     | svc =>
       match between_dec 13 k 14 with
         | left h => R_svc h
-        |   => R k
+        | _  => R k
       end
     | abt =>
       match between_dec 13 k 14 with
@@ -220,7 +220,7 @@ Definition address_of_word (w : word) : address :=
 (****************************************************************************)
 
 (****************************************************************************)
-(** A2.9 Unaligned access support (p. 76) *)
+(** A2.9 Synchronization primitives (p. 82) *)
 (****************************************************************************)
 
 (****************************************************************************)
@@ -248,6 +248,10 @@ Record state : Type := mk_state {
   exns : list exception
 }.
 
+(* arguments 
+   -s: state
+   -m: processor_mode
+   -k: reg_num *)
 Definition reg_content s m k := reg s (reg_of_mode m k).
 
 Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s).

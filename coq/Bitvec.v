@@ -103,6 +103,11 @@ Fixpoint update_bits_aux (p k : nat) (v w : word) : word :=
 Definition update_bits (p n : nat) (v w : word) : word :=
   update_bits_aux p (p-n) v w.
 
+
+(* update N Z C V bits *)
+(*Definition update_NZCV (b : bool) (v w : word) : word := 
+*)  
+
 (****************************************************************************)
 (** n-bits words *)
 (****************************************************************************)
