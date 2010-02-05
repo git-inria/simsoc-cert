@@ -1,0 +1,1 @@
+CLZ : condition should be tested in pseudo-code
