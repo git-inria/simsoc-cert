@@ -18,7 +18,7 @@ COMPCERT := Coqlib Integers
 FILES := $(COMPCERT) Bitvec Config Decode Exception Execute Functions \
 	Instructions Semantics Shift State Util
 
-VFILES := $(COMPCERT:%=%.v)
+VFILES := $(FILES:%=%.v)
 
 default: Makefile.coq
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs"
