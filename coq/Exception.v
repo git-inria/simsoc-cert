@@ -13,7 +13,6 @@ A2.6 Exceptions (p. 54)
 
 Require Import State.
 Require Import ZArith.
-Require Import PseudoCode.
 Require Import Integers. Import Int.
 Require Import Bitvec.
 
@@ -73,12 +72,12 @@ Definition exception_vector_address (e : exception) (use_high_vectors : bool)
       end
   end.
 
-Definition interp (s : state) (m : processor_mode) (i : inst)
+(*REMOVE:Definition interp (s : state) (m : processor_mode) (i : inst)
   : option state :=
   match interp empty s m i with
     | None => None
     | Some (_, s) => Some s
-  end.
+  end.*)
 
 (****************************************************************************)
 (* A2.6.2 Reset (p. 56) *)
@@ -100,7 +99,8 @@ else
 >>*)
 
 Definition handle_Reset (s : state) (m : processor_mode) : option state :=
-  interp s m
+  Some s. (*FIXME*)
+  (*interp s m
   (Seq (Affect (Reg_exn svc w14) All w0) (*FIXME*)
   (Seq (Affect (SPSR svc) All w0) (*FIXME*)
   (Seq (Affect CPSR (Bits 4 0) (W 1~0~0~1~1))
@@ -109,7 +109,7 @@ Definition handle_Reset (s : state) (m : processor_mode) : option state :=
   (Seq (Affect CPSR (Bit 7) w1)
   (Seq (Affect CPSR (Bit 8) w1)
   (Seq (Affect CPSR (Bit 9) w0) (*FIXME*)
-  (Affect (Reg w15) All w0))))))))). (*FIXME*)
+  (Affect (Reg w15) All w0))))))))). (*FIXME*)*)
 
 (****************************************************************************)
 (* A2.6.3 Undefined Instruction exception (p. 57) *)
@@ -131,14 +131,15 @@ else
 >>*)
 
 Definition handle_UndIns (s : state) (m : processor_mode) : option state :=
-  interp s m
+  Some s. (*FIXME*)
+  (*interp s m
   (Seq (Affect (Reg_exn und w14) All (next_inst_address s m)) (*FIXME?*)
   (Seq (Affect (SPSR svc) All (State CPSR All)) (*FIXME*)
   (Seq (Affect CPSR (Bits 4 0) (W 1~1~0~1~1))
   (Seq (Affect CPSR (Bit 5) w0)
   (Seq (Affect CPSR (Bit 7) w1)
   (Seq (Affect CPSR (Bit 9) w0) (*FIXME*)
-  (Affect (Reg w15) All w4))))))). (*FIXME*)
+  (Affect (Reg w15) All w4))))))). (*FIXME*)*)
 
 (****************************************************************************)
 (* A2.6.4 Software Interrupt exception (p. 58) *)
