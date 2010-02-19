@@ -13,7 +13,12 @@ COQC := $(COQBIN)coqc
 
 MAKECOQ := $(MAKE) -f Makefile.coq
 
-VFILES := $(shell find . -name \*.v)
+COMPCERT := Coqlib Integers
+
+FILES := $(COMPCERT) Bitvec Config Decode Exception Execute Functions \
+	Instructions Semantics Shift State Util
+
+VFILES := $(COMPCERT:%=%.v)
 
 default: Makefile.coq
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs"
