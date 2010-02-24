@@ -1,1 +1,7 @@
 CLZ : condition should be tested in pseudo-code
+
+LDRD : "memory" should be "Memory"
+
+SSAT & USAT : "Artihmetic" should be "Arithmetic"
+
+SMLSLD : in "Notes, Use or R15", "Rd" souhoul be "RdHi, RdLo"
