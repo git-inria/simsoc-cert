@@ -65,6 +65,7 @@ Definition mk_reg_num := mk_bitvec 4.
 
 Definition PC := mk_reg_num 15.
 Definition LR := mk_reg_num 14.
+Definition SP := mk_reg_num 13.
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
 since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
@@ -215,6 +216,8 @@ since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
 Definition address_of_word (w : word) : address :=
   mk_address (bits_val 2 31 w).
 
+Inductive endian_model : Type := LowE | BE_8 | BE_32.
+
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
 (****************************************************************************)
@@ -293,6 +296,18 @@ Definition update_cpsr_or w s := set_cpsr s (or (cpsr s) w).
 Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
 Definition update_reg m k w s := set_reg s (update_map_reg m k w s).
 Definition update_mem a w s := set_mem s (update_map_mem a w s).
+
+(****************************************************************************)
+(**Addressing modes (p. 411)*************************************************)
+(****************************************************************************)
+
+Inductive addressing_mode : Type :=
+  | dataProcessing_oprand
+  | LS_word_or_UnsignedByte
+  | miscellaneous_LS
+  | LS_multiple
+  | LS_CP.
+
 
 (****************************************************************************)
 (** Executing an instruction generates either:
