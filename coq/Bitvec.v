@@ -44,6 +44,9 @@ Definition w15 : word := repr 15.
 Definition w31 : word := repr 31.
 Definition w32 : word := repr 32.
 
+Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
+Definition w0xFFFFFFFC : word := sub (repr (max_unsigned)) w3.
+
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
