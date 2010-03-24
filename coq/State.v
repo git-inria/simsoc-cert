@@ -28,6 +28,13 @@ Open Scope Z_scope.
 Definition byte := bitvec 8.
 Definition halfword := bitvec 16.
 
+Definition get_half_0 (w: word) : halfword := mk_bitvec 16 (intval w[15#0]).
+Definition get_half_1 (w : word) : halfword := mk_bitvec 16 (intval w[31#16]).
+Definition get_byte_0 (w : word) : byte := mk_bitvec 8 (intval w[7#0]).
+Definition get_byte_1 (w : word) : byte := mk_bitvec 8 (intval w[15#8]).
+Definition get_byte_2 (w : word) : byte := mk_bitvec 8 (intval w[23#16]).
+Definition get_byte_3 (w : word) : byte := mk_bitvec 8 (intval w[31#24]).
+
 (****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)
@@ -248,14 +255,17 @@ Record state : Type := mk_state {
   (* Memory *)
   mem : address -> word;
   (* Raised exceptions *)
-  exns : list exception
+  exns : list exception;
+  (* Processor Mode*)
+  pm : processor_mode
 }.
 
 (* arguments 
    -s: state
    -m: processor_mode
    -k: reg_num *)
-Definition reg_content s m k := reg s (reg_of_mode m k).
+(*Definition reg_content s m k := reg s (reg_of_mode m k).*)
+Definition reg_content s k := reg s (reg_of_mode (pm s) k).
 
 Inductive mmu_read_result : Set :=
   | MRR_std : word -> mmu_read_result
@@ -276,25 +286,39 @@ Definition mmu_read_halfword (s: state) (a: address) : mmu_read_result :=
   if a[1] then 
   MRR_std ().
 *)
-
-
+(*
 Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s).
 Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s).
 Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s).
 Definition set_mem s x := mk_state (cpsr s) (spsr s) (reg s) x (exns s).
 Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) (mem s) x.
-
+*)
+Definition set_cpsr s x := mk_state x (spsr s) (reg s) (mem s) (exns s) (pm s).
+Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s) (pm s).
+Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s) (pm s).
+Definition set_mem s x := mk_state (cpsr s) (spsr s) (reg s) x (exns s) (pm s).
+Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) (mem s) x (pm s).
+(*
 Definition update_map_spsr m w s :=
   update_map processor_exception_mode_eqdec m w (spsr s).
 Definition update_map_reg m k w s :=
   update_map register_eqdec (reg_of_mode m k) w (reg s).
 Definition update_map_mem a w s :=
   update_map address_eqdec a w (mem s).
+*)
+Check exn.
+Definition update_map_spsr m w s :=
+  update_map processor_exception_mode_eqdec m w (spsr s).
+Definition update_map_reg k w s :=
+  update_map register_eqdec (reg_of_mode (pm s) k) w (reg s).
+Definition update_map_mem a w s :=
+  update_map address_eqdec a w (mem s).
 
 Definition update_cpsr w s := set_cpsr s w.
 Definition update_cpsr_or w s := set_cpsr s (or (cpsr s) w).
 Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
-Definition update_reg m k w s := set_reg s (update_map_reg m k w s).
+(*Definition update_reg m k w s := set_reg s (update_map_reg m k w s).*)
+Definition update_reg k w s := set_reg s (update_map_reg k w s).
 Definition update_mem a w s := set_mem s (update_map_mem a w s).
 
 (****************************************************************************)
@@ -307,7 +331,6 @@ Inductive addressing_mode : Type :=
   | miscellaneous_LS
   | LS_multiple
   | LS_CP.
-
 
 (****************************************************************************)
 (** Executing an instruction generates either:
@@ -326,18 +349,37 @@ Reading the program counter (p. 47) *)
 (****************************************************************************)
 
 (*IMPROVE: add cur_inst_address as new field in state?*)
-
-Definition cur_inst_address (s : state) (m : processor_mode) : word :=
-  sub (reg_content s m PC) w8.
+Definition cur_inst_address (s : state) : word :=
+  sub (reg_content s PC) w8.
+(*Definition cur_inst_address (s : state) (m : processor_mode) : word :=
+  sub (reg_content s m PC) w8.*)
 
 (****************************************************************************)
 (** Next ARM instruction address
 cf. A2.7.1 Address space (p. 70) *)
 (****************************************************************************)
 
-Definition next_inst_address (s : state) (m : processor_mode) : word :=
+Definition next_inst_address (s : state) : word :=
+  sub (reg_content s PC) w4.
+(*Definition next_inst_address (s : state) (m : processor_mode) : word :=
   (* [add (cur_inst_address s m PC) w4] is replaced by: *)
-  sub (reg_content s m PC) w4.
+  sub (reg_content s m PC) w4.*)
 
-Definition incr_PC (m : processor_mode) (s : state) : option state :=
-  Some (update_reg m PC (next_inst_address s m) s).
+Definition incr_PC (s : state) : option state :=
+  Some (update_reg PC (next_inst_address s) s).
+(*Definition incr_PC (m : processor_mode) (s : state) : option state :=
+  Some (update_reg m PC (next_inst_address s m) s).*)
+
+(****************************************************************************)
+(** Memory *)
+(****************************************************************************)
+
+Record block_contents : Type := mk_block {
+  addr : address;
+  length : Z;
+  contents : word
+}.
+
+Record memory : Type := mk_mem {
+  blocks : address -> Z -> block_contents
+}.
