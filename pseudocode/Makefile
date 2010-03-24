@@ -31,7 +31,7 @@ OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
 PARSERS := parser lexer
-FILES := util ast $(PARSERS) genpc preproc gencxx
+FILES := util ast $(PARSERS) genpc preproc gencxx gencoq
 
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
@@ -67,7 +67,7 @@ bin/%.opt: %.cmx
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES := ast genpc preproc gencxx
+FRAGILE_FILES := ast genpc preproc gencxx gencoq
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 

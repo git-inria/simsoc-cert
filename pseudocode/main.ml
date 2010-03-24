@@ -37,7 +37,7 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
-type action = GenPC | GenPCC | GenPre | GenCxx;;
+type action = GenPC | GenPCC | GenPre | GenCxx | GenCoq;;
 
 let get_action, is_action_set, set_action =
   let action = ref GenPC and is_set = ref false in
@@ -57,7 +57,8 @@ let rec options () = [
   "-pcc", Unit (fun () -> set_action GenPCC),
   "generate pseudocode and reparse it";
   "-pre", Unit (fun () -> set_action GenPre), "preprocess pseudocode";
-  "-cxx", Unit (fun () -> set_action GenCxx), "generate simulation code";
+  "-cxx", Unit (fun () -> set_action GenCxx), "generate simulation code in c++";
+  "-coq", Unit (fun () -> set_action GenCoq), "generate simulation code in coq";
 ]
 
 and print_options oc () =
@@ -129,6 +130,10 @@ let main () =
 	  let ps = List.map Preproc.prog ps in
 	  let s = string_of Gencxx.lib ps in
 	    print_string s
+      | GenCoq ->
+	  let ps = List.map Preproc.prog ps in
+	  let s = string_of Gencoq.lib ps in
+	    print_endline s
 ;;
 
 (***********************************************************************)
