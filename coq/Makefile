@@ -16,7 +16,7 @@ MAKECOQ := $(MAKE) -f Makefile.coq
 COMPCERT := Coqlib Integers
 
 FILES := $(COMPCERT) Bitvec Config Decode Exception Execute Functions \
-	Instructions Semantics Shift State Util
+	Instructions Semantics Shift State Util IntSemantics
 
 VFILES := $(FILES:%=%.v)
 
