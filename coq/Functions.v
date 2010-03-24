@@ -63,7 +63,8 @@ Definition Rotate_Right := ror. (*FIXME?*)
 (* Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 
 Definition SignExtend := sign_ext. (*FIXME?*)
-
+Definition SignExtend_24to30 := sign_ext 24.
+Print sign_ext.
 (****************************************************************************)
 (** CurrentModeHasSPSR (p. 1125) *)
 (****************************************************************************)
@@ -71,20 +72,29 @@ Definition SignExtend := sign_ext. (*FIXME?*)
 (* Returns TRUE if the current processor mode is not User mode or
 System mode, and returns FALSE if the current mode is User mode or
 System mode. *)
-
-Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
+Definition CurrentModeHasSPSR (s : state) : bool :=
+  match pm s with
+    | usr | sys => false
+    |_ => true
+  end.
+(*Definition CurrentModeHasSPSR (m : processor_mode) : bool :=
   match m with
     | usr | sys => false
     | _ => true
-  end.
+  end.*)
 
 (* Return None if the current processor mode is User mode or System mode,
 and returns SPSR if the current mode is processor exception mode.*)
-Definition SPSR_to_CPSR (s : state) (m : processor_mode) : option word :=
+Definition SPSR_to_CPSR (s : state) : option word :=
+  match pm s with
+    | usr | sys => None
+    |exn e => Some (spsr s e)
+  end.
+(*Definition SPSR_to_CPSR (s : state) (m : processor_mode) : option word :=
   match m with
   | usr | sys => None
   | exn e => Some (spsr s e)
-  end.
+  end.*)
 
 (****************************************************************************)
 (** CarryFrom (p. 1124) *)
@@ -264,4 +274,11 @@ Definition InAPrivilegedMode (m : processor_mode) : bool :=
     | _ => false
   end.
 
-
+(** UnallocMask (P. 227)*)
+Definition UnallocMask : word := repr 116456448.
+(** UserMask (P. 227)*)
+Definition UserMask : word := repr 4161733120.
+(** PrivMask (P. 227)*)
+Definition PrivMask : word := repr 479.
+(** StateMask (P. 227)*)
+Definition StateMask : word := repr 16777248.
