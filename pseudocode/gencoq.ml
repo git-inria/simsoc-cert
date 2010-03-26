@@ -127,7 +127,7 @@ let binop = function
   | "Logical_Shift_Left" | "<<" -> "Logical_Shift_Left"
   | "Logical_Shift_Right"| ">>" -> "Logical_Shift_Right"
   | "Arithmetic_Shift_Right" -> "Arithmetic_Shift_Right"
-  | "Rotate_Right" -> "Rotate_right" 
+  | "Rotate_Right" -> "Rotate_right"
   | _ -> "TODO4";;
 
 let cpsr_field = function
@@ -168,12 +168,12 @@ let rec exp b = function
 	   | "==" | "!=" | ">=" | "<" | ">>" as op), e2) ->
       exp b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
-      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e 
+      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
   | BinOp (e1, op, e2) -> bprintf b "(%a) %s (%a)" exp e1 (binop op) exp e2
   | Fun (f, es) -> bprintf b "%s %a" (func f) (list " " exp) es
 
   | If_exp (e1, e2, e3) -> bprintf b "if (%a) then %a else %a" exp e1 exp e2 exp e3
- 
+
   | Reg (Var s, None) ->
       if List.mem s input_registers
       then bprintf b "(reg_content s %s)" s
@@ -183,7 +183,7 @@ let rec exp b = function
   | Reg (e, Some m) -> bprintf b "reg_of_mode %a %s" exp e (mode m)
   | Range (CPSR, Flag (s,_)) -> bprintf b "(cpsr s)[%sbit]" s
   | Range (e1, Index e2) -> bprintf b "%a[%a]" exp e1 exp e2
-  
+
   | Range (e, Bits (n1, n2)) ->
       begin match n1, n2 with
         | "15", "0" -> bprintf b "%a[15#0]" exp e
@@ -197,7 +197,7 @@ let rec exp b = function
   | Coproc_exp (e, f, es) ->
       bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
   | Var str -> string b (var str)
- 
+
   | _ -> string b "TODO6";;
 
 let rec inst k b = function
@@ -246,14 +246,14 @@ and affect k b dst src =
   else
     begin
     match dst with
-      | Reg (Var "d", _) -> 
+      | Reg (Var "d", _) ->
 	  bprintf b "Affect_reg d (%a)" exp src
       | Reg (Num n, None) -> bprintf b
 	  (*"proc.set_pc_raw(%a)"*) "Affect_reg %s (%a)" (reg_id n) exp src
       | Reg (e, None) -> bprintf b "Affect_reg R%a (%a)" exp e exp src
       | Reg (e, Some m) ->
 	  bprintf b "Affect_reg (%a,%s) (%a)" exp e (mode m) exp src
-     
+
       | Var v -> bprintf b "%a = %a" exp (Var v) exp src
       | CPSR -> bprintf b "Affect_cpsr (%a)" exp src
       | SPSR _ as e -> bprintf b "%a = %a" exp e exp src
@@ -285,7 +285,7 @@ let prog_arg b (v,t) = bprintf b "(%s: %s) " v t;;
 
 let prog_out b (v,t) = bprintf b "%s &%s" t v;;
 
-let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;; 
+let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
 let ident_in_comment b i =
   bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
@@ -296,9 +296,9 @@ let ident b i =
 
 let comment b = function
   | Instruction (r, id, is, _) ->
-      bprintf b "// %s %a\n" r (list ", " ident_in_comment) (id :: is)
+      bprintf b "(* %s %a *)\n" r (list ", " ident_in_comment) (id :: is)
   | Operand (r, c, n, _) ->
-      bprintf b "// %s %a - %a\n" r (list " " string) c (list " " string) n;;
+      bprintf b "(* %s %a - %a *)\n" r (list " " string) c (list " " string) n;;
 
 let abbrev b s =
   if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
@@ -368,9 +368,9 @@ let lsm_hack p =
         Operand (r , c, n, (inst i))
       else p;;
 
-let lib b ps =  
+let lib b ps =
   let b2 = Buffer.create 10000 in
-  let no_decl b p = 
+  let no_decl b p =
     let p' = lsm_hack p in
     let gs, ls = variables p' in
       bprintf b "%a\n" (prog gs ls) p'
