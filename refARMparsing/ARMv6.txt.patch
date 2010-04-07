@@ -1,14 +1,16 @@
---- ARMv6.txt.orig	2009-12-13 00:51:05.000000000 +0800
-+++ ARMv6.txt	2009-12-15 01:49:44.000000000 +0800
-@@ -7904,7 +7904,7 @@
+--- ARMv6.txt.orig	2009-12-11 17:02:00.000000000 +0800
++++ ARMv6.txt	2010-04-07 11:21:19.000000000 +0800
+@@ -7904,8 +7904,8 @@
                          else
                               J Flag = 1
                               Start opcode execution at jpc
 -                   else
+-                        if ((CV bit of Jazelle OS Control register) == 0) AND
 +                    else
-                         if ((CV bit of Jazelle OS Control register) == 0) AND
++                        if ((CV bit of Jazelle OS Control register) == 0) and
                                           (IMPLEMENTATION DEFINED CONDITION) then
                               PC = invalidhandler
+                         else
 @@ -10358,26 +10358,25 @@
  
  
@@ -104,10 +106,19 @@
                   physical_address = TLB(address)
                   ClearExclusiveByAddress(physical_address,processor_id,4)
                   /* See Summary of operation on page A2-49 */
+@@ -25166,7 +25154,7 @@
+ 
+          Operation
+          MemoryAccess(B-bit, E-bit)
+-         address = (PC & 0xFFFFFFFC) + (immed_8 * 4)
++         address = (PC AND 0xFFFFFFFC) + (immed_8 * 4)
+          Rd = Memory[address, 4]
+ 
+ 
 @@ -49653,4 +49641,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
 -
-\ Pas de fin de ligne à la fin du fichier.
+\ No newline at end of file
 +
