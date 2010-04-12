@@ -64,7 +64,7 @@ Definition Rotate_Right := ror. (*FIXME?*)
 
 Definition SignExtend := sign_ext. (*FIXME?*)
 Definition SignExtend_24to30 := sign_ext 24.
-Print sign_ext.
+
 (****************************************************************************)
 (** CurrentModeHasSPSR (p. 1125) *)
 (****************************************************************************)
@@ -85,11 +85,11 @@ Definition CurrentModeHasSPSR (s : state) : bool :=
 
 (* Return None if the current processor mode is User mode or System mode,
 and returns SPSR if the current mode is processor exception mode.*)
-Definition SPSR_to_CPSR (s : state) : option word :=
+(*Definition SPSR_to_CPSR (s : state) : option word :=
   match pm s with
     | usr | sys => None
-    |exn e => Some (spsr s e)
-  end.
+    | exn e => Some (spsr s e)
+  end.*)
 (*Definition SPSR_to_CPSR (s : state) (m : processor_mode) : option word :=
   match m with
   | usr | sys => None
@@ -106,10 +106,10 @@ unsigned integers), and returns 0 in all other cases. This delivers
 further information about an addition which occurred earlier in the
 pseudo-code. The addition is not repeated. *)
 
-Definition CarryFrom_add2 (x y : word) : word :=
+Definition CarryFrom_add2 (x y : word) : bool :=
   zlt max_unsigned (unsigned x + unsigned y).
 
-Definition CarryFrom_add3 (x y z : word) : word :=
+Definition CarryFrom_add3 (x y z : word) : bool :=
   zlt max_unsigned (unsigned x + unsigned y + unsigned z).
 
 (****************************************************************************)
@@ -125,20 +125,24 @@ and the result have different signs.  This delivers further
 information about an addition or subtraction which occurred earlier in
 the pseudo-code.  The addition or subtraction is not repeated. *)
 
-Definition OverflowFrom_add2 (x y : word) : word :=
+Definition OverflowFrom_add2 (x y : word) : bool :=
   let r := signed x + signed y in
     orb (zlt r min_signed) (zgt r max_signed).
 
 (*IMPROVE: use this more efficient definition given p. 1131?*)
-Definition OverflowFrom_add2' (x y : word) (r : word) :=
+Definition OverflowFrom_add2' (x y : word) (r : word) : bool :=
   let sx := is_neg x in (beq sx (is_neg y)) && (bne sx (is_neg r)).
 
-Definition OverflowFrom_add3 (x y z : word) : word :=
+Definition OverflowFrom_add3 (x y z : word) : bool :=
   let r := signed x + signed y + signed z in
     orb (zlt r min_signed) (zgt r max_signed).
 
-Definition OverflowFrom_sub (x y : word) : word :=
+Definition OverflowFrom_sub2 (x y : word) : bool :=
   let r := signed x - signed y in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+Definition OverflowFrom_sub3 (x y z : word) : bool :=
+  let r := signed x - signed y - signed z in
     orb (zlt r min_signed) (zgt r max_signed).
 
 (****************************************************************************)
@@ -151,8 +155,12 @@ integers), and returns 0 in all other cases. This delivers further
 information about a subtraction which occurred earlier in the pseudo-code.
 The subtraction is not repeated. *)
 (**FIXME**)
-Definition BorrowFrom_sub (x y : word) : word :=
+Definition BorrowFrom_sub2 (x y : word) : bool :=
   let r := unsigned x - unsigned y in 
+    zlt r 0.
+
+Definition BorrowFrom_sub3 (x y z : word) : bool :=
+  let r := unsigned x - unsigned y - unsigned z in
     zlt r 0.
 
 (****************************************************************************)
@@ -268,8 +276,8 @@ Definition SignedDoesSat (x : word) (n : nat) : word :=
 (* Returns TRUE if the current processor mode is not User mode, 
 and returns FALSE if the current mode is User mode. *)
 
-Definition InAPrivilegedMode (m : processor_mode) : bool :=
-  match m with
+Definition InAPrivilegedMode (s : state) : bool :=
+  match pm s with
     | usr => true
     | _ => false
   end.
@@ -282,3 +290,29 @@ Definition UserMask : word := repr 4161733120.
 Definition PrivMask : word := repr 479.
 (** StateMask (P. 227)*)
 Definition StateMask : word := repr 16777248.
+
+(****************************************************************************)
+(** bit position of most significant '1' (p. 175) *)
+(****************************************************************************)
+
+Definition bit_position_of_most_significant_1 (w : word) : word :=
+  w0.
+
+Variable get_CP15_reg1_EEbit : word.
+
+(****************************************************************************)
+(** Start opcode execution at Jazelle Program Counter (p. 172)*)
+(****************************************************************************)
+
+Definition Start_opcode_execution_at (w : word) (b : bool) (s : state)
+  := Some (b, s).
+
+(****************************************************************************)
+(** Check the PC (p. 172)*)
+(****************************************************************************)
+
+Definition check_last_bit (w : word) : bool :=
+  zeq w[0] 0.
+
+Definition check_last_two_bits (w : word) : bool :=
+  zeq w[1#0] 2.
