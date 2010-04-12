@@ -41,11 +41,26 @@ Definition w8 : word := repr 8.
 Definition w12 : word := repr 12.
 Definition w14 : word := repr 14.
 Definition w15 : word := repr 15.
+Definition w16 : word := repr 16.
 Definition w31 : word := repr 31.
 Definition w32 : word := repr 32.
 
+Definition w0xFFFFFFFF : word := repr max_unsigned.
 Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
 Definition w0xFFFFFFFC : word := sub (repr (max_unsigned)) w3.
+Definition w0x00000000 : word := w0.
+Definition w0x000000FF : word := repr 255.
+Definition w0x0000FF00 : word := repr 65280.
+Definition w0x00FF0000 : word := repr 16711680.
+Definition w0xFF000000 : word := repr 4278190080.
+Definition w0x80000000 : word := repr 2147483648.
+Definition w0xFFFF0008 : word := repr 4294901768.
+Definition w0x00000008 : word := w8.
+Definition w0x00FF00FF : word := repr 16711935.
+Definition w0x0000FFFF : word := repr 65535.
+Definition w0xFFFF000C : word := repr 4294901772.
+Definition w0x0000000C : word := w12.
+
 
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
@@ -73,6 +88,8 @@ Notation "w [ p # n ]" := (bits p n w) (at level 8).
 (* value of w[p:n] *)
 (*IMPROVE: use a shift instead*)
 Definition bits_val (p n : nat) (w : word) : Z := w[p#n] / two_power_nat n.
+Definition bits_val_impr (p n : nat) (w : word) : Z := 
+  shr w[p#n] (repr (Z_of_nat n)).
 
 (* w[n] = bit [n] of [w] *)
 Definition bit n := bits n n.
