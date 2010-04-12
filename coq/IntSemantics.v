@@ -20,57 +20,55 @@ Require Import Util.
 
 Open Scope Z_scope.
 
-Section IntOp.
+Definition affect_reg (n : reg_num) (w : word) (b : bool)
+  (s : state) : result :=
+  Some(zne n 15, update_reg n w s).
 
-Variable b : bool.
-Variable s : state.
+Definition affect_reg_of_mode (n : reg_num) (w : word) 
+  (m : processor_mode) (b : bool) (s : state) : result :=
+  Some (b, update_reg n w (set_pm s m)).
 
-Definition affect_reg (n : reg_num) (w : word)
-  : result :=
-     Some(zne n 15, update_reg n w s).
-
-Definition affect_cpsr (w : word)
+Definition affect_cpsr (w : word) (b : bool) (s: state)
   : result := 
   Some(b, update_cpsr w s).
 
-Definition affect_cpsr_bit (n : nat) (v w : word)
-  : result :=
+Definition affect_cpsr_bit (n : nat) (v w : word)(b : bool)
+  (s: state) : result :=
   Some(b, update_cpsr (update_bit n v w) s).
 
-Inductive instr : Type :=
-| Unpredictable
-| IntBlock (i1 i2 : instr)
-| Affect_reg (n : reg_num) (w : word)
-| Affect_cpsr (w : word)
-| Affect_cpsr_bit (n : nat) (v : word) (w : word)
-| IntIf (b : bool) (i : instr)
-| IntIfElse (b : bool) (i1 i2 : instr)
-| Affect_CPSR_SPSR.
+Definition affect_cpsr_bits (n p : nat) (v w : word) (b : bool) (s : state)
+  : result :=
+  Some(b, update_cpsr (update_bits n p v w) s).
 
-Fixpoint intOp (i : instr) : result :=
-  match i with
-    | Unpredictable => None
-    | IntIf b i => 
-      if b then intOp i else Some(true, s)
-    | IntIfElse b i1 i2 => 
-      if b then intOp i1 else intOp i2
-    | IntBlock i1 i2 =>
-      match intOp i1 with
-        | None => None
-        | Some(b1, s1) =>
-          match intOp i2 with
-            | None =>  None
-            | Some (b2, s2) => Some(andb b1 b2, s2)
-          end
-      end
-    | Affect_reg n w => affect_reg n w
-    | Affect_cpsr w => affect_cpsr w
-    | Affect_cpsr_bit n v w => affect_cpsr_bit n v w
-    | Affect_CPSR_SPSR =>
-      match pm s with
-        | exn e => Some(true, update_cpsr (spsr s e) s)
-        | _ => None
+Definition affect_spsr (w : word) (m :option processor_exception_mode) 
+  (b : bool) (s : state) : result :=
+  Some(b, update_spsr m w s).
+
+Definition intSeq (f1 f2 : (bool -> state -> result)) b1 s1 : result :=
+  match f1 b1 s1 with
+    | None => None
+    | Some(b2, s2) =>
+      match f2 b2 s2 with
+        | None =>  None
+        | Some (b3, s3) => Some(andb b2 b3, s3)
       end
   end.
 
-End IntOp.
+Fixpoint intBlock (fs : list (bool->state->result)) b1 s1 :=
+  match fs with
+    | nil => Some (b1, s1)
+    | f :: fs' =>
+      match f b1 s1 with
+        | None => None
+        | Some(b2, s2) => intBlock fs' (andb b1 b2) s2
+      end
+  end.
+
+Definition intIf (cond : bool) (f : (bool -> state -> result)) b s :=
+      if cond then (f b s) else Some(b, s).
+
+Definition intIfElse (cond : bool) (f1 f2 : (bool -> state -> result))
+  b1 s1 :=
+      if cond then f1 b1 s1 else f2 b1 s1.
+
+Definition unpredictable (b : bool) (s : state) : result := None.
