@@ -1,0 +1,11 @@
+        Test generator to validate the Coq formalization
+
+Prerequisites: gmake, g++, arm-elf-gcc
+
+To generate "sum_iterative.v", run the command:
+> make sum_iterative.v
+
+To estimate the number of instructions executed:
+> make sum_iterative.elf
+> $path_to_simsoc_build/examples/Demo/demo -v -DT=1 sum_iterative.elf
+... and look at the last line.
