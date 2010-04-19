@@ -26,7 +26,8 @@ Definition affect_reg (n : reg_num) (w : word) (b : bool)
 
 Definition affect_reg_of_mode (n : reg_num) (w : word) 
   (m : processor_mode) (b : bool) (s : state) : result :=
-  Some (b, update_reg n w (set_pm s m)).
+  Some (b, update_reg n w
+    (update_cpsr (update_bits 4 0 (mode_number m) (cpsr s)) s)).
 
 Definition affect_cpsr (w : word) (b : bool) (s: state)
   : result := 
