@@ -35,6 +35,9 @@ Definition get_byte_1 (w : word) : byte := mk_bitvec 8 (intval w[15#8]).
 Definition get_byte_2 (w : word) : byte := mk_bitvec 8 (intval w[23#16]).
 Definition get_byte_3 (w : word) : byte := mk_bitvec 8 (intval w[31#24]).
 
+Definition w0x0000 : halfword := get_half_0 w0.
+Definition w0xFFFF : halfword := get_half_0 w0xFFFFFFFF.
+
 (****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)
@@ -42,9 +45,9 @@ Definition get_byte_3 (w : word) : byte := mk_bitvec 8 (intval w[31#24]).
 Inductive processor_exception_mode : Type := fiq | irq | svc | abt | und.
 
 Lemma processor_exception_mode_eqdec :
-  forall x y : processor_exception_mode, {x=y}+{~x=y}.
+  forall x y : option processor_exception_mode, {x=y}+{~x=y}.
 
-Proof. decide equality. Qed.
+Proof. decide equality.  decide equality. Qed.
 
 Inductive processor_mode : Type :=
   usr | exn (m : processor_exception_mode) | sys.
@@ -253,7 +256,7 @@ Record state : Type := mk_state {
   (* Current program status register *)
   cpsr : word;
   (* Saved program status registers *)
-  spsr : processor_exception_mode -> word;
+  spsr : option processor_exception_mode -> word;
   (* Registers *)
   reg : register -> word;
   (* Memory *)
