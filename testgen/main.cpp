@@ -27,7 +27,7 @@ int main(int argc, const char *argv[]) {
     "(* Initial CPSR: ARM32 instruction set, FIQ and IRQ disabled, System mode *)\n"
     "Definition initial_cpsr : word := repr (Zpos 1~1~1~1~1~1~1).\n"
     "\n"
-    "Definition initial_spsr (m: processor_exception_mode) : word := zero.\n"
+    "Definition initial_spsr (m: option processor_exception_mode) : word := zero.\n"
     "\n"
     "(* Initial registers: only PC value is significant *)\n"
     "Definition initial_reg (r: register) : word :=\n"
