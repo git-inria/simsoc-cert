@@ -73,4 +73,19 @@ Module Type CONFIG.
   (* A2.7.3 Endian configuration and control (p. 72) *)
   Variable be32_support : bool.
   
+  (* A4.1.7 BKPT (p. 164)*)
+  Variable not_overridden_by_debug_hardware : bool.
+
+  (* A2.6.11 High Vectors (p. 64)*)
+  Variable high_vectors_configured : bool.
+
+  (* A4.1.11 BXJ (p. 172)*)
+  Variable JE_bit_of_Main_Configuration_register : Z.
+  Variable CV_bit_of_Jazelle_OS_Control_register : Z.
+  Variable SUBARCHITECTURE_DEFINED_value : word.
+  Variable Jazelle_Extension_accepts_opcode_at_jpc : bool.
+  Variable IMPLEMENTATION_DEFINED_CONDITION : bool.
+
+  Variable get_CP15_reg1_EEbit : word.
+
 End CONFIG.
