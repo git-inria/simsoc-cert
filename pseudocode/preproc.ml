@@ -148,6 +148,9 @@ let is_nop = (=) nop;;
 
 let remove_nops = List.filter ((<>) nop);;
 
+let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
+	       "diff1"; "diff2"; "diff3"; "diff4"];;
+
 let rec inst = function
 
   (* remove blocks reduced to one instruction *)
@@ -160,7 +163,7 @@ let rec inst = function
   (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) -> let e2 = exp e2 in
       if e2 = Unaffected then nop else Affect (exp e1, e2)
-
+      
   (* we only consider ARMv5 and above *)
   | If (Var "v5_and_above", i, _) -> inst i
 
@@ -177,7 +180,21 @@ let rec inst = function
 	else
 	  if is_nop i1
 	  then If (Fun ("NOT", [exp e]), i2, None)
-	  else If (exp e, i1, Some i2)
+	  else
+	    begin match i1, i2 with
+		(* local declaration in if branches.*)
+	      | Affect ((Var v1) as x, e1), Affect (Var v2, e2)
+		  when v1 = v2 && List.mem v1 lc_decl ->
+		  Affect (x, If_exp (exp e, exp e1, exp e2))
+	      | Affect ((Var v1) as x, e1), Unpredictable
+		  when List.mem v1 lc_decl ->
+		  Affect (x, If_exp (exp e, exp e1, Unpredictable_exp))
+	      | Unpredictable, Affect ((Var v2) as x, e2)
+		  when List.mem v2 lc_decl -> 
+		  Affect (x, If_exp (exp e, Unpredictable_exp, exp e2))
+	      |_ ->
+		 If (exp e, i1, Some i2)
+	    end
 
   (* replace assert's and memory access indications by nop's *)
   | Proc ("MemoryAccess", _) | Assert _ -> nop
