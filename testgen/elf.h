@@ -20,6 +20,8 @@
 #ifndef _ELF_H
 #define	_ELF_H 1
 
+#include <inttypes.h>
+
 /* Type for a 16-bit quantity.  */
 typedef uint16_t Elf32_Half;
 typedef uint16_t Elf64_Half;

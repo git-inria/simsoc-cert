@@ -1,6 +1,8 @@
 #include "elf_loader.hpp"
 #include <iostream>
 #include <cassert>
+#include <cstring>
+#include <cstdlib>
 
 using namespace std;
 
