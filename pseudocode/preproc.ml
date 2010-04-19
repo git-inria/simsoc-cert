@@ -128,6 +128,24 @@ let rec exp = function
   (* replace English expressions by function calls *)
   | Other ss -> Fun (func ss, [])
 
+  (* normalize if-expressions wrt Unpredictable_exp's *)
+  | If_exp (c0, If_exp (c1, Unpredictable_exp, e1), e2) ->
+      If_exp (BinOp (c0, "and", c1),
+	      Unpredictable_exp,
+	      exp (If_exp (Fun ("not", [c0]), e2, e1)))
+  | If_exp (c0, If_exp (c1, e1, Unpredictable_exp), e2) ->
+      If_exp (BinOp (c0, "and", Fun ("not", [c1])),
+	      Unpredictable_exp,
+	      exp (If_exp (Fun ("not", [c0]), e2, e1)))
+  | If_exp (c0, e0, If_exp (c1, Unpredictable_exp, e1)) ->
+      If_exp (BinOp (Fun ("not", [c0]), "and", c1),
+	      Unpredictable_exp,
+	      exp (If_exp (c0, e0, e1)))
+  | If_exp (c0, e0, If_exp (c1, e1, Unpredictable_exp)) ->
+      If_exp (BinOp (Fun ("not", [c0]), "and", Fun ("not", [c1])),
+	      Unpredictable_exp,
+	      exp (If_exp (c0, e0, e1)))
+
   (* recursive expressions *)
   | Fun (f, es) -> Fun (f, List.map exp es)
   | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
@@ -160,40 +178,47 @@ let rec inst = function
 	| is -> Block is
       end
 
-  (* replace affectations to Unaffected by nop's *)
+  (* replace affectations to Unaffected by nop's and replace
+     affectations to Unpredictable_exp by Unpredictable *)
   | Affect (e1, e2) -> let e2 = exp e2 in
-      if e2 = Unaffected then nop else Affect (exp e1, e2)
-      
+      begin match e2 with
+	| Unaffected -> nop
+	| Unpredictable_exp -> Unpredictable
+	| If_exp (c, Unpredictable_exp, e3) ->
+	    Block [If (c, Unpredictable, None); Affect (e1, e3)]
+	| _ -> Affect (exp e1, e2)
+      end
+
   (* we only consider ARMv5 and above *)
   | If (Var "v5_and_above", i, _) -> inst i
 
   (* simplify conditional instructions wrt nop's *)
-  | If (e, i, None) ->
+  | If (c, i, None) ->
       let i = inst i in
-	if is_nop i then nop else If (exp e, i, None)
-  | If (e, i1, Some i2) ->
+	if is_nop i then nop else If (exp c, i, None)
+  | If (c, i1, Some i2) ->
       let i1 = inst i1 and i2 = inst i2 in
 	if is_nop i2 then
 	  if is_nop i1
 	  then nop
-	  else If (exp e, i1, None)
+	  else If (exp c, i1, None)
 	else
 	  if is_nop i1
-	  then If (Fun ("NOT", [exp e]), i2, None)
+	  then If (Fun ("NOT", [exp c]), i2, None)
 	  else
+	    (* local declaration in if branches *)
 	    begin match i1, i2 with
-		(* local declaration in if branches.*)
-	      | Affect ((Var v1) as x, e1), Affect (Var v2, e2)
+	      | Affect (Var v1 as x, e1), Affect (Var v2, e2)
 		  when v1 = v2 && List.mem v1 lc_decl ->
-		  Affect (x, If_exp (exp e, exp e1, exp e2))
-	      | Affect ((Var v1) as x, e1), Unpredictable
-		  when List.mem v1 lc_decl ->
-		  Affect (x, If_exp (exp e, exp e1, Unpredictable_exp))
-	      | Unpredictable, Affect ((Var v2) as x, e2)
-		  when List.mem v2 lc_decl -> 
-		  Affect (x, If_exp (exp e, Unpredictable_exp, exp e2))
+		  Affect (x, exp (If_exp (c, e1, e2)))
+	      | Affect (Var v as x, e), Unpredictable
+		  when List.mem v lc_decl ->
+		  Affect (x, exp (If_exp (c, e, Unpredictable_exp)))
+	      | Unpredictable, Affect (Var v as x, e)
+		  when List.mem v lc_decl -> 
+		  Affect (x, exp (If_exp (c, Unpredictable_exp, e)))
 	      |_ ->
-		 If (exp e, i1, Some i2)
+		 If (exp c, i1, Some i2)
 	    end
 
   (* replace assert's and memory access indications by nop's *)
