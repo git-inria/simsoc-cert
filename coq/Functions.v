@@ -62,8 +62,10 @@ Definition Rotate_Right := ror. (*FIXME?*)
 
 (* Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 
-Definition SignExtend := sign_ext. (*FIXME?*)
+Definition SignExtend := sign_ext 32. (*FIXME?*)
 Definition SignExtend_24to30 := sign_ext 24.
+
+Definition ZeroExtend := zero_ext 32.
 
 (****************************************************************************)
 (** CurrentModeHasSPSR (p. 1125) *)
@@ -111,6 +113,32 @@ Definition CarryFrom_add2 (x y : word) : bool :=
 
 Definition CarryFrom_add3 (x y z : word) : bool :=
   zlt max_unsigned (unsigned x + unsigned y + unsigned z).
+
+(****************************************************************************)
+(** CarryFrom16 (p. 1124) *)
+(****************************************************************************)
+
+(*Returns 1 if the addition specified as its parameter caused a carry 
+(true result is bigger than 2^16−1, where the operands are treated as
+unsigned integers), and returns 0 in all other cases. This delivers further
+information about an addition which occurred earlier in the pseudo-code.
+The addition is not repeated.*)
+
+Definition CarryFrom16_add2 (x y : word) : bool :=
+  zlt (two_power_nat 16 - 1) (unsigned x + unsigned y).
+
+(****************************************************************************)
+(** CarryFrom8 *)
+(****************************************************************************)
+
+(*Returns 1 if the addition specified as its parameter caused a carry 
+(true result is bigger than 2^8−1, where the operands are treated as
+unsigned integers), and returns 0 in all other cases. This delivers further
+information about an addition which occurred earlier in the pseudo-code.
+The addition is not repeated.*)
+
+Definition CarryFrom8_add2 (x y : word) : bool :=
+  zlt (two_power_nat 8 - 1) (unsigned x + unsigned y).
 
 (****************************************************************************)
 (** OverflowFrom (p. 1131) *)
@@ -215,17 +243,32 @@ Definition ConditionPassed (w : word) (op : opcode) : bool :=
 •
 *)
 
-Definition SignedSat (x : word) (n : nat) : word := 
-  let c1 := cmp Clt x (neg (repr (two_power_nat (n - 1)))) in
-  let c2 := cmp Cgt x (repr (two_power_nat (n - 1) - 1)) in
-  match c1 with
-   | true => neg (repr (two_power_nat (n - 1)))
-   | false => match c2 with
-                | true => repr (two_power_nat (n - 1) - 1)
-                | false => x
-              end
-  end. 
+Definition SignedSat (x : word) (m : word) : word := 
+  let n := nat_of_Z m in
+    let c1 := cmp Clt x (neg (repr (two_power_nat (n - 1)))) in
+      let c2 := cmp Cgt x (repr (two_power_nat (n - 1) - 1)) in
+        match c1 with
+          | true => neg (repr (two_power_nat (n - 1)))
+          | false => match c2 with
+                       | true => repr (two_power_nat (n - 1) - 1)
+                       | false => x
+                     end
+        end. 
 
+Definition SignedSat_add8 (x y : word) :=
+  SignedSat (add x y) w8.
+Definition SignedSat_sub8 (x y : word) :=
+  SignedSat (sub x y) w8.
+Definition SignedSat_add16 (x y : word) :=
+  SignedSat (add x y) w16.
+Definition SignedSat_sub16 (x y : word):=
+  SignedSat (sub x y) w16.
+Definition SignedSat_add32 (x y : word) := 
+  SignedSat (add x y) w32.
+Definition SignedSat_double32 (x : word) :=
+  SignedSat (mul x x) w32.
+Definition SignedSat_sub32 (x y : word) :=
+  SignedSat (sub x y) w32.
 (****************************************************************************)
 (** UnsignedSat(x, n) (p. 1136) *)
 (****************************************************************************)
@@ -239,16 +282,30 @@ Definition SignedSat (x : word) (n : nat) : word :=
 •
 *)
 
-Definition UnsignedSat (x : word) (n : nat) : word :=
-  let c1 := cmp Clt x w0 in
-  let c2 := cmp Clt x (repr ((two_power_nat n) - 1)) in
-  match c1 with
-    | true => w0
-    | false => match c2 with
-                 | true => x
-                 | false => (repr ((two_power_nat n) - 1))
-               end
-  end.
+Definition UnsignedSat (x : word) (m : word) : word :=
+  let n := nat_of_Z m in
+    let c1 := cmp Clt x w0 in
+      let c2 := cmp Clt x (repr ((two_power_nat n) - 1)) in
+        match c1 with
+          | true => w0
+          | false => match c2 with
+                       | true => x
+                       | false => (repr ((two_power_nat n) - 1))
+                     end
+        end.
+
+Definition UnsignedSat_add32 (x y : word) := 
+  UnsignedSat (add x y) w32.
+Definition UnsignedSat_add16 (x y : word) :=
+  UnsignedSat (add x y) w16.
+Definition UnsignedSat_add8 (x y : word) :=
+  UnsignedSat (add x y) w8.
+Definition UnsignedSat_sub32 (x y : word) := 
+  UnsignedSat (sub x y) w32.
+Definition UnsignedSat_sub16 (x y : word) :=
+  UnsignedSat (sub x y) w16.
+Definition UnsignedSat_sub8 (x y : word) :=
+  UnsignedSat (sub x y) w8.
 
 (****************************************************************************)
 (** SignedDoesSat(x, n) (p. 1134) *)
@@ -260,14 +317,34 @@ This operation delivers further information about a SignedSat(x, n)
 operation which occurred earlier in the pseudo-code. 
 Any operations used to calculate x or n are not repeated. *)
 
-Definition SignedDoesSat (x : word) (n : nat) : word :=
-  let c1 := cmp Cge x (neg (repr (two_power_nat (n - 1)))) in
-  let c2 := cmp Cle x (repr ((two_power_nat n) - 1)) in
-  let c := andb c1 c2 in
-  match c with 
-    | true => w0
-    | false => w1
-  end.
+Definition SignedDoesSat (x : word) (m : word) : bool :=
+  let n := nat_of_Z m in
+    let c1 := cmp Cge x (neg (repr (two_power_nat (n - 1)))) in
+      let c2 := cmp Cle x (repr ((two_power_nat n) - 1)) in
+        andb c1 c2.
+
+Definition SignedDoesSat_add32 (x y : word) := 
+  SignedDoesSat (add x y) w32.
+Definition SignedDoesSat_sub32 (x y : word) := 
+  SignedDoesSat (sub x y) w32.
+Definition SignedDoesSat_double32 (x : word) :=
+  SignedDoesSat (mul x x) w32.
+
+(****************************************************************************)
+(** UnSignedDoesSat(x, n) (p. 1136) *)
+(****************************************************************************)
+
+(*Returns 0 if x lies within the range of an n-bit unsigned integer (that is, 
+if 0 ≤ x < 2^n) and 1 otherwise. This operation delivers further information 
+about an UnsignedSat(x,n) operation that occurred earlier in the pseudo-code. 
+Any operations used to calculate x or n are not repeated.*)
+
+Definition UnsignedDoesSat (x : word) (m : word) : bool :=
+  let n := nat_of_Z m in
+    let c1 := cmp Cge x w0 in
+      let c2 := cmp Clt x (repr (two_power_nat n)) in
+        andb c1 c2.
+
 
 (****************************************************************************)
 (** InAPrivilegedMode() (p. 1128) *)
@@ -298,7 +375,6 @@ Definition StateMask : word := repr 16777248.
 Definition bit_position_of_most_significant_1 (w : word) : word :=
   w0.
 
-Variable get_CP15_reg1_EEbit : word.
 
 (****************************************************************************)
 (** Start opcode execution at Jazelle Program Counter (p. 172)*)
@@ -308,11 +384,11 @@ Definition Start_opcode_execution_at (w : word) (b : bool) (s : state)
   := Some (b, s).
 
 (****************************************************************************)
-(** Check the PC (p. 172)*)
+(** Reading the PC (p. 47)*)
 (****************************************************************************)
 
 Definition check_last_bit (w : word) : bool :=
   zeq w[0] 0.
 
 Definition check_last_two_bits (w : word) : bool :=
-  zeq w[1#0] 2.
+  zeq w[1#0] 0.
