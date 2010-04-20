@@ -4,4 +4,4 @@ LDRD : "memory" should be "Memory"
 
 SSAT & USAT : "Artihmetic" should be "Arithmetic"
 
-SMLSLD : in "Notes, Use or R15", "Rd" souhoul be "RdHi, RdLo"
+SMLSLD : in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
