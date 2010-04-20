@@ -1,0 +1,143 @@
+--- ARMv6.txt.orig	2009-12-11 16:39:59.000000000 +0800
++++ ARMv6_bincode.txt	2010-04-20 16:42:21.000000000 +0800
+@@ -10297,15 +10297,14 @@
+ 
+ 
+ 
+-A4.1.39 MSR
+-           Immediate operand:
++A4.1.39.1 MSR  Immediate operand:
+ 
+            31            28 27 26 25 24 23 22 21 20 19           16 15         12 11           8   7                     0
+ 
+                   cond       0 0 1 1 0 R 1 0 field_mask                  SBO       rotate_imm          8_bit_immediate
+ 
+ 
+-           Register operand:
++A4.1.39.2 MSR  Register operand:
+ 
+            31            28 27 26 25 24 23 22 21 20 19           16 15         12 11           8   7 6 5 4 3             0
+ 
+@@ -19490,25 +19489,21 @@
+ 
+ 
+ 
+-A5.1.1   Encoding
+-         The following diagrams show the encodings for this addressing mode:
+-
+-
+-         32-bit immediate
++A5.1.1.1  Encoding 32-bit immediate
+           31           28 27 26 25 24             21 20 19          16 15         12 11         8 7                          0
+ 
+                 cond          0 0 1      opcode      S       Rn              Rd      rotate_imm             immed_8
+ 
+ 
+ 
+-         Immediate shifts
++A5.1.1.2  Encoding Immediate shifts
+           31           28 27 26 25 24             21 20 19          16 15         12 11               7 6 5 4     3          0
+ 
+                 cond          0 0 0      opcode      S       Rn              Rd           shift_imm     shift 0       Rm
+ 
+ 
+ 
+-         Register shifts
++A5.1.1.3  Encoding Register shifts
+           31           28 27 26 25 24             21 20 19          16 15         12 11         8 7 6 5 4         3          0
+ 
+                 cond          0 0 0      opcode      S       Rn              Rd            Rs         0 shift 1       Rm
+@@ -19547,7 +19542,7 @@
+ 
+ 
+ 
+-A5.1.2   The shifter operand
++No encoding here --  A5.1.2   The shifter operand
+          As well as producing the shifter operand, the shifter produces a carry-out which some instructions write into
+          the Carry Flag. The default register operand (register Rm specified with no shift) uses the form register shift
+          left by immediate, with the immediate set to zero.
+@@ -20234,25 +20229,21 @@
+ 
+ 
+ 
+-A5.2.1   Encoding
+-         The following three diagrams show the encodings for this addressing mode:
+-
+-
+-         Immediate offset/index
++A5.2.1.1   Encoding Immediate offset/index
+           31           28 27 26 25 24 23 22 21 20 19           16 15         12 11                                      0
+ 
+                 cond       0 1 0 P U B W L                Rn           Rd                        offset_12
+ 
+ 
+ 
+-         Register offset/index
++A5.2.1.2   Encoding  Register offset/index
+           31           28 27 26 25 24 23 22 21 20 19           16 15         12 11 10 9 8 7 6 5 4            3          0
+ 
+                 cond       0 1 1 P U B W L                Rn           Rd        0 0 0 0 0 0 0 0                 Rm
+ 
+ 
+ 
+-         Scaled register offset/index
++A5.2.1.3   Encoding  Scaled register offset/index
+           31           28 27 26 25 24 23 22 21 20 19           16 15         12 11               7 6 5 4     3          0
+ 
+                 cond       0 1 1 P U B W L                Rn           Rd            shift_imm     shift 0       Rm
+@@ -20971,18 +20962,14 @@
+                  See Miscellaneous Loads and Stores - Register post-indexed on page A5-40.
+ 
+ 
+-A5.3.1   Encoding
+-         The following diagrams show the encodings for this addressing mode:
+-
+-
+-         Immediate offset/index
++A5.3.1.1   Encoding Immediate offset/index
+           31           28 27 26 25 24 23 22 21 20 19          16 15        12 11         8 7 6 5 4      3            0
+ 
+                 cond       0 0 0 P U 1 W L               Rn           Rd        immedH      1 S H 1         ImmedL
+ 
+ 
+ 
+-         Register offset/index
++A5.3.1.2   Encoding Register offset/index
+           31           28 27 26 25 24 23 22 21 20 19          16 15        12 11         8 7 6 5 4      3            0
+ 
+                 cond       0 0 0 P U 0 W L               Rn           Rd           SBZ      1 S H 1          Rm
+@@ -21390,8 +21377,7 @@
+ 
+ 
+ 
+-A5.4.1   Encoding
+-         The following diagram shows the encoding for this addressing mode:
++A5.4.1   Encoding The following diagram shows the encoding for this addressing mode:
+ 
+           31          28 27 26 25 24 23 22 21 20 19            16 15                                                     0
+ 
+@@ -21636,7 +21622,7 @@
+ 
+ 
+ 
+-A5.4.6   Load and Store Multiple addressing modes (alternative names)
++No encoding here -- A5.4.6   Load and Store Multiple addressing modes (alternative names)
+          The four addressing mode names given in Addressing Mode 4 - Load and Store Multiple on page A5-41 (IA,
+          IB, DA, DB) are most useful when a load and Store Multiple instruction is being used for block data transfer,
+          as it is likely that the Load Multiple and Store Multiple have the same addressing mode, so that the data is
+@@ -21748,8 +21734,6 @@
+ 
+ 
+ A5.5.1   Encoding
+-         The following diagram shows the encoding for this addressing mode:
+-
+           31          28 27 26 25 24 23 22 21 20 19            16 15         12 11         8   7                      0
+ 
+                cond       1 1 0 P U N W L                 Rn           CRd        cp_num              offset_8
+@@ -49653,4 +49637,4 @@
+ 
+ 
+ Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
+-
+\ No newline at end of file
++

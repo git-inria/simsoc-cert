@@ -42,6 +42,11 @@ let take_eol =
   let take_eol c s = Buffer.clear bu; Buffer.add_char bu c; aux s in
   take_eol
 
+exception Empty_line_expected
+let skip_empty_line = parser
+    | [< ''\n' >] -> ()
+    | [<  >] -> raise Empty_line_expected
+
 (* integers *)
 
 let valdigit c = int_of_char c - int_of_char '0'
@@ -92,7 +97,7 @@ let rec blanks_alpha = parser
   | [< '' ' ; s >] -> blanks_alpha s
   | [< ''A'..'Z' as c; s >] -> 
       try SH (end_header c s )
-      with Not_header -> NH (take_eol c s) (* TO REMOVE  let () = eat_eol s in None*)
+      with Not_header -> NH (take_eol c s) 
 
 
 exception PB_to_next_header
@@ -122,60 +127,37 @@ let is_pref p s =
 
 (* "fil" means filter *)
 let filtitle t0 (Header (c, n, l, t)) =  t = t0
-let filpart c0 (Header (c, n, l, t)) =   c = c0 && List.length l = 2
+let filpart_kbc c0 (Header (c, n, l, t)) =   c = c0 && List.length l >= 2
 let filendinstr (Header (c, n, l, t)) =  List.length l = 1
 
 let preftitle t0 (Header (c, n, l, t)) =  is_pref t0 t
 
-let to_next_Ainstr = to_given_header (filpart 'A')
+let to_next_Ainstr = to_given_header (filpart_kbc 'A')
 
+let copy_line = parser
+  | [< 'c; a = take_eol c >] -> print_endline a
 
-let rec to_contents_instr = parser
-  | [< '' ' ; s >] -> to_contents_instr s
-  | [< ''A'..'Z' as c; a = take_eol c; s >] ->
-      if a = "Operation" then ()
-      else to_contents_instr s
-  | [< () = eat_eol; s >] -> to_contents_instr s
+let rec copy_consecutive_lines n s =
+  if n = 0 then () 
+  else begin copy_line s; copy_consecutive_lines (n-1) s end
 
-let rec in_operation = parser 
-  | [< ''\n'; s >] -> in_operation1 s
-  | [< 'c; a = take_eol c; s >] -> 
-    print_endline a; in_operation s
-and in_operation1 = parser 
-  | [< ''\n' >] -> ()
-  | [< 'c; a = take_eol c; s >] ->
-    print_endline a; in_operation s
+(* *)
+
+let in_bincode s = 
+   copy_line s; skip_empty_line s; copy_line s
 
 (* Only part A is considered in ARM manual *)
-
-type stop_ou_encore = Stop | Continue | Op of header 
-exception PB_check_then_to_operation_or_next_header
-
-let rec to_operation_or_next_header h = parser
-  | [< ba = blanks_alpha; s >] ->
-      (match ba with 
-      | NH "Operation" -> Op h
-      | NH _ -> to_operation_or_next_header h s
-      | SH h1 -> check_then_to_operation_or_next_header h1 s )
-  | [< () = eat_eol; s >] -> to_operation_or_next_header h s
-and check_then_to_operation_or_next_header h s = 
-      if filpart 'A' h then to_operation_or_next_header h s
-      else if filendinstr h then Stop
-      else Continue
 
 
 let rec loop_instrs = parser
   | [< h = to_next_header; s >] -> 
-      (match check_then_to_operation_or_next_header h s with
-	 | Op h1 -> 
-	     begin
-	       print_header h1;
-	       in_operation s;
-               loop_instrs s
-	     end
-	 | Stop -> ()
-	 | Continue -> loop_instrs s
-       )
+      if filpart_kbc 'A' h then
+	begin
+	  print_header h;
+	  in_bincode s;
+	  loop_instrs s
+	end
+      else ()
 
 let main = parser 
     [< _ = to_given_header (filtitle alpha);
@@ -196,12 +178,16 @@ let () = main (Stream.of_channel stdin)
 (*
 
 let cin = open_in "ARMv6.txt"
+
 let cin = open_in "ADC.txt"
+
 let s = Stream.of_channel cin
 let test = to_given_header (filtitle alpha) s
 let test = to_given_header (filtitle genotes) s
 let test = loop_instrs s
 let () = close_in cin
+
+let bidon = 0
 
 
 *)

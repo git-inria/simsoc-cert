@@ -1,37 +1,21 @@
-3 dec 09
---------
-
-Running 
-$ egrep 'if ' operV6.txt | grep -v then
-
-Show some problems on the input format. HEre is the output:
-
-           if (not overridden by debug hardware)
-                        if ((CV bit of Jazelle OS Control register) == 0) AND
-         if Rm == 0
-                 if register_list[i] == 1
-             if (Rd is even-numbered) and (Rd is not R14) and
-             if SignedDoesSat(Rm + SignedSat(Rn*2, 32), 32) or
-             if SignedDoesSat(Rm - SignedSat(Rn*2, 32), 32) or
-             if SignedDoesSat(Rm[15:0], sat_imm + 1)
-                   if register_list[i] == 1
-               if (Rd is even-numbered) and (Rd is not R14) and
-               if Shared(address+4)
-               if UnsignedDoesSat(Rm[15:0], sat_imm)
+Getting parsable pseudo-code of instructions, by adding
+well-parenthesed BEGIN END according to indentation
 
 
-At least le 2nd (A4.1.11 BXJ) is really problematic, since
-it yields 
-                        if ((CV bit of Jazelle OS Control register) == 0) AND
-                                         begin
-                                         (IMPLEMENTATION DEFINED CONDITION) then
-                                         end
-                             PC = invalidhandler
- 
+                     pdftotext                      patches
+Stage 1: ARMv6.pdf -------------> ARMv6.txt.orig ------------> ARMv6.txt
 
-from 
-                        if ((CV bit of Jazelle OS Control register) == 0) AND
-                                          (IMPLEMENTATION DEFINED CONDITION) then
-                              PC = invalidhandler
- 
+NB: some manual patches (typos etc.) registered in ARMv6.txt.patch
 
+                       keepoper
+Stage 2: ARMv6.txt  -------------> operV6.txt
+
+Keeps the code of operations
+
+                     some preproc + indentation
+Stage 3: operV6.txt -----------------------------> indentV6.txt
+
+
+                             ***
+
+Preparing the generation of a certified decoder

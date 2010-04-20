@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-targ = keepoper indentation oneline_expr ARMv6.txt ARMv6.txt.orig operV6.txt indentV6.txt
+targ = keepoper indentation oneline_expr keepbincode ARMv6.txt ARMv6.txt.orig operV6.txt indentV6.txt ARMv6_bincode.txt bincodeV6.txt
 
 all : $(targ)
 
@@ -16,6 +16,10 @@ check : operV6.txt
 # (else weird make msg)
 patch :
 	diff -u ARMv6.txt.orig ARMv6.txt > ARMv6.txt.patch || echo ARMv6.txt.patch generated
+
+# Usage : update ARMv6_bincode.txt to the desired contents, then make patch_bincode
+patch_bincode :
+	diff -u ARMv6.txt.orig ARMv6_bincode.txt > ARMv6_bincode.txt.patch || echo ARMv6_bincode.txt.patch generated
 
 keepoper : keepoper.ml
 	ocamlopt -pp camlp4o $< -o $@
@@ -32,10 +36,22 @@ ARMv6.txt.orig :
 # some informal text after "assert" -> /* comment */
 ARMv6.txt : ARMv6.txt.orig ARMv6.txt.patch
 	cp -a $< $@
-	patch < ARMv6.txt.patch
+	patch $@ < ARMv6.txt.patch
 
 operV6.txt : keepoper ARMv6.txt
 	./keepoper < ARMv6.txt > $@
 
 indentV6.txt : indentation oneline_expr preproc_pseudo.sh operV6.txt
 	cat operV6.txt | ./oneline_expr | ./preproc_pseudo.sh | ./indentation > $@
+
+# Extracting binary code
+
+keepbincode : keepbincode.ml
+	ocamlopt -pp camlp4o $< -o $@
+
+ARMv6_bincode.txt : ARMv6.txt.orig ARMv6_bincode.txt.patch
+	cp -a $< $@
+	patch $@ < ARMv6_bincode.txt.patch
+
+bincodeV6.txt : keepbincode ARMv6_bincode.txt
+	./keepbincode < ARMv6_bincode.txt > $@
