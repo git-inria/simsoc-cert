@@ -54,7 +54,7 @@ Definition execute (w : word) (i : instruction)
   end.
 *)
 
-Definition next (s : state) (m :processor_mode) : option state :=
+Definition next (s : state) (m : processor_mode) : option state :=
   match mode (cpsr s) with
     | None => None
     | Some (m) =>
