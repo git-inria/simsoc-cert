@@ -72,13 +72,6 @@ Definition exception_vector_address (e : exception) (use_high_vectors : bool)
       end
   end.
 
-(*REMOVE:Definition interp (s : state) (m : processor_mode) (i : inst)
-  : option state :=
-  match interp empty s m i with
-    | None => None
-    | Some (_, s) => Some s
-  end.*)
-
 (****************************************************************************)
 (* A2.6.2 Reset (p. 56) *)
 (****************************************************************************)
@@ -97,10 +90,10 @@ if high vectors configured then
 else
   PC = 0x00000000
 >>*)
-Definition handle_Reset (s : state) : option state :=
-  Some s.
-(*
-Definition handle_Reset (s : state) (m : processor_mode) : option state :=
+
+Definition handle_Reset (s : state) : option state := Some s.
+
+(*Definition handle_Reset (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
   (*interp s m
   (Seq (Affect (Reg_exn svc w14) All w0) (*FIXME*)
@@ -132,8 +125,8 @@ else
   PC = 0x00000004
 >>*)
 
-Definition handle_UndIns (s : state) : option state :=
-  Some s.
+Definition handle_UndIns (s : state) : option state := Some s.
+
 (*Definition handle_UndIns (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
   (*interp s m
@@ -164,8 +157,8 @@ else
   PC = 0x00000008
 >>*)
 
-Definition handle_SoftInt (s : state) : option state :=
-  Some s.
+Definition handle_SoftInt (s : state) : option state := Some s.
+
 (*Definition handle_SoftInt (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
 
@@ -187,8 +180,8 @@ if high vectors configured then
 else
   PC = 0x0000000C
 >>*)
-Definition handle_PFAbort (s : state) : option state :=
-  Some s.
+
+Definition handle_PFAbort (s : state) : option state := Some s.
 
 (*Definition handle_PFAbort (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
@@ -211,8 +204,9 @@ if high vectors configured then
 else
   PC = 0x00000010
 >>*)
-Definition handle_DataAbort (s : state) : option state :=
-  Some s.
+
+Definition handle_DataAbort (s : state) : option state := Some s.
+
 (*Definition handle_DataAbort (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
 
@@ -220,8 +214,8 @@ Definition handle_DataAbort (s : state) : option state :=
 (* A2.6.7 Imprecise data aborts (p. 61) *)
 (****************************************************************************)
 
-Definition handle_ImpAbort (s : state) : option state :=
-  Some s.
+Definition handle_ImpAbort (s : state) : option state := Some s.
+
 (*Definition handle_ImpAbort (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
 
@@ -247,8 +241,8 @@ else
   PC = IMPLEMENTATION DEFINED /* see page A2-26 (p. 64) */
 >>*)
 
-Definition handle_IRQ (s : state) : option state :=
-  Some s.
+Definition handle_IRQ (s : state) : option state := Some s.
+
 (*Definition handle_IRQ (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
 
@@ -273,8 +267,9 @@ if VE==0 then
 else
   PC = IMPLEMENTATION DEFINED /* see page A2-26 (p. 64) */
 >>*)
-Definition handle_FIQ (s : state) : option state :=
-  Some s.
+
+Definition handle_FIQ (s : state) : option state := Some s.
+
 (*Definition handle_FIQ (s : state) (m : processor_mode) : option state :=
   Some s. (*FIXME*)*)
 
@@ -324,20 +319,3 @@ Definition handle_exception (s : state) : option state :=
         | FIQ => handle_FIQ s
       end
   end.
-
-(*Definition handle_exception (s : state) (m : processor_mode) : option state :=
-  match exns s with
-    | nil => Some s
-    | e :: _ =>
-      match e with
-        | Reset => handle_Reset s m
-        | UndIns => handle_UndIns s m
-        | SoftInt => handle_SoftInt s m
-        | PFAbort => handle_PFAbort s m
-        | DataAbort => handle_DataAbort s m
-        | ImpAbort => handle_ImpAbort s m
-        | IRQ => handle_IRQ s m
-        | FIQ => handle_FIQ s m
-      end
-  end.
-*)

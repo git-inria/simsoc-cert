@@ -38,22 +38,6 @@ Definition execute (w : word) (i : instruction)
     | BL cond L w => Bl cond L w s
   end.
 
-(*Definition execute (m : processor_mode) (w : word) (i : instruction)
-  (s : state) : result :=
-  match i with
-    | ADC cond Sbit Rd Rn so =>
-      let (v, _) := shifter_operand_value_and_carry s m w so in
-        Adc cond Sbit Rd Rn v s m
-    | ADD cond Sbit Rd Rn so =>
-      let (v, _) := shifter_operand_value_and_carry s m w so in
-        Add cond Sbit Rd Rn v s m
-    | AND cond Sbit Rd Rn so =>
-      let (v, c) := shifter_operand_value_and_carry s m w so in
-        And cond Sbit Rd Rn v c s m
-    | BL cond L w => Bl cond L w s m
-  end.
-*)
-
 Definition next (s : state) (m : processor_mode) : option state :=
   match mode (cpsr s) with
     | None => None
@@ -84,34 +68,3 @@ Definition next (s : state) (m : processor_mode) : option state :=
           end
       end
   end.
-
-(*Definition next (s : state) : option state :=
-  match mode (cpsr s) with
-    | None => None
-    | Some m =>
-      match inst_set (cpsr s) with
-        | None => None
-        | Some is =>
-          match is with
-            | ARM =>
-              let a := reg_content s m PC in
-              let w := mem s (address_of_word a) in (*FIXME?*)
-              let r :=
-                match decode w with
-                  | Unpredictable => None
-                  | Undefined => Some (add_exn UndIns s)
-                  | Inst i =>
-                    match execute m w i s with
-                      | None => None
-                      | Some (b, s') => if b then incr_PC m s' else Some s'
-                    end
-                end
-              in match r with
-                   | None => None
-                   | Some s => handle_exception s m
-                 end
-            | Thumb => None
-            | Jazelle => None
-          end
-      end
-  end.*)
