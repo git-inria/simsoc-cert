@@ -100,6 +100,8 @@ let func ss =
     list "_" string b ss;
     Buffer.contents b;;
 
+(* preprocess expressions *)
+
 let rec exp = function
 
   (* we only consider ARMv5 and above *)
@@ -168,9 +170,9 @@ let is_nop = (=) nop;;
 let remove_nops = List.filter ((<>) nop);;
 
 let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
-	       "diff1"; "diff2"; "diff3"; "diff4"];;
+	       "diff1"; "diff2"; "diff3"; "diff4"; "mask"];;
 
-(* normalization of block's *)
+(* preprocess block's *)
 
 let rec raw_inst = function
   | Block is ->
@@ -200,8 +202,9 @@ let rec inst = function
       begin match e2 with
 	| Unaffected -> nop
 	| Unpredictable_exp -> Unpredictable
+(*REMOVE: done in a second pass
 	| If_exp (c, Unpredictable_exp, e3) ->
-	    Block [If (c, Unpredictable, None); Affect (e1, e3)]
+	    Block [If (c, Unpredictable, None); Affect (e1, e3)] *)
 	| _ -> Affect (exp e1, e2)
       end
 
@@ -252,6 +255,27 @@ let rec inst = function
 
   (* non-recursive instructions *)
   | Unpredictable -> Unpredictable;;
+
+(* preprocess affectations *)
+
+let rec affect = function
+
+  | Block is -> raw_inst (Block (List.map affect is))
+
+  | Affect (e1, If_exp (c, Unpredictable_exp, e2)) ->
+      Block [If (c, Unpredictable, None); Affect (e1, e2)]
+
+  | If (e, i, None) -> If (e, affect i, None)
+  | If (e, i1, Some i2) -> If (e, affect i1, Some (affect i2))
+  | While (e, i) -> While (e, affect i)
+  | For (s, n, p, i) -> For (s, n, p, affect i)
+  | Case (e, s) -> Case (e, List.map (fun (n, i) -> (n, affect i)) s)
+
+  | i -> i;;
+
+(* preprocess programs *)
+
+let inst i = affect (inst i);;
 
 let prog = function
   | Instruction (r, id, is, i) -> Instruction (r, id, is, inst i)
