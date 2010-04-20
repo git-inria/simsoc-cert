@@ -1,4 +1,3 @@
-
 (**
 SimSoC-Cert, a library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
@@ -9,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Coq code generator for simulation (see directory ../coq)
+Coq code generator based on the Coq library written in ../coq
 *)
 
 open Ast;;
@@ -38,7 +37,7 @@ let hex = function
   | "0x0000ffff" -> "0x0000FFFF"
   | s -> s;;
 
-(*coq types of usual var*)
+(* Coq types of usual variables *)
 
 let type_of_var = function
   | "cond" -> "opcode"
@@ -185,8 +184,7 @@ let rec exp b = function
   | SPSR None -> string b "spsr s0 None"
   | SPSR (Some m) -> bprintf b "spsr s0 Some(%s)" (mode m)
   | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
-  | BinOp (e1, ("<<" | ">>" | "+" | "-" | "*" | ">=" | "<" | ">" | "Rotate_Right"
-	   | "Arithmetic_Shift_Right"  as op), Num n) ->
+  | BinOp (e1, ("<<" | ">>" | "+" | "-" | "*" | ">=" | "<" | ">" | "Rotate_Right" | "Arithmetic_Shift_Right"  as op), Num n) ->
       exp b (Fun (binop op, [e1; Var (num_word n)]))
   | BinOp (Num n, ("-" | "+" | "*" as op), e2) -> 
       exp b (Fun (binop op, [Var (num_word n); e2]))
@@ -383,7 +381,7 @@ let version_in_name b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
-let prog_arg b (v,t) = bprintf b "(%s: %s) " v t;;
+let prog_arg b (v,t) = bprintf b "(%s : %s) " v t;;
 
 let prog_out b (v,t) = bprintf b "%s &%s" t v;;
 
@@ -414,31 +412,30 @@ let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 let prog gs ls b p =
   match p with
     | Instruction (_ , id, is, i) ->
-        bprintf b "%aDefinition %a %s %a : result :=\n\n%a%s.\n\n" comment p
+        bprintf b "%aDefinition %a_step %s %a: result :=\n%a%s.\n" comment p
           (list "_" ident) (id :: is)
-	  ("(s0 : state)\n")
-          (list "\n    " prog_arg) gs
+	  "(s0 : state)"
+          (list "" prog_arg) gs
 	  (*(list "" local_decl) ls*)
           (inst 2) i
-	  ("\ntrue s0")
+	  ("\n  true s0")
     | Operand (_, c, n, i) ->
         let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
         and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
-          bprintf b "%aDefinition %a_%a(%a%s%a)\n\n%a%a.\n\n" comment p
+          bprintf b "%aDefinition %a_%a(%a%s%a)\n%a%a.\n" comment p
             (list "" abbrev) c
             (list "_" string) n
-            (list "\n    " prog_arg) gs
+            (list "" prog_arg) gs
             (arg_sep gs os)
-            (list "\n    " prog_out) os
+            (list "" prog_out) os
             (list "" local_decl) ls'
             (inst 2) i;;
 
 let lsm_hack p =
   let rec inst = function
     | Block is -> Block (List.map inst is)
-    | If (_, Affect ( Reg (Var "n", None), e), None) ->
-        Affect (Var "new_Rn", e)
-    | i-> i
+    | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
+    | i -> i
   in match p with
   | Instruction (r, id, is, i) ->
       if id.iname = "LDM" or id.iname = "STM"
@@ -459,49 +456,36 @@ let lsm_hack p =
         Operand (r , c, n, (inst i))
       else p;;
 
-
-let instr_type gs b p =
-  match p with
-    | Instruction (_ , id, is, _) ->
-	bprintf b "|%a_i %a\n"
-          (list "_" ident) (id :: is) (list "" prog_arg) gs
-    | Operand _ ->
-	string b "";;
+let inst_typ gs b = function
+  | Operand _ -> ()
+  | Instruction (_ , id, ids, _) ->
+      bprintf b "| %a %a" (list "_" ident) (id :: ids) (list "" prog_arg) gs;;
 
 let args b (v,_) = bprintf b "%s " v;;
 
-let execute gs b p = 
+let inst_sem gs b p = 
   match p with
+    | Operand _ -> ()
     | Instruction (_, id, is, _) ->
-	if (List.exists ((=) ("shifter_operand", "word")) gs) then
-	  bprintf b
-	    "    |%a_i %a =>
-      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in
-      %a %a v s0"
-	    (list "_" ident) (id :: is) (list "" args) gs 
-	    (list "_" ident) (id :: is) (list "" args) gs
-	else 
-	  bprintf b 
-	    "    |%a_i %a =>
-      %a %a s0"
-	    (list "_" ident) (id :: is) (list "" args) gs
-	    (list "_" ident) (id :: is) (list "" args) gs
-    | Operand _ -> string b "";;
+	bprintf b "    | %a %a =>"
+	  (list "_" ident) (id :: is) (list "" args) gs;
+	if List.exists ((=) ("shifter_operand", "word")) gs then
+	  bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
+	bprintf b " %a_step %a v s0"
+	  (list "_" ident) (id :: is) (list "" args) gs;;
 
 let lib b ps =
-  let b2 = Buffer.create 10000 in
-  let b3 = Buffer.create 10000 in
-  let prog_type_exe b p =
-    let p' = lsm_hack p in
-    let gs, ls = variables p' in
-      bprintf b "%a\n" (prog gs ls) p';
-      bprintf b2 "%a\n" (instr_type gs) p'
-      ;bprintf b3 "%a\n" (execute gs) p'
+  let btyp = Buffer.create 10000 in
+  let bsem = Buffer.create 10000 in
+  let prog_typ_sem p =
+    let p = lsm_hack p in
+    let gs, ls = variables p in
+      bprintf b "%a\n" (prog gs ls) p;
+      bprintf btyp "%a\n" (inst_typ gs) p;
+      bprintf bsem "%a\n" (inst_sem gs) p
   in
-    bprintf b
-      "%aInductive instruction : Type :=\n%a
-Definition execute (w : word) (i : instruction)
-  (s0 : state) : result := 
-  match i with\n%a"
-      (list "" prog_type_exe) ps Buffer.add_buffer b2 
-      Buffer.add_buffer b3;;
+    List.iter prog_typ_sem ps;
+    bprintf b "Inductive instruction : Type :=\n";
+    Buffer.add_buffer b btyp;
+    bprintf b "\nDefinition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n";
+    Buffer.add_buffer b bsem;;
