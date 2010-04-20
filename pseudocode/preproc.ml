@@ -169,14 +169,29 @@ let remove_nops = List.filter ((<>) nop);;
 let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
 	       "diff1"; "diff2"; "diff3"; "diff4"];;
 
-let rec inst = function
+(* normalization of block's *)
 
-  (* remove blocks reduced to one instruction *)
+let rec raw_inst = function
   | Block is ->
-      begin match remove_nops (List.map inst is) with
+      begin match raw_block is with
 	| [i] -> i
 	| is -> Block is
       end
+  | i -> i
+
+and raw_block = function
+  | [] -> []
+  | i :: is ->
+      begin match raw_inst i, raw_block is with
+	| Block is', is -> is' @ is
+	| i, is -> i :: is
+      end;;
+
+(* preprocess instructions *)
+
+let rec inst = function
+
+  | Block is -> raw_inst (Block (List.map inst is))
 
   (* replace affectations to Unaffected by nop's and replace
      affectations to Unpredictable_exp by Unpredictable *)
@@ -210,13 +225,13 @@ let rec inst = function
 	    begin match i1, i2 with
 	      | Affect (Var v1 as x, e1), Affect (Var v2, e2)
 		  when v1 = v2 && List.mem v1 lc_decl ->
-		  Affect (x, exp (If_exp (c, e1, e2)))
+		  inst (Affect (x, If_exp (c, e1, e2)))
 	      | Affect (Var v as x, e), Unpredictable
 		  when List.mem v lc_decl ->
-		  Affect (x, exp (If_exp (c, e, Unpredictable_exp)))
+		  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
 	      | Unpredictable, Affect (Var v as x, e)
 		  when List.mem v lc_decl -> 
-		  Affect (x, exp (If_exp (c, Unpredictable_exp, e)))
+		  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
 	      |_ ->
 		 If (exp c, i1, Some i2)
 	    end
@@ -238,5 +253,5 @@ let rec inst = function
   | Unpredictable -> Unpredictable;;
 
 let prog = function
-  | Instruction (r, id, is, i) -> Instruction (r, id, is, (inst i))
-  | Operand (r, c, n, i) -> Operand (r, c, n, (inst i));;
+  | Instruction (r, id, is, i) -> Instruction (r, id, is, inst i)
+  | Operand (r, c, n, i) -> Operand (r, c, n, inst i);;
