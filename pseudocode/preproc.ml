@@ -129,22 +129,23 @@ let rec exp = function
   | Other ss -> Fun (func ss, [])
 
   (* normalize if-expressions wrt Unpredictable_exp's *)
+  | If_exp (_, e1, e2) when e1 = e2 -> exp e1
   | If_exp (c0, If_exp (c1, Unpredictable_exp, e1), e2) ->
-      If_exp (BinOp (c0, "and", c1),
-	      Unpredictable_exp,
-	      exp (If_exp (Fun ("not", [c0]), e2, e1)))
+      exp (If_exp (BinOp (c0, "and", c1),
+		   Unpredictable_exp,
+		   If_exp (Fun ("not", [c0]), e2, e1)))
   | If_exp (c0, If_exp (c1, e1, Unpredictable_exp), e2) ->
-      If_exp (BinOp (c0, "and", Fun ("not", [c1])),
-	      Unpredictable_exp,
-	      exp (If_exp (Fun ("not", [c0]), e2, e1)))
+      exp (If_exp (BinOp (c0, "and", Fun ("not", [c1])),
+		   Unpredictable_exp,
+		   If_exp (Fun ("not", [c0]), e2, e1)))
   | If_exp (c0, e0, If_exp (c1, Unpredictable_exp, e1)) ->
-      If_exp (BinOp (Fun ("not", [c0]), "and", c1),
-	      Unpredictable_exp,
-	      exp (If_exp (c0, e0, e1)))
+      exp (If_exp (BinOp (Fun ("not", [c0]), "and", c1),
+		   Unpredictable_exp,
+		   If_exp (c0, e0, e1)))
   | If_exp (c0, e0, If_exp (c1, e1, Unpredictable_exp)) ->
-      If_exp (BinOp (Fun ("not", [c0]), "and", Fun ("not", [c1])),
-	      Unpredictable_exp,
-	      exp (If_exp (c0, e0, e1)))
+      exp (If_exp (BinOp (Fun ("not", [c0]), "and", Fun ("not", [c1])),
+		   Unpredictable_exp,
+		   If_exp (c0, e0, e1)))
 
   (* recursive expressions *)
   | Fun (f, es) -> Fun (f, List.map exp es)
