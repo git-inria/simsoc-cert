@@ -196,15 +196,10 @@ let rec inst = function
 
   | Block is -> raw_inst (Block (List.map inst is))
 
-  (* replace affectations to Unaffected by nop's and replace
-     affectations to Unpredictable_exp by Unpredictable *)
+  (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) -> let e2 = exp e2 in
       begin match e2 with
 	| Unaffected -> nop
-	| Unpredictable_exp -> Unpredictable
-(*REMOVE: done in a second pass
-	| If_exp (c, Unpredictable_exp, e3) ->
-	    Block [If (c, Unpredictable, None); Affect (e1, e3)] *)
 	| _ -> Affect (exp e1, e2)
       end
 
@@ -236,8 +231,7 @@ let rec inst = function
 	      | Unpredictable, Affect (Var v as x, e)
 		  when List.mem v lc_decl -> 
 		  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
-	      |_ ->
-		 If (exp c, i1, Some i2)
+	      | _ -> If (exp c, i1, Some i2)
 	    end
 
   (* replace assert's and memory access indications by nop's *)
@@ -256,12 +250,15 @@ let rec inst = function
   (* non-recursive instructions *)
   | Unpredictable -> Unpredictable;;
 
-(* preprocess affectations *)
+(* preprocess affectations:
+- replace affectation of Unpredictable_exp by Unpredictable
+- replace conditional affectation of Unpredictable by an equivalent block *)
 
 let rec affect = function
 
   | Block is -> raw_inst (Block (List.map affect is))
 
+  | Affect (_, Unpredictable_exp) -> Unpredictable
   | Affect (e1, If_exp (c, Unpredictable_exp, e2)) ->
       Block [If (c, Unpredictable, None); Affect (e1, e2)]
 
