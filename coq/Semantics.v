@@ -20,6 +20,25 @@ Require Import Util.
 
 Open Scope Z_scope.
 
+(****************************************************************************)
+(** Start opcode execution at Jazelle Program Counter (p. 172) *)
+(****************************************************************************)
+
+Definition Start_opcode_execution_at (w : word) (b : bool) (s : state)
+  := Some (b, s).
+
+(****************************************************************************)
+(** Reading the PC (p. 47) *)
+(****************************************************************************)
+
+Definition check_last_bit (w : word) : bool := zeq w[0] 0.
+
+Definition check_last_two_bits (w : word) : bool := zeq w[1#0] 0.
+
+
+
+
+
 Definition affect_reg (n : reg_num) (w : word) (b : bool) (s : state) : result
   := Some (zne n 15, update_reg n w s).
 
