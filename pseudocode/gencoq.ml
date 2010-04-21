@@ -17,6 +17,12 @@ open Util;;
 
 let num = string;;
 
+let bin b s =
+  let n = String.length s in
+    if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
+    bprintf b "%c" s.[2];
+    for i = 3 to n-1 do bprintf b "~%c" s.[i] done;;
+
 let hex_of_bin = function
   | "0b00" | "0b0" -> "0"
   | "0b01" | "0b1" -> "1"
@@ -30,12 +36,6 @@ let hex_of_bin = function
   | "0b11011" -> "und"
   | "0b11111" -> "sys"
   | _ -> "TODO0";;
-
-let hex = function
-  | "0x000000ff" -> "0x000000FF"
-  | "0x00ff00ff" -> "0x00FF00FF"
-  | "0x0000ffff" -> "0x0000FFFF"
-  | s -> s;;
 
 let num_word = function
   | "0" -> "w0"
@@ -117,15 +117,10 @@ let access_type = function
   | "4" -> "word"
   | _ -> "TODO6";;
 
-let var = function
+let var = function (*FIXME: to be done in preproc *)
   | "CP15_reg1_EEbit" -> "get_CP15_reg1_EEbit"
   | "CP15_reg1_Ubit" -> "get_CP15_reg1_Ubit"
-  | "PrivMask" -> "PrivMask"
-  | "UserMask" -> "UserMask"
-  | "StateMask" -> "StateMask"
-  | "UnallocMask" -> "UnallocMask"
   | "GE" -> "(cpsr s0)[19#16]"
-  | "v5_and_above" -> "proc.v5_and_above"
   | s -> s;;
 
 (***********************************************************************)
@@ -177,17 +172,23 @@ let input_registers = ["n"; "m"; "s"];;
 let optemps = ["index"; "offset_8"; "end_address"];;
 
 let rec pexp b = function
-    | Bin _ | Hex _ | Num _ | Var _ as e -> exp b e
-    | e -> par exp b e
+  | Bin _ | Hex _ | Num _ | Var _ as e -> exp b e
+  | e -> par exp b e
 
 and exp b = function
-  | Bin s -> string b (hex_of_bin s)
-  | Hex s -> bprintf b "w%s" (hex s)
+  | Bin s -> bin b s
+  | Hex s -> bprintf b "w%s" s
   | Num s -> string b s
   | CPSR -> string b "cpsr (proc s0)"
-  | SPSR None -> string b "spsr (proc s0) None"
-  | SPSR (Some m) -> bprintf b "spsr (proc s0) %s" (mode m)
   | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
+  | Fun (f, es) -> bprintf b "%s %a" (func f) (list " " pexp) es
+  | Var s -> string b s
+  | If_exp (e1, e2, e3) ->
+      bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+
+  | SPSR None -> string b "spsr (proc s0) (mode (proc s0))"
+  | SPSR (Some m) -> bprintf b "spsr (proc s0) %s" (mode m)
+
   | BinOp (e1, ("<<" | ">>" | "+" | "-" | "*" | ">=" | "<" | ">" | "Rotate_Right" | "Arithmetic_Shift_Right"  as op), Num n) ->
       exp b (Fun (binop op, [e1; Var (num_word n)]))
   | BinOp (Num n, ("-" | "+" | "*" as op), e2) -> 
@@ -196,48 +197,18 @@ and exp b = function
 	   | "Logical_Shift_Right" | "+" | "-" | "*" | "AND" | "OR" | "EOR"
 	   | "==" | "!=" | ">=" | "<" | ">>" | "<<" as op), e2) ->
       exp b (Fun (binop op, [e1; e2]))    
-
   | BinOp (e1, op, Num n) -> bprintf b "%a %s %s" exp e1 (binop op) (num_word n)
   | BinOp (e1, op, e2) -> bprintf b "(%a) %s (%a)" exp e1 (binop op) exp e2
-  | Fun (f, es) -> 
-	bprintf b "%s %a" (func f) (list " " pexp) es
 
-  | If_exp (e1, e2, e3) ->
-      begin match e2, e3 with
-	| Num n2, Num n3 -> bprintf b "if (%a) then %s else %s"
-	    exp e1 (num_word n2) (num_word n3)
-	| Bin n2, Num n3 -> bprintf b "if (%a) then %s else %s"
-	    exp e1 (num_word (hex_of_bin n2)) (num_word n3)
-	| Hex n2, Num n3 -> bprintf b "if (%a) then w%s else %s"
-	    exp e1 n2 (num_word n3)
-	| Num n2, Bin n3 -> bprintf b "if (%a) then %s else %s"
-	    exp e1 (num_word n2) (num_word (hex_of_bin n3))
-	| _ -> bprintf b "if (%a) then %a else %a" 
-	    exp e1 exp e2 exp e3
-      end
-  | Reg (Var s, None) ->
-      (*if List.mem s input_registers
-      then bprintf b "reg_content s0 %s" s
-      else*) bprintf b "reg_content s0 %s" s
-  | Reg (Num n, None) -> bprintf b "reg_content s0 %s" (reg_id n)
-  | Reg (e, None) -> bprintf b "reg_content s0 R%a" exp e
-  | Reg (e, Some m) -> bprintf b "reg s0 (reg_of_mode %a %s)"
-      exp e (mode m)
+  | Reg (Var s, None) -> bprintf b "reg_content (proc s0) %s" s
+  | Reg (Num n, None) -> bprintf b "reg_content (proc s0) %s" (reg_id n)
+  | Reg (e, None) -> bprintf b "reg_content (proc s0) R%a" exp e
+  | Reg (e, Some m) ->
+      bprintf b "reg (proc s0) (reg_of_mode %a %s)" exp e (mode m)
+
   | Range (CPSR, Flag (s,_)) -> bprintf b "(cpsr s0)[%sbit]" s
   | Range (e1, Index e2) -> bprintf b "(%a)[%a]" exp e1 exp e2
-  | Range (e, Bits (n1, n2)) ->
-      begin match n1, n2 with
-        | "15", "0" -> bprintf b "(%a)[15#0]" exp e
-        | "31", "16" -> bprintf b "(%a)[31#16]" exp e
-        | "7", "0" -> bprintf b "(%a)[7#0]" exp e
-        | "15", "8" -> bprintf b "(%a)[15#8]" exp e
-        | "23", "16" -> bprintf b "(%a)[23#16]" exp e
-        | "31", "24" -> bprintf b "(%a)[31#24]" exp e
-        | _ -> bprintf b "(%a)[%s#%s]" exp e n1 n2
-      end
-  | Coproc_exp (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
-  | Var str -> string b (var str)
+  | Range (e, Bits (n1, n2)) -> bprintf b "%a[%s#%s]" pexp e n1 n2
 
   | _ -> string b "TODO6";;
 
