@@ -160,8 +160,8 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  | (Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e) ->
-      e;;
+  | Hex s -> Hex (String.uppercase s)
+  | (Num _|Bin _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e) -> e;;
 
 let nop = Block [];;
 
