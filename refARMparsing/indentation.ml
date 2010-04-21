@@ -8,7 +8,8 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Pseudocode syntax and semantics.
+Adding well-parenthesized begin-end to pseudo-code 
+for instructions in the ARM manual, txt format
 *)
 
 (* 
