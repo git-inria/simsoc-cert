@@ -9,6 +9,8 @@ Set Implicit Arguments.
 
 Require Import ZArith.
 Require Import Bool.
+Require Import Integers. Import Int.
+Require Import List.
 
 Open Scope Z_scope.
 
@@ -74,3 +76,36 @@ Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
   fun x => if eqdec x a then b else f x.
 
 End update_map.
+
+(****************************************************************************)
+(** list constructor *)
+(****************************************************************************)
+
+Section clist.
+
+Variables (A : Type) (a : A).
+
+Fixpoint clist (k : nat) : list A :=
+  match k with
+    | O => nil
+    | S k' => a :: clist k'
+  end.
+
+End clist.
+
+(****************************************************************************)
+(** convert a word into a list of booleans *)
+(****************************************************************************)
+
+Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
+  match p with
+    | xI p' => bools_of_positive p' (false :: acc)
+    | xO p' => bools_of_positive p' (true :: acc)
+    | xH => true :: acc
+  end.
+
+Definition bools_of_word (w : int) : list bool :=
+  match unsigned w with
+    | Zpos p => bools_of_positive p nil
+    | _ => clist false wordsize
+  end.
