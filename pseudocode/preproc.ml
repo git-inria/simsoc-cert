@@ -82,7 +82,7 @@ let vars p = vars_inst (StrMap.empty, StrMap.empty) (inst_of p);;
 end;;
 
 (***********************************************************************)
-(** program preprocessing *)
+(** expression preprocessing *)
 (***********************************************************************)
 
 let ident i =
@@ -95,10 +95,19 @@ let  string_of_op = function
   | "-" -> "sub"
   | s -> s;;
 
-let func ss =
+let func =
   let b = Buffer.create 100 in
-    list "_" string b ss;
-    Buffer.contents b;;
+    fun ss ->
+      Buffer.clear b;
+      list "_" string b ss;
+      Buffer.contents b;;
+
+(* normalize hexadecimal numbers by using uppercase letters only *)
+
+let hex s =
+  let n = String.length s in
+    if n <= 2 || String.sub s 0 2 <> "0x" then invalid_arg "Preproc.hex";
+    "0x" ^ String.uppercase (String.sub s 2 (n-2));;
 
 (* preprocess expressions *)
 
@@ -160,19 +169,12 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  | Hex s -> Hex (String.uppercase s)
+  | Hex s -> Hex (hex s)
   | (Num _|Bin _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e) -> e;;
 
-let nop = Block [];;
-
-let is_nop = (=) nop;;
-
-let remove_nops = List.filter ((<>) nop);;
-
-let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
-	       "diff1"; "diff2"; "diff3"; "diff4"; "mask"];;
-
-(* preprocess block's *)
+(***********************************************************************)
+(** block preprocessing *)
+(***********************************************************************)
 
 let rec raw_inst = function
   | Block is ->
@@ -190,7 +192,16 @@ and raw_block = function
 	| i, is -> i :: is
       end;;
 
-(* preprocess instructions *)
+(***********************************************************************)
+(** instruction preprocessing *)
+(***********************************************************************)
+
+let nop = Block [];;
+
+let is_nop = (=) nop;;
+
+let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
+	       "diff1"; "diff2"; "diff3"; "diff4"; "mask"];;
 
 let rec inst = function
 
@@ -250,9 +261,11 @@ let rec inst = function
   (* non-recursive instructions *)
   | Unpredictable -> Unpredictable;;
 
-(* preprocess affectations:
+(***********************************************************************)
+(** affectation preprocessing:
 - replace affectation of Unpredictable_exp by Unpredictable
 - replace conditional affectation of Unpredictable by an equivalent block *)
+(***********************************************************************)
 
 let rec affect = function
 
@@ -270,7 +283,9 @@ let rec affect = function
 
   | i -> i;;
 
-(* preprocess programs *)
+(***********************************************************************)
+(** program preprocessing *)
+(***********************************************************************)
 
 let inst i = affect (inst i);;
 
