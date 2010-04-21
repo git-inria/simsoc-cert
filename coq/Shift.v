@@ -13,12 +13,8 @@ A5.1 Addressing Mode 1 - Data-processing operands (p. 442)
 
 Set Implicit Arguments.
 
-Require Import Bitvec.
-Require Import Coqlib.
-Require Import Proc.
-Require Import Functions.
-Require Import Integers. Import Int.
-Require Import Util.
+Require Import Bitvec Coqlib Functions Integers Util Proc.
+Import Int.
 
 (****************************************************************************)
 (** A5.1 Addressing Mode 1 - Data-processing operands (p. 442)*)
@@ -30,15 +26,15 @@ Inductive shifter_value : Type :=
 (* Immediate operand value *)
 | ValImm (shift_imm : word)
 (* Register operand value *)
-| ValReg (Rs : reg_num).
+| ValReg (Rs : regnum).
 
 Inductive shifter_operand : Type :=
 (* Immediate *)
 | Imm (rotate_imm immed_8 : word)
 (* Immediate shift/Register shift *)
-| Shift (Rm : reg_num) (s : shifter) (v : shifter_value)
+| Shift (Rm : regnum) (s : shifter) (v : shifter_value)
 (* Register/Rotate right with extend *)
-| RRX (Rm : reg_num).
+| RRX (Rm : regnum).
 
 (****************************************************************************)
 (** A5.1.1 Encoding (p. 443) *)
@@ -57,8 +53,8 @@ compute the carry? *)
 
 Definition decode_shifter_operand (w : word) (x z : bool) : shifter_operand :=
   if x then Imm (bits 8 11 w) (bits 0 7 w)
-  else Shift (reg_num_from_bit 0 w) (decode_shifter w)
-    (if z then ValImm (bits 7 11 w) else ValReg (reg_num_from_bit 8 w)).
+  else Shift (regnum_from_bit 0 w) (decode_shifter w)
+    (if z then ValImm (bits 7 11 w) else ValReg (regnum_from_bit 8 w)).
 
 (****************************************************************************)
 (** A5.1.3 Data-processing operands - Immediate (p. 446) *)
@@ -86,7 +82,7 @@ shifter_operand = Rm
 shifter_carry_out = C Flag
 >>*)
 
-Definition so_reg (s : state) (i : word) (m : reg_num)
+Definition so_reg (s : state) (i : word) (m : regnum)
   : word * bool := (reg_content s m, is_set Cbit i).
 
 (****************************************************************************)
@@ -104,7 +100,7 @@ shifter_carry_out = Rm[32 - shift_imm]
 >>*)
 
 Definition so_LSL_imm (s : state) (i : word)
-  (m : reg_num) (shift_imm : word) : word * bool :=
+  (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m in
   if zeq shift_imm 0 then (Rm, is_set Cbit i)
   else (Logical_Shift_Left Rm shift_imm,
@@ -131,7 +127,7 @@ else /* Rs[7:0] > 32 */
 >>*)
 
 Definition so_LSL_reg (st : state) (i : word)
-  (m s : reg_num) : word * bool :=
+  (m s : regnum) : word * bool :=
   let Rm := reg_content st m in
   let Rs7 := bits 0 7 (reg_content st s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
@@ -156,7 +152,7 @@ else /* shift_imm > 0 */
 >>*)
 
 Definition so_LSR_imm (s : state) (i : word)
-  (m : reg_num) (shift_imm : word) : word * bool :=
+  (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m in
   if zeq shift_imm 0 then (w0, is_set 31 Rm)
   else (Logical_Shift_Right Rm shift_imm,
@@ -183,7 +179,7 @@ else /* Rs[7:0] > 32 */
 >>*)
 
 Definition so_LSR_reg (st : state) (i : word)
-  (m s : reg_num) : word * bool :=
+  (m s : regnum) : word * bool :=
   let Rm := reg_content st m in
   let Rs7 := bits 0 7 (reg_content st s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
@@ -212,7 +208,7 @@ else /* shift_imm > 0 */
 >>*)
 
 Definition so_ASR_imm (s : state) (i : word)
-  (m : reg_num) (shift_imm : word) : word * bool :=
+  (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s  m in
   if zeq shift_imm 0 then
     if is_set 31 Rm then (maxu, true) else (w0, false)
@@ -241,7 +237,7 @@ else /* Rs[7:0] >= 32 */
 >>*)
 
 Definition so_ASR_reg (st : state) (i : word)
-  (m s : reg_num) : word * bool :=
+  (m s : regnum) : word * bool :=
   let Rm := reg_content st m in
   let Rs7 := bits 0 7 (reg_content st s) in
   if zeq Rs7 0 then (Rm, is_set Cbit i)
@@ -265,7 +261,7 @@ else /* shift_imm > 0 */
 >>*)
 
 Definition so_ROR_imm (s : state) (i : word)
-  (m : reg_num) (shift_imm : word) : word * bool :=
+  (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m in
   if zeq shift_imm 0 then
     (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
@@ -289,7 +285,7 @@ else /* Rs[4:0] > 0 */
 >>*)
 
 Definition so_ROR_reg (st : state) (i : word)
-  (m s : reg_num) : word * bool :=
+  (m s : regnum) : word * bool :=
   let Rm := reg_content st m in
   let Rs := reg_content st s in
   let Rs7 := bits 0 7 Rs in
@@ -307,7 +303,7 @@ shifter_operand = (C Flag Logical_Shift_Left 31) OR (Rm Logical_Shift_Right 1)
 shifter_carry_out = Rm[0]
 >>*)
 
-Definition so_RRX (s : state) (i : word) (m : reg_num)
+Definition so_RRX (s : state) (i : word) (m : regnum)
   : word * bool :=
   let Rm := reg_content s m in
     (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),

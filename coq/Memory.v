@@ -13,36 +13,10 @@ Memory.
 
 Set Implicit Arguments.
 
-Require Import Bitvec.
-Require Import ZArith.
-Require Import Coqlib.
-Require Import Util.
-Require Import Integers. Import Int.
+Require Import Bitvec ZArith Coqlib Util Integers.
+Import Int.
 
 Open Scope Z_scope.
-
-(****************************************************************************)
-(** A2.1 Data types (p. 39) *)
-(****************************************************************************)
-
-Definition byte_size := 8%nat.
-Definition byte := bitvec byte_size.
-Definition mk_byte := mk_bitvec byt_size.
-
-Definition get_byte_0 w := mk_byte (intval w[7#0]).
-Definition get_byte_1 w := mk_byte (intval w[15#8]).
-Definition get_byte_2 w := mk_byte (intval w[23#16]).
-Definition get_byte_3 w := mk_byte (intval w[31#24]).
-
-Definition halfword_size := 16%nat.
-Definition halfword := bitvec halfword_size.
-Definition mk_halfword := mk_bitvec halfword_size.
-
-Definition get_half_0 w := mk_halfword (intval w[15#0]).
-Definition get_half_1 w := mk_halfword (intval w[31#16]).
-
-Definition w0x0000 := get_half_0 w0.
-Definition w0xFFFF := get_half_0 w0x0000FFFF.
 
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
@@ -63,6 +37,7 @@ Inductive addressing_mode : Type :=
 (** Memory *)
 (****************************************************************************)
 
+(*
 Inductive endian_model : Type := LowE | BE_8 | BE_32.
 
 Inductive mmu_read_result : Set :=
@@ -94,3 +69,4 @@ Record block_contents : Type := mk_block {
 Record memory : Type := mk_mem {
   blocks : address -> Z -> block_contents
 }.
+*)

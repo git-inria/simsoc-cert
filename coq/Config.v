@@ -13,8 +13,7 @@ Configuration of a ARM processor (IMPLEMENTATION DEFINED parameters).
 
 Set Implicit Arguments.
 
-Require Import Bitvec.
-Require Import ZArith.
+Require Import Bitvec ZArith.
 
 (****************************************************************************)
 (** Architecture versions (p. 13) *)

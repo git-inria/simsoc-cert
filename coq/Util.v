@@ -7,10 +7,8 @@ Miscellaneous definitions and lemmas extending the Coq standard library.
 
 Set Implicit Arguments.
 
-Require Import ZArith.
-Require Import Bool.
-Require Import Integers. Import Int.
-Require Import List.
+Require Import ZArith Bool Integers List.
+Import Int.
 
 Open Scope Z_scope.
 

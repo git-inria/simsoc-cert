@@ -13,11 +13,8 @@ Functions used in the pseudocode, in alphabetical order.
 
 Set Implicit Arguments.
 
-Require Import Coqlib.
-Require Import Integers. Import Int.
-Require Import Util.
-Require Import Bitvec.
-Require Import Proc.
+Require Import Coqlib Integers Util Bitvec Proc.
+Import Int.
 
 (****************************************************************************)
 (** Arithmetic_Shift_Right (p. 1121)

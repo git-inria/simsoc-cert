@@ -13,11 +13,8 @@ Processor state.
 
 Set Implicit Arguments.
 
-Require Import Bitvec.
-Require Import ZArith.
-Require Import Coqlib.
-Require Import Util.
-Require Import Integers. Import Int.
+Require Import Bitvec ZArith Coqlib Util Integers.
+Import Int.
 
 Open Scope Z_scope.
 
@@ -53,20 +50,8 @@ Definition word_of_processor_mode (m : processor_mode) : word := repr (Zpos
 (** A2.3 Registers (p. 42) & A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
-Definition reg_num := bitvec 4.
-Definition mk_reg_num := mk_bitvec 4.
-
-Definition PC := mk_reg_num 15.
-Definition LR := mk_reg_num 14.
-Definition SP := mk_reg_num 13.
-
-(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
-Definition reg_num_from_bit (k : nat) (w : word) : reg_num :=
-  mk_reg_num (bits_val k (k+3) w).
-
 Inductive register : Type :=
-| R (k : reg_num)
+| R (k : regnum)
 | R_svc (k : Z) (h : 13 <= k <= 14)
 | R_abt (k : Z) (h : 13 <= k <= 14)
 | R_und (k : Z) (h : 13 <= k <= 14)
@@ -92,7 +77,7 @@ right. intro p. inversion p. contradiction.
 Qed.
 
 Definition reg_of_exn_mode (m : processor_exception_mode)
-  (k : reg_num) : register :=
+  (k : regnum) : register :=
   match m with
     | svc =>
       match between_dec 13 k 14 with
@@ -121,7 +106,7 @@ Definition reg_of_exn_mode (m : processor_exception_mode)
       end
   end.
 
-Definition reg_of_mode (m : processor_mode) (k : reg_num) : register :=
+Definition reg_of_mode (m : processor_mode) (k : regnum) : register :=
   match m with
     | usr | sys => R k
     | exn e => reg_of_exn_mode e k
@@ -251,7 +236,7 @@ Record state : Type := mk_state {
   mode : processor_mode
 }.
 
-Definition reg_content (s : state) (k : reg_num) :=
+Definition reg_content (s : state) (k : regnum) :=
   reg s (reg_of_mode (mode s) k).
 
 Definition set_cpsr s x :=
@@ -272,6 +257,8 @@ Definition update_map_reg k w s :=
 Definition update_cpsr w s := set_cpsr s w.
 Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
 Definition update_reg k w s := set_reg s (update_map_reg k w s).
+
+(*REMARK: Exception provides add_exn *)
 
 (****************************************************************************)
 (** Current instruction address

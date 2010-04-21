@@ -13,10 +13,8 @@ Bit vectors.
 
 Set Implicit Arguments.
 
-Require Import ZArith.
-Require Import Integers. Import Int.
-Require Import Util.
-Require Import Coqlib.
+Require Import ZArith Integers Util Coqlib.
+Import Int.
 
 Open Scope Z_scope.
 
@@ -27,6 +25,9 @@ Open Scope Z_scope.
 Notation word := int.
 
 Coercion intval : word >-> Z.
+
+Notation w0 := zero.
+Notation w1 := one.
 
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
@@ -99,8 +100,6 @@ Definition maxu : word := repr max_unsigned.
 Definition max : word := repr max_signed.
 Definition min : word := repr min_signed.
 
-Notation w0 := zero.
-Notation w1 := one.
 Definition w2 : word := repr 2.
 Definition w3 : word := repr 3.
 Definition w4 : word := repr 4.
@@ -168,3 +167,57 @@ Definition word_of_bitvec (v : bitvec) : word := repr v.
 Coercion word_of_bitvec : bitvec >-> word.
 
 End bitvec.
+
+(****************************************************************************)
+(** A2.1 Data types (p. 39) *)
+(****************************************************************************)
+
+Definition byte_size := 8%nat.
+Definition byte := bitvec byte_size.
+Definition mk_byte := mk_bitvec byte_size.
+
+Definition get_byte_0 w := mk_byte (intval w[7#0]).
+Definition get_byte_1 w := mk_byte (intval w[15#8]).
+Definition get_byte_2 w := mk_byte (intval w[23#16]).
+Definition get_byte_3 w := mk_byte (intval w[31#24]).
+
+Definition halfword_size := 16%nat.
+Definition halfword := bitvec halfword_size.
+Definition mk_halfword := mk_bitvec halfword_size.
+
+Definition get_half_0 w := mk_halfword (intval w[15#0]).
+Definition get_half_1 w := mk_halfword (intval w[31#16]).
+
+Definition w0x0000 := get_half_0 w0.
+Definition w0xFFFF := get_half_0 w0x0000FFFF.
+
+(****************************************************************************)
+(** Addresses (p. 68) *)
+(****************************************************************************)
+
+Definition address_size := 30%nat.
+Definition address := bitvec address_size.
+Definition mk_address := mk_bitvec address_size.
+Definition address_eqdec := @bitvec_eqdec address_size.
+
+(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
+since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
+Definition address_of_word (w : word) : address :=
+  mk_address (bits_val 2 31 w).
+
+(****************************************************************************)
+(** A2.3 Registers (p. 42) *)
+(****************************************************************************)
+
+Definition regnum_size := 4%nat.
+Definition regnum := bitvec regnum_size.
+Definition mk_regnum := mk_bitvec regnum_size.
+
+Definition PC := mk_regnum 15.
+Definition LR := mk_regnum 14.
+Definition SP := mk_regnum 13.
+
+(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
+since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
+Definition regnum_from_bit (k : nat) (w : word) : regnum :=
+  mk_regnum (bits_val k (k+3) w).

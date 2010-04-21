@@ -11,10 +11,8 @@ Page numbers refer to ARMv6.pdf.
 A2.6 Exceptions (p. 54)
 *)
 
-Require Import Proc.
-Require Import ZArith.
-Require Import Integers. Import Int.
-Require Import Bitvec.
+Require Import ZArith Bitvec Integers Proc.
+Import Int.
 
 (*Require Import Config.*)
 
