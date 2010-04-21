@@ -41,6 +41,9 @@ Definition execute (w : word) (i : instruction)
   end.
 *)
 
+Definition incr_PC (s : state) : option state :=
+  Some (update_reg PC (next_inst_address s) s).
+
 Definition next (s : state) (m : processor_mode) : option state :=
   match mode (cpsr s) with
     | None => None

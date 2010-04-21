@@ -17,7 +17,7 @@ Require Import Coqlib.
 Require Import Integers. Import Int.
 Require Import Util.
 Require Import Bitvec.
-Require Import State.
+Require Import Proc.
 
 (****************************************************************************)
 (** Arithmetic_Shift_Right (p. 1121)
@@ -89,7 +89,7 @@ System mode. *)
 (****************************************************************************)
 
 Definition CurrentModeHasSPSR (s : state) : bool :=
-  match pm s with
+  match mode s with
     | usr | sys => false
     |_ => true
   end.
@@ -144,7 +144,7 @@ and returns FALSE if the current mode is User mode. *)
 (****************************************************************************)
 
 Definition InAPrivilegedMode (s : state) : bool :=
-  match pm s with
+  match mode s with
     | usr => true
     | _ => false
   end.

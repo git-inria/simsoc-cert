@@ -8,11 +8,11 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Semantic functions for interpreting pseudo-code instructions.
+Semantic functions for interpreting pseudo-code constructions.
 *)
 
 Require Import Bitvec.
-Require Import State.
+Require Import Proc.
 Require Import ZArith.
 Require Import Integers. Import Int.
 Require Import Coqlib.
@@ -21,23 +21,18 @@ Require Import Util.
 Open Scope Z_scope.
 
 (****************************************************************************)
-(** Start opcode execution at Jazelle Program Counter (p. 172) *)
+(** Executing an instruction generates either:
+- [None] to represent UNPREDICTABLE
+- [Some (b,s)] where:
+-- [b] is a boolean indicating whether the PC needs to be incremented,
+-- [s] is the new state. *)
 (****************************************************************************)
 
-Definition Start_opcode_execution_at (w : word) (b : bool) (s : state)
-  := Some (b, s).
+Definition result := option (bool * state).
 
 (****************************************************************************)
-(** Reading the PC (p. 47) *)
+(** Semantics functions for pseudo-code constructions *)
 (****************************************************************************)
-
-Definition check_last_bit (w : word) : bool := zeq w[0] 0.
-
-Definition check_last_two_bits (w : word) : bool := zeq w[1#0] 0.
-
-
-
-
 
 Definition affect_reg (n : reg_num) (w : word) (b : bool) (s : state) : result
   := Some (zne n 15, update_reg n w s).
@@ -45,7 +40,7 @@ Definition affect_reg (n : reg_num) (w : word) (b : bool) (s : state) : result
 Definition affect_reg_of_mode (n : reg_num) (w : word) (m : processor_mode)
   (b : bool) (s : state) : result :=
   Some (b, update_reg n w
-    (update_cpsr (update_bits 4 0 (mode_number m) (cpsr s)) s)).
+    (update_cpsr (update_bits 4 0 (word_of_processor_mode m) (cpsr s)) s)).
 
 Definition affect_cpsr (w : word) (b : bool) (s: state) : result := 
   Some (b, update_cpsr w s).
@@ -86,3 +81,10 @@ Definition intIfElse (cond : bool) (f1 f2 : bool->state->result) b1 s1 :=
   if cond then f1 b1 s1 else f2 b1 s1.
 
 Definition unpredictable (b : bool) (s : state) : result := None.
+
+(****************************************************************************)
+(** Other semantic functions *)
+(****************************************************************************)
+
+Definition Start_opcode_execution_at (w : word) (b : bool) (s : state)
+  := Some (b, s). (*FIXME*)

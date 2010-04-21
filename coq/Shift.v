@@ -15,7 +15,7 @@ Set Implicit Arguments.
 
 Require Import Bitvec.
 Require Import Coqlib.
-Require Import State.
+Require Import Proc.
 Require Import Functions.
 Require Import Integers. Import Int.
 Require Import Util.
@@ -317,8 +317,8 @@ Definition so_RRX (s : state) (i : word) (m : reg_num)
 (** Semantics of a shifter operand *)
 (****************************************************************************)
 
-Definition shifter_operand_value_and_carry (st : state)
-  (i : word) (so : shifter_operand) : word * bool :=
+Definition shifter_operand_value_and_carry (st : state) (i : word)
+  (so : shifter_operand) : word * bool :=
   match so with
     | Imm rotate_imm immed_8 => so_imm i rotate_imm immed_8
     | Shift m h v =>
