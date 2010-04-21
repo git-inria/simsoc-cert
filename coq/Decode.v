@@ -14,7 +14,6 @@ Instruction decoding.
 Set Implicit Arguments.
 
 Require Import Bitvec.
-Require Import Instructions.
 Require Import List.
 Require Import ZArith.
 Require Import Integers. Import Int.
@@ -61,27 +60,27 @@ Fixpoint clist (k : nat) : list A :=
 
 End clist.
 
+Local Notation "0" := false.
+Local Notation "1" := true.
+Local Infix "'" := cons (at level 60, right associativity).
+
 Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
   match p with
-    | xI p' => bools_of_positive p' (false :: acc)
-    | xO p' => bools_of_positive p' (true :: acc)
-    | xH => true :: acc
+    | xI p' => bools_of_positive p' (0'acc)
+    | xO p' => bools_of_positive p' (1'acc)
+    | xH => 1'acc
   end.
 
 Definition bools_of_word (w : word) : list bool :=
   match unsigned w with
     | Zpos p => bools_of_positive p nil
-    | _ => clist false wordsize
+    | _ => clist 0 wordsize
   end.
+
+(*REMOVE: to be automatically generated
 
 Inductive decode_result : Type :=
   Inst (i : instruction) | Undefined | Unpredictable.
-
-Section decode.
-
-Local Notation "0" := false.
-Local Notation "1" := true.
-Local Infix "'" := cons (at level 60, right associativity).
 
 Definition decode (w : word) : decode_result :=
   match bools_of_word w with
@@ -102,5 +101,4 @@ Definition decode (w : word) : decode_result :=
       Inst (AND (condition w) s (reg_num_from_bit 12 w) (reg_num_from_bit 16 w) (decode_shifter_operand w i y))
     | _ => Unpredictable (*FIXME*)
   end.
-
-End decode.
+*)

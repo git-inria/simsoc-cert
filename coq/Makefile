@@ -15,8 +15,8 @@ MAKECOQ := $(MAKE) -f Makefile.coq
 
 COMPCERT := Coqlib Integers
 
-FILES := $(COMPCERT) Bitvec Config Decode Exception Execute Functions \
-	Instructions Semantics Shift State Util IntSemantics
+FILES := $(COMPCERT) Bitvec Config Decode Exception Functions Shift State \
+	Util IntSemantics
 
 VFILES := $(FILES:%=%.v)
 
@@ -28,7 +28,7 @@ config Makefile.coq:
 	$(MAKECOQ) depend
 
 clean:
-	rm -f `find . -name \*~` graph.ps graph.dep
+	rm -f `find . -name \*~ -o -name \*.d -o -name \*.glob -o -name \*.vo` graph.ps graph.dep
 	$(MAKECOQ) clean
 
 clean-doc:
@@ -56,14 +56,13 @@ install-dist:
 %.vo: %.v
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs" $@
 
+graphdep: graph.ps
+
 %.ps: %.dep
 	cat $< | ../tools/bin/dependot | dot -Tps > $@
 
 graph.dep: $(VFILES)
-	cat $(shell find . -name \*.v.d) | sed -e 's/ .*glob:/:/' -e 's,\./,,g' > $@
-
-graphdep: graph.ps
+	cat $(VFILES:%=%.d) | sed -e 's/ .*glob:/:/' -e 's,\./,,g' > $@
 
 %:
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs" $@
-

@@ -23,6 +23,8 @@ Require Import Integers. Import Int.
 Require Import Coqlib.
 Require Import Exception.
 
+(*REMOVE: to be automatically generated
+
 Definition execute (w : word) (i : instruction)
   (s : state) : result :=
   match i with
@@ -37,6 +39,7 @@ Definition execute (w : word) (i : instruction)
         And cond Sbit Rd Rn v s
     | BL cond L w => Bl cond L w s
   end.
+*)
 
 Definition next (s : state) (m : processor_mode) : option state :=
   match mode (cpsr s) with
