@@ -28,40 +28,6 @@ Notation word := int.
 
 Coercion intval : word >-> Z.
 
-Definition maxu : word := repr max_unsigned.
-Definition max : word := repr max_signed.
-Definition min : word := repr min_signed.
-
-Notation w0 := zero.
-Notation w1 := one.
-Definition w2 : word := repr 2.
-Definition w3 : word := repr 3.
-Definition w4 : word := repr 4.
-Definition w8 : word := repr 8.
-Definition w12 : word := repr 12.
-Definition w14 : word := repr 14.
-Definition w15 : word := repr 15.
-Definition w16 : word := repr 16.
-Definition w31 : word := repr 31.
-Definition w32 : word := repr 32.
-
-Definition w0xFFFFFFFF : word := repr max_unsigned.
-Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
-Definition w0xFFFFFFFC : word := sub (repr (max_unsigned)) w3.
-Definition w0x00000000 : word := w0.
-Definition w0x000000FF : word := repr 255.
-Definition w0x0000FF00 : word := repr 65280.
-Definition w0x00FF0000 : word := repr 16711680.
-Definition w0xFF000000 : word := repr 4278190080.
-Definition w0x80000000 : word := repr 2147483648.
-Definition w0xFFFF0008 : word := repr 4294901768.
-Definition w0x00000008 : word := w8.
-Definition w0x00FF00FF : word := repr 16711935.
-Definition w0x0000FFFF : word := repr 65535.
-Definition w0xFFFF000C : word := repr 4294901772.
-Definition w0x0000000C : word := w12.
-
-
 Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
@@ -125,10 +91,42 @@ Fixpoint update_bits_aux (p k : nat) (v w : word) : word :=
 Definition update_bits (p n : nat) (v w : word) : word :=
   update_bits_aux p (p-n) v w.
 
+(****************************************************************************)
+(** some word constants *)
+(****************************************************************************)
 
-(* update N Z C V bits *)
-(*Definition update_NZCV (b : bool) (v w : word) : word := 
-*)  
+Definition maxu : word := repr max_unsigned.
+Definition max : word := repr max_signed.
+Definition min : word := repr min_signed.
+
+Notation w0 := zero.
+Notation w1 := one.
+Definition w2 : word := repr 2.
+Definition w3 : word := repr 3.
+Definition w4 : word := repr 4.
+Definition w8 : word := repr 8.
+Definition w12 : word := repr 12.
+Definition w14 : word := repr 14.
+Definition w15 : word := repr 15.
+Definition w16 : word := repr 16.
+Definition w31 : word := repr 31.
+Definition w32 : word := repr 32.
+
+Definition w0xFFFFFFFF : word := repr max_unsigned.
+Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
+Definition w0xFFFFFFFC : word := sub (repr (max_unsigned)) w3.
+Definition w0x00000000 : word := w0.
+Definition w0x000000FF : word := repr 255.
+Definition w0x0000FF00 : word := repr 65280.
+Definition w0x00FF0000 : word := repr 16711680.
+Definition w0xFF000000 : word := repr 4278190080.
+Definition w0x80000000 : word := repr 2147483648.
+Definition w0xFFFF0008 : word := repr 4294901768.
+Definition w0x00000008 : word := w8.
+Definition w0x00FF00FF : word := repr 16711935.
+Definition w0x0000FFFF : word := repr 65535.
+Definition w0xFFFF000C : word := repr 4294901772.
+Definition w0x0000000C : word := w12.
 
 (****************************************************************************)
 (** n-bits words *)
