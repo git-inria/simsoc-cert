@@ -8,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-ARM processor state.
+Processor state.
 *)
 
 Set Implicit Arguments.
@@ -20,23 +20,6 @@ Require Import Util.
 Require Import Integers. Import Int.
 
 Open Scope Z_scope.
-
-(****************************************************************************)
-(** A2.1 Data types (p. 39) *)
-(****************************************************************************)
-
-Definition byte := bitvec 8.
-Definition halfword := bitvec 16.
-
-Definition get_half_0 (w: word) : halfword := mk_bitvec 16 (intval w[15#0]).
-Definition get_half_1 (w : word) : halfword := mk_bitvec 16 (intval w[31#16]).
-Definition get_byte_0 (w : word) : byte := mk_bitvec 8 (intval w[7#0]).
-Definition get_byte_1 (w : word) : byte := mk_bitvec 8 (intval w[15#8]).
-Definition get_byte_2 (w : word) : byte := mk_bitvec 8 (intval w[23#16]).
-Definition get_byte_3 (w : word) : byte := mk_bitvec 8 (intval w[31#24]).
-
-Definition w0x0000 : halfword := get_half_0 w0.
-Definition w0xFFFF : halfword := get_half_0 w0xFFFFFFFF.
 
 (****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
@@ -52,7 +35,7 @@ Proof. decide equality.  decide equality. Qed.
 Inductive processor_mode : Type :=
   usr | exn (m : processor_exception_mode) | sys.
 
-Definition mode_number (m : processor_mode) : word := repr (Zpos
+Definition word_of_processor_mode (m : processor_mode) : word := repr (Zpos
   (match m with
      | usr => 1~0~0~0~0
      | exn e =>
@@ -177,7 +160,7 @@ Definition Fbit := 6%nat.
 
 Definition Mbits := bits_val 0 4.
 
-Definition mode (w : word) : option processor_mode :=
+Definition processor_mode_of_word (w : word) : option processor_mode :=
   match Mbits w with
     | (*0b10000*) 16 => Some usr
     | (*0b10001*) 17 => Some (exn fiq)
@@ -210,39 +193,6 @@ Definition inst_set (w : word) : option instruction_set :=
 
 Inductive exception : Type :=
   Reset | UndIns | SoftInt | ImpAbort | PFAbort | DataAbort | IRQ | FIQ.
-
-(****************************************************************************)
-(** A2.7 Endian support (p. 68) *)
-(****************************************************************************)
-
-Definition address := bitvec 30.
-
-Definition mk_address := mk_bitvec 30.
-
-Definition address_eqdec := @bitvec_eqdec 30.
-
-(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
-Definition address_of_word (w : word) : address :=
-  mk_address (bits_val 2 31 w).
-
-Inductive endian_model : Type := LowE | BE_8 | BE_32.
-
-(****************************************************************************)
-(** A2.8 Unaligned access support (p. 76) *)
-(****************************************************************************)
-
-(****************************************************************************)
-(** A2.9 Synchronization primitives (p. 82) *)
-(****************************************************************************)
-
-(****************************************************************************)
-(** A2.10 The Jazelle Extension (p. 91) *)
-(****************************************************************************)
-
-(****************************************************************************)
-(** A2.11 Saturated integer arithmetic (p. 107) *)
-(****************************************************************************)
 
 (****************************************************************************)
 (* A3.2 The condition field (p. 111) *)
@@ -280,10 +230,11 @@ Fixpoint condition (w : word) :=
   end.
 
 (****************************************************************************)
-(** ARM state *)
+(** Processor state *)
 (****************************************************************************)
 
-(*BEWARE: invariant to preserve: mode (cpsr s) = Some m -> pm s = m.
+(*BEWARE: invariant to preserve:
+processor_mode_of_word (cpsr s) = Some m -> mode s = m.
 To preserve this invariant,
 always use the function update_cpsr defined hereafter. *)
 
@@ -294,80 +245,33 @@ Record state : Type := mk_state {
   spsr : option processor_exception_mode -> word;
   (* Registers *)
   reg : register -> word;
-  (* Memory *)
-  mem : address -> word;
   (* Raised exceptions *)
   exns : list exception;
   (* Processor mode *)
-  pm : processor_mode
+  mode : processor_mode
 }.
 
 Definition reg_content (s : state) (k : reg_num) :=
-  reg s (reg_of_mode (pm s) k).
-
-Inductive mmu_read_result : Set :=
-  | MRR_std : word -> mmu_read_result
-  | MMR_exn : state (* to be updated later *) -> mmu_read_result.
-
-Inductive mmu_write_result : Set :=
-  | MWR_std : (address -> word) -> mmu_write_result
-  | MWR_exn : state (* to be updated later *) -> mmu_write_result.
-
-(* FIXME: this MMU does not check the last two bits;
-          and the physical address is the same as the virtual address *)
-Definition mmu_read_word (s: state) (a: address) : mmu_read_result :=
-  MRR_std (mem s a).
-
-(*FIXME: to finish
-Definition mmu_read_halfword (s: state) (a: address) : mmu_read_result :=
-  let all := mem s a[31#2] in
-  if a[1] then 
-  MRR_std ().
-*)
+  reg s (reg_of_mode (mode s) k).
 
 Definition set_cpsr s x :=
-  match mode x with
-    | Some m => mk_state x (spsr s) (reg s) (mem s) (exns s) m
-    | None => mk_state x (spsr s) (reg s) (mem s) (exns s) (pm s)
+  match processor_mode_of_word x with
+    | Some m => mk_state x (spsr s) (reg s) (exns s) m
+    | None => mk_state x (spsr s) (reg s) (exns s) (mode s) (*FIXME?*)
   end.
 
-Definition set_spsr s x := mk_state (cpsr s) x (reg s) (mem s) (exns s) (pm s).
-Definition set_reg s x := mk_state (cpsr s) (spsr s) x (mem s) (exns s) (pm s).
-Definition set_mem s x := mk_state (cpsr s) (spsr s) (reg s) x (exns s) (pm s).
-Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) (mem s) x (pm s).
+Definition set_spsr s x := mk_state (cpsr s) x (reg s) (exns s) (mode s).
+Definition set_reg s x := mk_state (cpsr s) (spsr s) x (exns s) (mode s).
+Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) x (mode s).
 
 Definition update_map_spsr m w s :=
   update_map processor_exception_mode_eqdec m w (spsr s).
 Definition update_map_reg k w s :=
-  update_map register_eqdec (reg_of_mode (pm s) k) w (reg s).
-Definition update_map_mem a w s :=
-  update_map address_eqdec a w (mem s).
+  update_map register_eqdec (reg_of_mode (mode s) k) w (reg s).
 
 Definition update_cpsr w s := set_cpsr s w.
 Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
 Definition update_reg k w s := set_reg s (update_map_reg k w s).
-Definition update_mem a w s := set_mem s (update_map_mem a w s).
-
-(****************************************************************************)
-(** Addressing modes (p. 411) *)
-(****************************************************************************)
-
-Inductive addressing_mode : Type :=
-  | dataProcessing_oprand
-  | LS_word_or_UnsignedByte
-  | miscellaneous_LS
-  | LS_multiple
-  | LS_CP.
-
-(****************************************************************************)
-(** Executing an instruction generates either:
-- [None] to represent UNPREDICTABLE
-- [Some (b,s)] where:
--- [b] is a boolean indicating whether the PC needs to be incremented,
--- [s] is the new state. *)
-(****************************************************************************)
-
-Definition result := option (bool * state).
 
 (****************************************************************************)
 (** Current instruction address
@@ -379,27 +283,10 @@ Reading the program counter (p. 47) *)
 Definition cur_inst_address (s : state) : word := sub (reg_content s PC) w8.
 
 (****************************************************************************)
-(** Next ARM instruction address
+(** Next instruction address
 cf. A2.7.1 Address space (p. 70) *)
 (****************************************************************************)
 
 Definition next_inst_address (s : state) : word :=
   (*REMARK: [add (cur_inst_address s m PC) w4] is replaced by: *)
   sub (reg_content s PC) w4.
-
-Definition incr_PC (s : state) : option state :=
-  Some (update_reg PC (next_inst_address s) s).
-
-(****************************************************************************)
-(** Memory *)
-(****************************************************************************)
-
-Record block_contents : Type := mk_block {
-  addr : address;
-  length : Z;
-  contents : word
-}.
-
-Record memory : Type := mk_mem {
-  blocks : address -> Z -> block_contents
-}.
