@@ -57,14 +57,13 @@ type ident = {
   iversion : num option };;
 
 type prog =
+(* paragraph in the manual, instruction name, alternative names, pseudo-code *)
 | Instruction of string * ident * ident list * inst
-(* Instruction: ref, ident, altidents, code *)
-| Operand of string * string list * string list * inst
-(* Operand: ref, class, name, code *)
-;;
+(* paragraph in the manual, class, name, pseudo-code *)
+| Operand of string * string list * string list * inst;;
 
 let inst_of = function
-  | Instruction (_, _, _, i) | Operand(_, _, _, i) -> i;;
+  | Instruction (_, _, _, i) | Operand (_, _, _, i) -> i;;
 
 let args = function
   | BinOp (_, f, _) as e ->

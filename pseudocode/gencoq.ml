@@ -37,49 +37,6 @@ let hex = function
   | "0x0000ffff" -> "0x0000FFFF"
   | s -> s;;
 
-(* Coq types of usual variables *)
-
-let type_of_var = function
-  | "cond" -> "opcode"
-  | "mode" -> "processor_mode"
-  | "S" | "L" | "F" | "I" | "A" | "R" | "shifter_carry_out" | "shift" | "mmod"
-  | "x" | "y" | "W" | "X" |"U"
-      -> "bool"
-  | "shifter_operand" | "shift_imm" | "immed_8" | "signed_immed_24" | "H"
-  | "imod" | "sat_imm" | "start_address" | "new_Rn" |"opcode" | "cp_num"
-  | "register_list" | "field_mask" | "rotate_imm" | "rotate" | "offset_12"
-  | "index" | "immedL" | "immedH" | "offset_8" | "end_address"
-      -> "word"
-  | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "reg_num"
-  | "s0" -> "state"
-  | "md" -> "processor_mode"
-  | "address" -> "address"
-  | _ -> "TODO0";;
-
-module G = struct
-
-  type typ = string;;
-
-  let global_type = type_of_var;;
-
-  let local_type s e =
-    match e with
-      | Memory (_, "1") -> "byte"
-      | Memory (_, "2") -> "halfword"
-      | Memory (_, "4") -> "word"
-      | _ -> type_of_var s;;
-
-  let key_type = "word";;
-
-end;;
-
-module V = Preproc.Make(G);;
-
-let variables p =
-  let gs, ls = V.vars p in
-    (StrMap.fold (fun s t l -> (s,t)::l) gs [],
-     StrMap.fold (fun s t l -> (s,t)::l) ls []);;
-
 let num_word = function
   | "0" -> "w0"
   | "1" -> "w1"
@@ -171,18 +128,65 @@ let var = function
   | "v5_and_above" -> "proc.v5_and_above"
   | s -> s;;
 
+(***********************************************************************)
+(** Coq types of program variables *)
+(***********************************************************************)
+
+let type_of_var = function
+  | "cond" -> "opcode"
+  | "mode" -> "processor_mode"
+  | "S" | "L" | "F" | "I" | "A" | "R" | "shifter_carry_out" | "shift" | "mmod"
+  | "x" | "y" | "W" | "X" |"U" -> "bool"
+  | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
+  | "s0" -> "state"
+  | "md" -> "processor_mode"
+  | "address" -> "address"
+  | _ -> "word";;
+
+module G = struct
+
+  type typ = string;;
+
+  let global_type = type_of_var;;
+
+  let local_type s e =
+    match e with
+      | Memory (_, "1") -> "byte"
+      | Memory (_, "2") -> "halfword"
+      | Memory (_, "4") -> "word"
+      | _ -> type_of_var s;;
+
+  let key_type = "word";;
+
+end;;
+
+module V = Preproc.Make(G);;
+
+let variables p =
+  let gs, ls = V.vars p in
+    (StrMap.fold (fun s t l -> (s,t)::l) gs [],
+     StrMap.fold (fun s t l -> (s,t)::l) ls []);;
+
+(***********************************************************************)
+(** translation of expressions *)
+(***********************************************************************)
+
 let input_registers = ["n"; "m"; "s"];;
 
+(*FIXME: to be moved to preproc *)
 let optemps = ["index"; "offset_8"; "end_address"];;
 
-let rec exp b = function
+let rec pexp b = function
+    | Bin _ | Hex _ | Num _ | Var _ as e -> exp b e
+    | e -> par exp b e
+
+and exp b = function
   | Bin s -> string b (hex_of_bin s)
-  (*| Hex s -> bprintf b "w%s" s*)
   | Hex s -> bprintf b "w%s" (hex s)
   | Num s -> string b s
-  | CPSR -> string b "cpsr s0"
-  | SPSR None -> string b "spsr s0 None"
-  | SPSR (Some m) -> bprintf b "spsr s0 Some(%s)" (mode m)
+  | CPSR -> string b "cpsr (proc s0)"
+  | SPSR None -> string b "spsr (proc s0) None"
+  | SPSR (Some m) -> bprintf b "spsr (proc s0) %s" (mode m)
   | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
   | BinOp (e1, ("<<" | ">>" | "+" | "-" | "*" | ">=" | "<" | ">" | "Rotate_Right" | "Arithmetic_Shift_Right"  as op), Num n) ->
       exp b (Fun (binop op, [e1; Var (num_word n)]))
@@ -196,7 +200,7 @@ let rec exp b = function
   | BinOp (e1, op, Num n) -> bprintf b "%a %s %s" exp e1 (binop op) (num_word n)
   | BinOp (e1, op, e2) -> bprintf b "(%a) %s (%a)" exp e1 (binop op) exp e2
   | Fun (f, es) -> 
-	bprintf b "%s %a" (func f) (list " " para) es
+	bprintf b "%s %a" (func f) (list " " pexp) es
 
   | If_exp (e1, e2, e3) ->
       begin match e2, e3 with
@@ -235,14 +239,11 @@ let rec exp b = function
       bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
   | Var str -> string b (var str)
 
-  | _ -> string b "TODO6"
+  | _ -> string b "TODO6";;
 
-and para b e =
-  begin match e with
-    | Bin _ | Hex _ | Num _ | Var _ -> bprintf b "%a" exp e
-    | _ -> bprintf b "(%a)" exp e
-  end
-;;
+(***********************************************************************)
+(** translation of instructions *)
+(***********************************************************************)
 
 let rec inst k b = function
   | Block _ | For _ | While _ | If _ | Case _ as i ->
@@ -250,20 +251,20 @@ let rec inst k b = function
   | i -> bprintf b "%a" (*Genpc.indent (k)*) (inst_aux k) i
 
 and inst_aux k b = function
-  | Unpredictable -> string b "unpredictable"
+  | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
 
   | Affect (dst, src) -> affect k b dst src
-  | Proc (f, es) -> bprintf b "%s%a" f (list " " para) es
+  | Proc (f, es) -> bprintf b "%s%a" f (list " " pexp) es
   | Assert e -> bprintf b "assert(%a)" exp e
   | Coproc (e, f, es) ->
       bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list " " exp) es
-  | Block [] -> () 
 
+  | Block [] -> () 
   | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
-      bprintf b "intBlock(\n%a%a::\n%anil)" Genpc.indent (k+2) 
+      bprintf b "block(\n%a%a::\n%anil)" Genpc.indent (k+2) 
 	(inst_aux k) i (list "\n" (block_aux k)) is
   | Block (is) ->
-      bprintf b "intBlock(\n%anil)"
+      bprintf b "block(\n%anil)"
 	(list "\n" (block_aux k)) is
 
   | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
@@ -277,12 +278,12 @@ and inst_aux k b = function
         exp e (list "" (case_aux k)) s Genpc.indent k
 
   | If (e, i1, Some i2) ->
-      bprintf b "intIfElse (%a)\n  %a(%a)\n  %a(%a)"
+      bprintf b "if_then_else (%a)\n  %a(%a)\n  %a(%a)"
 	exp e Genpc.indent (k+2) (inst (k+2)) i1
 	Genpc.indent (k+2) (inst (k+2)) i2
 
   | If (e, i, None) ->
-      bprintf b "intIf (%a)\n%a(%a)"
+      bprintf b "if_then (%a)\n%a(%a)"
 	exp e Genpc.indent (k+2) (inst (k+2)) i
 
   | _ -> string b "TODO7(\"inst\")"
@@ -300,9 +301,6 @@ and case_aux k b (n, i) =
     Genpc.indent k (hex_of_bin n) (inst (k+2)) i Genpc.indent k
 
 and affect k b dst src =
-  if src = Unpredictable_exp then string b "unpredictable"
-  else
-    begin
     match dst with
       | Reg (Num n, None) ->
 	  bprintf b "affect_reg %s (%a)" (reg_id n) exp src
@@ -370,10 +368,11 @@ and affect k b dst src =
 	    | _ ->
 		inst_aux k b (Proc ("update_bit ", [n; src; e]))
 	  end
-      | _ -> string b "TODO9(\"affect\")"
-    end;;
+      | _ -> string b "TODO9(\"affect\")";;
 
-(** Generate a function modeling an instruction of the processor *)
+(***********************************************************************)
+(** semantic step function of some instruction *)
+(***********************************************************************)
 
 let version_in_comment b k = bprintf b " (%s)" k;;
 
@@ -456,23 +455,39 @@ let lsm_hack p =
         Operand (r , c, n, (inst i))
       else p;;
 
+(***********************************************************************)
+(** constructor of some instruction *)
+(***********************************************************************)
+
 let inst_typ gs b = function
   | Operand _ -> ()
   | Instruction (_ , id, ids, _) ->
       bprintf b "| %a %a" (list "_" ident) (id :: ids) (list "" prog_arg) gs;;
 
-let args b (v,_) = bprintf b "%s " v;;
+(***********************************************************************)
+(** call to the semantics step function of some instruction *)
+(***********************************************************************)
 
-let inst_sem gs b p = 
-  match p with
-    | Operand _ -> ()
-    | Instruction (_, id, is, _) ->
-	bprintf b "    | %a %a =>"
-	  (list "_" ident) (id :: is) (list "" args) gs;
-	if List.exists ((=) ("shifter_operand", "word")) gs then
-	  bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-	bprintf b " %a_step %a v s0"
-	  (list "_" ident) (id :: is) (list "" args) gs;;
+let var_name b (v, _) = bprintf b "%s" v;;
+
+let name = list "_" ident;;
+
+let inst_sem gs b = function
+  | Operand _ -> () (*FIXME*)
+  | Instruction (_, id, ids, _) ->
+      bprintf b "    | %a %a =>" name (id::ids) (list " " var_name) gs;
+      if List.exists ((=) ("shifter_operand", "word")) gs then
+	bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
+      bprintf b " %a_step %a v s0" name (id::ids) (list " " var_name) gs;;
+
+(***********************************************************************)
+(** Main coq generation function.
+For each instruction:
+- generate its semantics step function
+- generate the corresponding constructor for the type of instructions
+- generate the call to its semantics step function in the general
+semantics step function *)
+(***********************************************************************)
 
 let lib b ps =
   let btyp = Buffer.create 10000 in
@@ -484,6 +499,8 @@ let lib b ps =
       bprintf btyp "%a\n" (inst_typ gs) p;
       bprintf bsem "%a\n" (inst_sem gs) p
   in
+    bprintf b "Require Import Bitvec List Semantics Integers Util Functions Config Proc State.\n";
+    bprintf b "Import Int.\n\n";
     List.iter prog_typ_sem ps;
     bprintf b "Inductive instruction : Type :=\n";
     Buffer.add_buffer b btyp;
