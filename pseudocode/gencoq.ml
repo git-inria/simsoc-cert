@@ -411,7 +411,7 @@ let lsm_hack p =
       if id.iname = "LDM" or id.iname = "STM"
       then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
         let a = If (Var "W", Affect (Reg (Var "n", None), 
-				     Var "reg_content n s"), None) in
+				     Var "n"), None) in
         let i = match i with
           | If (c, Block (is), None) ->
               If (c, Block (is@[a]), None)
@@ -448,6 +448,9 @@ let inst_sem gs b = function
   | Instruction (_, id, ids, _) ->
       bprintf b "    | %a %a =>" name (id::ids) (list " " var_name) gs;
       if List.exists ((=) ("shifter_operand", "word")) gs then
+	if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
+	  bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
+	else
 	bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
       bprintf b " %a_step %a v s0" name (id::ids) (list " " var_name) gs;;
 
