@@ -22,7 +22,7 @@ Set Implicit Arguments.
 (****************************************************************************)
 
 Inductive addressing_mode : Type :=
-  | dataProcessing_oprand
+  | dataProcessing_operand
   | LS_word_or_UnsignedByte
   | miscellaneous_LS
   | LS_multiple
