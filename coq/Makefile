@@ -25,7 +25,6 @@ default: Makefile.coq
 
 config Makefile.coq:
 	coq_makefile -R . $(NAME) $(VFILES) > Makefile.coq
-	$(MAKECOQ) depend
 
 clean:
 	rm -f `find . -name \*~ -o -name \*.d -o -name \*.glob -o -name \*.vo` graph.ps graph.dep
