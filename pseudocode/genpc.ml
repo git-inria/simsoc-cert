@@ -15,8 +15,6 @@ open Ast;;
 open Printf;;
 open Util;;
 
-let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
-
 let string_of_mode = function
   | Fiq -> "fiq"
   | Irq -> "irq"
