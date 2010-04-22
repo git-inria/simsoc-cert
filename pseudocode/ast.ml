@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Pseudocode abstract syntax tree.
 *)
 
-type processor_exception_mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
+type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 
 type num = string;;
 
@@ -24,8 +24,8 @@ type exp =
 | BinOp of exp * string * exp
 | Other of string list
 | CPSR
-| SPSR of processor_exception_mode option
-| Reg of exp * processor_exception_mode option
+| SPSR of mode option
+| Reg of exp * mode option
 | Var of string
 | Range of exp * range
 | Unaffected
@@ -37,6 +37,14 @@ and range =
 | Bits of num * num
 | Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
 | Index of exp;;
+
+let args = function
+  | BinOp (_, f, _) as e ->
+      let rec aux = function
+	| BinOp (e1, g, e2) when g = f -> aux e1 @ aux e2
+	| e -> [e]
+      in aux e
+  | e -> [e];;
 
 type inst =
 | Block of inst list
@@ -53,7 +61,7 @@ type inst =
 
 type ident = {
   iname : string;
-  ivars : string list;
+  iparams : string list;
   iversion : num option };;
 
 type prog =
@@ -62,13 +70,8 @@ type prog =
 (* paragraph in the manual, class, name, pseudo-code *)
 | Operand of string * string list * string list * inst;;
 
-let inst_of = function
+let prog_inst = function
   | Instruction (_, _, _, i) | Operand (_, _, _, i) -> i;;
 
-let args = function
-  | BinOp (_, f, _) as e ->
-      let rec aux = function
-	| BinOp (e1, g, e2) when g = f -> aux e1 @ aux e2
-	| e -> [e]
-      in aux e
-  | e -> [e];;
+let prog_ref = function
+  | Instruction (r, _, _, _) | Operand (r, _, _, _) -> r;;

@@ -23,7 +23,7 @@ Pseudocode parser.
 %token IF THEN ELSE WHILE DO ASSERT FOR TO CASE ENDCASE OF
 %token CPSR MEMORY
 %token COPROC LOAD SEND NOT_FINISHED FROM
-%token <Ast.processor_exception_mode option> SPSR_MODE
+%token <Ast.mode option> SPSR_MODE
 %token <Ast.exp> REG
 %token <string> BIN HEX
 %token <Ast.num> NUM
@@ -62,7 +62,7 @@ prog:
 ;
 prog_ident:
 | prog_name prog_vars prog_version
-    { { iname = $1; ivars = $2; iversion = $3 } }
+    { { iname = $1; iparams = $2; iversion = $3 } }
 ;
 prog_idents:
 | prog_ident                  { [$1] }
