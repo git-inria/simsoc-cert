@@ -22,7 +22,7 @@ Import Int.
 (** A2.6 Exceptions (p. 54) *)
 (****************************************************************************)
 
-Definition exception_mode (e : exception) : processor_exception_mode :=
+Definition exception_mode (e : exception) : exn_mode :=
   match e with
     | Reset => svc
     | UndIns => und

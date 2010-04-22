@@ -27,28 +27,26 @@ Inductive result : Type :=
 (** Semantics functions for pseudo-code constructions *)
 (****************************************************************************)
 
-Definition affect_reg (n : regnum) (w : word) (b : bool) (s : state) : result
-  := Ok (zne n 15) (update_reg n w s).
+Definition set_reg (n : regnum) (w : word) (b : bool) (s : state) : result
+  := Ok (zne n 15) (set_reg s n w).
 
-Definition affect_reg_of_mode (n : regnum) (w : word) (m : processor_mode)
-  (b : bool) (s : state) : result := (*FIXME*)
-  Ok b (update_reg n w
-    (update_cpsr (update_bits 4 0 (word_of_processor_mode m) (cpsr (proc s))) s)).
+Definition set_reg_of_mode (m : proc_mode) (k : regnum) (w : word)
+  (b : bool) (s : state) : result := Ok b (set_reg_of_mode s m k w).
 
-Definition affect_cpsr (w : word) (b : bool) (s: state) : result := 
-  Ok b (update_cpsr w s).
+Definition set_cpsr (w : word) (b : bool) (s: state) : result := 
+  Ok b (set_cpsr s w).
 
-Definition affect_cpsr_bit (n : nat) (v w : word) (b : bool) (s : state)
-  : result := Ok b (update_cpsr (update_bit n v w) s).
+Definition set_cpsr_bit (n : nat) (v w : word) (b : bool) (s : state) : result
+  := Ok b (State.set_cpsr s (update_bit n v w)).
 
-Definition affect_cpsr_bits (n p : nat) (v w : word) (b : bool) (s : state)
-  : result := Ok b (update_cpsr (update_bits n p v w) s).
+Definition set_cpsr_bits (n p : nat) (v w : word) (b : bool) (s : state)
+  : result := Ok b (State.set_cpsr s (update_bits n p v w)).
 
-Definition affect_spsr (w : word) (m : option processor_exception_mode) 
-  (b : bool) (s : state) : result := Ok b (update_spsr m w s).
+Definition set_spsr (m : option exn_mode) (w : word) (b : bool) (s : state)
+  : result := Ok b (set_spsr s m w).
 
-Definition seq (f1 f2 : bool->state->result) b1 s1 : result :=
-  match f1 b1 s1 with
+Definition seq (f1 f2 : bool->state->result) (b1 : bool) (s1 : state) : result
+  := match f1 b1 s1 with
     | Ok b2 s2 =>
       match f2 b2 s2 with
         | Ok b3 s3 => Ok (andb b2 b3) s3
@@ -57,7 +55,8 @@ Definition seq (f1 f2 : bool->state->result) b1 s1 : result :=
     | r => r
   end.
 
-Fixpoint block (fs : list (bool->state->result)) b1 s1 :=
+Fixpoint block (fs : list (bool->state->result)) (b1 : bool) (s1 : state)
+  : result :=
   match fs with
     | nil => Ok b1 s1
     | f :: fs' =>

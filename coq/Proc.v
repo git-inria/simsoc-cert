@@ -22,17 +22,15 @@ Open Scope Z_scope.
 (** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)
 
-Inductive processor_exception_mode : Type := fiq | irq | svc | abt | und.
+Inductive exn_mode : Type := fiq | irq | svc | abt | und.
 
-Lemma processor_exception_mode_eqdec :
-  forall x y : option processor_exception_mode, {x=y}+{~x=y}.
+Lemma opt_exn_mode_eqdec : forall x y : option exn_mode, {x=y}+{~x=y}.
 
-Proof. decide equality.  decide equality. Qed.
+Proof. decide equality. decide equality. Qed.
 
-Inductive processor_mode : Type :=
-  usr | exn (m : processor_exception_mode) | sys.
+Inductive proc_mode : Type := usr | exn (m : exn_mode) | sys.
 
-Definition word_of_processor_mode (m : processor_mode) : word := repr (Zpos
+Definition word_of_proc_mode (m : proc_mode) : word := repr (Zpos
   (match m with
      | usr => 1~0~0~0~0
      | exn e =>
@@ -76,8 +74,8 @@ destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
 Qed.
 
-Definition reg_of_exn_mode (m : processor_exception_mode)
-  (k : regnum) : register :=
+Definition reg_of_exn_mode (m : exn_mode) (k : regnum)
+  : register :=
   match m with
     | svc =>
       match between_dec 13 k 14 with
@@ -106,7 +104,7 @@ Definition reg_of_exn_mode (m : processor_exception_mode)
       end
   end.
 
-Definition reg_of_mode (m : processor_mode) (k : regnum) : register :=
+Definition reg_of_mode (m : proc_mode) (k : regnum) : register :=
   match m with
     | usr | sys => R k
     | exn e => reg_of_exn_mode e k
@@ -145,15 +143,15 @@ Definition Fbit := 6%nat.
 
 Definition Mbits := bits_val 0 4.
 
-Definition processor_mode_of_word (w : word) : option processor_mode :=
+Definition proc_mode_of_word (w : word) : option proc_mode :=
   match Mbits w with
-    | (*0b10000*) 16 => Some usr
-    | (*0b10001*) 17 => Some (exn fiq)
-    | (*0b10010*) 18 => Some (exn irq)
-    | (*0b10011*) 19 => Some (exn svc)
-    | (*0b10111*) 23 => Some (exn abt)
-    | (*0b11011*) 27 => Some (exn und)
-    | (*0b11111*) 31 => Some sys
+    | Zpos 1~0~0~0~0 => Some usr
+    | Zpos 1~0~0~0~1 => Some (exn fiq)
+    | Zpos 1~0~0~1~0 => Some (exn irq)
+    | Zpos 1~0~0~1~1 => Some (exn svc)
+    | Zpos 1~0~1~1~1 => Some (exn abt)
+    | Zpos 1~1~0~1~1 => Some (exn und)
+    | Zpos 1~1~1~1~1 => Some sys
     | _ => None
   end.
 
@@ -219,46 +217,52 @@ Fixpoint condition (w : word) :=
 (****************************************************************************)
 
 (*BEWARE: invariant to preserve:
-processor_mode_of_word (cpsr s) = Some m -> mode s = m.
+proc_mode_of_word (cpsr s) = Some m -> mode s = m.
 To preserve this invariant,
-always use the function update_cpsr defined hereafter. *)
+always use the function set_cpsr defined hereafter. *)
 
 Record state : Type := mk_state {
   (* Current program status register *)
   cpsr : word;
   (* Saved program status registers *)
-  spsr : option processor_exception_mode -> word;
+  spsr : option exn_mode -> word;
   (* Registers *)
   reg : register -> word;
   (* Raised exceptions *)
   exns : list exception;
   (* Processor mode *)
-  mode : processor_mode
+  mode : proc_mode
 }.
 
-Definition reg_content (s : state) (k : regnum) :=
-  reg s (reg_of_mode (mode s) k).
-
-Definition set_cpsr s x :=
-  match processor_mode_of_word x with
-    | Some m => mk_state x (spsr s) (reg s) (exns s) m
-    | None => mk_state x (spsr s) (reg s) (exns s) (mode s) (*FIXME?*)
+Definition set_cpsr (s : state) (w : word) : state :=
+  match proc_mode_of_word w with
+    | Some m => mk_state w (spsr s) (reg s) (exns s) m
+    | None => mk_state w (spsr s) (reg s) (exns s) (mode s) (*FIXME?*)
   end.
 
-Definition set_spsr s x := mk_state (cpsr s) x (reg s) (exns s) (mode s).
-Definition set_reg s x := mk_state (cpsr s) (spsr s) x (exns s) (mode s).
-Definition set_exns s x := mk_state (cpsr s) (spsr s) (reg s) x (mode s).
+Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
+  mk_state (cpsr s)
+  (update_map opt_exn_mode_eqdec (spsr s) o w)
+  (reg s) (exns s) (mode s).
 
-Definition update_map_spsr m w s :=
-  update_map processor_exception_mode_eqdec m w (spsr s).
-Definition update_map_reg k w s :=
-  update_map register_eqdec (reg_of_mode (mode s) k) w (reg s).
+Definition set_reg_of_mode (s : state) (m : proc_mode) (k : regnum) (w : word)
+  : state :=
+  mk_state (cpsr s) (spsr s)
+  (update_map register_eqdec (reg s) (reg_of_mode m k) w)
+  (exns s) (mode s).
 
-Definition update_cpsr w s := set_cpsr s w.
-Definition update_spsr m w s := set_spsr s (update_map_spsr m w s).
-Definition update_reg k w s := set_reg s (update_map_reg k w s).
+Definition set_reg (s : state) (k : regnum) (w : word) : state :=
+  set_reg_of_mode s (mode s) k w.
 
-(*REMARK: Exception provides add_exn *)
+Definition reg_content_of_mode (s : state) (m : proc_mode) (k : regnum)
+  : word := reg s (reg_of_mode m k).
+
+Definition reg_content (s : state) (k : regnum) : word :=
+  reg_content_of_mode s (mode s) k.
+
+Definition set_exns (s : state) (es : list exception) : state :=
+  mk_state (cpsr s) (spsr s) (reg s) es (mode s).
+(*REMARK: Exception provides a function "add_exn" *)
 
 (****************************************************************************)
 (** Current instruction address

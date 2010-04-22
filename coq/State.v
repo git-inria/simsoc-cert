@@ -13,7 +13,7 @@ Global state.
 
 Set Implicit Arguments.
 
-Require Import Proc SCC.
+Require Import Proc SCC Bitvec List.
 
 Record state : Type := mk_state {
   (* Processor *)
@@ -22,12 +22,23 @@ Record state : Type := mk_state {
   scc : SCC.state
 }.
 
-Definition set_proc s x := mk_state x (scc s).
-Definition set_scc s x := mk_state (proc s) x.
+Definition set_cpsr (s : state) (w : word) : state :=
+  mk_state (set_cpsr (proc s) w) (scc s).
 
-Definition update_proc x s := set_proc s x.
-Definition update_scc x s := set_scc s x.
+Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
+  mk_state (set_spsr (proc s) o w) (scc s).
 
-Definition update_cpsr w s := update_proc (update_cpsr w (proc s)) s.
-Definition update_spsr m w s := update_proc (update_spsr m w (proc s)) s.
-Definition update_reg k w s := update_proc (update_reg k w (proc s)) s.
+Definition set_reg_of_mode (s : state) (m : proc_mode) (k : regnum) (w : word)
+  : state := mk_state (set_reg_of_mode (proc s) m k w) (scc s).
+
+Definition set_reg (s : state) (k : regnum) (w : word) : state :=
+  mk_state (set_reg (proc s) k w) (scc s).
+
+Definition reg_content_of_mode (s : state) (m : proc_mode) (k : regnum) : word
+  := reg_content_of_mode (proc s) m k.
+
+Definition reg_content (s : state) (k : regnum) : word :=
+  reg_content (proc s) k.
+
+Definition set_exns (s : state) (es : list exception) : state :=
+  mk_state (set_exns (proc s) es) (scc s).

@@ -70,7 +70,7 @@ Section update_map.
 
 Variables (A : Type) (eqdec : forall x y : A, {x=y}+{~x=y}) (B : Type).
 
-Definition update_map (a : A) (b : B) (f : A -> B) : A -> B :=
+Definition update_map (f : A -> B) (a : A) (b : B) : A -> B :=
   fun x => if eqdec x a then b else f x.
 
 End update_map.
