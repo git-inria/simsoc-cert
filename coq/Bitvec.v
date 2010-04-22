@@ -55,11 +55,9 @@ Notation "w [ p # n ]" := (bits p n w) (at level 8).
 (* value of w[p:n] *)
 (*IMPROVE: use a shift instead*)
 Definition bits_val (p n : nat) (w : word) : Z := w[p#n] / two_power_nat n.
-Definition bits_val_impr (p n : nat) (w : word) : Z := 
-  shr w[p#n] (repr (Z_of_nat n)).
 
 (* w[n] = bit [n] of [w] *)
-Definition bit n := bits n n.
+Definition bit (n : nat) (w : word) : word := bits n n w.
 Notation get := bit.
 Notation "w [ n ]" := (bit n w) (at level 8).
 
@@ -67,7 +65,7 @@ Notation "w [ n ]" := (bit n w) (at level 8).
 Definition is_set (n : nat) (w : word) : bool := zne w[n] 0.
 
 (* tell if a signed word is negative *)
-Definition is_neg := is_set 31.
+Definition is_neg (w : word) : bool := is_set 31 w.
 
 (* set w[k] to 1 *)
 Definition set (n : nat) (w : word) : word := or (mask n) w.
@@ -75,9 +73,11 @@ Definition set (n : nat) (w : word) : word := or (mask n) w.
 (* set w[k] to 0 *)
 Definition clear (n : nat) (w : word) : word := and (anti_mask n) w.
 
-(* update w[k] *)
+(* update w[k] from a boolean value *)
 Definition update_bit_aux (n : nat) (b : bool) (w : word) : word :=
   if b then clear n w else set n w.
+
+(* update w[k] froma word *)
 Definition update_bit (n : nat) (v w : word) : word :=
   update_bit_aux n (zeq v 0) w.
 
