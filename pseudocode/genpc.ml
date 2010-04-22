@@ -110,17 +110,18 @@ and case_aux k b (n, i) =
 
 let version b k = bprintf b "(%s)" k;;
 
-let var b s = bprintf b "<%s>" s;;
+let param b s = bprintf b "<%s>" s;;
 
 let ident b i =
-  bprintf b "%s%a%a" i.iname (list "" var) i.ivars
+  bprintf b "%s%a%a" i.iname (list "" param) i.iparams
     (option " " version) i.iversion;;
 
-let prog b = function
-  | Instruction (r, id, is, i) ->
-      bprintf b "%s %a\n%a\n" r (list ", " ident) (id :: is) (inst 9) i
-  | Operand (r, c, n, i) ->
-      bprintf b "%s %a - %a\n%a\n" r
-        (list " " string) c (list " " string) n (inst 9) i;;
+let prog_name b = function
+  | Instruction (_, id, is, _) -> bprintf b "%a" (list ", " ident) (id::is)
+  | Operand (_, c, n, _) ->
+      bprintf b "%a - %a" (list " " string) c (list " " string) n;;
+
+let prog b p =
+  bprintf b "%s %a\n%a\n" (prog_ref p) prog_name p (inst 9) (prog_inst p);;
 
 let lib b ps = list "" prog b ps;;
