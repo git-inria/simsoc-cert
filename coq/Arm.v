@@ -268,16 +268,16 @@ Notation LO := CC.
 
 (*IMPROVE: by allowing heading 0's? *)
 
-Fixpoint condition (w : word) :=
+Fixpoint condition (w : word) : opcode :=
   match bits_val 31 28 w with
-    | Z0 => EQ
-    | Zpos 1 => NE
-    | Zpos 1~0 => CS
-    | Zpos 1~1 => CC
-    | Zpos 1~0~0 => MI
-    | Zpos 1~0~1 => PL
-    | Zpos 1~1~0 => VS
-    | Zpos 1~1~1 => VC
+    | Z0           => EQ
+    | Zpos       1 => NE
+    | Zpos     1~0 => CS
+    | Zpos     1~1 => CC
+    | Zpos   1~0~0 => MI
+    | Zpos   1~0~1 => PL
+    | Zpos   1~1~0 => VS
+    | Zpos   1~1~1 => VC
     | Zpos 1~0~0~0 => HI
     | Zpos 1~0~0~1 => LS
     | Zpos 1~0~1~0 => GE
