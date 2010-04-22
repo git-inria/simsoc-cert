@@ -42,10 +42,10 @@ Inductive shifter_operand : Type :=
 
 Definition decode_shifter (w : word) : shifter :=
   match bits_val 5 6 w with
-    | (*00*) 0 => LSL
-    | (*01*) 1 => LSR
-    | (*10*) 2 => ASR
-    | (*11*) _ => ROR
+    | Z0 => LSL
+    | Zpos 1 => LSR
+    | Zpos 1~0 => ASR
+    | _ => ROR
   end.
 
 (*IMPROVE: duplicate the following functions in case you do not need to
