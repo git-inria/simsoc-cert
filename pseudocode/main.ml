@@ -98,42 +98,33 @@ let parse_channel ic =
     lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = get_filename() };
     parse_lexbuf lb;;
 
-let parse_string s =
-  let lb = Lexing.from_string s in parse_lexbuf lb;;
+let parse_string s = parse_lexbuf (Lexing.from_string s);;
 
 (***********************************************************************)
 (** main procedure *)
 (***********************************************************************)
 
-let string_of f ps =
+let print f ps =
   let b = Buffer.create 10000 in
-    f b ps; Buffer.contents b;;
+    f b ps; Buffer.output_buffer stdout b;;
+
+let genpcc ps =
+  let b = Buffer.create 10000 in
+    Genpc.lib b ps;
+    Buffer.output_buffer stdout b;
+    let ps' = parse_string (Buffer.contents b) in
+      fprintf stderr "reparsing: %s\n"
+	(if ps = ps' then "good" else "wrong");;
 
 let main () =
   parse_args ();
   let ps = parse_file parse_channel (get_filename()) in
     match get_action () with
-      | GenPC ->
-	  let s = string_of Genpc.lib ps in
-	    print_endline s
-      | GenPCC ->
-	  let s = string_of Genpc.lib ps in
-	    print_endline s;
-	    let ps' = parse_string s in
-	      fprintf stderr "reparsing: %s\n"
-		(if ps = ps' then "good" else "wrong")
-      | GenPre ->
-	  let ps = List.map Preproc.prog ps in
-	  let s = string_of Genpc.lib ps in
-	    print_endline s
-      | GenCxx ->
-	  let ps = List.map Preproc.prog ps in
-	  let s = string_of Gencxx.lib ps in
-	    print_string s
-      | GenCoq ->
-	  let ps = List.map Preproc.prog ps in
-	  let s = string_of Gencoq.lib ps in
-	    print_endline s
+      | GenPC -> print Genpc.lib ps
+      | GenPCC -> genpcc ps
+      | GenPre -> print Genpc.lib (List.map Preproc.prog ps)
+      | GenCxx -> print Gencxx.lib (List.map Preproc.prog ps)
+      | GenCoq -> print Gencoq.lib (List.map Preproc.prog ps)
 ;;
 
 (***********************************************************************)
