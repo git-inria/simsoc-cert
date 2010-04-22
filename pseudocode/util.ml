@@ -51,3 +51,5 @@ let option p f b = function
   | Some x -> prefix p f b x;;
 
 let par f b x = bprintf b "(%a)" f x;;
+
+let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
