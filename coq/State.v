@@ -50,3 +50,14 @@ Definition set_exns (s : state) (es : list exception) : state :=
   mk_state (set_exns (proc s) es) (scc s).
 
 Definition mode (s : state) : proc_mode := mode (proc s).
+
+Definition cur_inst_address (s : state) : word := cur_inst_address (proc s).
+
+Definition next_inst_address (s : state) : word := next_inst_address (proc s).
+
+Definition CurrentModeHasSPSR (s : state) : bool := CurrentModeHasSPSR (mode s).
+
+Definition InAPrivilegedMode (s : state) : bool := InAPrivilegedMode (mode s).
+
+Definition ConditionPassed (s : state) (op : opcode) : bool :=
+  ConditionPassed (cspr s) op.
