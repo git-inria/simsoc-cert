@@ -174,7 +174,7 @@ let variables p =
 (***********************************************************************)
 
 (*REMOVE when finished! *)
-let todo f b e = bprintf b "todo (* %a *)" f e;;
+let todo f b e = bprintf b "todo \"%a\"" f e;;
 
 let mode = Genpc.mode;;
 
@@ -224,12 +224,15 @@ and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
   | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
   | Block is ->
-      bprintf b "block (\n%a%anil)" (list " ::\n" (inst (k+2))) is indent (k+2)
+      bprintf b "block (\n%a%anil)"
+	(list "" (postfix " ::\n" (inst (k+2)))) is indent (k+2)
   | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
-  | Affect (e1, e2) -> bprintf b "%a %a" affect e1 pexp e2
+  | Affect (e1, e2) as i ->
+      begin try bprintf b "%a %a" affect e1 pexp e2
+      with Not_found -> todo (Genpc.inst 0) b i end
   | (While _ | For _ | Coproc _ | Case _) as i -> todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
@@ -239,7 +242,7 @@ and affect b = function
   | CPSR -> bprintf b "set_cpsr"
   | SPSR None -> bprintf b "set_spsr"
   | SPSR (Some m) -> bprintf b "set_spsr_mode %a" mode m
-  | e -> todo exp b e
+  | _ -> raise Not_found
 ;;
 
 (*    match dst with
