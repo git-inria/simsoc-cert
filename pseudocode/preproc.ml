@@ -77,7 +77,7 @@ let rec vars_inst ((gs,ls) as acc) = function
 
 and vars_insts acc is = List.fold_left vars_inst acc is;;
 
-let vars p = vars_inst (StrMap.empty, StrMap.empty) (inst_of p);;
+let vars p = vars_inst (StrMap.empty, StrMap.empty) (prog_inst p);;
 
 end;;
 
