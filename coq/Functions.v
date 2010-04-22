@@ -13,7 +13,7 @@ Functions used in the pseudocode, in alphabetical order.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Integers Util Bitvec Proc State.
+Require Import Coqlib Integers Util Bitvec Arm.
 Import Int.
 
 (****************************************************************************)
@@ -108,8 +108,8 @@ cases.
 A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
-Definition ConditionPassed (w : word) (op : opcode) : bool :=
-  match op with
+Definition ConditionPassed (w : word) : bool :=
+  match condition w with
     | EQ => (* Z set *) is_set Zbit w
     | NE => (* Z clear *) negb (is_set Zbit w)
     | CS => (* C set *) is_set Cbit w
@@ -144,8 +144,8 @@ System mode, and returns FALSE if the current mode is User mode or
 System mode. *)
 (****************************************************************************)
 
-Definition CurrentModeHasSPSR (s : state) : bool :=
-  match mode s with
+Definition CurrentModeHasSPSR (m : proc_mode) : bool :=
+  match m with
     | usr | sys => false
     |_ => true
   end.
@@ -157,8 +157,8 @@ Returns TRUE if the current processor mode is not User mode,
 and returns FALSE if the current mode is User mode. *)
 (****************************************************************************)
 
-Definition InAPrivilegedMode (s : state) : bool :=
-  match mode s with
+Definition InAPrivilegedMode (m : proc_mode) : bool :=
+  match m with
     | usr => true
     | _ => false
   end.

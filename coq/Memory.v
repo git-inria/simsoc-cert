@@ -13,11 +13,6 @@ Memory.
 
 Set Implicit Arguments.
 
-Require Import Bitvec ZArith Coqlib Util Integers.
-Import Int.
-
-Open Scope Z_scope.
-
 (****************************************************************************)
 (** A2.8 Unaligned access support (p. 76) *)
 (****************************************************************************)

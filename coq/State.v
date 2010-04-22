@@ -13,7 +13,7 @@ Global state.
 
 Set Implicit Arguments.
 
-Require Import Proc SCC Bitvec List.
+Require Import Proc Arm SCC Bitvec List.
 
 Record state : Type := mk_state {
   (* Processor *)

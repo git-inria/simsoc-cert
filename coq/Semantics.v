@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import State String Util Bitvec Proc State List.
+Require Import State String Util Bitvec Arm State List.
 
 (****************************************************************************)
 (** Result of executing an instruction.

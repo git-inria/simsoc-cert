@@ -13,7 +13,7 @@ A5.1 Addressing Mode 1 - Data-processing operands (p. 442)
 
 Set Implicit Arguments.
 
-Require Import Bitvec Coqlib Functions Integers Util Proc.
+Require Import Bitvec Coqlib Functions Integers Util Arm State.
 Import Int.
 
 (****************************************************************************)
