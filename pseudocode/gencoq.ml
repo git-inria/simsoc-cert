@@ -15,6 +15,8 @@ open Ast;;
 open Printf;;
 open Util;;
 
+let comment f b x = bprintf b "(* %a *)" f x;;
+
 let hex_of_bin = function
   | "0b00" | "0b0" -> "0"
   | "0b01" | "0b1" -> "1"
@@ -88,35 +90,35 @@ let bin b s =
 let hex b s = bprintf b "w%s" s;;
 
 (***********************************************************************)
-(** function names *)
+(** register and function names *)
 (***********************************************************************)
 
-let reg = function
+let coq_regnum = function
   | "15" -> "PC"
   | "14" -> "LR"
   | "13" -> "SP"
-  | n -> n;;
+  | s -> s;;
 
-let func = function
+let regnum b s = string b (coq_regnum s);;
+ 
+let coq_fun_name = function
   | "address_of_the_instruction_after_the_branch_instruction"
   | "address_of_instruction_after_the_BLX_instruction"
   | "address_of_the_instruction_after_the_BLX_instruction"
   | "address_of_next_instruction_after_the_SWI_instruction"
     -> "next_inst_address s0"
   | "address_of_BKPT_instruction" -> "cur_inst_address s0"
-  | "ConditionPassed" -> "ConditionPassed (cpsr s0)"
   | "CurrentModeHasSPSR" -> "CurrentModeHasSPSR s0"
-  | "SignExtend_30" -> "SignExtend_24to30"
   | "InAPrivilegedMode" -> "InAPrivilegedMode s0"
+  | "ConditionPassed" -> "ConditionPassed s0"
+  | "SignExtend_30" -> "SignExtend_24to30" (*FIXME*)
   | "NOT" -> "not"
-  | s -> s;;
-
-let binop = function
+  | "not" -> "negb"
   | "AND" -> "and"
   | "OR" -> "or"
   | "EOR" -> "xor"
-  | "and" -> "&&"
-  | "or" -> "||"
+  | "and" -> "andb"
+  | "or" -> "orb"
   | "+" -> "add"
   | "-" -> "sub"
   | "*" -> "mul"
@@ -125,8 +127,9 @@ let binop = function
   | ">=" -> "zge"
   | "<" -> "zlt"
   | "<<" -> "Logical_Shift_Left"
-  | ">>" -> "Logical_Shift_Right"
   | s -> s;;
+
+let fun_name b s = string b (coq_fun_name s);;
 
 (***********************************************************************)
 (** variable types *)
@@ -134,12 +137,11 @@ let binop = function
 
 let type_of_var = function
   | "cond" -> "opcode"
-  | "mode" -> "processor_mode"
   | "S" | "L" | "F" | "I" | "A" | "R" | "shifter_carry_out" | "shift" | "mmod"
   | "x" | "y" | "W" | "X" |"U" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
   | "s0" -> "state"
-  | "md" -> "processor_mode"
+  | "md" | "mode" -> "proc_mode"
   | "address" -> "address"
   | _ -> "word";;
 
@@ -171,6 +173,9 @@ let variables p =
 (** expressions *)
 (***********************************************************************)
 
+(*REMOVE when finished! *)
+let todo f b e = bprintf b "todo (* %a *)" f e;;
+
 let mode = Genpc.mode;;
 
 let rec pexp b = function
@@ -182,94 +187,64 @@ and exp b = function
   | Hex s -> hex b s
   | Num s -> num b s
   | Var s -> string b s
-  | Fun (f, es) -> bprintf b "%s %a" (func f) (list " " pexp) es
-  | BinOp (e1, op, e2) -> bprintf b "%s %a %a" (binop op) pexp e1 pexp e2
+  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
+  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" fun_name f pexp e1 pexp e2
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
-
   | CPSR -> string b "cpsr s0"
-  | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
+  | Range (e, r) -> bprintf b "%a[%a]" pexp e range r
 
   | SPSR None -> string b "spsr s0 None"
   | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" mode m
 
-  | Reg (Var s, None) -> bprintf b "reg_content (proc s0) %s" s
-  | Reg (Num n, None) -> bprintf b "reg_content (proc s0) %s" (reg n)
-  | Reg (e, None) -> bprintf b "reg_content (proc s0) R%a" exp e
+  | Reg (Num n, None) -> bprintf b "reg_content s0 %a" regnum n
+  | Reg (e, None) -> bprintf b "reg_content s0 %a" pexp e
   | Reg (e, Some m) ->
-      bprintf b "reg (proc s0) (reg_of_mode %a %a)" exp e mode m
+      bprintf b "reg_content_of_mode s0 %a %a" pexp e mode m
 
-  | Range (e, Flag (s, _)) -> bprintf b "%a[%sbit]" pexp e s
-  | Range (e1, Index e2) -> bprintf b "%a[%a]" pexp e1 exp e2
-  | Range (e, Bits (n1, n2)) -> bprintf b "%a[%s#%s]" pexp e n1 n2
+  | Memory (_, _) as e -> todo Genpc.exp b e
+  | Coproc_exp (_, _, _) as e -> todo Genpc.exp b e
 
-  | Coproc_exp (_, _, _) -> bprintf b "todo \"Coproc_exp\""
+  | Other _ | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
-  | (Other _ | Unpredictable_exp | Unaffected) ->
-      invalid_arg "Gencoq.exp";;
+and range b = function
+  | Flag (s, _) -> bprintf b "%sbit" s
+  | Index e -> exp b e
+  | Bits (n1, n2) -> bprintf b "%a#%a" num n1 num n2;;
 
 (***********************************************************************)
 (** instructions *)
 (***********************************************************************)
 
-let rec inst k b = function
-  | Block _ | For _ | While _ | If _ | Case _ as i ->
-      bprintf b "%a" (*indent (k)*) (inst_aux k) i
-  | i -> bprintf b "%a" (*indent (k)*) (inst_aux k) i
+let rec inst k b i = indent b k; inst_aux k b i
+
+and pinst k b i = indent b k; par (inst_aux k) b i
 
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
-
-  | Affect (dst, src) -> affect k b dst src
-  | Proc (f, es) -> bprintf b "%s%a" f (list " " pexp) es
-  | Assert e -> bprintf b "assert(%a)" exp e
-  | Coproc (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list " " exp) es
-
-  | Block [] -> () 
-  | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
-      bprintf b "block(\n%a%a::\n%anil)" indent (k+2) 
-	(inst_aux k) i (list "\n" (block_aux k)) is
-  | Block (is) ->
-      bprintf b "block(\n%anil)"
-	(list "\n" (block_aux k)) is
-
-  | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
-
-  | For (counter, min, max, i) ->
-      bprintf b "for (size_t %s = %a; %s<%a; ++%s) \n%a\n"
-        counter num min counter num max counter (inst (k+2)) i
-
-  | Case (e, s) ->
-      bprintf b "switch (%a) \n%a%a"
-        exp e (list "" (case_aux k)) s indent k
-
+  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
+  | Block is ->
+      bprintf b "block (\n%a%anil)" (list " ::\n" (inst (k+2))) is indent (k+2)
+  | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
   | If (e, i1, Some i2) ->
-      bprintf b "if_then_else (%a)\n  %a(%a)\n  %a(%a)"
-	exp e indent (k+2) (inst (k+2)) i1
-	indent (k+2) (inst (k+2)) i2
+      bprintf b "if_then_else %a\n%a\n%a"
+	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
+  | Affect (e1, e2) -> bprintf b "%a %a" affect e1 pexp e2
+  | (While _ | For _ | Coproc _ | Case _) as i -> todo (Genpc.inst 0) b i
+  | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
-  | If (e, i, None) ->
-      bprintf b "if_then (%a)\n%a(%a)"
-	exp e indent (k+2) (inst (k+2)) i
+and affect b = function
+  | Reg (e, None) -> bprintf b "set_reg %a" exp e
+  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m exp e
+  | CPSR -> bprintf b "set_cpsr"
+  | SPSR None -> bprintf b "set_spsr"
+  | SPSR (Some m) -> bprintf b "set_spsr_mode %a" mode m
+  | e -> todo exp b e
+;;
 
-  | Misc _ -> invalid_arg "Gencoq.inst_aux"
-
-and block_aux k b i =
-  match i with
-    | Affect (Var _, _) | If (_, Affect (Var _, _),  _)
-    | Affect (Range (Var "accvalue", Bits _), _) ->
-	bprintf b "%a%a" indent (k+2) (inst (k+2)) i
-    | _ -> bprintf b "%a%a::" indent (k+2) (inst (k+2)) i 
-
-and case_aux k b (n, i) =
-  bprintf b "%acase %s:\n%a\n%abreak;\n"
-    indent k (hex_of_bin n) (inst (k+2)) i indent k
-
-and affect k b dst src =
-    match dst with
+(*    match dst with
       | Reg (Num n, None) ->
-	  bprintf b "set_reg %s (%a)" (reg n) exp src
+	  bprintf b "set_reg %a (%a)" regnum n exp src
  
       | Reg (e, None) ->
 	  begin match src with
@@ -278,8 +253,8 @@ and affect k b dst src =
 	  end
 
       | Reg (Num n, Some m) ->
-	  bprintf b "set_reg_of_mode %s (%a) %a" 
-	    (reg n) exp src mode m
+	  bprintf b "set_reg_of_mode %a (%a) %a" 
+	    regnum n exp src mode m
       | Var "address" -> bprintf b "address_of_word (%a)" exp src
       | Var v -> bprintf b 
 	  "let %a := %a in" exp (Var v) exp src
@@ -321,86 +296,47 @@ and affect k b dst src =
 		bprintf b "set_cpsr_bits %s %s (mode_number (%a)) (cpsr s0)" 
 		  n1 n2 exp src
 	    | _ ->
-		inst_aux k b (Proc ("update_bits ",
+		inst k b (Proc ("update_bits ",
 				    [Num n1; Num n2; src; e1]))
 	  end
       | Memory (addr, n) ->
-          inst_aux k b (Proc ("update_mem" ^ access_type n, [addr; src]))
+          inst k b (Proc ("update_mem" ^ access_type n, [addr; src]))
       | Range (e, Index n) ->
 	  begin match e with
 	    | Var ("GE" as v) ->
 		bprintf b "set_cpsr (%a)"
 		  (inst k) (Proc ("update_bit ", [n; src; Var v]))
 	    | _ ->
-		inst_aux k b (Proc ("update_bit ", [n; src; e]))
+		inst k b (Proc ("update_bit ", [n; src; e]))
 	  end
 
       | Coproc_exp (_, _, _) | Other _ | BinOp (_, _, _) | Fun (_, _)
       | If_exp (_, _, _) | Hex _ | Bin _ | Num _ | Unpredictable_exp
-      | Unaffected | Reg (_, _) | Range (_, _) -> invalid_arg "Gencoq.affect";;
+      | Unaffected | Reg (_, _) | Range (_, _) ->
+	  bprintf b "TODO: %a" (Genpc.inst 0) (Affect (dst, src))*)
 
 (***********************************************************************)
 (** semantic step function of some instruction *)
 (***********************************************************************)
 
-let version_in_comment b k = bprintf b " (%s)" k;;
-
-let version_in_name b k = bprintf b "_%s" k;;
-
-let prog_var b s = bprintf b "<%s>" s;;
-
-let prog_arg b (v,t) = bprintf b "(%s : %s) " v t;;
-
-let prog_out b (v,t) = bprintf b "%s &%s" t v;;
-
-let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
-
-let ident_in_comment b i =
-  bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
-    (option "" version_in_comment) i.iversion
-
 let ident b i =
-  bprintf b "%s%a%a" i.iname
-    (list "" string) i.ivars
-    (option "" version_in_name) i.iversion;;
+  bprintf b "%s%a%a" i.iname (list "" string) i.iparams
+    (option "" string) i.iversion;;
 
-let comment b = function
-  | Instruction (r, id, is, _) ->
-      bprintf b "(* %s %a *)\n" r (list ", " ident_in_comment) (id :: is)
-  | Operand (r, c, n, _) ->
-      bprintf b "(* %s %a - %a *)\n" r (list " " string) c (list " " string) n;;
+let prog_name = list "_" ident;;
 
-let abbrev b s =
-  if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
-  then bprintf b "%c" s.[0]
-  else bprintf b ""
+let prog_arg b (v, t) = bprintf b "(%s : %s)" v t;;
 
-let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
-
-(*FIXME: to be moved to preproc? *)
-let optemps = ["index"; "offset_8"; "end_address"];;
-
-let prog gs ls b p =
+let prog gs _ls b p =
   match p with
-    | Instruction (_ , id, is, i) ->
-        bprintf b "%aDefinition %a_step %s %a: result :=\n%a%s.\n" comment p
-          (list "_" ident) (id :: is)
-	  "(s0 : state)"
-          (list "" prog_arg) gs
-	  (*(list "" local_decl) ls*)
+    | Instruction (_ , id, ids, i) ->
+        bprintf b
+"(* %a *)\nDefinition %a_step (s0 : state) %a: result :=\n%a  true s0.\n"
+	  Genpc.prog_name p
+          prog_name (id::ids)
+          (list " " prog_arg) gs
           (inst 2) i
-	  ("\n  true s0")
-    | Operand (_, c, n, i) ->
-        let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
-        and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
-          bprintf b "%aDefinition %a_%a(%a%s%a)\n%a%a.\n" comment p
-            (list "" abbrev) c
-            (list "_" string) n
-            (list "" prog_arg) gs
-            (arg_sep gs os)
-            (list "" prog_out) os
-            (list "" local_decl) ls'
-            (inst 2) i;;
+    | Operand (_, _c, _n, _i) -> () (*FIXME*);;
 
 let lsm_hack p =
   let rec inst = function
@@ -411,8 +347,7 @@ let lsm_hack p =
   | Instruction (r, id, is, i) ->
       if id.iname = "LDM" or id.iname = "STM"
       then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-        let a = If (Var "W", Affect (Reg (Var "n", None), 
-				     Var "n"), None) in
+        let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
         let i = match i with
           | If (c, Block (is), None) ->
               If (c, Block (is@[a]), None)
@@ -432,9 +367,9 @@ let lsm_hack p =
 (***********************************************************************)
 
 let inst_typ gs b = function
-  | Operand _ -> ()
+  | Operand _ -> () (*FIXME*)
   | Instruction (_ , id, ids, _) ->
-      bprintf b "| %a %a" (list "_" ident) (id :: ids) (list "" prog_arg) gs;;
+      bprintf b "| %a %a" prog_name (id::ids) (list " " prog_arg) gs;;
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
@@ -442,18 +377,16 @@ let inst_typ gs b = function
 
 let var_name b (v, _) = bprintf b "%s" v;;
 
-let name = list "_" ident;;
-
 let inst_sem gs b = function
   | Operand _ -> () (*FIXME*)
   | Instruction (_, id, ids, _) ->
-      bprintf b "    | %a %a =>" name (id::ids) (list " " var_name) gs;
+      bprintf b "    | %a %a =>" prog_name (id::ids) (list " " var_name) gs;
       if List.exists ((=) ("shifter_operand", "word")) gs then
 	if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
 	  bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
 	else
 	bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-      bprintf b " %a_step %a v s0" name (id::ids) (list " " var_name) gs;;
+      bprintf b " %a_step %a v s0" prog_name (id::ids) (list " " var_name) gs;;
 
 (***********************************************************************)
 (** Main coq generation function.
@@ -474,7 +407,7 @@ let lib b ps =
       bprintf btyp "%a\n" (inst_typ gs) p;
       bprintf bsem "%a\n" (inst_sem gs) p
   in
-    bprintf b "Require Import Bitvec List Semantics Integers Util Functions Config Proc State.\n";
+    bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\n";
     bprintf b "Import Int.\n\n";
     List.iter prog_typ_sem ps;
     bprintf b "Inductive instruction : Type :=\n";
