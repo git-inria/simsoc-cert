@@ -12,13 +12,17 @@ Currently, it includes:
 
 - Util: useful definitions and functions on integers, lists, etc.
 - Bitvec: bit vectors
+- Functions: primitives used in the pseudo-code
 - Config: module type for implementation defined parameters
 - Arm: types and functions for defining the ARM state and semantics
+
 - Proc: processor
+
 - Memory: memory
 - SCC: system control coprocessor
+
 - State: global ARM state
-- Functions: primitives used in the pseudo-code
+
 - Semantics: semantics of pseudo-code constructions
 
 The library is likely to evolve and include more developments quickly.
