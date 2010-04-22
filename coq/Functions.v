@@ -13,8 +13,16 @@ Functions used in the pseudocode, in alphabetical order.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Integers Util Bitvec Proc.
+Require Import Coqlib Integers Util Bitvec Proc State.
 Import Int.
+
+(****************************************************************************)
+(** Table A4-1 Bit mask constants (p. 227) *)
+
+Definition UnallocMask : word := repr 116456448. (*FIXME*)
+Definition UserMask : word := repr 4161733120.
+Definition PrivMask : word := repr 479.
+Definition StateMask : word := repr 16777248.
 
 (****************************************************************************)
 (** Arithmetic_Shift_Right (p. 1121)
@@ -33,63 +41,20 @@ Definition bit_position_of_most_significant_1 (w : word) : word :=
   w0. (*FIXME*)
 
 (****************************************************************************)
-(** Logical_Shift_Left (p. 1129)
+(** BorrowFrom (p. 1131)
 
-Performs a left shift, inserting zeros in the vacated bit positions
-on the right. *)
+Returns 1 if the subtraction specified as its parameter caused a borrow 
+(the true result is less than 0, where the operands are treated as unsigned
+integers), and returns 0 in all other cases. This delivers further
+information about a subtraction which occurred earlier in the pseudo-code.
+The subtraction is not repeated. *)
 (****************************************************************************)
 
-Definition Logical_Shift_Left := shl. (*FIXME?*)
+Definition BorrowFrom_sub2 (x y : word) : bool :=
+  zlt (unsigned x - unsigned y) 0.
 
-(****************************************************************************)
-(** Logical_Shift_Right (p. 1129)
-
-Performs a right shift, inserting zeros in the vacated bit
-positions on the left. *)
-(****************************************************************************)
-
-Definition Logical_Shift_Right := shru. (*FIXME?*)
-
-(****************************************************************************)
-(** Table A4-1 Bit mask constants (p. 227) *)
-
-Definition UnallocMask : word := repr 116456448.
-Definition UserMask : word := repr 4161733120.
-Definition PrivMask : word := repr 479.
-Definition StateMask : word := repr 16777248.
-
-(****************************************************************************)
-(** Rotate_Right (p. 1132)
-
-Performs a right rotate, where each bit that is shifted off the
-right is inserted on the left. *)
-(****************************************************************************)
-
-Definition Rotate_Right := ror. (*FIXME?*)
-
-(****************************************************************************)
-(** SignExtend(arg) (p. 1134)
-
-Sign-extends (propagates the sign bit) its argument to 32 bits. *)
-(****************************************************************************)
-
-Definition SignExtend := sign_ext 32. (*FIXME?*)
-
-Definition SignExtend_24to30 := sign_ext 24. (*FIXME?*)
-
-(****************************************************************************)
-(** CurrentModeHasSPSR (p. 1125)
-
-Returns TRUE if the current processor mode is not User mode or
-System mode, and returns FALSE if the current mode is User mode or
-System mode. *)
-(****************************************************************************)
-
-Definition CurrentModeHasSPSR (s : state) : bool :=
-  match mode s with
-    | usr | sys => false
-    |_ => true
-  end.
+Definition BorrowFrom_sub3 (x y z : word) : bool :=
+  zlt (unsigned x - unsigned y - unsigned z) 0.
 
 (****************************************************************************)
 (** CarryFrom (p. 1124)
@@ -134,68 +99,6 @@ Definition CarryFrom16_add2 (x y : word) : bool :=
   zlt (two_power_nat 16 - 1) (unsigned x + unsigned y).
 
 (****************************************************************************)
-(** InAPrivilegedMode() (p. 1128)
-
-Returns TRUE if the current processor mode is not User mode, 
-and returns FALSE if the current mode is User mode. *)
-(****************************************************************************)
-
-Definition InAPrivilegedMode (s : state) : bool :=
-  match mode s with
-    | usr => true
-    | _ => false
-  end.
-
-(****************************************************************************)
-(** OverflowFrom (p. 1131)
-
-Returns 1 if the addition or subtraction specified as its parameter
-caused a 32-bit signed overflow. Addition generates an overflow if
-both operands have the same sign (bit[31]), and the sign of the result
-is different to the sign of both operands. Subtraction causes an
-overflow if the operands have different signs, and the first operand
-and the result have different signs.  This delivers further
-information about an addition or subtraction which occurred earlier in
-the pseudo-code.  The addition or subtraction is not repeated. *)
-(****************************************************************************)
-
-Definition OverflowFrom_add2 (x y : word) : bool :=
-  let r := signed x + signed y in
-    orb (zlt r min_signed) (zgt r max_signed).
-
-(*IMPROVE: use this more efficient definition given p. 1131?*)
-Definition OverflowFrom_add2' (x y : word) (r : word) : bool :=
-  let sx := is_neg x in (beq sx (is_neg y)) && (bne sx (is_neg r)).
-
-Definition OverflowFrom_add3 (x y z : word) : bool :=
-  let r := signed x + signed y + signed z in
-    orb (zlt r min_signed) (zgt r max_signed).
-
-Definition OverflowFrom_sub2 (x y : word) : bool :=
-  let r := signed x - signed y in
-    orb (zlt r min_signed) (zgt r max_signed).
-
-Definition OverflowFrom_sub3 (x y z : word) : bool :=
-  let r := signed x - signed y - signed z in
-    orb (zlt r min_signed) (zgt r max_signed).
-
-(****************************************************************************)
-(** BorrowFrom (p. 1131)
-
-Returns 1 if the subtraction specified as its parameter caused a borrow 
-(the true result is less than 0, where the operands are treated as unsigned
-integers), and returns 0 in all other cases. This delivers further
-information about a subtraction which occurred earlier in the pseudo-code.
-The subtraction is not repeated. *)
-(****************************************************************************)
-
-Definition BorrowFrom_sub2 (x y : word) : bool :=
-  zlt (unsigned x - unsigned y) 0.
-
-Definition BorrowFrom_sub3 (x y z : word) : bool :=
-  zlt (unsigned x - unsigned y - unsigned z) 0.
-
-(****************************************************************************)
 (** ConditionPassed (p. 1124)
 
 Returns TRUE if the state of the N, Z, C and V flags fulfils the
@@ -234,6 +137,93 @@ Definition ConditionPassed (w : word) (op : opcode) : bool :=
   end.
 
 (****************************************************************************)
+(** CurrentModeHasSPSR (p. 1125)
+
+Returns TRUE if the current processor mode is not User mode or
+System mode, and returns FALSE if the current mode is User mode or
+System mode. *)
+(****************************************************************************)
+
+Definition CurrentModeHasSPSR (s : state) : bool :=
+  match mode s with
+    | usr | sys => false
+    |_ => true
+  end.
+
+(****************************************************************************)
+(** InAPrivilegedMode() (p. 1128)
+
+Returns TRUE if the current processor mode is not User mode, 
+and returns FALSE if the current mode is User mode. *)
+(****************************************************************************)
+
+Definition InAPrivilegedMode (s : state) : bool :=
+  match mode s with
+    | usr => true
+    | _ => false
+  end.
+
+(****************************************************************************)
+(** Logical_Shift_Left (p. 1129)
+
+Performs a left shift, inserting zeros in the vacated bit positions
+on the right. *)
+(****************************************************************************)
+
+Definition Logical_Shift_Left := shl. (*FIXME?*)
+
+(****************************************************************************)
+(** Logical_Shift_Right (p. 1129)
+
+Performs a right shift, inserting zeros in the vacated bit
+positions on the left. *)
+(****************************************************************************)
+
+Definition Logical_Shift_Right := shru. (*FIXME?*)
+
+(****************************************************************************)
+(** OverflowFrom (p. 1131)
+
+Returns 1 if the addition or subtraction specified as its parameter
+caused a 32-bit signed overflow. Addition generates an overflow if
+both operands have the same sign (bit[31]), and the sign of the result
+is different to the sign of both operands. Subtraction causes an
+overflow if the operands have different signs, and the first operand
+and the result have different signs.  This delivers further
+information about an addition or subtraction which occurred earlier in
+the pseudo-code.  The addition or subtraction is not repeated. *)
+(****************************************************************************)
+
+Definition OverflowFrom_add2 (x y : word) : bool :=
+  let r := signed x + signed y in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+(*IMPROVE: use this more efficient definition given p. 1131?*)
+Definition OverflowFrom_add2' (x y : word) (r : word) : bool :=
+  let sx := is_neg x in (beq sx (is_neg y)) && (bne sx (is_neg r)).
+
+Definition OverflowFrom_add3 (x y z : word) : bool :=
+  let r := signed x + signed y + signed z in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+Definition OverflowFrom_sub2 (x y : word) : bool :=
+  let r := signed x - signed y in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+Definition OverflowFrom_sub3 (x y z : word) : bool :=
+  let r := signed x - signed y - signed z in
+    orb (zlt r min_signed) (zgt r max_signed).
+
+(****************************************************************************)
+(** Rotate_Right (p. 1132)
+
+Performs a right rotate, where each bit that is shifted off the
+right is inserted on the left. *)
+(****************************************************************************)
+
+Definition Rotate_Right := ror. (*FIXME?*)
+
+(****************************************************************************)
 (** SignedDoesSat(x,n) (p. 1134)
 
 Returns 0 if x lies inside the range of an n-bit signed integer (that is,
@@ -252,6 +242,16 @@ Definition SignedDoesSat (x : word) (m : word) : bool :=
 Definition SignedDoesSat_add32 x y := SignedDoesSat (add x y) w32.
 Definition SignedDoesSat_sub32 x y := SignedDoesSat (sub x y) w32.
 Definition SignedDoesSat_double32 x := SignedDoesSat (mul x x) w32.
+
+(****************************************************************************)
+(** SignExtend(arg) (p. 1134)
+
+Sign-extends (propagates the sign bit) its argument to 32 bits. *)
+(****************************************************************************)
+
+Definition SignExtend := sign_ext 32. (*FIXME?*)
+
+Definition SignExtend_24to30 := sign_ext 24. (*FIXME?*)
 
 (****************************************************************************)
 (** SignedSat(x,n) (p. 1134)
@@ -324,4 +324,4 @@ Not defined in the Glossary, occurs in the pseudo-code for LDRH
 (p. 575). *)
 (****************************************************************************)
 
-Definition ZeroExtend := zero_ext 32.
+Definition ZeroExtend := zero_ext 32. (*FIXME?*)
