@@ -93,41 +93,6 @@ Definition update_bits (p n : nat) (v w : word) : word :=
   update_bits_aux p (p-n) v w.
 
 (****************************************************************************)
-(** some word constants *)
-(****************************************************************************)
-
-Definition maxu : word := repr max_unsigned.
-Definition max : word := repr max_signed.
-Definition min : word := repr min_signed.
-
-Definition w2 : word := repr 2.
-Definition w3 : word := repr 3.
-Definition w4 : word := repr 4.
-Definition w8 : word := repr 8.
-Definition w12 : word := repr 12.
-Definition w14 : word := repr 14.
-Definition w15 : word := repr 15.
-Definition w16 : word := repr 16.
-Definition w31 : word := repr 31.
-Definition w32 : word := repr 32.
-
-Definition w0xFFFFFFFF : word := repr max_unsigned.
-Definition w0xFFFFFFFE : word := sub (repr (max_unsigned)) w1.
-Definition w0xFFFFFFFC : word := sub (repr (max_unsigned)) w3.
-Definition w0x00000000 : word := w0.
-Definition w0x000000FF : word := repr 255.
-Definition w0x0000FF00 : word := repr 65280.
-Definition w0x00FF0000 : word := repr 16711680.
-Definition w0xFF000000 : word := repr 4278190080.
-Definition w0x80000000 : word := repr 2147483648.
-Definition w0xFFFF0008 : word := repr 4294901768.
-Definition w0x00000008 : word := w8.
-Definition w0x00FF00FF : word := repr 16711935.
-Definition w0x0000FFFF : word := repr 65535.
-Definition w0xFFFF000C : word := repr 4294901772.
-Definition w0x0000000C : word := w12.
-
-(****************************************************************************)
 (** n-bits words *)
 (****************************************************************************)
 
@@ -188,9 +153,6 @@ Definition mk_halfword := mk_bitvec halfword_size.
 Definition get_half_0 w := mk_halfword (intval w[15#0]).
 Definition get_half_1 w := mk_halfword (intval w[31#16]).
 
-Definition w0x0000 := get_half_0 w0.
-Definition w0xFFFF := get_half_0 w0x0000FFFF.
-
 (****************************************************************************)
 (** Addresses (p. 68) *)
 (****************************************************************************)
@@ -221,3 +183,42 @@ Definition SP := mk_regnum 13.
 since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=
   mk_regnum (bits_val k (k+3) w).
+
+(****************************************************************************)
+(** some word constants *)
+(****************************************************************************)
+
+Definition maxu : word := repr max_unsigned.
+Definition max : word := repr max_signed.
+Definition min : word := repr min_signed.
+
+Definition w2 : word := repr 2.
+Definition w3 : word := repr 3.
+Definition w4 : word := repr 4.
+Definition w8 : word := repr 8.
+Definition w12 : word := repr 12.
+Definition w14 : word := repr 14.
+Definition w15 : word := repr 15.
+Definition w16 : word := repr 16.
+Definition w31 : word := repr 31.
+Definition w32 : word := repr 32.
+
+(*FIXME: define a function for converting hexadecimal strings into words *)
+Definition w0xFFFFFFFF : word := repr max_unsigned.
+Definition w0xFFFFFFFE : word := sub maxu w1.
+Definition w0xFFFFFFFC : word := sub maxu w3.
+Definition w0x00000000 : word := w0.
+Definition w0x000000FF : word := repr 255.
+Definition w0x0000FF00 : word := repr 65280.
+Definition w0x00FF0000 : word := repr 16711680.
+Definition w0xFF000000 : word := repr 4278190080.
+Definition w0x80000000 : word := repr 2147483648.
+Definition w0xFFFF0008 : word := repr 4294901768.
+Definition w0x00000008 : word := w8.
+Definition w0x00FF00FF : word := repr 16711935.
+Definition w0x0000FFFF : word := repr 65535.
+Definition w0xFFFF000C : word := repr 4294901772.
+Definition w0x0000000C : word := w12.
+
+Definition w0x0000 : halfword := get_half_0 w0.
+Definition w0xFFFF : halfword := get_half_0 w0x0000FFFF.
