@@ -192,23 +192,25 @@ Notation LO := CC.
 (** Table A3-1 Condition codes (p. 112) *)
 (****************************************************************************)
 
+(*IMPROVE: by allowing heading 0's? *)
+
 Fixpoint condition (w : word) :=
   match bits_val 31 28 w with
-    | 0 => EQ
-    | 1 => NE
-    | 2 => CS
-    | 3 => CC
-    | 4 => MI
-    | 5 => PL
-    | 6 => VS
-    | 7 => VC
-    | 8 => HI
-    | 9 => LS
-    | 10 => GE
-    | 11 => LT
-    | 12 => GT
-    | 13 => LE
-    | 14 => AL
+    | Z0 => EQ
+    | Zpos 1 => NE
+    | Zpos 1~0 => CS
+    | Zpos 1~1 => CC
+    | Zpos 1~0~0 => MI
+    | Zpos 1~0~1 => PL
+    | Zpos 1~1~0 => VS
+    | Zpos 1~1~1 => VC
+    | Zpos 1~0~0~0 => HI
+    | Zpos 1~0~0~1 => LS
+    | Zpos 1~0~1~0 => GE
+    | Zpos 1~0~1~1 => LT
+    | Zpos 1~1~0~0 => GT
+    | Zpos 1~1~0~1 => LE
+    | Zpos 1~1~1~0 => AL
     | _ => UN
   end.
 
