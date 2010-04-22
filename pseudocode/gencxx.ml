@@ -290,7 +290,7 @@ let inreg_load b s =
   bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
 let ident_in_comment b i =
-  bprintf b "%s%a%a" i.iname (list "" prog_var) i.ivars
+  bprintf b "%s%a%a" i.iname (list "" prog_var) i.iparams
     (option "" version_in_comment) i.iversion
 
 let ident b i =
