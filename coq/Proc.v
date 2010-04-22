@@ -16,7 +16,7 @@ Set Implicit Arguments.
 Require Import Arm Bitvec List Util Integers.
 Import Int.
 
-(*BEWARE: invariant to preserve:
+(*WARNING: invariant to preserve:
 
 proc_mode_of_word (cpsr s) = Some m -> mode s = m.
 
