@@ -8,12 +8,21 @@ in embedded systems.
 
 Currently, it includes:
 
-- a formalization of the ARMv6 instruction set
+1) a formalization of the ARMv6 instruction set semantics:
+
+- Util: useful definitions and functions on integers, lists, etc.
+- Bitvec: bit vectors
+- Config: module type for implementation defined parameters
+- Arm: types and functions for defining the ARM state and semantics
+- Proc: processor
+- Memory: memory
+- SCC: system control coprocessor
+- State: global ARM state
+- Functions: primitives used in the pseudo-code
+- Semantics: semantics of pseudo-code constructions
 
 The library is likely to evolve and include more developments quickly.
 For more recent informations, contact the authors.
-
-Contributions to this project are very welcome!
 
 LICENSE: this file describes the license governing this library.
 COPYRIGHTS: this file describes the copyrights holders.
