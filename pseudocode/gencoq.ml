@@ -15,14 +15,6 @@ open Ast;;
 open Printf;;
 open Util;;
 
-let num = string;;
-
-let bin b s =
-  let n = String.length s in
-    if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
-    bprintf b "%c" s.[2];
-    for i = 3 to n-1 do bprintf b "~%c" s.[i] done;;
-
 let hex_of_bin = function
   | "0b00" | "0b0" -> "0"
   | "0b01" | "0b1" -> "1"
@@ -63,7 +55,43 @@ let cpsr_flag = function
   | "5" -> "Tbit"
   | _ -> "TODO2";;
 
-let reg_id = function
+let cpsr_field = function
+  | "4", "0" -> "mode"
+  | "19", "16" -> "GE"
+  | _ -> "TODO5";;
+
+let access_type = function
+  | "1" -> "byte"
+  | "2" -> "half"
+  | "4" -> "word"
+  | _ -> "TODO6";;
+
+let var = function (*FIXME: to be done in preproc *)
+  | "CP15_reg1_EEbit" -> "get_CP15_reg1_EEbit"
+  | "CP15_reg1_Ubit" -> "get_CP15_reg1_Ubit"
+  | "GE" -> "(cpsr s0)[19#16]"
+  | s -> s;;
+
+(***********************************************************************)
+(** numbers *)
+(***********************************************************************)
+
+let num = string;;
+
+let bin b s =
+  let n = String.length s in
+    if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
+    bprintf b "%c" s.[2];
+    for i = 3 to n-1 do bprintf b "~%c" s.[i] done;;
+
+(*FIXME: use a Coq function to convert an hexa string into a word *)
+let hex b s = bprintf b "w%s" s;;
+
+(***********************************************************************)
+(** function names *)
+(***********************************************************************)
+
+let reg = function
   | "15" -> "PC"
   | "14" -> "LR"
   | "13" -> "SP"
@@ -83,13 +111,10 @@ let func = function
   | "NOT" -> "not"
   | s -> s;;
 
-let mode m = Genpc.string_of_mode m;;
-
 let binop = function
   | "AND" -> "and"
   | "OR" -> "or"
   | "EOR" -> "xor"
-  | "NOT" -> "not"
   | "and" -> "&&"
   | "or" -> "||"
   | "+" -> "add"
@@ -99,32 +124,12 @@ let binop = function
   | "!=" -> "zne"
   | ">=" -> "zge"
   | "<" -> "zlt"
-  | "Logical_Shift_Left" -> "Logical_Shift_Left"
   | "<<" -> "Logical_Shift_Left"
-  | "Logical_Shift_Right"| ">>" -> "Logical_Shift_Right"
-  | "Arithmetic_Shift_Right" -> "Arithmetic_Shift_Right"
-  | "Rotate_Right" -> "Rotate_Right"
-  | _ -> "TODO4";;
-
-let cpsr_field = function
-  | "4", "0" -> "mode"
-  | "19", "16" -> "GE"
-  | _ -> "TODO5";;
-
-let access_type = function
-  | "1" -> "byte"
-  | "2" -> "half"
-  | "4" -> "word"
-  | _ -> "TODO6";;
-
-let var = function (*FIXME: to be done in preproc *)
-  | "CP15_reg1_EEbit" -> "get_CP15_reg1_EEbit"
-  | "CP15_reg1_Ubit" -> "get_CP15_reg1_Ubit"
-  | "GE" -> "(cpsr s0)[19#16]"
+  | ">>" -> "Logical_Shift_Right"
   | s -> s;;
 
 (***********************************************************************)
-(** Coq types of program variables *)
+(** variable types *)
 (***********************************************************************)
 
 let type_of_var = function
@@ -163,13 +168,10 @@ let variables p =
      StrMap.fold (fun s t l -> (s,t)::l) ls []);;
 
 (***********************************************************************)
-(** translation of expressions *)
+(** expressions *)
 (***********************************************************************)
 
-let input_registers = ["n"; "m"; "s"];;
-
-(*FIXME: to be moved to preproc *)
-let optemps = ["index"; "offset_8"; "end_address"];;
+let mode = Genpc.mode;;
 
 let rec pexp b = function
   | Bin _ | Hex _ | Num _ | Var _ as e -> exp b e
@@ -177,49 +179,43 @@ let rec pexp b = function
 
 and exp b = function
   | Bin s -> bin b s
-  | Hex s -> bprintf b "w%s" s
-  | Num s -> string b s
-  | CPSR -> string b "cpsr (proc s0)"
-  | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
-  | Fun (f, es) -> bprintf b "%s %a" (func f) (list " " pexp) es
+  | Hex s -> hex b s
+  | Num s -> num b s
   | Var s -> string b s
+  | Fun (f, es) -> bprintf b "%s %a" (func f) (list " " pexp) es
+  | BinOp (e1, op, e2) -> bprintf b "%s %a %a" (binop op) pexp e1 pexp e2
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
 
-  | SPSR None -> string b "spsr (proc s0) (mode (proc s0))"
-  | SPSR (Some m) -> bprintf b "spsr (proc s0) %s" (mode m)
+  | CPSR -> string b "cpsr s0"
+  | Memory (e, n) -> bprintf b "Memory %s %a s0" n exp e
 
-  | BinOp (e1, ("<<" | ">>" | "+" | "-" | "*" | ">=" | "<" | ">" | "Rotate_Right" | "Arithmetic_Shift_Right"  as op), Num n) ->
-      exp b (Fun (binop op, [e1; Var (num_word n)]))
-  | BinOp (Num n, ("-" | "+" | "*" as op), e2) -> 
-      exp b (Fun (binop op, [Var (num_word n); e2]))
-  | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" | "Logical_Shift_Left"
-	   | "Logical_Shift_Right" | "+" | "-" | "*" | "AND" | "OR" | "EOR"
-	   | "==" | "!=" | ">=" | "<" | ">>" | "<<" as op), e2) ->
-      exp b (Fun (binop op, [e1; e2]))    
-  | BinOp (e1, op, Num n) -> bprintf b "%a %s %s" exp e1 (binop op) (num_word n)
-  | BinOp (e1, op, e2) -> bprintf b "(%a) %s (%a)" exp e1 (binop op) exp e2
+  | SPSR None -> string b "spsr s0 None"
+  | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" mode m
 
   | Reg (Var s, None) -> bprintf b "reg_content (proc s0) %s" s
-  | Reg (Num n, None) -> bprintf b "reg_content (proc s0) %s" (reg_id n)
+  | Reg (Num n, None) -> bprintf b "reg_content (proc s0) %s" (reg n)
   | Reg (e, None) -> bprintf b "reg_content (proc s0) R%a" exp e
   | Reg (e, Some m) ->
-      bprintf b "reg (proc s0) (reg_of_mode %a %s)" exp e (mode m)
+      bprintf b "reg (proc s0) (reg_of_mode %a %a)" exp e mode m
 
-  | Range (CPSR, Flag (s,_)) -> bprintf b "(cpsr s0)[%sbit]" s
-  | Range (e1, Index e2) -> bprintf b "(%a)[%a]" exp e1 exp e2
+  | Range (e, Flag (s, _)) -> bprintf b "%a[%sbit]" pexp e s
+  | Range (e1, Index e2) -> bprintf b "%a[%a]" pexp e1 exp e2
   | Range (e, Bits (n1, n2)) -> bprintf b "%a[%s#%s]" pexp e n1 n2
 
-  | _ -> string b "TODO6";;
+  | Coproc_exp (_, _, _) -> bprintf b "todo \"Coproc_exp\""
+
+  | (Other _ | Unpredictable_exp | Unaffected) ->
+      invalid_arg "Gencoq.exp";;
 
 (***********************************************************************)
-(** translation of instructions *)
+(** instructions *)
 (***********************************************************************)
 
 let rec inst k b = function
   | Block _ | For _ | While _ | If _ | Case _ as i ->
-      bprintf b "%a" (*Genpc.indent (k)*) (inst_aux k) i
-  | i -> bprintf b "%a" (*Genpc.indent (k)*) (inst_aux k) i
+      bprintf b "%a" (*indent (k)*) (inst_aux k) i
+  | i -> bprintf b "%a" (*indent (k)*) (inst_aux k) i
 
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
@@ -232,7 +228,7 @@ and inst_aux k b = function
 
   | Block [] -> () 
   | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
-      bprintf b "block(\n%a%a::\n%anil)" Genpc.indent (k+2) 
+      bprintf b "block(\n%a%a::\n%anil)" indent (k+2) 
 	(inst_aux k) i (list "\n" (block_aux k)) is
   | Block (is) ->
       bprintf b "block(\n%anil)"
@@ -246,61 +242,60 @@ and inst_aux k b = function
 
   | Case (e, s) ->
       bprintf b "switch (%a) \n%a%a"
-        exp e (list "" (case_aux k)) s Genpc.indent k
+        exp e (list "" (case_aux k)) s indent k
 
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else (%a)\n  %a(%a)\n  %a(%a)"
-	exp e Genpc.indent (k+2) (inst (k+2)) i1
-	Genpc.indent (k+2) (inst (k+2)) i2
+	exp e indent (k+2) (inst (k+2)) i1
+	indent (k+2) (inst (k+2)) i2
 
   | If (e, i, None) ->
       bprintf b "if_then (%a)\n%a(%a)"
-	exp e Genpc.indent (k+2) (inst (k+2)) i
+	exp e indent (k+2) (inst (k+2)) i
 
-  | _ -> string b "TODO7(\"inst\")"
+  | Misc _ -> invalid_arg "Gencoq.inst_aux"
 
 and block_aux k b i =
   match i with
     | Affect (Var _, _) | If (_, Affect (Var _, _),  _)
     | Affect (Range (Var "accvalue", Bits _), _) ->
-	bprintf b "%a%a" Genpc.indent (k+2) (inst (k+2)) i
-    | _ -> 
-	bprintf b "%a%a::" Genpc.indent (k+2) (inst (k+2)) i 
+	bprintf b "%a%a" indent (k+2) (inst (k+2)) i
+    | _ -> bprintf b "%a%a::" indent (k+2) (inst (k+2)) i 
 
 and case_aux k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
-    Genpc.indent k (hex_of_bin n) (inst (k+2)) i Genpc.indent k
+    indent k (hex_of_bin n) (inst (k+2)) i indent k
 
 and affect k b dst src =
     match dst with
       | Reg (Num n, None) ->
-	  bprintf b "affect_reg %s (%a)" (reg_id n) exp src
+	  bprintf b "set_reg %s (%a)" (reg n) exp src
  
       | Reg (e, None) ->
 	  begin match src with
-	    | Num n -> bprintf b "affect_reg %a %s" exp e (num_word n)
-	    | _ -> bprintf b "affect_reg %a (%a)" exp e exp src
+	    | Num n -> bprintf b "set_reg %a %s" exp e (num_word n)
+	    | _ -> bprintf b "set_reg %a (%a)" exp e exp src
 	  end
 
       | Reg (Num n, Some m) ->
-	  bprintf b "affect_reg_of_mode %s (%a) %s" 
-	    (reg_id n) exp src (mode m)
+	  bprintf b "set_reg_of_mode %s (%a) %a" 
+	    (reg n) exp src mode m
       | Var "address" -> bprintf b "address_of_word (%a)" exp src
       | Var v -> bprintf b 
 	  "let %a := %a in" exp (Var v) exp src
-      | CPSR -> bprintf b "affect_cpsr (%a)" exp src
-      | SPSR (Some m)  -> bprintf b "affect_spsr (%a) (Some %s)" 
-	  exp src (mode m)
-      | SPSR None -> bprintf b "affect_spsr (%a) None" exp src
+      | CPSR -> bprintf b "set_cpsr (%a)" exp src
+      | SPSR (Some m)  -> bprintf b "set_spsr (%a) (Some %a)" 
+	  exp src mode m
+      | SPSR None -> bprintf b "set_spsr (%a) None" exp src
       | Range (CPSR, Flag (s,_)) ->
 	  begin match src with
-	    | Num n -> bprintf b "affect_cpsr_bit %sbit (%s) (cpsr s0)" 
+	    | Num n -> bprintf b "set_cpsr_bit %sbit (%s) (cpsr s0)" 
 		s (num_word n)
-	    | _ -> bprintf b "affect_cpsr_bit %sbit (%a) (cpsr s0)" 
+	    | _ -> bprintf b "set_cpsr_bit %sbit (%a) (cpsr s0)" 
 		s exp src
 	  end
       | Range (CPSR, Index (Num n)) ->
-          bprintf b "affect_cpsr_bit %s (%a) (cpsr s0)"
+          bprintf b "set_cpsr_bit %s (%a) (cpsr s0)"
 	    (cpsr_flag n) exp src
       | Range (Var ("accvalue" as v), Bits (("31" as n1), ("0" as n2)))
 	-> bprintf b "let %a := w0 in let %a := %a in"
@@ -310,7 +305,7 @@ and affect k b dst src =
       | Range (e1, Bits (n1, n2)) ->
 	  begin match e1 with
 	    | Var ("GE" as v) ->
-		bprintf b "affect_cpsr (%a)"
+		bprintf b "set_cpsr (%a)"
 		  (inst k) (Proc ("update_bits ",
 				  [Num n1; Num n2; src; Var v]))
 	    | Var v ->
@@ -319,11 +314,11 @@ and affect k b dst src =
 		  (inst k) (Proc ("update_bits ", 
 				  [Num n1; Num n2; src; Var v]))
 	    | Reg (e, _) ->
-		bprintf b "affect_reg %a (%a)" exp e
+		bprintf b "set_reg %a (%a)" exp e
 		  (inst k) (Proc ("update_bits ",
 				  [Num n1; Num n2; src; e]))
 	    | CPSR ->
-		bprintf b "affect_cpsr_bits %s %s (mode_number (%a)) (cpsr s0)" 
+		bprintf b "set_cpsr_bits %s %s (mode_number (%a)) (cpsr s0)" 
 		  n1 n2 exp src
 	    | _ ->
 		inst_aux k b (Proc ("update_bits ",
@@ -334,12 +329,15 @@ and affect k b dst src =
       | Range (e, Index n) ->
 	  begin match e with
 	    | Var ("GE" as v) ->
-		bprintf b "affect_cpsr (%a)"
+		bprintf b "set_cpsr (%a)"
 		  (inst k) (Proc ("update_bit ", [n; src; Var v]))
 	    | _ ->
 		inst_aux k b (Proc ("update_bit ", [n; src; e]))
 	  end
-      | _ -> string b "TODO9(\"affect\")";;
+
+      | Coproc_exp (_, _, _) | Other _ | BinOp (_, _, _) | Fun (_, _)
+      | If_exp (_, _, _) | Hex _ | Bin _ | Num _ | Unpredictable_exp
+      | Unaffected | Reg (_, _) | Range (_, _) -> invalid_arg "Gencoq.affect";;
 
 (***********************************************************************)
 (** semantic step function of some instruction *)
@@ -378,6 +376,9 @@ let abbrev b s =
   else bprintf b ""
 
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
+
+(*FIXME: to be moved to preproc? *)
+let optemps = ["index"; "offset_8"; "end_address"];;
 
 let prog gs ls b p =
   match p with
