@@ -108,8 +108,8 @@ cases.
 A3.2 The condition field (p. 111) *)
 (****************************************************************************)
 
-Definition ConditionPassed (w : word) : bool :=
-  match condition w with
+Definition ConditionPassed (w : word) (op : opcode) : bool :=
+  match op with
     | EQ => (* Z set *) is_set Zbit w
     | NE => (* Z clear *) negb (is_set Zbit w)
     | CS => (* C set *) is_set Cbit w
