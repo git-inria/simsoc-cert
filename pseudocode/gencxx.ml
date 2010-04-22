@@ -196,8 +196,8 @@ let rec exp b = function
 
 let rec inst k b = function
   | Block _ | For _ | While _ | If _ | Case _ as i ->
-      bprintf b "%a%a" Genpc.indent k (inst_aux k) i
-  | i -> bprintf b "%a%a;" Genpc.indent k (inst_aux k) i
+      bprintf b "%a%a" indent k (inst_aux k) i
+  | i -> bprintf b "%a%a;" indent k (inst_aux k) i
 
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable()"
@@ -221,37 +221,37 @@ and inst_aux k b = function
 
   | Case (e, s) ->
       bprintf b "switch (%a) {\n%a%a}"
-        exp e (list "" (case_aux k)) s Genpc.indent k
+        exp e (list "" (case_aux k)) s indent k
 
   | If (e, (Block _|If _ as i), None) ->
-      bprintf b "if (%a) {\n%a\n%a}" exp e (inst (k+2)) i Genpc.indent k
+      bprintf b "if (%a) {\n%a\n%a}" exp e (inst (k+2)) i indent k
   | If (e, i, None) -> bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
 
   | If (e, (Block _|If _ as i1), Some (Block _|If _ as i2)) ->
       bprintf b "if (%a) {\n%a\n%a} else {\n%a\n%a}"
-	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2 Genpc.indent k
+	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2 indent k
   | If (e, (Block _|If _ as i1), Some i2) ->
       bprintf b "if (%a) {\n%a\n%a} else\n%a"
-	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
+	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2
   | If (e, i1, Some (Block _|If _ as i2)) ->
       bprintf b "if (%a)\n%a\n%aelse {\n%a\n%a}"
-	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2 Genpc.indent k
+	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2 indent k
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
-	exp e (inst (k+2)) i1 Genpc.indent k (inst (k+2)) i2
+	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2
 
   | _ -> string b "TODO(\"inst\")"
 
 and case_aux k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
-    Genpc.indent k (hex_of_bin n) (inst (k+2)) i Genpc.indent (k+2)
+    indent k (hex_of_bin n) (inst (k+2)) i indent (k+2)
 
 and affect k b dst src =
   if src = Unpredictable_exp then string b "unpredictable()"
   else match dst with
     | Reg (Var "d", _) -> bprintf b
 "if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a"
-        Genpc.indent (k+2) exp src Genpc.indent k Genpc.indent (k+2) exp src
+        indent (k+2) exp src indent k indent (k+2) exp src
     | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a)" exp src
     | Reg (e, None) -> bprintf b "proc.reg(%a) = %a" exp e exp src
     | Reg (e, Some m) ->
