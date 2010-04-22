@@ -177,6 +177,80 @@ Definition inst_set (w : word) : option instruction_set :=
 Inductive exception : Type :=
   Reset | UndIns | SoftInt | ImpAbort | PFAbort | DataAbort | IRQ | FIQ.
 
+Definition exception_mode (e : exception) : exn_mode :=
+  match e with
+    | Reset => svc
+    | UndIns => und
+    | SoftInt => svc
+    | ImpAbort => abt
+    | PFAbort => abt
+    | DataAbort => abt
+    | IRQ => irq
+    | FIQ => fiq
+  end.
+
+Definition exception_vector_address (e : exception) (use_high_vectors : bool)
+  : Z :=
+  match use_high_vectors with
+    | false =>
+      match e with
+        | Reset =>     (*0x00000000*)  0
+        | UndIns =>    (*0x00000004*)  4
+        | SoftInt =>   (*0x00000008*)  8
+        | PFAbort =>   (*0x0000000C*) 12
+        | ImpAbort (*FIXME?*)
+        | DataAbort => (*0x00000010*) 16
+(*FIXME: depends on VE bit in the system control coprocessor *)
+        | IRQ =>       (*0x00000018*) 24
+        | FIQ =>       (*0x0000001C*) 28
+      end
+    | true =>
+      match e with
+        | Reset =>     (*0xFFFF0000*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0
+        | UndIns =>    (*0xFFFF0004*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0
+        | SoftInt =>   (*0xFFFF0008*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0
+        | PFAbort =>   (*0xFFFF000C*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0
+        | ImpAbort (*FIXME?*)
+        | DataAbort => (*0xFFFF0010*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0~0
+(*FIXME: depends on VE bit in the system control coprocessor *)
+        | IRQ =>       (*0xFFFF0018*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0
+        | FIQ =>       (*0xFFFF001C*)
+          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~1~1~0~0
+      end
+  end.
+
+(****************************************************************************)
+(* Exception priorities (p. 63) *)
+(****************************************************************************)
+
+Definition priority (e : exception) : BinInt.Z :=
+  match e with
+    | Reset => 1 (* highest *)
+    | DataAbort => 2
+    | FIQ => 3
+    | IRQ => 4
+    | ImpAbort => 5
+    | PFAbort => 6
+    | UndIns | SoftInt => 7 (* lowest *)
+  end.
+
+(*WARNING: by using this functions, exceptions are always sorted from
+the highest priority to the lowest, so that the exception with highest
+priority is the first one *)
+
+Fixpoint insert (e : exception) (l : list exception) : list exception :=
+  match l with
+    | nil => e :: nil
+    | e' :: l' => if zlt (priority e) (priority e') then e :: l
+      else e' :: insert e l'
+  end.
+
 (****************************************************************************)
 (* A3.2 The condition field (p. 111) *)
 (****************************************************************************)

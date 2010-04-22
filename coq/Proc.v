@@ -64,7 +64,9 @@ Definition reg_content (s : state) (k : regnum) : word :=
 
 Definition set_exns (s : state) (es : list exception) : state :=
   mk_state (cpsr s) (spsr s) (reg s) es (mode s).
-(*REMARK: Exception provides a function "add_exn" *)
+
+Definition add_exn (s : state) (e : exception) : state :=
+  set_exns s (insert e (exns s)).
 
 (****************************************************************************)
 (** Current instruction address
