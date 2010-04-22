@@ -30,8 +30,8 @@ Inductive result : Type :=
 Definition set_reg (n : regnum) (w : word) (b : bool) (s : state) : result
   := Ok (zne n 15) (set_reg s n w).
 
-Definition set_reg_of_mode (m : proc_mode) (k : regnum) (w : word)
-  (b : bool) (s : state) : result := Ok b (set_reg_of_mode s m k w).
+Definition set_reg_mode (m : proc_mode) (k : regnum) (w : word)
+  (b : bool) (s : state) : result := Ok b (*FIXME?*) (set_reg_mode s m k w).
 
 Definition set_cpsr (w : word) (b : bool) (s: state) : result := 
   Ok b (set_cpsr s w).

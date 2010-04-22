@@ -104,7 +104,7 @@ Definition reg_of_exn_mode (m : exn_mode) (k : regnum)
       end
   end.
 
-Definition reg_of_mode (m : proc_mode) (k : regnum) : register :=
+Definition reg_mode (m : proc_mode) (k : regnum) : register :=
   match m with
     | usr | sys => R k
     | exn e => reg_of_exn_mode e k

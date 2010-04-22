@@ -13,7 +13,7 @@ Global state.
 
 Set Implicit Arguments.
 
-Require Import Proc Arm SCC Bitvec List.
+Require Import Proc Arm SCC Bitvec List Functions.
 
 Record state : Type := mk_state {
   (* Processor *)
@@ -32,14 +32,14 @@ Definition spsr (s : state) (o : option exn_mode) : word := spsr (proc s) o.
 Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
   mk_state (set_spsr (proc s) o w) (scc s).
 
-Definition reg_content_of_mode (s : state) (m : proc_mode) (k : regnum) : word
-  := reg_content_of_mode (proc s) m k.
+Definition reg_content_mode (s : state) (m : proc_mode) (k : regnum) : word
+  := reg_content_mode (proc s) m k.
 
 Definition reg_content (s : state) (k : regnum) : word :=
   reg_content (proc s) k.
 
-Definition set_reg_of_mode (s : state) (m : proc_mode) (k : regnum) (w : word)
-  : state := mk_state (set_reg_of_mode (proc s) m k w) (scc s).
+Definition set_reg_mode (s : state) (m : proc_mode) (k : regnum) (w : word)
+  : state := mk_state (set_reg_mode (proc s) m k w) (scc s).
 
 Definition set_reg (s : state) (k : regnum) (w : word) : state :=
   mk_state (set_reg (proc s) k w) (scc s).
@@ -60,4 +60,4 @@ Definition CurrentModeHasSPSR (s : state) : bool := CurrentModeHasSPSR (mode s).
 Definition InAPrivilegedMode (s : state) : bool := InAPrivilegedMode (mode s).
 
 Definition ConditionPassed (s : state) (op : opcode) : bool :=
-  ConditionPassed (cspr s) op.
+  ConditionPassed (cpsr s) op.
