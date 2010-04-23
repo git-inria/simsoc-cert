@@ -15,6 +15,8 @@ open Ast;;
 open Printf;;
 open Util;;
 
+let num = string;;
+
 let string_of_mode = function
   | Fiq -> "fiq"
   | Irq -> "irq"
@@ -25,8 +27,6 @@ let string_of_mode = function
   | Sys -> "sys";;
 
 let mode b m = string b (string_of_mode m);;
-
-let num = string;;
 
 let level = function
   | "and" -> 0
