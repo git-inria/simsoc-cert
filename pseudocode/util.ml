@@ -29,6 +29,10 @@ module StrMap = Map.Make (StrOrd);;
 (** printing in a buffer *)
 (***********************************************************************)
 
+let int b n = bprintf b "%d" n;;
+
+let int32 b n = bprintf b "%ld" n;;
+
 let string b s = bprintf b "%s" s;;
 
 let prefix p f b x = bprintf b "%s%a" p f x;;
