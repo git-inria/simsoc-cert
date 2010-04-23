@@ -25,6 +25,9 @@ end;;
 module StrSet = Set.Make (StrOrd);;
 module StrMap = Map.Make (StrOrd);;
 
+let set_of_list =
+  List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
+
 (***********************************************************************)
 (** printing in a buffer *)
 (***********************************************************************)

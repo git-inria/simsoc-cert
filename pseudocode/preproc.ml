@@ -28,30 +28,29 @@ end;;
 
 module Make (G : Var) = struct
 
-  let set_of_list =
-    List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
-
   let input_registers = set_of_list ["n"; "m"; "s"];;
   let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
+
+(*REMOVE: if transformed into function calls*) 
   let specials = set_of_list
     ["CP15_reg1_EEbit"; "CP15_reg1_Ubit"; "GE"; "i"; "v5_and_above";
      "UnallocMask"; "StateMask"; "UserMask"; "PrivMask"];;
 
-let rec vars_exp ((gs,ls) as acc) = function
-  | Var s ->
-      if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
-      then acc
-      else StrMap.add s (G.global_type s) gs, ls
-  | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
-  | Fun (_, es) -> vars_exps acc es
-  | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
-  | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
-  | Coproc_exp (e, _ , es) -> vars_exps (vars_exp acc e) es
-  | _ -> acc
+  let rec vars_exp ((gs,ls) as acc) = function
+    | Var s ->
+	if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+	then acc
+	else StrMap.add s (G.global_type s) gs, ls
+    | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
+    | Fun (_, es) -> vars_exps acc es
+    | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
+    | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
+    | Coproc_exp (e, _ , es) -> vars_exps (vars_exp acc e) es
+    | _ -> acc
 
-and vars_exps acc es = List.fold_left vars_exp acc es;;
+  and vars_exps acc es = List.fold_left vars_exp acc es;;
 
-let rec vars_inst ((gs,ls) as acc) = function
+  let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
 	(if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
 	 then acc
@@ -59,25 +58,24 @@ let rec vars_inst ((gs,ls) as acc) = function
 	   if StrSet.mem s output_registers
 	   then StrMap.add s (G.global_type s) gs, ls
 	   else gs, StrMap.add s (G.local_type s e) ls) e
+    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
-    | If (e, i1, Some i2) ->
-	vars_inst (vars_inst (vars_exp acc e) i1) i2
+    | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es
     | For (_, _, _, i) -> vars_inst acc i
-    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (Var v, s) ->
+    | Case (Var s, nis) ->
         let gs' =
-          if StrMap.mem v gs || StrMap.mem v ls || StrSet.mem v specials
-	  then gs else StrMap.add v G.key_type gs
-        and vars_case acc (_, i) = vars_inst acc i
-        in List.fold_left vars_case (gs', ls) s
+          if StrMap.mem s gs || StrMap.mem s ls || StrSet.mem s specials
+	  then gs else StrMap.add s G.key_type gs
+        and vars_case acc (_, i) = vars_inst acc i in
+	  List.fold_left vars_case (gs', ls) nis
     | _ -> (gs,ls)
 
-and vars_insts acc is = List.fold_left vars_inst acc is;;
+  and vars_insts acc is = List.fold_left vars_inst acc is;;
 
-let vars p = vars_inst (StrMap.empty, StrMap.empty) (prog_inst p);;
+  let vars p = vars_inst (StrMap.empty, StrMap.empty) (prog_inst p);;
 
 end;;
 
@@ -122,13 +120,13 @@ let rec exp = function
   (* rename some function calls depending on the argument,
      and change the argument into a list of arguments,
      e.g. CarrayFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
-  | Fun (("OverflowFrom"|"BorrowFrom"
-	 |"CarryFrom"|"CarryFrom16"|"CarryFrom8" as f),
-	 [BinOp (_, op, _) as e]) -> let es = args e in
+  | Fun (("OverflowFrom"|"BorrowFrom"|"CarryFrom"|"CarryFrom16"|"CarryFrom8" 
+	      as f), [BinOp (_, op, _) as e]) -> let es = args e in
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
 	   List.map exp es)
   | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
       Fun ("SignExtend_24to30", List.map exp es)
+(*FIXME: there are other cases for SignExtend *)
   | Fun (("SignedSat"|"UnsignedSat"|"SignedDoesSat"|"UnsignedDoesSat" as f),
          [BinOp (e1, ("+"|"-" as op), e2); Num n]) ->
       Fun (sprintf "%s_%s%s" f (string_of_op op) n, [exp e1; exp e2])
@@ -158,6 +156,12 @@ let rec exp = function
 		   Unpredictable_exp,
 		   If_exp (c0, e0, e1)))
 
+  (* normalize hexadecimal numbers *)
+  | Hex s -> Hex (hex s)
+
+  (* replace "mode" by "CPSR[4:0]" *)
+  | Var "mode" -> Range (CPSR, Bits ("4", "0"))
+
   (* recursive expressions *)
   | Fun (f, es) -> Fun (f, List.map exp es)
   | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
@@ -169,7 +173,6 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  | Hex s -> Hex (hex s)
   | (Num _|Bin _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e) -> e;;
 
 (***********************************************************************)
