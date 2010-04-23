@@ -218,7 +218,8 @@ and pexp_num b = function
 
 and pexp_regnum b = function
   | Num s -> regnum b s
-  | e -> pexp b e
+  | Var s -> string b s
+  | e -> bprintf b "(mk_regnum %a)" pexp e
 
 and exp b = function
   | Bin s -> word bin b s
@@ -242,7 +243,7 @@ and exp b = function
 
   | Reg (e, None) -> bprintf b "reg_content s0 %a" pexp_regnum e
   | Reg (e, Some m) ->
-      bprintf b "reg_content_of_mode s0 %a %a" pexp_regnum e mode m
+      bprintf b "reg_content_mode s0 %a %a" pexp_regnum e mode m
 
   | Memory (_, _) as e -> todo_exp Genpc.exp b e
   | Coproc_exp (_, _, _) as e -> todo_exp Genpc.exp b e
@@ -272,7 +273,6 @@ and inst_cons k b = function
 
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
-  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons (k+2))) is indent (k+2)
@@ -281,7 +281,7 @@ and inst_aux k b = function
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
   | Affect (e1, e2) as i -> affect b i e2 e1
-  | While _ | For _ | Coproc _ | Case _ as i -> todo (Genpc.inst 0) b i
+  | Proc _ | While _ | For _ | Coproc _ | Case _ as i -> todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
 and affect b i v = function
