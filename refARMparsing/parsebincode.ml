@@ -17,6 +17,8 @@ Parser for binary encoding of instructions
 ocamlc -pp camlp4o
 *)
 
+module CT = Codetype
+
 (* For testing *)
 let rec list_of_stream = parser
   | [< 'x; l = list_of_stream >] -> x :: l
@@ -24,6 +26,7 @@ let rec list_of_stream = parser
 
 
 (* Identifiers *)
+(* FIXME: ident2 now useless, to remove once confirmed *)
 let ident, ident2 =
   let bu = Buffer.create 16 in 
   let rec ident_aux = parser
@@ -98,74 +101,139 @@ and seqwhint = parser
   | [< ''0'..'9'as c; s  >] -> seqwhint1 c s
   | [< >] -> []
 
-type token = 
-  Zero | One | Char of char | String of string
+(* Special case for fields tagged SBO and SBZ: 1 or several bits -> no simple algo *)
+(* -> for 1 but replaced with !SBZ and !SBO *)
+type code_contents = 
+  B0 | B1 | Onebit of string | Several of string
 
-let rec char_or_string c0 = parser
-  | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' | '_' as c1; s >] -> 
-      String (ident2 c0 c1 s)
-  | [< >] -> Char (c0)
-
-
-let rec token = parser
-  | [< '' ' ; s >] -> token s
-  | [< ''0' >] -> Zero
-  | [< ''1' >] -> One
-  | [< '  'a'..'z'| 'A'..'Z' | '_' as c; s >] -> char_or_string c s
-
-let rec seq_tokens = parser
-  | [< t = token; l = seq_tokens >] -> t :: l
+let rec code_contents = parser
+  | [< '' ' ; s >] -> code_contents s
+  | [< '  '0'..'9' | 'a'..'z'| 'A'..'Z' | '_' | '!' as c; id = ident c >] -> 
+      if c = '!' then Onebit (String.sub id 1 (String.length id -1 )) else
+	match id with
+	  | "0" -> B0
+	  | "1" -> B1
+	  | "mmod" -> Onebit (id)
+	  | _ -> if String.length id = 1 then Onebit (id) else Several (id)
+	    
+let rec seq_contents = parser
+  | [< t = code_contents; l = seq_contents >] -> t :: l
   | [< >] -> []
 
-type operation = Operation of header * int list * token list
+type instruction = Instruction of header * int list * code_contents list
 
-let operation = parser
+let instruction = parser
   | [< h = header;
        li = seqwhint;
        () = skip_empty_line;
-       lc = seq_tokens;
+       lc = seq_contents;
        () = skip_empty_line
-    >] -> Operation (h, li, lc)
+    >] -> Instruction (h, li, lc)
+
+let rec instructions_list = parser
+  | [< o = instruction; l = instructions_list >] -> o :: l
+  | [< >] -> []
+
+(* For debugging the ARM doc: more robust and provides the reversed result
+   so we can see the last successfully parsed instruction
+ *)
+let rec debug_instructions l s = 
+  match (try Some (instruction s) with _ -> None) with
+    | Some o -> debug_instructions (o :: l) s
+    | None -> l
+
+(* Mapping code_contents to bit numbers *)
+
+type map = CT.pos_contents array
+
+(* Inconsistent (expected index, position list, contents list, map) *)
+exception Inconsistent of int * int list * code_contents list * map
+
+(* Checks
+  - the position list should decrease from 31 to 0 without hole
+  - the consistency of the position list with code_contents list
+*)
+let build_map lint lcont =
+  let map = Array.make 32 (CT.Nothing) in
+  let rec loop exp lint lcont =
+    (match lint with 
+      | x :: _ when x <> exp -> raise (Inconsistent (exp, lint, lcont, map))
+      | _ -> ());
+    match lint, lcont with
+      | x :: y :: lint, Several(id) :: lcont -> 
+	  if x<=y then raise (Inconsistent (exp, lint, lcont, map)) else
+	    let n = x - y  in
+	    for i = 0 to n do map.(y + i) <- CT.Range (id, n+1, i) done;
+	    loop (y-1) lint lcont
+      | x :: lint,  B0 :: lcont  ->
+	  map.(x) <- CT.Value (false); 
+	  loop (x-1) lint lcont
+      | x :: lint,  B1 :: lcont  ->
+	  map.(x) <- CT.Value (true);
+	  loop (x-1) lint lcont
+      | x :: lint,  Onebit (id) :: lcont  -> 
+	  map.(x) <- if String.length id = 1 then CT.Param1 (id.[0]) else CT.Param1s (id);
+	  loop (x-1) lint lcont
+      | [],  [] -> ()
+      | _, _ -> raise (Inconsistent (exp, lint, lcont, map))
+  in 
+  loop 31 lint lcont;
+  map
+
+let light = function Header (_, _, l, s) -> (CT.LH (l, s))
+
+let rec maplist = function
+  | [] -> []
+  | Instruction (h, li, lc) :: l -> (light h, build_map li lc) :: maplist l
+
+exception No_exc
+
+type 'a result = OK of 'a | Exn of exn
+
+(* For debugging the ARM doc *)
+let rec debug_maplist a = function
+  | [] -> No_exc, a
+  | Instruction (h, li, lc) :: l ->
+       match (try OK (build_map li lc) with e -> Exn(e)) with
+	 | Exn (e)  -> e, a
+	 | OK (m) -> debug_maplist ((light h, m) :: a) l
 
 
-let cin = open_in "ADCbin.txt"
-let s = Stream.of_channel cin
-let test = operation s
-let () = close_in cin
+(* Returns the intended list of maps,
+  where each map is an array of length 32 *)
+let main s : CT.maplist =
+  let linst = instructions_list s in
+  let lmap = maplist linst in
+  lmap
 
-
-(* GARBAGE *)
-
-
-let main = parser 
-    [< _ = to_given_header (filtitle alpha);
-       _ = to_given_header (filtitle genotes);
-       () = loop_instrs;
-       _ = to_given_header (preftitle addrmodes);
-       (* 5 consecutive sections to analyze *)
-       () = loop_instrs;
-       () = loop_instrs;
-       () = loop_instrs;
-       () = loop_instrs;
-       () = loop_instrs;
-    >]
-  -> ()
-
-let () = main (Stream.of_channel stdin)
+let () = 
+  let l = main (Stream.of_channel stdin) in
+  output_value stdout l
 
 (*
 
-let cin = open_in "ARMv6.txt"
+(* tests *)
 
+
+let () = close_in cin
 let cin = open_in "ADCbin.txt"
-
 let s = Stream.of_channel cin
-let test = to_given_header (filtitle alpha) s
-let test = to_given_header (filtitle genotes) s
-let test = loop_instrs s
+let Instruction(_, lint, lcont) = instruction s
+let m = build_map lint lcont
+
+let () = close_in cin
+let cin = open_in "bincodeV6.txt"
+let s = Stream.of_channel cin
+let linst = instructions_list s
+let lmap = debug_maplist [] linst
+
+let () = close_in cin
+let cin = open_in "bincodeV6.txt"
+let s = Stream.of_channel cin
+let linst = instructions_list s
+let lmap = maplist linst
 let () = close_in cin
 
 let bidon = 0
-
 
 *)

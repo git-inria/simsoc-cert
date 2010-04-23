@@ -1,24 +1,109 @@
 --- ARMv6.txt.orig	2009-12-11 16:39:59.000000000 +0800
-+++ ARMv6_bincode.txt	2010-04-20 16:42:21.000000000 +0800
-@@ -10297,15 +10297,14 @@
++++ ARMv6_bincode.txt	2010-04-23 15:45:39.000000000 +0800
+@@ -7198,7 +7198,7 @@
+ A4.1.3     ADD
+            31            28 27 26 25 24 23 22 21 20 19              16 15         12 11                                       0
+ 
+-                  cond       0 0 I 0 1 0 0 S                  Rn            Rd                    shifter operand
++                  cond       0 0 I 0 1 0 0 S                  Rn            Rd                    shifter_operand
+ 
+ 
+            ADD adds two values. The first value comes from a register. The second value can be either an immediate
+@@ -7553,7 +7553,7 @@
+ 
+ 
+ A4.1.7     BKPT
+-           31         28 27 26 25 24 23 22 21 20 19                                       8   7         4 3           0
++           31 30 29 28 27 26 25 24 23 22 21 20 19                                         8   7 6 5 4 3           0
+ 
+             1 1 1 0 0 0 0 1 0 0 1 0                                 immed                     0 1 1 1         immed
+ 
+@@ -7739,7 +7739,7 @@
+ 
+ 
+ A4.1.9     BLX (2)
+-           31 30 29 28 27 26 25 24 23 22 21 20 19               16 15         12 11          8   7 6 5 4 3               0
++           31       28 27 26 25 24 23 22 21 20 19               16 15         12 11          8   7 6 5 4 3               0
+ 
+                cond        0 0 0 1 0 0 1 0               SBO            SBO           SBO        0 0 1 1            Rm
+ 
+@@ -10297,16 +10297,13 @@
  
  
  
 -A4.1.39 MSR
 -           Immediate operand:
+-
 +A4.1.39.1 MSR  Immediate operand:
- 
             31            28 27 26 25 24 23 22 21 20 19           16 15         12 11           8   7                     0
  
                    cond       0 0 1 1 0 R 1 0 field_mask                  SBO       rotate_imm          8_bit_immediate
  
  
 -           Register operand:
+-
 +A4.1.39.2 MSR  Register operand:
- 
             31            28 27 26 25 24 23 22 21 20 19           16 15         12 11           8   7 6 5 4 3             0
  
-@@ -19490,25 +19489,21 @@
+                   cond       0 0 0 1 0 R 1 0 field_mask                  SBO           SBZ         0 0 0 0        Rm
+@@ -10747,7 +10744,7 @@
+ 
+ 
+ A4.1.43 PKHBT
+-           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6     4 3           0
++           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6 5 4 3           0
+ 
+                 cond       0 1 1 0 1 0 0 0                Rn              Rd           shift_imm     0 0 1        Rm
+ 
+@@ -10826,7 +10823,7 @@
+ 
+ 
+ A4.1.44 PKHTB
+-           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6     4 3            0
++           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6 5 4 3            0
+ 
+                 cond       0 1 1 0 1 0 0 0                Rn              Rd           shift_imm     1 0 1        Rm
+ 
+@@ -11681,7 +11678,7 @@
+ 
+ 
+ A4.1.56 REV
+-          31           28 27            23 22 21 20 19            16 15         12 11         8 7 6     4   3         0
++          31           28   27 26 25 24 23 22 21 20 19            16 15         12 11         8 7 6 5 4   3         0
+ 
+                 cond       0 1 1 0 1 0 1 1                SBO             Rd            SBO     0 0 1 1         Rm
+ 
+@@ -11735,7 +11732,7 @@
+ 
+ 
+ A4.1.57 REV16
+-           31          28 27            23 22 21 20 19            16 15         12 11         8   7 6      4 3            0
++           31          28   27 26 25 24 23 22 21 20 19            16 15         12 11         8   7 6 5 4 3            0
+ 
+                 cond       0 1 1 0 1 0 1 1                SBO             Rd            SBO       1 0 1 1          Rm
+ 
+@@ -11789,7 +11786,7 @@
+ 
+ 
+ A4.1.58 REVSH
+-          31           28 27            23 22 21 20 19            16 15         12 11         8 7 6    4   3         0
++          31           28   27 26 25 24 23 22 21 20 19            16 15         12 11         8 7 6 5 4   3         0
+ 
+                 cond       0 1 1 0 1 1 1 1                SBO             Rd            SBO     1 0 1 1        Rm
+ 
+@@ -12570,9 +12567,9 @@
+ 
+ 
+ A4.1.67 SETEND
+-          31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15                     10 9     8    7           4 3         0
++          31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15                     10 9     8    7 6 5 4 3         0
+ 
+-          1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1                               SBZ         E SBZ 0 0 0 0                SBZ
++          1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1                               SBZ         E   !SBZ   0 0 0 0                SBZ
+ 
+ 
+          SETEND modifies the CPSR E bit, without changing any other bits in the CPSR.
+@@ -19490,25 +19487,21 @@
  
  
  
@@ -47,7 +132,7 @@
            31           28 27 26 25 24             21 20 19          16 15         12 11         8 7 6 5 4         3          0
  
                  cond          0 0 0      opcode      S       Rn              Rd            Rs         0 shift 1       Rm
-@@ -19547,7 +19542,7 @@
+@@ -19547,7 +19540,7 @@
  
  
  
@@ -56,7 +141,7 @@
           As well as producing the shifter operand, the shifter produces a carry-out which some instructions write into
           the Carry Flag. The default register operand (register Rm specified with no shift) uses the form register shift
           left by immediate, with the immediate set to zero.
-@@ -20234,25 +20229,21 @@
+@@ -20234,25 +20227,21 @@
  
  
  
@@ -85,7 +170,7 @@
            31           28 27 26 25 24 23 22 21 20 19           16 15         12 11               7 6 5 4     3          0
  
                  cond       0 1 1 P U B W L                Rn           Rd            shift_imm     shift 0       Rm
-@@ -20971,18 +20962,14 @@
+@@ -20971,18 +20960,14 @@
                   See Miscellaneous Loads and Stores - Register post-indexed on page A5-40.
  
  
@@ -106,17 +191,58 @@
            31           28 27 26 25 24 23 22 21 20 19          16 15        12 11         8 7 6 5 4      3            0
  
                  cond       0 0 0 P U 0 W L               Rn           Rd           SBZ      1 S H 1          Rm
-@@ -21390,8 +21377,7 @@
+@@ -21390,12 +21375,10 @@
  
  
  
 -A5.4.1   Encoding
 -         The following diagram shows the encoding for this addressing mode:
+-
 +A5.4.1   Encoding The following diagram shows the encoding for this addressing mode:
- 
            31          28 27 26 25 24 23 22 21 20 19            16 15                                                     0
  
-@@ -21636,7 +21622,7 @@
+-               cond       1 0 0 P U S W L                 Rn                             register list
++               cond       1 0 0 P U S W L                 Rn                             register_list
+ 
+ 
+          The P bit         Has two meanings:
+@@ -21437,7 +21420,7 @@
+ A5.4.2   Load and Store Multiple - Increment after
+           31           28 27 26 25 24 23 22 21 20 19            16 15                                                   0
+ 
+-                cond       1 0 0 0 1 S W L                Rn                             register list
++                cond       1 0 0 0 1 S W L                Rn                             register_list
+ 
+ 
+          This addressing mode is for Load and Store Multiple instructions, and forms a range of addresses.
+@@ -21487,7 +21470,7 @@
+ A5.4.3   Load and Store Multiple - Increment before
+           31          28 27 26 25 24 23 22 21 20 19            16 15                                                   0
+ 
+-               cond       1 0 0 1 1 S W L                Rn                             register list
++               cond       1 0 0 1 1 S W L                Rn                             register_list
+ 
+ 
+          This addressing mode is for Load and Store Multiple instructions, and forms a range of addresses.
+@@ -21537,7 +21520,7 @@
+ A5.4.4   Load and Store Multiple - Decrement after
+           31           28 27 26 25 24 23 22 21 20 19            16 15                                                   0
+ 
+-                cond       1 0 0 0 0 S W L                Rn                             register list
++                cond       1 0 0 0 0 S W L                Rn                             register_list
+ 
+ 
+          This addressing mode is for Load and Store Multiple instructions, and forms a range of addresses.
+@@ -21586,7 +21569,7 @@
+ A5.4.5   Load and Store Multiple - Decrement before
+           31          28 27 26 25 24 23 22 21 20 19            16 15                                                   0
+ 
+-               cond       1 0 0 1 0 S W L                Rn                             register list
++               cond       1 0 0 1 0 S W L                Rn                             register_list
+ 
+ 
+          This addressing mode is for Load and Store multiple instructions, and forms a range of addresses.
+@@ -21636,7 +21619,7 @@
  
  
  
@@ -125,7 +251,7 @@
           The four addressing mode names given in Addressing Mode 4 - Load and Store Multiple on page A5-41 (IA,
           IB, DA, DB) are most useful when a load and Store Multiple instruction is being used for block data transfer,
           as it is likely that the Load Multiple and Store Multiple have the same addressing mode, so that the data is
-@@ -21748,8 +21734,6 @@
+@@ -21748,8 +21731,6 @@
  
  
  A5.5.1   Encoding
@@ -134,7 +260,7 @@
            31          28 27 26 25 24 23 22 21 20 19            16 15         12 11         8   7                      0
  
                 cond       1 1 0 P U N W L                 Rn           CRd        cp_num              offset_8
-@@ -49653,4 +49637,4 @@
+@@ -49653,4 +49634,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
