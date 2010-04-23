@@ -164,6 +164,12 @@ Definition InAPrivilegedMode (m : proc_mode) : bool :=
   end.
 
 (****************************************************************************)
+(** is_even *)
+(****************************************************************************)
+
+Definition is_even (x : Z) : bool := zeq (Zmod x 2) Z0.
+
+(****************************************************************************)
 (** Logical_Shift_Left (p. 1129)
 
 Performs a left shift, inserting zeros in the vacated bit positions
