@@ -16,7 +16,7 @@ type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 type num = string;;
 
 type exp =
-| Num of num
+| Num of string
 | Bin of string
 | Hex of string
 | If_exp of exp * exp * exp
