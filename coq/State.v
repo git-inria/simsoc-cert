@@ -22,6 +22,10 @@ Record state : Type := mk_state {
   scc : SCC.state
 }.
 
+(****************************************************************************)
+(** Processor *)
+(****************************************************************************)
+
 Definition cpsr (s : state) : word := cpsr (proc s).
 
 Definition set_cpsr (s : state) (w : word) : state :=
@@ -61,3 +65,13 @@ Definition InAPrivilegedMode (s : state) : bool := InAPrivilegedMode (mode s).
 
 Definition ConditionPassed (s : state) (op : opcode) : bool :=
   ConditionPassed (cpsr s) op.
+
+(****************************************************************************)
+(** System control coprocessor and Memory *)
+(****************************************************************************)
+
+Definition read (s : state) (a : address) (n : size) : word :=
+  read (scc s) a n.
+
+Definition write (s : state) (a : address) (n : size) (w : word) : state :=
+  mk_state (proc s) (write (scc s) a n w).
