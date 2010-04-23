@@ -18,8 +18,6 @@ open Lexing;;
 
 let num_of_string s = Scanf.sscanf s "%i" (fun x -> x);;
 
-let word_of_string s = Scanf.sscanf s "%li" (fun x -> x);;
-
 let mode_of_string = function
   | "fiq" -> Fiq
   | "irq" -> Irq
