@@ -36,11 +36,11 @@ Definition set_reg_mode (m : proc_mode) (k : regnum) (w : word)
 Definition set_cpsr (w : word) (b : bool) (s: state) : result := 
   Ok b (set_cpsr s w).
 
-Definition set_cpsr_bit (n : nat) (v w : word) (b : bool) (s : state) : result
-  := Ok b (State.set_cpsr s (update_bit n v w)).
+Definition set_cpsr_bit (n : nat) (v : word) (b : bool) (s : state) : result
+  := Ok b (State.set_cpsr s (update_bit n v (cpsr s))).
 
-Definition set_cpsr_bits (n p : nat) (v w : word) (b : bool) (s : state)
-  : result := Ok b (State.set_cpsr s (update_bits n p v w)).
+Definition set_cpsr_bits (n p : nat) (v : word) (b : bool) (s : state)
+  : result := Ok b (State.set_cpsr s (update_bits n p v (cpsr s))).
 
 Definition set_spsr (m : option exn_mode) (w : word) (b : bool) (s : state)
   : result := Ok b (set_spsr s m w).
