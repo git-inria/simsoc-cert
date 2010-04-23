@@ -137,21 +137,23 @@ End bitvec.
 (** A2.1 Data types (p. 39) *)
 (****************************************************************************)
 
+Inductive size : Type := Word | Half | Byte.
+
 Definition byte_size := 8%nat.
 Definition byte := bitvec byte_size.
 Definition mk_byte := mk_bitvec byte_size.
 
-Definition get_byte_0 w := mk_byte (intval w[7#0]).
-Definition get_byte_1 w := mk_byte (intval w[15#8]).
-Definition get_byte_2 w := mk_byte (intval w[23#16]).
-Definition get_byte_3 w := mk_byte (intval w[31#24]).
+Definition get_byte0 w := mk_byte (intval w[7#0]).
+Definition get_byte1 w := mk_byte (intval w[15#8]).
+Definition get_byte2 w := mk_byte (intval w[23#16]).
+Definition get_byte3 w := mk_byte (intval w[31#24]).
 
-Definition halfword_size := 16%nat.
-Definition halfword := bitvec halfword_size.
-Definition mk_halfword := mk_bitvec halfword_size.
+Definition half_size := 16%nat.
+Definition half := bitvec half_size.
+Definition mk_half := mk_bitvec half_size.
 
-Definition get_half_0 w := mk_halfword (intval w[15#0]).
-Definition get_half_1 w := mk_halfword (intval w[31#16]).
+Definition get_half0 w := mk_half (intval w[15#0]).
+Definition get_half1 w := mk_half (intval w[31#16]).
 
 (****************************************************************************)
 (** Addresses (p. 68) *)
@@ -188,6 +190,8 @@ Definition regnum_from_bit (k : nat) (w : word) : regnum :=
 (** some word constants *)
 (****************************************************************************)
 
+(*FIXME: to be removed*)
+
 Definition maxu : word := repr max_unsigned.
 Definition max : word := repr max_signed.
 Definition min : word := repr min_signed.
@@ -220,5 +224,5 @@ Definition w0x0000FFFF : word := repr 65535.
 Definition w0xFFFF000C : word := repr 4294901772.
 Definition w0x0000000C : word := w12.
 
-Definition w0x0000 : halfword := get_half_0 w0.
-Definition w0xFFFF : halfword := get_half_0 w0x0000FFFF.
+Definition w0x0000 : half := get_half0 w0.
+Definition w0xFFFF : half := get_half0 w0x0000FFFF.
