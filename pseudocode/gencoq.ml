@@ -15,7 +15,7 @@ open Ast;;
 open Printf;;
 open Util;;
 
-let comment f b x = bprintf b "(* %a *)" f x;;
+let comment f b x = bprintf b "(*%a*)" f x;;
 
 let hex_of_bin = function
   | "0b00" | "0b0" -> "0"
@@ -75,63 +75,6 @@ let var = function (*FIXME: to be done in preproc *)
   | s -> s;;
 
 (***********************************************************************)
-(** numbers *)
-(***********************************************************************)
-
-let num = string;;
-
-let bin b s =
-  let n = String.length s in
-    if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
-    bprintf b "%c" s.[2];
-    for i = 3 to n-1 do bprintf b "~%c" s.[i] done;;
-
-(*FIXME: use a Coq function to convert an hexa string into a word *)
-let hex b s = bprintf b "w%s" s;;
-
-(***********************************************************************)
-(** register and function names *)
-(***********************************************************************)
-
-let coq_regnum = function
-  | "15" -> "PC"
-  | "14" -> "LR"
-  | "13" -> "SP"
-  | s -> s;;
-
-let regnum b s = string b (coq_regnum s);;
- 
-let coq_fun_name = function
-  | "address_of_the_instruction_after_the_branch_instruction"
-  | "address_of_instruction_after_the_BLX_instruction"
-  | "address_of_the_instruction_after_the_BLX_instruction"
-  | "address_of_next_instruction_after_the_SWI_instruction"
-    -> "next_inst_address s0"
-  | "address_of_BKPT_instruction" -> "cur_inst_address s0"
-  | "CurrentModeHasSPSR" -> "CurrentModeHasSPSR s0"
-  | "InAPrivilegedMode" -> "InAPrivilegedMode s0"
-  | "ConditionPassed" -> "ConditionPassed s0"
-  | "SignExtend_30" -> "SignExtend_24to30" (*FIXME*)
-  | "NOT" -> "not"
-  | "not" -> "negb"
-  | "AND" -> "and"
-  | "OR" -> "or"
-  | "EOR" -> "xor"
-  | "and" -> "andb"
-  | "or" -> "orb"
-  | "+" -> "add"
-  | "-" -> "sub"
-  | "*" -> "mul"
-  | "==" -> "zeq"
-  | "!=" -> "zne"
-  | ">=" -> "zge"
-  | "<" -> "zlt"
-  | "<<" -> "Logical_Shift_Left"
-  | s -> s;;
-
-let fun_name b s = string b (coq_fun_name s);;
-
-(***********************************************************************)
 (** variable types *)
 (***********************************************************************)
 
@@ -170,24 +113,123 @@ let variables p =
      StrMap.fold (fun s t l -> (s,t)::l) ls []);;
 
 (***********************************************************************)
+(** numbers *)
+(***********************************************************************)
+
+let num = string;;
+
+let bin b s =
+  let n = String.length s in
+    if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
+    let i = ref 2 in
+      while s.[!i] = '0' && !i < n do incr i done;
+      if !i >= n then string b "Z0"
+      else begin
+	string b "Zpos 1";
+	for i = !i+1 to n-1 do bprintf b "~%c" s.[i] done
+      end;;
+
+let bin b s = par bin b s;;
+
+(*IMPROVE: use a Coq function to convert an hexa string into a word? *)
+let hex b s =
+  comment string b s;
+  (*FIXME: there is a problem here with scanf *)
+  let n = Scanf.sscanf s "%lX" (fun x -> x) in
+    if Int32.compare n Int32.zero <= 0 then bprintf b "Z0"
+    else bprintf b "Zpos %lX" n;;
+
+let hex b s = par hex b s;;
+
+let word f b s = bprintf b "repr %a" f s;;
+
+(***********************************************************************)
+(** registers *)
+(***********************************************************************)
+
+let coq_regnum = function
+  | "15" -> "PC"
+  | "14" -> "LR"
+  | "13" -> "SP"
+  | s -> Printf.sprintf "(mk_regnum %s)" s;;
+
+let regnum b s = string b (coq_regnum s);;
+
+(***********************************************************************)
+(** modes *)
+(***********************************************************************)
+
+let exn_mode = Genpc.mode;;
+
+let string_of_mode = function
+  | Usr -> "usr"
+  | Sys -> "sys"
+  | m -> "(exn " ^ Genpc.string_of_mode m ^ ")";;
+
+let mode b m = string b (string_of_mode m);;
+
+(***********************************************************************)
+(** functions *)
+(***********************************************************************)
+ 
+let coq_fun_name = function
+  | "address_of_the_instruction_after_the_branch_instruction"
+  | "address_of_instruction_after_the_BLX_instruction"
+  | "address_of_the_instruction_after_the_BLX_instruction"
+  | "address_of_next_instruction_after_the_SWI_instruction"
+    -> "next_inst_address s0"
+  | "address_of_BKPT_instruction" -> "cur_inst_address s0"
+  | "CurrentModeHasSPSR" -> "CurrentModeHasSPSR s0"
+  | "InAPrivilegedMode" -> "InAPrivilegedMode s0"
+  | "ConditionPassed" -> "ConditionPassed s0"
+  | "SignExtend_30" -> "SignExtend_24to30" (*FIXME*)
+  | "NOT" -> "not"
+  | "not" -> "negb"
+  | "AND" -> "and"
+  | "OR" -> "or"
+  | "EOR" -> "xor"
+  | "and" -> "andb"
+  | "or" -> "orb"
+  | "+" -> "add"
+  | "-" -> "sub"
+  | "*" -> "mul"
+  | "==" -> "zeq"
+  | "!=" -> "zne"
+  | ">=" -> "zge"
+  | "<" -> "zlt"
+  | "<<" -> "Logical_Shift_Left"
+  | s -> s;;
+
+let fun_name b s = string b (coq_fun_name s);;
+
+(***********************************************************************)
 (** expressions *)
 (***********************************************************************)
 
 (*REMOVE when finished! *)
 let todo f b e = bprintf b "todo \"%a\"" f e;;
 
-let mode = Genpc.mode;;
-
 let rec pexp b = function
-  | Bin _ | Hex _ | Num _ | Var _ as e -> exp b e
+  | Var _ as e -> exp b e
   | e -> par exp b e
 
-and exp b = function
-  | Bin s -> bin b s
-  | Hex s -> hex b s
+and pexp_num b = function
   | Num s -> num b s
+  | e -> pexp b e
+
+and pexp_regnum b = function
+  | Num s -> regnum b s
+  | e -> pexp b e
+
+and exp b = function
+  | Bin s -> word bin b s
+  | Hex s -> word hex b s
+  | Num s -> word num b s
   | Var s -> string b s
+  | Fun (f, []) -> fun_name b f
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
+  | BinOp (e1, ("==" as f), Num n) ->
+      bprintf b "%a %a %a" fun_name f pexp e1 num n
   | BinOp (e1, f, e2) -> bprintf b "%a %a %a" fun_name f pexp e1 pexp e2
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
@@ -195,12 +237,11 @@ and exp b = function
   | Range (e, r) -> bprintf b "%a[%a]" pexp e range r
 
   | SPSR None -> string b "spsr s0 None"
-  | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" mode m
+  | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" exn_mode m
 
-  | Reg (Num n, None) -> bprintf b "reg_content s0 %a" regnum n
-  | Reg (e, None) -> bprintf b "reg_content s0 %a" pexp e
+  | Reg (e, None) -> bprintf b "reg_content s0 %a" pexp_regnum e
   | Reg (e, Some m) ->
-      bprintf b "reg_content_of_mode s0 %a %a" pexp e mode m
+      bprintf b "reg_content_of_mode s0 %a %a" pexp_regnum e mode m
 
   | Memory (_, _) as e -> todo Genpc.exp b e
   | Coproc_exp (_, _, _) as e -> todo Genpc.exp b e
@@ -209,7 +250,7 @@ and exp b = function
 
 and range b = function
   | Flag (s, _) -> bprintf b "%sbit" s
-  | Index e -> exp b e
+  | Index e -> pexp_num b e
   | Bits (n1, n2) -> bprintf b "%a#%a" num n1 num n2;;
 
 (***********************************************************************)
@@ -220,12 +261,13 @@ let rec inst k b i = indent b k; inst_aux k b i
 
 and pinst k b i = indent b k; par (inst_aux k) b i
 
+and cons k b i = indent b k; postfix " ::" (inst_aux k) b i
+
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
   | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
   | Block is ->
-      bprintf b "block (\n%a%anil)"
-	(list "" (postfix " ::\n" (inst (k+2)))) is indent (k+2)
+      bprintf b "block (\n%a\n%anil)" (list "\n" (cons (k+2))) is indent (k+2)
   | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
@@ -233,17 +275,18 @@ and inst_aux k b = function
   | Affect (e1, e2) as i ->
       begin try bprintf b "%a %a" affect e1 pexp e2
       with Not_found -> todo (Genpc.inst 0) b i end
-  | (While _ | For _ | Coproc _ | Case _) as i -> todo (Genpc.inst 0) b i
+  | While _ | For _ | Coproc _ | Case _ as i -> todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
 and affect b = function
-  | Reg (e, None) -> bprintf b "set_reg %a" exp e
-  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m exp e
+  | Reg (e, None) -> bprintf b "set_reg %a" pexp_regnum e
+  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m pexp_regnum e
   | CPSR -> bprintf b "set_cpsr"
-  | SPSR None -> bprintf b "set_spsr"
-  | SPSR (Some m) -> bprintf b "set_spsr_mode %a" mode m
-  | _ -> raise Not_found
-;;
+  | SPSR None -> bprintf b "set_spsr None"
+  | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
+  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit" s
+  | Range (CPSR, Bits (n, p)) -> bprintf b "set_cpsr_bits %a %a" num n num p
+  | _ -> raise Not_found;;
 
 (*    match dst with
       | Reg (Num n, None) ->
@@ -334,7 +377,7 @@ let prog gs _ls b p =
   match p with
     | Instruction (_ , id, ids, i) ->
         bprintf b
-"(* %a *)\nDefinition %a_step (s0 : state) %a: result :=\n%a  true s0.\n"
+"(* %a *)\nDefinition %a_step (s0 : state) %a: result :=\n%a true s0.\n"
 	  Genpc.prog_name p
           prog_name (id::ids)
           (list " " prog_arg) gs
@@ -410,8 +453,7 @@ let lib b ps =
       bprintf btyp "%a\n" (inst_typ gs) p;
       bprintf bsem "%a\n" (inst_sem gs) p
   in
-    bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\n";
-    bprintf b "Import Int.\n\n";
+    bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\nRequire Import ZArith.\nImport Int.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;
     bprintf b "Inductive instruction : Type :=\n";
     Buffer.add_buffer b btyp;
