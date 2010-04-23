@@ -133,7 +133,7 @@ let bin b s = par bin b s;;
 
 (*IMPROVE: use a Coq function to convert an hexa string into a word? *)
 let hex b s =
-  comment string b s;
+  comment string b ("todo: " ^ s);
   (*FIXME: there is a problem here with scanf *)
   let n = Scanf.sscanf s "%lX" (fun x -> x) in
     if Int32.compare n Int32.zero <= 0 then bprintf b "Z0"
@@ -182,7 +182,6 @@ let coq_fun_name = function
   | "CurrentModeHasSPSR" -> "CurrentModeHasSPSR s0"
   | "InAPrivilegedMode" -> "InAPrivilegedMode s0"
   | "ConditionPassed" -> "ConditionPassed s0"
-  | "SignExtend_30" -> "SignExtend_24to30" (*FIXME*)
   | "NOT" -> "not"
   | "not" -> "negb"
   | "AND" -> "and"
@@ -207,7 +206,7 @@ let fun_name b s = string b (coq_fun_name s);;
 (***********************************************************************)
 
 (*REMOVE when finished! *)
-let todo f b e = bprintf b "todo \"%a\"" f e;;
+let todo_exp f b e = bprintf b "(*todo: %a*) (repr 0)" f e;;
 
 let rec pexp b = function
   | Var _ as e -> exp b e
@@ -225,6 +224,8 @@ and exp b = function
   | Bin s -> word bin b s
   | Hex s -> word hex b s
   | Num s -> word num b s
+  | Var ("CP15_reg1_Ubit"|"CP15_reg1_EEbit" as s) ->
+      comment string b s; string b "(repr 0)" (*FIXME*)
   | Var s -> string b s
   | Fun (f, []) -> fun_name b f
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
@@ -243,8 +244,8 @@ and exp b = function
   | Reg (e, Some m) ->
       bprintf b "reg_content_of_mode s0 %a %a" pexp_regnum e mode m
 
-  | Memory (_, _) as e -> todo Genpc.exp b e
-  | Coproc_exp (_, _, _) as e -> todo Genpc.exp b e
+  | Memory (_, _) as e -> todo_exp Genpc.exp b e
+  | Coproc_exp (_, _, _) as e -> todo_exp Genpc.exp b e
 
   | Other _ | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
@@ -257,34 +258,46 @@ and range b = function
 (** instructions *)
 (***********************************************************************)
 
+(*REMOVE when finished! *)
+let todo f b e = bprintf b "todo \"%a\"" f e;;
+
 let rec inst k b i = indent b k; inst_aux k b i
 
 and pinst k b i = indent b k; par (inst_aux k) b i
 
-and cons k b i = indent b k; postfix " ::" (inst_aux k) b i
+(*IMPROVE: postfix by nil and remove affect ?*)
+and inst_cons k b = function
+  | Affect (Var _, _) as i -> inst k b i
+  | i -> indent b k; postfix " ::" (inst_aux k) b i
 
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
   | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
   | Block is ->
-      bprintf b "block (\n%a\n%anil)" (list "\n" (cons (k+2))) is indent (k+2)
+      bprintf b "block (\n%a\n%anil)"
+	(list "\n" (inst_cons (k+2))) is indent (k+2)
   | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
-  | Affect (e1, e2) as i ->
-      begin try bprintf b "%a %a" affect e1 pexp e2
-      with Not_found -> todo (Genpc.inst 0) b i end
+  | Affect (e1, e2) as i -> affect b i e2 e1
   | While _ | For _ | Coproc _ | Case _ as i -> todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
-and affect b = function
+and affect b i v = function
+  | Var s -> bprintf b "let %s := %a in" s exp v
+  | e ->
+      begin try bprintf b "%a %a" affect_aux e pexp v
+      with Not_found -> todo (Genpc.inst 0) b i end
+
+and affect_aux b = function
   | Reg (e, None) -> bprintf b "set_reg %a" pexp_regnum e
   | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m pexp_regnum e
   | CPSR -> bprintf b "set_cpsr"
   | SPSR None -> bprintf b "set_spsr None"
   | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
   | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit" s
+  | Range (CPSR, Index e) -> bprintf b "set_cpsr_bit %a" pexp_num e
   | Range (CPSR, Bits (n, p)) -> bprintf b "set_cpsr_bits %a %a" num n num p
   | _ -> raise Not_found;;
 
@@ -377,7 +390,7 @@ let prog gs _ls b p =
   match p with
     | Instruction (_ , id, ids, i) ->
         bprintf b
-"(* %a *)\nDefinition %a_step (s0 : state) %a: result :=\n%a true s0.\n"
+"(* %a *)\nDefinition %a_step (s0 : state) %a : result :=\n%a true s0.\n"
 	  Genpc.prog_name p
           prog_name (id::ids)
           (list " " prog_arg) gs
