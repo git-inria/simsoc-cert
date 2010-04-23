@@ -241,8 +241,8 @@ Any operations used to calculate x or n are not repeated. *)
 
 Definition SignedDoesSat (x : word) (m : word) : bool :=
   let n := nat_of_Z m in
-  let c1 := cmp Cge x (neg (repr (two_power_nat (n - 1)))) in
-  let c2 := cmp Cle x (repr (two_power_nat n - 1)) in
+  let c1 := zge x (neg (repr (two_power_nat (n - 1)))) in
+  let c2 := zle x (repr (two_power_nat n - 1)) in
     andb c1 c2.
 
 Definition SignedDoesSat_add32 x y := SignedDoesSat (add x y) w32.
@@ -272,9 +272,9 @@ x         if –2^(n–1) <= x <= 2^(n–1)–1
 Definition SignedSat (x : word) (m : word) : word :=
   let t := two_power_nat (nat_of_Z m - 1) in
   let u := neg (repr t) in
-    if cmp Clt x u then u
+    if zlt x u then u
     else let v := repr (t - 1) in
-      if cmp Cgt x v then v
+      if zgt x v then v
       else x.
 
 Definition SignedSat_add8 x y := SignedSat (add x y) w8.
@@ -295,8 +295,8 @@ Any operations used to calculate x or n are not repeated. *)
 (****************************************************************************)
 
 Definition UnsignedDoesSat (x : word) (m : word) : bool :=
-  let c1 := cmp Cge x w0 in
-  let c2 := cmp Clt x (repr (two_power_nat (nat_of_Z m))) in
+  let c1 := zge x w0 in
+  let c2 := zlt x (repr (two_power_nat (nat_of_Z m))) in
     andb c1 c2.
 
 (****************************************************************************)
@@ -310,9 +310,9 @@ x     if 0 <= x < 2^n
 (****************************************************************************)
 
 Definition UnsignedSat (x : word) (m : word) : word :=
-  if cmp Clt x w0 then w0
+  if zlt x w0 then w0
   else let t := repr (two_power_nat (nat_of_Z m) - 1) in
-    if cmp Clt x t then x
+    if zlt x t then x
     else t.
 
 Definition UnsignedSat_add32 x y := UnsignedSat (add x y) w32.
@@ -330,4 +330,6 @@ Not defined in the Glossary, occurs in the pseudo-code for LDRH
 (p. 575). *)
 (****************************************************************************)
 
-Definition ZeroExtend := zero_ext 32. (*FIXME?*)
+Definition ZeroExtend8 (w : byte) : word := repr w.
+
+Definition ZeroExtend16 (w : half) : word := repr w.
