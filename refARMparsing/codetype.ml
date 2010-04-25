@@ -6,5 +6,6 @@ type pos_contents =
   | Param1 of char                 (* e.g. S *)
   | Param1s of string              (* e.g. mmod *)
   | Range of string * int * int    (* length position, e.g. Rn 4 0 *)
+  | Shouldbe of bool               (* false -> SBZ, true -> SBO *)
 
 type maplist = (lightheader * pos_contents array) list

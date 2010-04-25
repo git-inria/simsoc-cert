@@ -12,6 +12,7 @@ Parser for binary encoding of instructions
 *)
 
 (* 
+#load "codetype.cmx";; 
 #load "dynlink.cma";; 
 #load "camlp4o.cma";; 
 ocamlc -pp camlp4o
@@ -26,17 +27,14 @@ let rec list_of_stream = parser
 
 
 (* Identifiers *)
-(* FIXME: ident2 now useless, to remove once confirmed *)
-let ident, ident2 =
+let ident =
   let bu = Buffer.create 16 in 
   let rec ident_aux = parser
     | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' | '_' as c; s >] -> 
         Buffer.add_char bu c; ident_aux s
     | [< >] -> Buffer.contents bu in
   let ident c s = Buffer.clear bu; Buffer.add_char bu c; ident_aux s in
-  let ident2 c0 c1 s =
-    Buffer.clear bu; Buffer.add_char bu c0; Buffer.add_char bu c1; ident_aux s in
-  ident, ident2
+  ident
 
 (* Returns full line as string *)
 let take_eol =
@@ -162,8 +160,12 @@ let build_map lint lcont =
     match lint, lcont with
       | x :: y :: lint, Several(id) :: lcont -> 
 	  if x<=y then raise (Inconsistent (exp, lint, lcont, map)) else
-	    let n = x - y  in
-	    for i = 0 to n do map.(y + i) <- CT.Range (id, n+1, i) done;
+	    let n = x - y in
+	    let f =
+	      if id = "SBZ" then (fun i -> CT.Shouldbe (false))
+	      else if id = "SBO" then (fun i -> CT.Shouldbe (true))
+	      else (fun i -> CT.Range (id, n+1, i)) in
+	    for i = 0 to n do map.(y + i) <- f i done;
 	    loop (y-1) lint lcont
       | x :: lint,  B0 :: lcont  ->
 	  map.(x) <- CT.Value (false); 
@@ -172,7 +174,11 @@ let build_map lint lcont =
 	  map.(x) <- CT.Value (true);
 	  loop (x-1) lint lcont
       | x :: lint,  Onebit (id) :: lcont  -> 
-	  map.(x) <- if String.length id = 1 then CT.Param1 (id.[0]) else CT.Param1s (id);
+	  map.(x) <- 
+	    if String.length id = 1 then CT.Param1 (id.[0])
+	    else if id = "SBZ" then CT.Shouldbe (false)
+	    else if id = "SBO" then CT.Shouldbe (true)
+	    else CT.Param1s (id);
 	  loop (x-1) lint lcont
       | [],  [] -> ()
       | _, _ -> raise (Inconsistent (exp, lint, lcont, map))
