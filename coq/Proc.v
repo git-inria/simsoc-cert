@@ -81,7 +81,8 @@ Reading the program counter (p. 47) *)
 (****************************************************************************)
 
 (*IMPROVE: add cur_inst_address as new field in state?*)
-Definition cur_inst_address (s : state) : word := sub (reg_content s PC) w8.
+Definition cur_inst_address (s : state) : word :=
+  sub (reg_content s PC) (repr 8).
 
 (****************************************************************************)
 (** Next instruction address
@@ -89,5 +90,5 @@ cf. A2.7.1 Address space (p. 70) *)
 (****************************************************************************)
 
 Definition next_inst_address (s : state) : word :=
-  (*REMARK: [add (cur_inst_address s m PC) w4] is replaced by: *)
-  sub (reg_content s PC) w4.
+  (*REMARK: [add (cur_inst_address s m PC) (repr 4)] is replaced by: *)
+  sub (reg_content s PC) (repr 4).
