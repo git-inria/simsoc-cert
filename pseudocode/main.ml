@@ -37,7 +37,7 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
-type action = GenPC | GenPCC | GenPre | GenCxx | GenCoq | GenCoqDec;;
+type action = GenPC | GenPCCheck | GenPre | GenCxx | GenCoq | GenCoqDec;;
 
 let get_action, is_action_set, set_action =
   let action = ref GenPC and is_set = ref false in
@@ -54,12 +54,12 @@ let rec options () = [
   "-h", Unit print_help, "display the list of options";
   "-d", Unit set_debug_mode, "turn on debug mode";
   "-pc", Unit (fun () -> set_action GenPC), "generate pseudocode";
-  "-pcc", Unit (fun () -> set_action GenPCC),
+  "-pc-check", Unit (fun () -> set_action GenPCCheck),
   "generate pseudocode and reparse it";
   "-pre", Unit (fun () -> set_action GenPre), "generate normalized pseudocode";
   "-cxx", Unit (fun () -> set_action GenCxx), "generate instructions in C++";
   "-coq", Unit (fun () -> set_action GenCoq), "generate instructions in Coq";
-  "-coq-decode", Unit (fun () -> set_action GenCoqDec),
+  "-coq-decoder", Unit (fun () -> set_action GenCoqDec),
   "generate decoder in Coq";
 ]
 
@@ -82,14 +82,6 @@ let fprint_loc oc loc =
   Printf.fprintf oc "file \"%s\", line %d, character %d"
     loc.pos_fname loc.pos_lnum (loc.pos_cnum - loc.pos_bol + 1);;
 
-let open_file fn =
-  try open_in fn with Sys_error s -> prerr_endline s; exit 1;;
-
-let parse_file parse_channel fn =
-  let ic = open_file fn in
-  let x = parse_channel ic in
-    close_in ic; x;;
-
 let parse_lexbuf lb =
   try Parser.lib Lexer.token lb
   with Parsing.Parse_error ->
@@ -102,6 +94,11 @@ let parse_channel ic =
 
 let parse_string s = parse_lexbuf (Lexing.from_string s);;
 
+let parse_file fn =
+  let ic = open_in fn in
+  let x = parse_channel ic in
+    close_in ic; x;;
+
 (***********************************************************************)
 (** main procedure *)
 (***********************************************************************)
@@ -110,8 +107,14 @@ let print f x =
   let b = Buffer.create 10000 in
     f b x; Buffer.output_buffer stdout b;;
 
-let genpcc ps =
+let output gen = print gen (parse_file (get_filename()));;
+
+let output_norm gen =
+  print gen (List.map Preproc.prog (parse_file (get_filename())));;
+
+let genpc_check () =
   let b = Buffer.create 10000 in
+  let ps = parse_file (get_filename()) in
     Genpc.lib b ps;
     Buffer.output_buffer stdout b;
     let ps' = parse_string (Buffer.contents b) in
@@ -121,16 +124,13 @@ let genpcc ps =
 let main () =
   parse_args ();
   match get_action () with
-    | GenCoqDec -> print Decode.decode (input_value (open_in (get_filename ())))
-    | GenPC|GenPCC|GenPre|GenCxx|GenCoq ->
-	let ps = parse_file parse_channel (get_filename()) in
-	  match get_action () with
-	    | GenPC -> print Genpc.lib ps
-	    | GenPCC -> genpcc ps
-	    | GenPre -> print Genpc.lib (List.map Preproc.prog ps)
-	    | GenCxx -> print Gencxx.lib (List.map Preproc.prog ps)
-	    | GenCoq -> print Gencoq.lib (List.map Preproc.prog ps)
-	    | GenCoqDec -> ();;
+    | GenCoqDec ->
+	print Gencoqdec.decode (input_value (open_in (get_filename ())))
+    | GenPC -> output Genpc.lib
+    | GenPCCheck -> genpc_check ()
+    | GenPre -> output_norm Genpc.lib
+    | GenCxx -> output_norm Gencxx.lib
+    | GenCoq -> output_norm Gencoq.lib;;
 
 (***********************************************************************)
 (** launch the main procedure *)
