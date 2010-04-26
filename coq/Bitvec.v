@@ -165,9 +165,9 @@ Definition mk_address := mk_bitvec address_size.
 Definition address_eqdec := @bitvec_eqdec address_size.
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val 2 31 w] is always smaller than [two_power_nat 30]*)
+since [bits_val 31 2 w] is always smaller than [two_power_nat 30]*)
 Definition address_of_word (w : word) : address :=
-  mk_address (bits_val 2 31 w).
+  mk_address (bits_val 31 2 w).
 
 (****************************************************************************)
 (** A2.3 Registers (p. 42) *)
@@ -182,15 +182,15 @@ Definition LR := mk_regnum 14.
 Definition SP := mk_regnum 13.
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val k (k+3) w] is always smaller than [two_power_nat 4]*)
+since [bits_val (k+3) k w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=
-  mk_regnum (bits_val k (k+3) w).
+  mk_regnum (bits_val (k+3) k w).
 
 (****************************************************************************)
 (** some word constants *)
 (****************************************************************************)
 
-(*FIXME: to be removed*)
+(*REMOVE:
 
 Definition maxu : word := repr max_unsigned.
 Definition max : word := repr max_signed.
@@ -226,3 +226,4 @@ Definition w0x0000000C : word := w12.
 
 Definition w0x0000 : half := get_half0 w0.
 Definition w0xFFFF : half := get_half0 w0x0000FFFF.
+*)
