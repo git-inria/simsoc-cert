@@ -69,7 +69,7 @@ else /* rotate_imm != 0 */
 >>*)
 
 Definition so_imm (i : word) (rotate_imm immed_8 : word) : word * bool :=
-  let v := Rotate_Right immed_8 (mul w2 rotate_imm) in
+  let v := Rotate_Right immed_8 (mul (repr 2) rotate_imm) in
   let c := if zeq rotate_imm 0 then is_set Cbit i else is_set 31 v in
   (v, c).
 
@@ -211,7 +211,7 @@ Definition so_ASR_imm (s : state) (i : word)
   (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s  m in
   if zeq shift_imm 0 then
-    if is_set 31 Rm then (maxu, true) else (w0, false)
+    if is_set 31 Rm then (repr max_unsigned, true) else (w0, false)
   else (Arithmetic_Shift_Right Rm shift_imm,
     is_set (pred (nat_of_Z shift_imm)) Rm).
 
@@ -244,7 +244,7 @@ Definition so_ASR_reg (st : state) (i : word)
   else match Zcompare Rs7 32 with
          | Lt => (Arithmetic_Shift_Right Rm Rs7,
            is_set (pred (nat_of_Z Rs7)) Rm)
-         | _ => if is_set 31 Rm then (maxu, true) else (w0, false)
+         | _ => if is_set 31 Rm then (repr max_unsigned, true) else (w0, false)
        end.
 
 (****************************************************************************)
@@ -264,7 +264,7 @@ Definition so_ROR_imm (s : state) (i : word)
   (m : regnum) (shift_imm : word) : word * bool :=
   let Rm := reg_content s m in
   if zeq shift_imm 0 then
-    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
+    (or (Logical_Shift_Left (get Cbit i) (repr 31)) (Logical_Shift_Right Rm w1),
       is_set 0 Rm)
   else (Rotate_Right Rm shift_imm, is_set (pred (nat_of_Z shift_imm)) Rm).
 
@@ -306,7 +306,7 @@ shifter_carry_out = Rm[0]
 Definition so_RRX (s : state) (i : word) (m : regnum)
   : word * bool :=
   let Rm := reg_content s m in
-    (or (Logical_Shift_Left (get Cbit i) w31) (Logical_Shift_Right Rm w1),
+    (or (Logical_Shift_Left (get Cbit i) (repr 31)) (Logical_Shift_Right Rm w1),
       is_set 0 Rm).
 
 (****************************************************************************)
