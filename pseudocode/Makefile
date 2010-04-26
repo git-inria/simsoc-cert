@@ -17,7 +17,7 @@ LIBS := str
 CMAFILES := $(LIBS:%=%.cma)
 CMXAFILES := $(LIBS:%=%.cmxa)
 
-INCLUDES :=
+INCLUDES := -I ../refARMparsing
 
 FRAGILE := -w Ae -warn-error Ae
 
@@ -31,7 +31,7 @@ OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
 PARSERS := parser lexer
-FILES := util ast $(PARSERS) genpc preproc gencxx gencoq
+FILES := util ast $(PARSERS) genpc preproc gencxx gencoq gencoqdec
 
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
