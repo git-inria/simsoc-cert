@@ -23,13 +23,10 @@ let comment f b x = bprintf b "(*%a*)" f x;;
 
 let type_of_var = function
   | "cond" -> "opcode"
-  | "S" | "L" | "F" | "I" | "A" | "R" | "shifter_carry_out" | "shift" | "mmod"
-  | "x" | "y" | "W" | "X" |"U" -> "bool"
+  | "shifter_carry_out" | "shift" | "mmod" | "opcode25" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
-  | "s0" -> "state"
-  | "md" | "mode" -> "proc_mode"
   | "address" | "start_address" -> "address"
-  | _ -> "word";;
+  | s -> if String.length s = 1 then "bool" else "word";;
 
 module G = struct
 
@@ -127,19 +124,21 @@ let mode b m = string b (string_of_mode m);;
 (***********************************************************************)
 (** functions and binary operators *)
 (***********************************************************************)
- 
+
 let coq_fun_name = function
-  | "address_of_the_instruction_after_the_branch_instruction"
-  | "address_of_instruction_after_the_BLX_instruction"
-  | "address_of_the_instruction_after_the_BLX_instruction"
-  | "address_of_next_instruction_after_the_SWI_instruction"
-    -> "next_inst_address s0"
-  | "address_of_BKPT_instruction" -> "cur_inst_address s0"
-  | "CurrentModeHasSPSR" -> "CurrentModeHasSPSR s0"
-  | "InAPrivilegedMode" -> "InAPrivilegedMode s0"
-  | "ConditionPassed" -> "ConditionPassed s0"
   | "NOT" -> "not"
   | "not" -> "negb"
+  | s -> s;;
+
+let add_state = function
+  | "next_inst_address" | "cur_inst_address" | "CurrentModeHasSPSR"
+  | "InAPrivilegedMode" | "ConditionPassed" | "CP15_reg1_EEbit"
+  | "CP15_reg1_Ubit" as s -> s ^ " s0"
+  | s -> s;;
+
+let fun_name b s = string b (add_state (coq_fun_name s));;
+
+let coq_binop = function
   | "AND" -> "and"
   | "OR" -> "or"
   | "EOR" -> "xor"
@@ -155,7 +154,7 @@ let coq_fun_name = function
   | "<<" -> "Logical_Shift_Left"
   | s -> s;;
 
-let fun_name b s = string b (coq_fun_name s);;
+let binop b s = string b (coq_binop s);;
 
 (***********************************************************************)
 (** expressions *)
@@ -187,13 +186,13 @@ and exp b = function
   | Var s -> string b s
 
   | Fun (f, []) -> fun_name b f
-  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
+  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp_num) es
 
   | BinOp (e1, ("==" as f), Num n) -> (* avoid a repr *)
-      bprintf b "%a %a %a" fun_name f pexp e1 num n
+      bprintf b "%a %a %a" binop f pexp e1 num n
   | BinOp (Var "address" as e1, f, e2) -> (* avoid a typing problem in Coq *)
-      bprintf b "mk_address (%a %a %a)" fun_name f pexp e1 pexp e2 
-  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" fun_name f pexp e1 pexp e2
+      bprintf b "mk_address (%a %a %a)" binop f pexp e1 pexp e2 
+  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f pexp e1 pexp e2
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
