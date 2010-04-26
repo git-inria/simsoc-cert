@@ -127,7 +127,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEbits := bits_val 16 19.
+Definition GEbits := bits_val 19 16.
 
 (* The E bit (p. 51) *)
 
@@ -141,7 +141,7 @@ Definition Fbit := 6%nat.
 
 (* Mode bits (p. 52) *)
 
-Definition Mbits := bits_val 0 4.
+Definition Mbits := bits_val 4 0.
 
 Definition proc_mode_of_word (w : word) : option proc_mode :=
   match Mbits w with
