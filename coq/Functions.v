@@ -19,7 +19,8 @@ Import Int.
 (****************************************************************************)
 (** Table A4-1 Bit mask constants (p. 227) *)
 
-Definition UnallocMask : word := repr 116456448. (*FIXME*)
+(*FIXME using some hexadecimal notation*)
+Definition UnallocMask : word := repr 116456448.
 Definition UserMask : word := repr 4161733120.
 Definition PrivMask : word := repr 479.
 Definition StateMask : word := repr 16777248.
@@ -67,23 +68,10 @@ pseudo-code. The addition is not repeated. *)
 (****************************************************************************)
 
 Definition CarryFrom_add2 (x y : word) : bool :=
-  zlt max_unsigned (unsigned x + unsigned y).
+  zgt (unsigned x + unsigned y) max_unsigned.
 
 Definition CarryFrom_add3 (x y z : word) : bool :=
-  zlt max_unsigned (unsigned x + unsigned y + unsigned z).
-
-(****************************************************************************)
-(** CarryFrom (p. 1124)
-
-Returns 1 if the addition specified as its parameter caused a carry 
-(true result is bigger than 2^8−1, where the operands are treated as
-unsigned integers), and returns 0 in all other cases. This delivers further
-information about an addition which occurred earlier in the pseudo-code.
-The addition is not repeated. *)
-(****************************************************************************)
-
-Definition CarryFrom8_add2 (x y : word) : bool :=
-  zlt (two_power_nat 8 - 1) (unsigned x + unsigned y).
+  zgt (unsigned x + unsigned y + unsigned z) max_unsigned.
 
 (****************************************************************************)
 (** CarryFrom16 (p. 1124)
@@ -96,7 +84,21 @@ The addition is not repeated. *)
 (****************************************************************************)
 
 Definition CarryFrom16_add2 (x y : word) : bool :=
-  zlt (two_power_nat 16 - 1) (unsigned x + unsigned y).
+  zgt (unsigned x + unsigned y) (two_power_nat 16 - 1).
+
+(****************************************************************************)
+(** CarryFrom8
+
+Not defined. Used in UADD8. We guess:
+Returns 1 if the addition specified as its parameter caused a carry 
+(true result is bigger than 2^8−1, where the operands are treated as
+unsigned integers), and returns 0 in all other cases. This delivers further
+information about an addition which occurred earlier in the pseudo-code.
+The addition is not repeated. *)
+(****************************************************************************)
+
+Definition CarryFrom8_add2 (x y : word) : bool :=
+  zgt (unsigned x + unsigned y) (two_power_nat 8 - 1).
 
 (****************************************************************************)
 (** ConditionPassed (p. 1124)
@@ -147,7 +149,7 @@ System mode. *)
 Definition CurrentModeHasSPSR (m : proc_mode) : bool :=
   match m with
     | usr | sys => false
-    |_ => true
+    | _ => true
   end.
 
 (****************************************************************************)
@@ -159,15 +161,15 @@ and returns FALSE if the current mode is User mode. *)
 
 Definition InAPrivilegedMode (m : proc_mode) : bool :=
   match m with
-    | usr => true
-    | _ => false
+    | usr => false
+    | _ => true
   end.
 
 (****************************************************************************)
 (** is_even *)
 (****************************************************************************)
 
-Definition is_even (x : Z) : bool := zeq (Zmod x 2) Z0.
+Definition is_even (x : Z) : bool := zeq (Zmod x 2) 0.
 
 (****************************************************************************)
 (** Logical_Shift_Left (p. 1129)
@@ -195,30 +197,26 @@ caused a 32-bit signed overflow. Addition generates an overflow if
 both operands have the same sign (bit[31]), and the sign of the result
 is different to the sign of both operands. Subtraction causes an
 overflow if the operands have different signs, and the first operand
-and the result have different signs.  This delivers further
+and the result have different signs. This delivers further
 information about an addition or subtraction which occurred earlier in
-the pseudo-code.  The addition or subtraction is not repeated. *)
+the pseudo-code. The addition or subtraction is not repeated. *)
 (****************************************************************************)
 
 Definition OverflowFrom_add2 (x y : word) : bool :=
   let r := signed x + signed y in
-    orb (zlt r min_signed) (zgt r max_signed).
-
-(*IMPROVE: use this more efficient definition given p. 1131?*)
-Definition OverflowFrom_add2' (x y : word) (r : word) : bool :=
-  let sx := is_neg x in (beq sx (is_neg y)) && (bne sx (is_neg r)).
+    zlt r min_signed || zgt r max_signed.
 
 Definition OverflowFrom_add3 (x y z : word) : bool :=
   let r := signed x + signed y + signed z in
-    orb (zlt r min_signed) (zgt r max_signed).
+    zlt r min_signed || zgt r max_signed.
 
 Definition OverflowFrom_sub2 (x y : word) : bool :=
   let r := signed x - signed y in
-    orb (zlt r min_signed) (zgt r max_signed).
+    zlt r min_signed || zgt r max_signed.
 
 Definition OverflowFrom_sub3 (x y z : word) : bool :=
   let r := signed x - signed y - signed z in
-    orb (zlt r min_signed) (zgt r max_signed).
+    zlt r min_signed || zgt r max_signed.
 
 (****************************************************************************)
 (** Rotate_Right (p. 1132)
@@ -233,21 +231,16 @@ Definition Rotate_Right := ror. (*FIXME?*)
 (** SignedDoesSat(x,n) (p. 1134)
 
 Returns 0 if x lies inside the range of an n-bit signed integer (that is,
-if –2(n–1) ≤ x ≤ 2(n–1) – 1), and 1 otherwise.
+if –2^(n–1) ≤ x ≤ 2^(n–1) – 1), and 1 otherwise.
 This operation delivers further information about a SignedSat(x, n) 
 operation which occurred earlier in the pseudo-code. 
 Any operations used to calculate x or n are not repeated. *)
 (****************************************************************************)
 
-Definition SignedDoesSat (x : word) (m : word) : bool :=
-  let n := nat_of_Z m in
-  let c1 := zge x (neg (repr (two_power_nat (n - 1)))) in
-  let c2 := zle x (repr (two_power_nat n - 1)) in
-    andb c1 c2.
-
-Definition SignedDoesSat_add32 x y := SignedDoesSat (add x y) w32.
-Definition SignedDoesSat_sub32 x y := SignedDoesSat (sub x y) w32.
-Definition SignedDoesSat_double32 x := SignedDoesSat (mul x x) w32.
+Definition SignedDoesSat (x : word) (n : nat) : bool :=
+  let x' := signed x in
+    let k := two_power_nat (n-1) in
+      zle (-k) x' && zle x' (k-1).
 
 (****************************************************************************)
 (** SignExtend(arg) (p. 1134)
@@ -257,7 +250,7 @@ Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 
 Definition SignExtend := sign_ext 32. (*FIXME?*)
 
-Definition SignExtend_24to30 := sign_ext 24. (*FIXME?*)
+Definition SignExtend_30 := sign_ext 24. (*FIXME?*)
 
 (****************************************************************************)
 (** SignedSat(x,n) (p. 1134)
@@ -269,21 +262,12 @@ x         if –2^(n–1) <= x <= 2^(n–1)–1
 2^(n–1)–1 if             x > 2^(n–1)–1 *)
 (****************************************************************************)
 
-Definition SignedSat (x : word) (m : word) : word :=
-  let t := two_power_nat (nat_of_Z m - 1) in
-  let u := neg (repr t) in
-    if zlt x u then u
-    else let v := repr (t - 1) in
-      if zgt x v then v
-      else x.
-
-Definition SignedSat_add8 x y := SignedSat (add x y) w8.
-Definition SignedSat_sub8 x y := SignedSat (sub x y) w8.
-Definition SignedSat_add16 x y := SignedSat (add x y) w16.
-Definition SignedSat_sub16 x y := SignedSat (sub x y) w16.
-Definition SignedSat_add32 x y := SignedSat (add x y) w32.
-Definition SignedSat_double32 x := SignedSat (mul x x) w32.
-Definition SignedSat_sub32 x y := SignedSat (sub x y) w32.
+Definition SignedSat (x : word) (n : nat) : word :=
+  let x' := signed x in
+    let k := two_power_nat (n-1) in
+      if zlt (-k) x' then repr (-k)
+        else if zle x' (k-1) then x
+          else repr (k-1).
 
 (****************************************************************************)
 (** UnSignedDoesSat(x,n) (p. 1136)
@@ -294,10 +278,8 @@ about an UnsignedSat(x,n) operation that occurred earlier in the pseudo-code.
 Any operations used to calculate x or n are not repeated. *)
 (****************************************************************************)
 
-Definition UnsignedDoesSat (x : word) (m : word) : bool :=
-  let c1 := zge x w0 in
-  let c2 := zlt x (repr (two_power_nat (nat_of_Z m))) in
-    andb c1 c2.
+Definition UnsignedDoesSat (x : word) (n : nat) : bool :=
+  zgt 0 x || zge x (two_power_nat n).
 
 (****************************************************************************)
 (** UnsignedSat(x,n) (p. 1136)
@@ -309,18 +291,11 @@ x     if 0 <= x < 2^n
 2^n–1 if      x > 2^n – 1 *)
 (****************************************************************************)
 
-Definition UnsignedSat (x : word) (m : word) : word :=
-  if zlt x w0 then w0
-  else let t := repr (two_power_nat (nat_of_Z m) - 1) in
-    if zlt x t then x
-    else t.
-
-Definition UnsignedSat_add32 x y := UnsignedSat (add x y) w32.
-Definition UnsignedSat_add16 x y := UnsignedSat (add x y) w16.
-Definition UnsignedSat_add8 x y := UnsignedSat (add x y) w8.
-Definition UnsignedSat_sub32 x y := UnsignedSat (sub x y) w32.
-Definition UnsignedSat_sub16 x y := UnsignedSat (sub x y) w16.
-Definition UnsignedSat_sub8 x y := UnsignedSat (sub x y) w8.
+Definition UnsignedSat (x : word) (n : nat) : word :=
+  if zgt x 0 then repr 0
+    else let k := two_power_nat n in
+      if zgt x k then x
+      else repr (k-1).
 
 (****************************************************************************)
 (** ZeroExtend
@@ -330,6 +305,4 @@ Not defined in the Glossary, occurs in the pseudo-code for LDRH
 (p. 575). *)
 (****************************************************************************)
 
-Definition ZeroExtend8 (w : byte) : word := repr w.
-
-Definition ZeroExtend16 (w : half) : word := repr w.
+Definition ZeroExtend (w : word) : word := w. (*REMOVE?*)
