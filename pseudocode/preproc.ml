@@ -31,16 +31,7 @@ let func =
       list "_" string b ss;
       Buffer.contents b;;
 
-(*REMOVE: normalize hexadecimal numbers by using uppercase letters only *)
-let hex s =
-  let n = String.length s in
-    if n <= 2 || String.sub s 0 2 <> "0x" then invalid_arg "Preproc.hex";
-    "0x" ^ String.uppercase (String.sub s 2 (n-2));;
-
 let rec exp = function
-
-  (*REMOVE? (* normalize hexadecimal numbers *)
-  | Hex s -> Hex (hex s)*)
 
   (* replace "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
   | Var "mode" -> Range (CPSR, Bits ("4", "0"))
@@ -50,6 +41,9 @@ let rec exp = function
   | Var ("UnallocMask" | "StateMask" | "UserMask" | "PrivMask"
     | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" as s) -> Fun (s, [])
 
+  (* replace opcode[n] by a variable *)
+  | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)
+
   (* we only consider ARMv5 and above *)
   | If_exp (Var "v5_and_above", e, _) -> exp e
 
@@ -57,7 +51,16 @@ let rec exp = function
   | Fun ("R", e :: _) -> Reg (e, None)
 
   (* replace English expressions by function calls *)
-  | Other ss -> Fun (func ss, [])
+  | Other ss ->
+      begin match func ss with
+	| "address_of_BKPT_instruction" -> Fun ("cur_inst_address", [])
+	| "address_of_the_instruction_after_the_branch_instruction"
+	| "address_of_instruction_after_the_BLX_instruction"
+	| "address_of_the_instruction_after_the_BLX_instruction"
+	| "address_of_next_instruction_after_the_SWI_instruction"
+	  -> Fun ("next_inst_address", [])
+	| f -> Fun (f, [])
+      end
 
   (* rename some function calls depending on the argument,
      and change the argument into a list of arguments,
