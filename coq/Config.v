@@ -13,7 +13,8 @@ Configuration of a ARM processor (IMPLEMENTATION DEFINED parameters).
 
 Set Implicit Arguments.
 
-Require Import Bitvec ZArith.
+Require Import Integers Bitvec ZArith.
+Import Int.
 
 (****************************************************************************)
 (** Architecture versions (p. 13) *)
@@ -33,8 +34,8 @@ Inductive store_PC_offset_value : Type := O8 | O12.
 
 Definition word_of_store_PC_offset_value (v : store_PC_offset_value) : word :=
   match v with
-    | O8 => w8
-    | O12 => w12
+    | O8 => repr 8
+    | O12 => repr 12
   end.
  
 (****************************************************************************)
