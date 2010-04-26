@@ -59,11 +59,14 @@ module G = struct
 
   let global_type = type_of_var;;
 
+  let type_of_size = function
+    | Byte -> "uint8_t"
+    | Half -> "uint16_t"
+    | Word -> "uint32_t";;
+
   let local_type s e =
     match e with
-      | Memory (_, "1") -> "uint8_t"
-      | Memory (_, "2") -> "uint16_t"
-      | Memory (_, "4") -> "uint32_t"
+      | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
   let key_type = "uint8_t";;
@@ -85,6 +88,14 @@ let func = function
   | "address_of_the_instruction_after_the_BLX_instruction"
   | "address_of_instruction_after_the_BLX_instruction"
   | "address_of_next_instruction_after_the_SWI_instruction" -> "next_instr"
+  | "CP15_reg1_EEbit" -> "proc.cp15.get_reg1_EEbit"
+  | "CP15_reg1_Ubit" -> "proc.cp15.get_reg1_Ubit"
+  | "PrivMask" -> "proc.msr_PrivMask"
+  | "UserMask" -> "proc.msr_UserMask"
+  | "StateMask" -> "proc.msr_StateMask"
+  | "UnallocMask" -> "proc.msr_UnallocMask"
+  | "GE" -> "proc.cpsr.GE"
+  | "v5_and_above" -> "proc.v5_and_above"
   | s -> s;;
 
 let mode m = "ARM_Processor::" ^ Genpc.string_of_mode m;;
@@ -135,21 +146,9 @@ let cpsr_field = function
   | _ -> "TODO";;
 
 let access_type = function
-  | "1" -> "byte"
-  | "2" -> "half"
-  | "4" -> "word"
-  | _ -> "TODO";;
-
-let var = function
-  | "CP15_reg1_EEbit" -> "proc.cp15.get_reg1_EEbit()"
-  | "CP15_reg1_Ubit" -> "proc.cp15.get_reg1_Ubit()"
-  | "PrivMask" -> "proc.msr_PrivMask()"
-  | "UserMask" -> "proc.msr_UserMask()"
-  | "StateMask" -> "proc.msr_StateMask()"
-  | "UnallocMask" -> "proc.msr_UnallocMask()"
-  | "GE" -> "proc.cpsr.GE"
-  | "v5_and_above" -> "proc.v5_and_above"
-  | s -> s;;
+  | Byte -> "byte"
+  | Half -> "half"
+  | Word -> "word";;
 
 let optemps = ["index"; "offset_8"; "end_address"];;
 
@@ -174,7 +173,7 @@ let rec exp b = function
       else bprintf b "proc.reg(%s)" s
   | Reg (e, None) -> bprintf b "proc.reg(%a)" exp e
   | Reg (e, Some m) -> bprintf b "proc.reg(%a,%s)" exp e (mode m)
-  | Var str -> string b (var str)
+  | Var s -> string b s
   | Memory (e, n) -> bprintf b "proc.mmu.read_%s(%a)" (access_type n) exp e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
   | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2

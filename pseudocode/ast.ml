@@ -15,6 +15,14 @@ type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 
 type num = string;;
 
+type size = Byte | Half | Word;;
+
+let size_of_num = function
+  | "4" -> Word
+  | "2" -> Half
+  | "1" -> Byte
+  | _ -> invalid_arg "Ast.size_of_num";;
+
 type exp =
 | Num of string
 | Bin of string
@@ -30,7 +38,7 @@ type exp =
 | Range of exp * range
 | Unaffected
 | Unpredictable_exp
-| Memory of exp * num
+| Memory of exp * size
 | Coproc_exp of exp * string * exp list
 
 and range =

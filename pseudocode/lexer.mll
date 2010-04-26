@@ -59,9 +59,8 @@ let incr_line_number lexbuf =
 
 let register s =
   let n = String.length s in
-  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' &&
-    s <> "Register" && s <> "Rotate" then
-    if n < 4 then Some (String.sub s 1 (n-1), None)
+  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' then
+    if n <= 4 then Some (String.sub s 1 (n-1), None)
     else match String.sub s (n-4) 4 with
       | "_fiq" -> Some (String.sub s 1 (n-5), Some Fiq)
       | "_irq" -> Some (String.sub s 1 (n-5), Some Irq)

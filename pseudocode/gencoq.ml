@@ -17,63 +17,6 @@ open Util;;
 
 let comment f b x = bprintf b "(*%a*)" f x;;
 
-let hex_of_bin = function
-  | "0b00" | "0b0" -> "0"
-  | "0b01" | "0b1" -> "1"
-  | "0b10" -> "2"
-  | "0b11" -> "3"
-  | "0b10111" -> "exn abt"
-  | "0b10011" -> "exn svc"
-  | "0b10000" -> "exn usr"
-  | "0b10001" -> "exn fiq"
-  | "0b10010" -> "exn irq"
-  | "0b11011" -> "und"
-  | "0b11111" -> "sys"
-  | _ -> "TODO0";;
-
-let num_word = function
-  | "0" -> "w0"
-  | "1" -> "w1"
-  | "2" -> "w2"
-  | "3" -> "w3"
-  | "4" -> "w4"
-  | "8" -> "w8"
-  | "16" -> "w16"
-  | "31" -> "w31"
-  | "32" -> "w32"
-  | _ -> "TODO0";;
-
-let cpsr_flag = function
-  | "31" -> "N_flag"
-  | "30" -> "Z_flag"
-  | "29" -> "C_flag"
-  | "28" -> "V_flag"
-  | "27" -> "Q_flag"
-  | "24" -> "J_flag"
-  | "9" -> "Ebit"
-  | "8" -> "Abit"
-  | "7" -> "Ibit"
-  | "6" -> "Fbit"
-  | "5" -> "Tbit"
-  | _ -> "TODO2";;
-
-let cpsr_field = function
-  | "4", "0" -> "mode"
-  | "19", "16" -> "GE"
-  | _ -> "TODO5";;
-
-let access_type = function
-  | "1" -> "byte"
-  | "2" -> "half"
-  | "4" -> "word"
-  | _ -> "TODO6";;
-
-let var = function (*FIXME: to be done in preproc *)
-  | "CP15_reg1_EEbit" -> "get_CP15_reg1_EEbit"
-  | "CP15_reg1_Ubit" -> "get_CP15_reg1_Ubit"
-  | "GE" -> "(cpsr s0)[19#16]"
-  | s -> s;;
-
 (***********************************************************************)
 (** variable types *)
 (***********************************************************************)
@@ -85,7 +28,7 @@ let type_of_var = function
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
   | "s0" -> "state"
   | "md" | "mode" -> "proc_mode"
-  | "address" -> "address"
+  | "address" | "start_address" -> "address"
   | _ -> "word";;
 
 module G = struct
@@ -94,11 +37,14 @@ module G = struct
 
   let global_type = type_of_var;;
 
+  let type_of_size = function
+    | Byte -> "byte"
+    | Half -> "half"
+    | Word -> "word";;
+
   let local_type s e =
     match e with
-      | Memory (_, "1") -> "byte"
-      | Memory (_, "2") -> "halfword"
-      | Memory (_, "4") -> "word"
+      | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
   let key_type = "word";;
@@ -133,11 +79,10 @@ let bin b s = par bin b s;;
 
 (*IMPROVE: use a Coq function to convert an hexa string into a word? *)
 let hex b s =
-  comment string b ("todo: " ^ s);
-  (*FIXME: there is a problem here with scanf *)
-  let n = Scanf.sscanf s "%lX" (fun x -> x) in
-    if Int32.compare n Int32.zero <= 0 then bprintf b "Z0"
-    else bprintf b "Zpos %lX" n;;
+  comment string b s;
+  let n = Scanf.sscanf s "%li" (fun x -> x) in
+    if Int32.compare n Int32.zero = 0 then bprintf b "Z0"
+    else bprintf b "Zpos %lu" n;;
 
 let hex b s = par hex b s;;
 
@@ -156,6 +101,17 @@ let coq_regnum = function
 let regnum b s = string b (coq_regnum s);;
 
 (***********************************************************************)
+(** memory size *)
+(***********************************************************************)
+
+let string_of_size = function
+  | Byte -> "Byte"
+  | Half -> "Half"
+  | Word -> "Word";;
+
+let size b s = string b (string_of_size s);;
+
+(***********************************************************************)
 (** modes *)
 (***********************************************************************)
 
@@ -169,7 +125,7 @@ let string_of_mode = function
 let mode b m = string b (string_of_mode m);;
 
 (***********************************************************************)
-(** functions *)
+(** functions and binary operators *)
 (***********************************************************************)
  
 let coq_fun_name = function
@@ -225,18 +181,25 @@ and exp b = function
   | Bin s -> word bin b s
   | Hex s -> word hex b s
   | Num s -> word num b s
+
   | Var ("CP15_reg1_Ubit"|"CP15_reg1_EEbit" as s) ->
-      comment string b s; string b "(repr 0)" (*FIXME*)
+      comment string b "FIXME"; comment string b s; string b "(repr 0)" (*FIXME*)
   | Var s -> string b s
+
   | Fun (f, []) -> fun_name b f
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " pexp) es
-  | BinOp (e1, ("==" as f), Num n) ->
+
+  | BinOp (e1, ("==" as f), Num n) -> (* avoid a repr *)
       bprintf b "%a %a %a" fun_name f pexp e1 num n
+  | BinOp (Var "address" as e1, f, e2) -> (* avoid a typing problem in Coq *)
+      bprintf b "mk_address (%a %a %a)" fun_name f pexp e1 pexp e2 
   | BinOp (e1, f, e2) -> bprintf b "%a %a %a" fun_name f pexp e1 pexp e2
+
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | CPSR -> string b "cpsr s0"
   | Range (e, r) -> bprintf b "%a[%a]" pexp e range r
+  | Memory (e, n) -> bprintf b "read s0 %a %a" pexp e size n
 
   | SPSR None -> string b "spsr s0 None"
   | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" exn_mode m
@@ -245,7 +208,6 @@ and exp b = function
   | Reg (e, Some m) ->
       bprintf b "reg_content_mode s0 %a %a" pexp_regnum e mode m
 
-  | Memory (_, _) as e -> todo_exp Genpc.exp b e
   | Coproc_exp (_, _, _) as e -> todo_exp Genpc.exp b e
 
   | Other _ | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
@@ -266,7 +228,6 @@ let rec inst k b i = indent b k; inst_aux k b i
 
 and pinst k b i = indent b k; par (inst_aux k) b i
 
-(*IMPROVE: postfix by nil and remove affect ?*)
 and inst_cons k b = function
   | Affect (Var _, _) as i -> inst k b i
   | i -> indent b k; postfix " ::" (inst_aux k) b i
@@ -299,80 +260,8 @@ and affect_aux b = function
   | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit" s
   | Range (CPSR, Index e) -> bprintf b "set_cpsr_bit %a" pexp_num e
   | Range (CPSR, Bits (n, p)) -> bprintf b "set_cpsr_bits %a %a" num n num p
+  | Memory (e, n) -> bprintf b "write %a %a" pexp e size n
   | _ -> raise Not_found;;
-
-(*    match dst with
-      | Reg (Num n, None) ->
-	  bprintf b "set_reg %a (%a)" regnum n exp src
- 
-      | Reg (e, None) ->
-	  begin match src with
-	    | Num n -> bprintf b "set_reg %a %s" exp e (num_word n)
-	    | _ -> bprintf b "set_reg %a (%a)" exp e exp src
-	  end
-
-      | Reg (Num n, Some m) ->
-	  bprintf b "set_reg_of_mode %a (%a) %a" 
-	    regnum n exp src mode m
-      | Var "address" -> bprintf b "address_of_word (%a)" exp src
-      | Var v -> bprintf b 
-	  "let %a := %a in" exp (Var v) exp src
-      | CPSR -> bprintf b "set_cpsr (%a)" exp src
-      | SPSR (Some m)  -> bprintf b "set_spsr (%a) (Some %a)" 
-	  exp src mode m
-      | SPSR None -> bprintf b "set_spsr (%a) None" exp src
-      | Range (CPSR, Flag (s,_)) ->
-	  begin match src with
-	    | Num n -> bprintf b "set_cpsr_bit %sbit (%s) (cpsr s0)" 
-		s (num_word n)
-	    | _ -> bprintf b "set_cpsr_bit %sbit (%a) (cpsr s0)" 
-		s exp src
-	  end
-      | Range (CPSR, Index (Num n)) ->
-          bprintf b "set_cpsr_bit %s (%a) (cpsr s0)"
-	    (cpsr_flag n) exp src
-      | Range (Var ("accvalue" as v), Bits (("31" as n1), ("0" as n2)))
-	-> bprintf b "let %a := w0 in let %a := %a in"
-	  exp (Var v) exp (Var v) 
-	    (inst k) (Proc ("update_bits ",
-			    [Num n1; Num n2; src; Var v]))
-      | Range (e1, Bits (n1, n2)) ->
-	  begin match e1 with
-	    | Var ("GE" as v) ->
-		bprintf b "set_cpsr (%a)"
-		  (inst k) (Proc ("update_bits ",
-				  [Num n1; Num n2; src; Var v]))
-	    | Var v ->
-		bprintf b "let %a := %a in" 
-		  exp (Var v)
-		  (inst k) (Proc ("update_bits ", 
-				  [Num n1; Num n2; src; Var v]))
-	    | Reg (e, _) ->
-		bprintf b "set_reg %a (%a)" exp e
-		  (inst k) (Proc ("update_bits ",
-				  [Num n1; Num n2; src; e]))
-	    | CPSR ->
-		bprintf b "set_cpsr_bits %s %s (mode_number (%a)) (cpsr s0)" 
-		  n1 n2 exp src
-	    | _ ->
-		inst k b (Proc ("update_bits ",
-				    [Num n1; Num n2; src; e1]))
-	  end
-      | Memory (addr, n) ->
-          inst k b (Proc ("update_mem" ^ access_type n, [addr; src]))
-      | Range (e, Index n) ->
-	  begin match e with
-	    | Var ("GE" as v) ->
-		bprintf b "set_cpsr (%a)"
-		  (inst k) (Proc ("update_bit ", [n; src; Var v]))
-	    | _ ->
-		inst k b (Proc ("update_bit ", [n; src; e]))
-	  end
-
-      | Coproc_exp (_, _, _) | Other _ | BinOp (_, _, _) | Fun (_, _)
-      | If_exp (_, _, _) | Hex _ | Bin _ | Num _ | Unpredictable_exp
-      | Unaffected | Reg (_, _) | Range (_, _) ->
-	  bprintf b "TODO: %a" (Genpc.inst 0) (Affect (dst, src))*)
 
 (***********************************************************************)
 (** semantic step function of some instruction *)
@@ -382,44 +271,38 @@ let ident b i =
   bprintf b "%s%a%a" i.iname (list "" string) i.iparams
     (option "" string) i.iversion;;
 
-let prog_name = list "_" ident;;
-
 let prog_arg b (v, t) = bprintf b "(%s : %s)" v t;;
 
 let prog gs _ls b p =
   match p with
-    | Instruction (_ , id, ids, i) ->
+    | Instruction (r, id, _, i) ->
         bprintf b
-"(* %a *)\nDefinition %a_step (s0 : state) %a : result :=\n%a true s0.\n"
-	  Genpc.prog_name p
-          prog_name (id::ids)
+"(* %s %a *)\nDefinition %a_step (s0 : state) %a : result :=\n%a true s0.\n"
+	  r Genpc.prog_name p
+          ident id
           (list " " prog_arg) gs
           (inst 2) i
     | Operand (_, _c, _n, _i) -> () (*FIXME*);;
 
-let lsm_hack p =
-  let rec inst = function
-    | Block is -> Block (List.map inst is)
-    | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
-    | i -> i
-  in match p with
-  | Instruction (r, id, is, i) ->
-      if id.iname = "LDM" or id.iname = "STM"
-      then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-        let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
-        let i = match i with
-          | If (c, Block (is), None) ->
-              If (c, Block (is@[a]), None)
-          | Block ([x; If (c, Block (is), None)]) ->
-              Block ([x; If (c, Block (is@[a]), None)])
-          | _ -> raise (Failure ("Unexpected AST shape: "^id.iname))
-        in Instruction (r, id, is, i)
-      else p
-  | Operand (r , c, n, i) ->
-      if c = ["Load"; "and"; "Store"; "Multiple"]
-      then (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-        Operand (r , c, n, (inst i))
-      else p;;
+let lsm_hack = function
+  | Instruction (r, ({ iname = "LDM" | "STM" } as id), ids, i) ->
+      (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+      let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
+      let i = match i with
+        | If (c, Block is, None) -> If (c, Block (is @ [a]), None)
+        | Block [x; If (c, Block is, None)] ->
+            Block [x; If (c, Block (is @ [a]), None)]
+        | _ -> invalid_arg "Gencoq.lsm_hack" in
+	Instruction (r, id, ids, i)
+  | Operand (r , (["Load"; "and"; "Store"; "Multiple"] as c), n, i) ->
+      (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+      let rec inst = function
+	| Block is -> Block (List.map inst is)
+	| If (_, Affect (Reg (Var "n", None), e), None) ->
+	    Affect (Var "new_Rn", e)
+	| i -> i in
+	Operand (r , c, n, inst i)
+  | p -> p;;
 
 (***********************************************************************)
 (** constructor of some instruction *)
@@ -427,8 +310,8 @@ let lsm_hack p =
 
 let inst_typ gs b = function
   | Operand _ -> () (*FIXME*)
-  | Instruction (_ , id, ids, _) ->
-      bprintf b "| %a %a" prog_name (id::ids) (list " " prog_arg) gs;;
+  | Instruction (_ , id, _, _) ->
+      bprintf b "| %a %a" ident id (list " " prog_arg) gs;;
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
@@ -438,14 +321,14 @@ let var_name b (v, _) = bprintf b "%s" v;;
 
 let inst_sem gs b = function
   | Operand _ -> () (*FIXME*)
-  | Instruction (_, id, ids, _) ->
-      bprintf b "    | %a %a =>" prog_name (id::ids) (list " " var_name) gs;
+  | Instruction (_, id, _, _) ->
+      bprintf b "    | %a %a =>" ident id (list " " var_name) gs;
       if List.exists ((=) ("shifter_operand", "word")) gs then
 	if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
 	  bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
 	else
 	bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-      bprintf b " %a_step %a v s0" prog_name (id::ids) (list " " var_name) gs;;
+      bprintf b " %a_step %a v s0" ident id (list " " var_name) gs;;
 
 (***********************************************************************)
 (** Main coq generation function.
@@ -455,6 +338,12 @@ For each instruction:
 - generate the call to its semantics step function in the general
 semantics step function *)
 (***********************************************************************)
+
+(*REMOVE when finished!*)
+let exclude = function
+  | Instruction (_, id, _, _) ->
+      not (List.mem id.iname ["LDREX"])
+  | Operand (_, _, _, _) -> false;;
 
 let lib b ps =
   let btyp = Buffer.create 10000 in
@@ -467,7 +356,7 @@ let lib b ps =
       bprintf bsem "%a\n" (inst_sem gs) p
   in
     bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\nRequire Import ZArith.\nImport Int.\n\nModule Inst (Import C : CONFIG).\n\n";
-    List.iter prog_typ_sem ps;
+    List.iter prog_typ_sem (List.filter exclude ps); (*FIXME:remove exclude*)
     bprintf b "Inductive instruction : Type :=\n";
     Buffer.add_buffer b btyp;
     bprintf b "\nDefinition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n";

@@ -28,6 +28,13 @@ let string_of_mode = function
 
 let mode b m = string b (string_of_mode m);;
 
+let string_of_size = function
+  | Byte -> "1"
+  | Half -> "2"
+  | Word -> "4";;
+
+let size b s = string b (string_of_size s);;
+
 let level = function
   | "and" -> 0
   | "==" | "!=" | "is" | "is_not" | ">=" | "<" -> 1
@@ -52,7 +59,7 @@ let rec exp b = function
   | Range (e, r) -> bprintf b "%a%a" pexp e range r
   | Unpredictable_exp -> string b "UNPREDICTABLE"
   | Unaffected -> string b "unaffected"
-  | Memory (e, n) -> bprintf b "Memory[%a,%a]" exp e num n
+  | Memory (e, n) -> bprintf b "Memory[%a,%a]" exp e size n
   | Coproc_exp (e, "NotFinished", _) -> bprintf b "NotFinished(%a)" coproc e
   | Coproc_exp (e, s, _) -> bprintf b "%s from %a" s coproc e
 

@@ -137,7 +137,7 @@ exp:
 | IF exp THEN exp ELSE exp { If_exp ($2, $4, $6) }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, $5) }
+| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, size_of_num $5) }
 | coproc_exp               { $1 }
 | binop_exp                { $1 }
 | simple_exp               { $1 }
