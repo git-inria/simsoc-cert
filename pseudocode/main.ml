@@ -37,7 +37,7 @@ let get_filename, set_filename =
 
 let set_debug_mode () = let _ = Parsing.set_trace true in ();;
 
-type action = GenPC | GenPCC | GenPre | GenCxx | GenCoq;;
+type action = GenPC | GenPCC | GenPre | GenCxx | GenCoq | GenCoqDec;;
 
 let get_action, is_action_set, set_action =
   let action = ref GenPC and is_set = ref false in
@@ -56,9 +56,11 @@ let rec options () = [
   "-pc", Unit (fun () -> set_action GenPC), "generate pseudocode";
   "-pcc", Unit (fun () -> set_action GenPCC),
   "generate pseudocode and reparse it";
-  "-pre", Unit (fun () -> set_action GenPre), "preprocess pseudocode";
-  "-cxx", Unit (fun () -> set_action GenCxx), "generate simulation code in c++";
-  "-coq", Unit (fun () -> set_action GenCoq), "generate simulation code in coq";
+  "-pre", Unit (fun () -> set_action GenPre), "generate normalized pseudocode";
+  "-cxx", Unit (fun () -> set_action GenCxx), "generate instructions in C++";
+  "-coq", Unit (fun () -> set_action GenCoq), "generate instructions in Coq";
+  "-coq-decode", Unit (fun () -> set_action GenCoqDec),
+  "generate decoder in Coq";
 ]
 
 and print_options oc () =
@@ -104,9 +106,9 @@ let parse_string s = parse_lexbuf (Lexing.from_string s);;
 (** main procedure *)
 (***********************************************************************)
 
-let print f ps =
+let print f x =
   let b = Buffer.create 10000 in
-    f b ps; Buffer.output_buffer stdout b;;
+    f b x; Buffer.output_buffer stdout b;;
 
 let genpcc ps =
   let b = Buffer.create 10000 in
@@ -118,14 +120,17 @@ let genpcc ps =
 
 let main () =
   parse_args ();
-  let ps = parse_file parse_channel (get_filename()) in
-    match get_action () with
-      | GenPC -> print Genpc.lib ps
-      | GenPCC -> genpcc ps
-      | GenPre -> print Genpc.lib (List.map Preproc.prog ps)
-      | GenCxx -> print Gencxx.lib (List.map Preproc.prog ps)
-      | GenCoq -> print Gencoq.lib (List.map Preproc.prog ps)
-;;
+  match get_action () with
+    | GenCoqDec -> print Decode.decode (input_value (open_in (get_filename ())))
+    | GenPC|GenPCC|GenPre|GenCxx|GenCoq ->
+	let ps = parse_file parse_channel (get_filename()) in
+	  match get_action () with
+	    | GenPC -> print Genpc.lib ps
+	    | GenPCC -> genpcc ps
+	    | GenPre -> print Genpc.lib (List.map Preproc.prog ps)
+	    | GenCxx -> print Gencxx.lib (List.map Preproc.prog ps)
+	    | GenCoq -> print Gencoq.lib (List.map Preproc.prog ps)
+	    | GenCoqDec -> ();;
 
 (***********************************************************************)
 (** launch the main procedure *)
