@@ -83,11 +83,6 @@ let variables p =
 (** Generate the code corresponding to an expression *)
 
 let func = function
-  | "address_of_BKPT_instruction" -> "this_instr"
-  | "address_of_the_instruction_after_the_branch_instruction"
-  | "address_of_the_instruction_after_the_BLX_instruction"
-  | "address_of_instruction_after_the_BLX_instruction"
-  | "address_of_next_instruction_after_the_SWI_instruction" -> "next_instr"
   | "CP15_reg1_EEbit" -> "proc.cp15.get_reg1_EEbit"
   | "CP15_reg1_Ubit" -> "proc.cp15.get_reg1_Ubit"
   | "PrivMask" -> "proc.msr_PrivMask"
@@ -273,9 +268,7 @@ and affect k b dst src =
 
 (** Generate a function modeling an instruction of the processor *)
 
-let version_in_comment b k = bprintf b " (%s)" k;;
-
-let version_in_name b k = bprintf b "_%s" k;;
+let version b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
@@ -288,16 +281,11 @@ let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 let inreg_load b s =
   bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
-let ident_in_comment b i =
-  bprintf b "%s%a%a" i.iname (list "" prog_var) i.iparams
-    (option "" version_in_comment) i.iversion
-
-let ident b i =
-  bprintf b "%s%a" i.iname (option "" version_in_name) i.iversion;;
+let ident b i = bprintf b "%s%a" i.iname (option "" version) i.iversion;;
 
 let comment b = function
   | Instruction (r, id, is, _) ->
-      bprintf b "// %s %a\n" r (list ", " ident_in_comment) (id :: is)
+      bprintf b "// %s %a\n" r (list ", " Genpc.ident) (id :: is)
   | Operand (r, c, n, _) ->
       bprintf b "// %s %a - %a\n" r (list " " string) c (list " " string) n;;
 
@@ -331,7 +319,6 @@ let prog gs ls b p =
               (list "" inreg_load) inregs
               (list "" local_decl) ls'
               (inst 2) i;;
-
 
 let decl gs ls b p = match p with
   | Instruction (_ , id, is, _) ->
