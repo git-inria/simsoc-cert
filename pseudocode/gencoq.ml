@@ -74,9 +74,8 @@ let bin b s =
 
 let bin b s = par bin b s;;
 
-(*IMPROVE: use a Coq function to convert an hexa string into a word? *)
+(*IMPROVE: use a Coq function to convert an hexa string into a word?*)
 let hex b s =
-  comment string b s;
   let n = Scanf.sscanf s "%li" (fun x -> x) in
     if Int32.compare n Int32.zero = 0 then bprintf b "Z0"
     else bprintf b "Zpos %lu" n;;
@@ -306,16 +305,27 @@ let add_mode b n = add_mode b (add_mode_of_name n);;
 let operand b n =
   bprintf b "%a_%a" add_mode n string (Preproc.underscore (snd n));;
 
+let name b p =
+  match p.pname with
+    | Inst (id, _) -> ident b id
+    | Oper n -> operand b n;;
+
 let arg b (v, t) = bprintf b "(%s : %s)" v t;;
 
+let typ b p =
+  match p.pname with
+    | Inst _ -> string b "result"
+    | Oper _ -> string b "word * bool";;
+
+let postfix b p =
+  match p.pname with
+    | Inst _ -> string b "true s0"
+    | Oper _ -> ();;
+
 let prog gs b p =
-  bprintf b "(* %s %a *)\nDefinition " p.pref Genpc.prog_name p;
-  (match p.pname with
-    | Inst (id, _) ->
-	bprintf b "%a_step (s0 : state) %a : result :=\n%a true s0.\n"
-	  ident id
-    | Oper n ->	bprintf b "%a_step %a :=\n%a.\n" operand n)
-    (list " " arg) gs (inst 2) p.pinst;;
+  bprintf b "(* %s %a *)\nDefinition %a_step (s0 : state) %a: %a :=\n %a%a.\n"
+    p.pref Genpc.name p name p (list " " arg) gs typ p (inst 2) p.pinst
+    postfix p;;
 
 (***********************************************************************)
 (** constructor of some instruction *)
