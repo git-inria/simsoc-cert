@@ -1,4 +1,8 @@
 
+- remove all TODO's and underscore's in match's
+
+- simplify gencxx
+
 - merge Index and Flag
 
 - reduce the number of conflicts in the grammar ?
