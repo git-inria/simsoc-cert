@@ -192,20 +192,19 @@ and exp b = function
   | Num s -> word num b s
   | Var s -> string b s
 
-  | Fun ("Shared", _) as e -> (*FIXME*) todo_bool b e
+  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
+      (*FIXME*) todo_bool b e
   | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"|"ExecutingProcessor"
 	 |"accvalue"), _) as e -> (*FIXME*) todo_word b e
 
   | Fun (f, []) -> fun_name b f
-  | Fun ("SignedSat"|"SignedDoesSat" as f, [e1; e2]) when is_not_num e2 ->
+  | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
+	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f pexp e1 nat_exp e2
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
 
-  | BinOp (e1, ("==" as f), Num n) -> (* avoid a repr *)
+  | BinOp (e1, ("==" as f), Num n) -> (* optimization avoiding a repr *)
       bprintf b "%a %a %a" binop f pexp e1 num n
-(*REMOVE:
-  | BinOp (Var "address" as e1, f, e2) -> (* avoid a typing problem in Coq *)
-      bprintf b "mk_address (%a %a %a)" binop f pexp e1 pexp e2 *)
   | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f pexp e1 pexp e2
 
   | If_exp (e1, e2, e3) ->
@@ -246,7 +245,8 @@ and inst_cons k b = function
   | i -> indent b k; postfix " ::" (inst_aux k) b i
 
 and inst_aux k b = function
-  | Unpredictable -> string b "unpredictable \"\"" (*FIXME*)
+  | Unpredictable -> string b "unpredictable \"\""
+      (*FIXME: replace empty string by program name*)
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons (k+2))) is indent (k+2)
@@ -254,32 +254,35 @@ and inst_aux k b = function
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
-(*  | Affect (Range (Var _ as e1, r), e2) ->
-      bprintf b "%a %a %a" affect_range r pexp e2 pexp e1*)
   | Affect (e1, e2) as i -> affect b i e2 e1
-  | Proc _ | While _ | For _ | Coproc _ | Case _ as i -> todo (Genpc.inst 0) b i
+  | Proc _ | While _ | For _ | Coproc _ | Case _ as i ->
+      todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
-
-(*and affect_range b = function
-  | Bits (p, q) -> bprintf b "update_bits %a %a" num p num q
-  | Index e -> bprintf b "update_bit %a" num_exp e
-  | Flag (s, _) -> bprintf b "update_bit %sbit" s*)
 
 and affect b i v = function
   | Var s -> bprintf b "let %s := %a in" s exp v
-  | e ->
-      begin try bprintf b "%a %a" affect_aux e pexp v
-      with Not_found -> todo (Genpc.inst 0) b i end
+  | Range (e, r) -> affect_aux b i e v (Some r)
+  | e -> affect_aux b i e v None
 
-and affect_aux b = function
+and affect_aux b i e v o =
+  try bprintf b "%a %a" set e (value e v) o
+  with Not_found -> todo (Genpc.inst 0) b i
+
+and value e v b = function
+  | None -> pexp b v
+  | Some r -> bprintf b "(%a %a %a)" range r pexp v pexp e
+
+and range b = function
+  | Flag (s, _) -> bprintf b "set_bit %sbit" s
+  | Index i -> bprintf b "set_bit %a" num_exp i
+  | Bits (p, q) -> bprintf b "set_bits %a %a" num p num q
+
+and set b = function
   | Reg (e, None) -> bprintf b "set_reg %a" regnum_exp e
   | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m regnum_exp e
   | CPSR -> bprintf b "set_cpsr"
   | SPSR None -> bprintf b "set_spsr None"
   | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
-  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit" s
-  | Range (CPSR, Index e) -> bprintf b "set_cpsr_bit %a" num_exp e
-  | Range (CPSR, Bits (n, p)) -> bprintf b "set_cpsr_bits %a %a" num n num p
   | Memory (e, n) -> bprintf b "write %a %a" address e size n
   | _ -> raise Not_found;;
 
