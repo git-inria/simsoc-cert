@@ -105,7 +105,7 @@ let rec exp = function
   | Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e
     -> e
 
-(* replace two successive ranges by a single range *)
+(* replace two successive ranges by a single one *)
 and range =
   let tni s = Scanf.sscanf s "%i" (fun x -> x)
   and int k = sprintf "%i" k in
@@ -152,7 +152,8 @@ let nop = Block [];;
 let is_nop = (=) nop;;
 
 let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
-	       "diff1"; "diff2"; "diff3"; "diff4"; "mask"];;
+	       "diff1"; "diff2"; "diff3"; "diff4"; "mask";
+	       "shifter_operand"; "shifter_carry_out"];;
 
 let rec inst = function
 
