@@ -15,6 +15,17 @@ Set Implicit Arguments.
 
 Require Import Bitvec Util.
 
+(****************************************************************************)
+(** B3.4.1 Control register *)
+(****************************************************************************)
+
+Definition EEbit := 25%nat.
+Definition Ubit := 22%nat.
+
+(****************************************************************************)
+(** State *)
+(****************************************************************************)
+
 Record state : Type := mk_state {
   (* registers *)
   reg : regnum -> word;
@@ -22,11 +33,17 @@ Record state : Type := mk_state {
   mem : address -> word
 }.
 
+Definition CP15_reg1_EEbit (s : state) : bool :=
+  zne 0 (reg s (mk_regnum 1)) [EEbit].
+
+Definition CP15_reg1_Ubit (s : state) : bool :=
+  zne 0 (reg s (mk_regnum 1)) [Ubit].
+
 Definition read_bits (n : size) (w : word) :=
   match n with
     | Word => w
-    | Half => update_bits 31 16 w0 w (*IMPROVE: use a shift instead*)
-    | Byte => update_bits 31 8 w0 w
+    | Half => set_bits 31 16 w0 w (*IMPROVE: use a shift instead*)
+    | Byte => set_bits 31 8 w0 w
   end.
 
 Definition read (s : state) (a : address) (n : size) : word :=
@@ -35,8 +52,8 @@ Definition read (s : state) (a : address) (n : size) : word :=
 Definition write_bits (n : size) (v w : word) :=
   match n with
     | Word => v
-    | Half => update_bits 15 0 v w
-    | Byte => update_bits 7 0 v w
+    | Half => set_bits 15 0 v w
+    | Byte => set_bits 7 0 v w
   end.
 
 Definition write (s : state) (a : address) (n : size) (v : word) : state :=

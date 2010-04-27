@@ -127,7 +127,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEbits := bits_val 19 16.
+Definition GEbits := bits 19 16.
 
 (* The E bit (p. 51) *)
 

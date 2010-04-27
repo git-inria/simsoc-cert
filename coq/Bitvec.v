@@ -33,64 +33,61 @@ Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
 
-(* mask made of the bits [n] to [n+k] *)
+(* mask made of the bits n to n+k *)
 Fixpoint masks_aux (n k : nat) : Z :=
   match k with
     | O => two_power_nat n
     | S k' => two_power_nat n + masks_aux (S n) k'
   end.
 
-(* mask made of the bits [n] to [n+(p-n)] (p>=n) *)
+(* mask made of the bits n to n+(p-n) (p>=n) *)
 Definition masks (p n : nat) : word := repr (masks_aux n (p-n)).
 Definition anti_masks p n := not (masks p n).
 
-(* mask made of bit [n] *)
+(* mask made of bit n *)
 Definition mask n := masks n n.
 Definition anti_mask n := anti_masks n n.
 
-(* w[p:n] = bits [p] to [n] of [w] (p>=n) *)
-Definition bits (p n : nat) (w : word) : word := and (masks p n) w.
+(* word made of the bits p to n of w (p>=n) *)
+Definition bits_val (p n : nat) (w : word) : Z :=
+  and (masks p n) w / two_power_nat n.
+Definition bits (p n : nat) (w : word) : word := repr (bits_val p n w).
 Notation "w [ p # n ]" := (bits p n w) (at level 8).
 
-(* value of w[p:n] *)
-(*IMPROVE: use a shift instead*)
-Definition bits_val (p n : nat) (w : word) : Z := w[p#n] / two_power_nat n.
-
-(* w[n] = bit [n] of [w] *)
+(* n-th bit of w *)
 Definition bit (n : nat) (w : word) : word := bits n n w.
 Notation get := bit.
 Notation "w [ n ]" := (bit n w) (at level 8).
 
-(* tell if bit [k] of [w] is set to 1 *)
+(* tell if w[n] is set to 1 *)
 Definition is_set (n : nat) (w : word) : bool := zne w[n] 0.
 
 (* tell if a signed word is negative *)
 Definition is_neg (w : word) : bool := is_set 31 w.
 
-(* set w[k] to 1 *)
+(* set w[n] to 1 *)
 Definition set (n : nat) (w : word) : word := or (mask n) w.
 
-(* set w[k] to 0 *)
+(* set w[n] to 0 *)
 Definition clear (n : nat) (w : word) : word := and (anti_mask n) w.
 
-(* update w[k] from a boolean value *)
-Definition update_bit_aux (n : nat) (b : bool) (w : word) : word :=
-  if b then clear n w else set n w.
+(* set w[n] to 1 if b=true, and 0 if b=false *)
+Definition set_bit_aux (n : nat) (b : bool) (w : word) : word :=
+  if b then set n w else clear n w.
 
-(* update w[k] froma word *)
-Definition update_bit (n : nat) (v w : word) : word :=
-  update_bit_aux n (zeq v 0) w.
+(* set w[n] to 1 if v<>0, and 0 if v=0 *)
+Definition set_bit (n : nat) (v w : word) : word := set_bit_aux n (zne v 0) w.
 
-(* replace w[p:p-k] by v[k:0] *)
-Fixpoint update_bits_aux (p k : nat) (v w : word) : word :=
+(* set w[p:p-k] to v[k:0] *)
+Fixpoint set_bits_aux (p k : nat) (v w : word) : word :=
   match k with
-    | O => update_bit p v[0] w
-    | S k' => update_bits_aux (pred p) k' v (update_bit p v[k] w)
+    | O => set_bit p v[0] w
+    | S k' => set_bits_aux (pred p) k' v (set_bit p v[k] w)
   end.
 
-(* replace w[p:n] by v[p-n:0] (p>=n) *)
-Definition update_bits (p n : nat) (v w : word) : word :=
-  update_bits_aux p (p-n) v w.
+(* set w[p:n] to v[p-n:0] (p>=n) *)
+Definition set_bits (p n : nat) (v w : word) : word :=
+  set_bits_aux p (p-n) v w.
 
 (****************************************************************************)
 (** n-bits words *)
@@ -165,9 +162,9 @@ Definition mk_address := mk_bitvec address_size.
 Definition address_eqdec := @bitvec_eqdec address_size.
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val 31 2 w] is always smaller than [two_power_nat 30]*)
+since [bits 31 2 w] is always smaller than [two_power_nat 30]*)
 Definition address_of_word (w : word) : address :=
-  mk_address (bits_val 31 2 w).
+  mk_address (bits 31 2 w).
 
 (****************************************************************************)
 (** A2.3 Registers (p. 42) *)
@@ -182,48 +179,6 @@ Definition LR := mk_regnum 14.
 Definition SP := mk_regnum 13.
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits_val (k+3) k w] is always smaller than [two_power_nat 4]*)
+since [bits (k+3) k w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=
-  mk_regnum (bits_val (k+3) k w).
-
-(****************************************************************************)
-(** some word constants *)
-(****************************************************************************)
-
-(*REMOVE:
-
-Definition maxu : word := repr max_unsigned.
-Definition max : word := repr max_signed.
-Definition min : word := repr min_signed.
-
-Definition w2 : word := repr 2.
-Definition w3 : word := repr 3.
-Definition w4 : word := repr 4.
-Definition w8 : word := repr 8.
-Definition w12 : word := repr 12.
-Definition w14 : word := repr 14.
-Definition w15 : word := repr 15.
-Definition w16 : word := repr 16.
-Definition w31 : word := repr 31.
-Definition w32 : word := repr 32.
-
-(*FIXME: define a function for converting hexadecimal strings into words *)
-Definition w0xFFFFFFFF : word := repr max_unsigned.
-Definition w0xFFFFFFFE : word := sub maxu w1.
-Definition w0xFFFFFFFC : word := sub maxu w3.
-Definition w0x00000000 : word := w0.
-Definition w0x000000FF : word := repr 255.
-Definition w0x0000FF00 : word := repr 65280.
-Definition w0x00FF0000 : word := repr 16711680.
-Definition w0xFF000000 : word := repr 4278190080.
-Definition w0x80000000 : word := repr 2147483648.
-Definition w0xFFFF0008 : word := repr 4294901768.
-Definition w0x00000008 : word := w8.
-Definition w0x00FF00FF : word := repr 16711935.
-Definition w0x0000FFFF : word := repr 65535.
-Definition w0xFFFF000C : word := repr 4294901772.
-Definition w0x0000000C : word := w12.
-
-Definition w0x0000 : half := get_half0 w0.
-Definition w0xFFFF : half := get_half0 w0x0000FFFF.
-*)
+  mk_regnum (bits (k+3) k w).

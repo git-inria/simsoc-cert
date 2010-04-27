@@ -42,31 +42,25 @@ Definition set_cpsr (s : state) (w : word) : state :=
     | None => mk_state w (spsr s) (reg s) (exns s) (mode s) (*FIXME?*)
   end.
 
-Definition set_cpsr_bit (s : state) (n : nat) (v : word) : state :=
-  set_cpsr s (update_bit n v (cpsr s)).
-
-Definition set_cpsr_bits (s : state) (p n : nat) (v : word) : state :=
-  set_cpsr s (update_bits p n v (cpsr s)).
-
 Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
   mk_state (cpsr s)
   (update_map opt_exn_mode_eqdec (spsr s) o w)
   (reg s) (exns s) (mode s).
 
-Definition set_reg_mode (s : state) (m : proc_mode) (k : regnum) (w : word)
-  : state :=
+Definition reg_content_mode (s : state) (m : proc_mode) (k : regnum) : word :=
+  reg s (reg_mode m k).
+
+Definition reg_content (s : state) (k : regnum) : word :=
+  reg_content_mode s (mode s) k.
+
+Definition set_reg_mode (s : state) (m : proc_mode) (k : regnum) (w : word) :
+  state :=
   mk_state (cpsr s) (spsr s)
   (update_map register_eqdec (reg s) (reg_mode m k) w)
   (exns s) (mode s).
 
 Definition set_reg (s : state) (k : regnum) (w : word) : state :=
   set_reg_mode s (mode s) k w.
-
-Definition reg_content_mode (s : state) (m : proc_mode) (k : regnum)
-  : word := reg s (reg_mode m k).
-
-Definition reg_content (s : state) (k : regnum) : word :=
-  reg_content_mode s (mode s) k.
 
 Definition set_exns (s : state) (es : list exception) : state :=
   mk_state (cpsr s) (spsr s) (reg s) es (mode s).

@@ -70,6 +70,9 @@ Definition ConditionPassed (s : state) (op : opcode) : bool :=
 (** System control coprocessor and Memory *)
 (****************************************************************************)
 
+Definition CP15_reg1_EEbit (s : state) : bool := CP15_reg1_EEbit (scc s).
+Definition CP15_reg1_Ubit (s : state) : bool := CP15_reg1_Ubit (scc s).
+
 Definition read (s : state) (a : address) (n : size) : word :=
   read (scc s) a n.
 
