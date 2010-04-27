@@ -89,13 +89,13 @@ let word f b s = bprintf b "repr %a" f s;;
 (** registers *)
 (***********************************************************************)
 
-let coq_regnum = function
+let string_of_regnum = function
   | "15" -> "PC"
   | "14" -> "LR"
   | "13" -> "SP"
   | s -> Printf.sprintf "(mk_regnum %s)" s;;
 
-let regnum b s = string b (coq_regnum s);;
+let regnum b s = string b (string_of_regnum s);;
 
 (***********************************************************************)
 (** memory size *)
@@ -109,7 +109,7 @@ let string_of_size = function
 let size b s = string b (string_of_size s);;
 
 (***********************************************************************)
-(** modes *)
+(** processor modes *)
 (***********************************************************************)
 
 let exn_mode = Genpc.mode;;
@@ -122,10 +122,23 @@ let string_of_mode = function
 let mode b m = string b (string_of_mode m);;
 
 (***********************************************************************)
+(** addressing modes *)
+(***********************************************************************)
+
+let string_of_add_mode = function
+  | Data -> "Mode1"
+  | LoadWord -> "Mode2"
+  | LoadMisc -> "Mode3"
+  | LoadMul -> "Mode4"
+  | LoadCoproc -> "Mode5";;
+
+let add_mode b m = string b (string_of_add_mode m);;
+
+(***********************************************************************)
 (** functions and binary operators *)
 (***********************************************************************)
 
-let coq_fun_name = function
+let string_of_fun_name = function
   | "NOT" -> "not"
   | "not" -> "negb"
   | s -> s;;
@@ -136,9 +149,9 @@ let add_state = function
   | "CP15_reg1_Ubit" as s -> s ^ " s0"
   | s -> s;;
 
-let fun_name b s = string b (add_state (coq_fun_name s));;
+let fun_name b s = string b (add_state (string_of_fun_name s));;
 
-let coq_binop = function
+let string_of_binop = function
   | "AND" -> "and"
   | "OR" -> "or"
   | "EOR" -> "xor"
@@ -154,7 +167,7 @@ let coq_binop = function
   | "<<" -> "Logical_Shift_Left"
   | s -> s;;
 
-let binop b s = string b (coq_binop s);;
+let binop b s = string b (string_of_binop s);;
 
 (***********************************************************************)
 (** expressions *)
@@ -254,23 +267,17 @@ and inst_aux k b = function
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
-  | Affect (e1, e2) as i -> affect b i e2 e1
+  | Affect (e, v) as i ->
+      begin try affect b v e
+      with Not_found -> todo (Genpc.inst 0) b i end
   | Proc _ | While _ | For _ | Coproc _ | Case _ as i ->
       todo (Genpc.inst 0) b i
   | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
 
-and affect b i v = function
+and affect b v = function
   | Var s -> bprintf b "let %s := %a in" s exp v
-  | Range (e, r) -> affect_aux b i e v (Some r)
-  | e -> affect_aux b i e v None
-
-and affect_aux b i e v o =
-  try bprintf b "%a %a" set e (value e v) o
-  with Not_found -> todo (Genpc.inst 0) b i
-
-and value e v b = function
-  | None -> pexp b v
-  | Some r -> bprintf b "(%a %a %a)" range r pexp v pexp e
+  | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp v pexp e
+  | e -> bprintf b "%a %a" set e pexp v
 
 and range b = function
   | Flag (s, _) -> bprintf b "set_bit %sbit" s
@@ -294,47 +301,29 @@ let ident b i =
   bprintf b "%s%a%a" i.iname (list "" string) i.iparams
     (option "" string) i.iversion;;
 
-let prog_arg b (v, t) = bprintf b "(%s : %s)" v t;;
+let add_mode b n = add_mode b (add_mode_of_name n);;
 
-let prog gs _ls b p =
-  match p with
-    | Instruction (r, id, _, i) ->
-        bprintf b
-"(* %s %a *)\nDefinition %a_step (s0 : state) %a : result :=\n%a true s0.\n"
-	  r Genpc.prog_name p
-          ident id
-          (list " " prog_arg) gs
-          (inst 2) i
-    | Operand (_, _c, _n, _i) -> () (*FIXME*);;
+let operand b n =
+  bprintf b "%a_%a" add_mode n string (Preproc.underscore (snd n));;
 
-let lsm_hack = function
-  | Instruction (r, ({ iname = "LDM" | "STM" } as id), ids, i) ->
-      (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-      let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
-      let i = match i with
-        | If (c, Block is, None) -> If (c, Block (is @ [a]), None)
-        | Block [x; If (c, Block is, None)] ->
-            Block [x; If (c, Block (is @ [a]), None)]
-        | _ -> invalid_arg "Gencoq.lsm_hack" in
-	Instruction (r, id, ids, i)
-  | Operand (r , (["Load"; "and"; "Store"; "Multiple"] as c), n, i) ->
-      (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-      let rec inst = function
-	| Block is -> Block (List.map inst is)
-	| If (_, Affect (Reg (Var "n", None), e), None) ->
-	    Affect (Var "new_Rn", e)
-	| i -> i in
-	Operand (r , c, n, inst i)
-  | p -> p;;
+let arg b (v, t) = bprintf b "(%s : %s)" v t;;
+
+let prog gs b p =
+  bprintf b "(* %s %a *)\nDefinition " p.pref Genpc.prog_name p;
+  (match p.pname with
+    | Inst (id, _) ->
+	bprintf b "%a_step (s0 : state) %a : result :=\n%a true s0.\n"
+	  ident id
+    | Oper n ->	bprintf b "%a_step %a :=\n%a.\n" operand n)
+    (list " " arg) gs (inst 2) p.pinst;;
 
 (***********************************************************************)
 (** constructor of some instruction *)
 (***********************************************************************)
 
 let inst_typ gs b = function
-  | Operand _ -> () (*FIXME*)
-  | Instruction (_ , id, _, _) ->
-      bprintf b "| %a %a" ident id (list " " prog_arg) gs;;
+  | Oper _ -> () (*FIXME*)
+  | Inst (id, _) -> bprintf b "| %a %a" ident id (list " " arg) gs;;
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
@@ -343,8 +332,8 @@ let inst_typ gs b = function
 let var_name b (v, _) = bprintf b "%s" v;;
 
 let inst_sem gs b = function
-  | Operand _ -> () (*FIXME*)
-  | Instruction (_, id, _, _) ->
+  | Oper _ -> () (*FIXME*)
+  | Inst (id, _) ->
       bprintf b "    | %a %a =>" ident id (list " " var_name) gs;
       if List.exists ((=) ("shifter_operand", "word")) gs then
 	if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
@@ -362,15 +351,37 @@ For each instruction:
 semantics step function *)
 (***********************************************************************)
 
+(*FIXME/REMOVE?*)
+let lsm_hack p =
+  match p.pname with
+    | Inst ({ iname = "LDM" | "STM" }, _) ->
+	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+	let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
+	let i = match p.pinst with
+          | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
+          | Block [x; If (c, Block ids, None)] ->
+              Block [x; If (c, Block (ids @ [a]), None)]
+          | _ -> invalid_arg "Gencoq.lsm_hack"
+	in { p with pinst = i }
+    | Oper n when add_mode_of_name n = LoadMul ->
+	(* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+	let rec inst = function
+	  | Block ids -> Block (List.map inst ids)
+	  | If (_, Affect (Reg (Var "n", None), e), None) ->
+	      Affect (Var "new_Rn", e)
+	  | i -> i
+	in { p with pinst = inst p.pinst }
+    | Oper _ | Inst _ -> p;;
+
 let lib b ps =
   let btyp = Buffer.create 10000 in
   let bsem = Buffer.create 10000 in
   let prog_typ_sem p =
     let p = lsm_hack p in (*FIXME*)
-    let gs, ls = variables p in
-      bprintf b "%a\n" (prog gs ls) p;
-      bprintf btyp "%a\n" (inst_typ gs) p;
-      bprintf bsem "%a\n" (inst_sem gs) p
+    let gs, _ = variables p in
+      bprintf b "%a\n" (prog gs) p;
+      bprintf btyp "%a\n" (inst_typ gs) p.pname;
+      bprintf bsem "%a\n" (inst_sem gs) p.pname
   in
     bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\nRequire Import ZArith.\nImport Int.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;

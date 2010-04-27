@@ -56,9 +56,9 @@ progs:
 ;
 prog:
 | IDENT prog_idents block
-    { Instruction ($1, List.hd $2, List.tl $2, $3) }
+    { { pref = $1; pinst = $3; pname = Inst (List.hd $2, List.tl $2) } }
 | IDENT operand_items MINUS operand_items block
-    { Operand ($1, $2, $4, $5) }
+    { { pref = $1; pinst = $5; pname = Oper ($2, $4) } }
 ;
 prog_ident:
 | prog_name prog_vars prog_version

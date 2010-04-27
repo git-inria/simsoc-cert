@@ -283,11 +283,7 @@ let inreg_load b s =
 
 let ident b i = bprintf b "%s%a" i.iname (option "" version) i.iversion;;
 
-let comment b = function
-  | Instruction (r, id, is, _) ->
-      bprintf b "// %s %a\n" r (list ", " Genpc.ident) (id :: is)
-  | Operand (r, c, n, _) ->
-      bprintf b "// %s %a - %a\n" r (list " " string) c (list " " string) n;;
+let comment b p = bprintf b "// %a" Genpc.prog_name p;;
 
 let abbrev b s =
   if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
@@ -299,15 +295,15 @@ let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 let prog gs ls b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
-    match p with
-      | Instruction (_ , id, is, i) ->
+    match p.pname with
+      | Inst (id, ids) ->
           bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
-            (list "_" ident) (id :: is)
+            (list "_" ident) (id :: ids)
             (list ",\n    " prog_arg) gs
             (list "" inreg_load) inregs
             (list "" local_decl) ls
-            (inst 2) i
-      | Operand (_, c, n, i) ->
+            (inst 2) p.pinst
+      | Oper (c, n) ->
           let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
             bprintf b "%avoid ARM_ISS::%a_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
@@ -318,13 +314,13 @@ let prog gs ls b p =
               (list ",\n    " prog_out) os
               (list "" inreg_load) inregs
               (list "" local_decl) ls'
-              (inst 2) i;;
+              (inst 2) p.pinst;;
 
-let decl gs ls b p = match p with
-  | Instruction (_ , id, is, _) ->
+let decl gs ls b p = match p.pname with
+  | Inst (id, ids) ->
       bprintf b "  %a  void %a(%a);\n" comment p
-        (list "_" ident) (id :: is) (list ",\n    " prog_arg) gs
-  | Operand (_ , c, n, _) ->
+        (list "_" ident) (id :: ids) (list ",\n    " prog_arg) gs
+  | Oper (c, n) ->
       let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
         bprintf b "  %a  void %a_%a(%a%s%a);\n" comment p
           (list "" abbrev) c (list "_" string) n
@@ -338,23 +334,23 @@ let lsm_hack p =
     | If (_, Affect ( Reg (Var "n", None), e), None) ->
         Affect (Var "new_Rn", e)
     | i-> i
-  in match p with
-  | Instruction (r, id, is, i) ->
+  in match p.pname with
+  | Inst (id, _) ->
       if id.iname = "LDM" or id.iname = "STM"
       then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
         let a = If (Var "W", Affect (Reg (Var "n", None), Var "new_Rn"), None) in
-        let i = match i with
-          | If (c, Block (is), None) ->
-              If (c, Block (is@[a]), None)
-          | Block ([x; If (c, Block (is), None)]) ->
-              Block ([x; If (c, Block (is@[a]), None)])
-          | _ -> raise (Failure ("Unexpected AST shape: "^id.iname))
-        in Instruction (r, id, is, i)
+        let i = match p.pinst with
+          | If (c, Block ids, None) ->
+              If (c, Block (ids @ [a]), None)
+          | Block ([x; If (c, Block ids, None)]) ->
+              Block ([x; If (c, Block (ids @ [a]), None)])
+          | _ -> raise (Failure ("Unexpected AST shape: " ^ id.iname))
+        in { p with pinst = i }
       else p
-  | Operand (r , c, n, i) ->
+  | Oper (c, _) ->
       if c = ["Load"; "and"; "Store"; "Multiple"]
       then (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-        Operand (r , c, n, (inst i))
+        { p with pinst = inst p.pinst }
       else p;;
 
 let lib b ps =

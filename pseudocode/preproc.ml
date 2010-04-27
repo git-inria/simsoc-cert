@@ -24,7 +24,7 @@ let string_of_op = function
   | "-" -> "sub"
   | s -> s;;
 
-let func =
+let underscore =
   let b = Buffer.create 100 in
     fun ss ->
       Buffer.clear b;
@@ -33,26 +33,30 @@ let func =
 
 let rec exp = function
 
-  (* replace "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
-  | Var "mode" -> Range (CPSR, Bits ("4", "0"))
-  | Var "GE" -> Range (CPSR, Bits ("19", "16"))
-
-  (* replace some "variables" by function calls *)
-  | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
-    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit"|"accvalue" as s) -> Fun (s, [])
-
-  (* replace opcode[n] by a variable *)
-  | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)
-
   (* we only consider ARMv5 and above *)
   | If_exp (Var "v5_and_above", e, _) -> exp e
 
   (* replace the incorrect function call to R by a register value *)
   | Fun ("R", e :: _) -> Reg (e, None)
 
+  (* replace opcode[n] by a variable *)
+  | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)
+
+  (* replace some "variables" by function calls *)
+  | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
+    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit"|"accvalue" as s) -> Fun (s, [])
+
+  (* replace "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
+  | Var "mode" -> Range (CPSR, Bits ("4", "0"))
+  | Var "GE" -> Range (CPSR, Bits ("19", "16"))
+
+  (* normalize ranges *)
+  | Range (e1, Index e2) -> range (exp e1) (Index (exp e2))
+  | Range (e, r) -> range (exp e) r
+ 
   (* replace English expressions by function calls *)
   | Other ss ->
-      begin match func ss with
+      begin match underscore ss with
 	| "address_of_BKPT_instruction" -> Fun ("cur_inst_address", [])
 	| "address_of_the_instruction_after_the_branch_instruction"
 	| "address_of_instruction_after_the_BLX_instruction"
@@ -69,14 +73,6 @@ let rec exp = function
 	      as f), (BinOp (_, op, _) as e) :: _) -> let es = args e in
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
 	   List.map exp es)
-
-(*REMOVE?
-  | Fun (("SignExtend_30"|"SignExtend"), ([Var "signed_immed_24"] as es)) ->
-      Fun ("SignExtend_24to30", List.map exp es)
-  | Fun (("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f),
-         [BinOp (e1, op, e2); Num n]) when n <> "32" ->
-      Fun (sprintf "%s_%s%s" f (string_of_op op) n, [exp e1; exp e2])
-*)
 
   (* normalize if-expressions wrt Unpredictable_exp's *)
   | If_exp (_, e1, e2) when e1 = e2 -> exp e1
@@ -100,8 +96,6 @@ let rec exp = function
   (* recursive expressions *)
   | Fun (f, es) -> Fun (f, List.map exp es)
   | BinOp (e1, f, e2) -> BinOp (exp e1, f, exp e2)
-  | Range (e1, Index e2) -> Range (exp e1, Index (exp e2))
-  | Range (e, r) -> Range (exp e, r)
   | If_exp (e1, e2 ,e3) -> If_exp (exp e1, exp e2, exp e3)
   | Memory (e, n) -> Memory (exp e, n)
   | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
@@ -109,7 +103,25 @@ let rec exp = function
 
   (* non-recursive expressions *)
   | Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e
-    -> e;;
+    -> e
+
+(* replace two successive ranges by a single range *)
+and range =
+  let tni s = Scanf.sscanf s "%i" (fun x -> x)
+  and int k = sprintf "%i" k in
+    fun e r ->
+      match e with
+	| Range (e1, Bits (_, n)) ->
+	    begin match r with
+	      | Bits (p1, p2) ->
+		  let n = tni n and p1 = tni p1 and p2 = tni p2 in
+		    Range (e1, Bits (int (n+p1), int (n+p2)))
+	      | Index (Num p) ->
+		  let n = tni n and p = tni p in
+		    Range (e1, Index (Num (int (n+p))))
+	      | r -> Range (e, r)
+	    end
+	| e -> Range (e, r);;
 
 (***********************************************************************)
 (** normalization of blocks *)
@@ -144,17 +156,17 @@ let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
 
 let rec inst = function
 
-  (* normalize block's *)
-  | Block is -> raw_inst (Block (List.map inst is))
-
   (* we only consider ARMv5 and above *)
   | If (Var "v5_and_above", i, _) -> inst i
+
+  (* normalize block's *)
+  | Block is -> raw_inst (Block (List.map inst is))
 
   (* replace assert's and memory access indications by nop's *)
   | Proc ("MemoryAccess", _) | Assert _ -> nop
 
   (* replace English expressions by procedure calls *)
-  | Misc ss -> Proc (func ss, [])
+  | Misc ss -> Proc (underscore ss, [])
 
   (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) ->
@@ -235,11 +247,7 @@ and affects = function
 (** normalization of programs *)
 (***********************************************************************)
 
-let norm i = affect (inst i);;
-
-let prog = function
-  | Instruction (r, id, is, i) -> Instruction (r, id, is, norm i)
-  | Operand (r, c, n, i) -> Operand (r, c, n, norm i);;
+let prog p = { p with pinst = affect (inst p.pinst) };;
 
 (***********************************************************************)
 (** global and local variables of a program *)
@@ -294,6 +302,6 @@ module Make (G : Var) = struct
   and vars_cases acc nis =
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
 
-  let vars p = vars_inst (StrMap.empty, StrMap.empty) (prog_inst p);;
+  let vars p = vars_inst (StrMap.empty, StrMap.empty) p.pinst;;
 
 end;;

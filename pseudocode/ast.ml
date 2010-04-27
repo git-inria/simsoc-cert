@@ -67,19 +67,25 @@ type inst =
 | Coproc of exp * string * exp list
 | Case of exp * (num * inst) list;;
 
-type ident = {
-  iname : string;
-  iparams : string list;
-  iversion : num option };;
+type ident = { iname : string; iparams : string list; iversion : num option };;
 
-type prog =
-(* paragraph in the manual, instruction name, alternative names, pseudo-code *)
-| Instruction of string * ident * ident list * inst
-(* paragraph in the manual, class, name, pseudo-code *)
-| Operand of string * string list * string list * inst;;
+type prog_name =
+  | Inst of ident * ident list
+  | Oper of (string list * string list);;
 
-let prog_inst = function
-  | Instruction (_, _, _, i) | Operand (_, _, _, i) -> i;;
+type prog = { pref : string; pinst : inst; pname : prog_name };;
 
-let prog_ref = function
-  | Instruction (r, _, _, _) | Operand (r, _, _, _) -> r;;
+type add_mode = Data | LoadWord | LoadMisc | LoadMul | LoadCoproc;;
+
+let add_mode_of_name (s1, _) =
+  match s1 with
+    | "Data" :: _ -> Data
+    | "Miscellaneous" :: _ -> LoadMisc
+    | _ :: _ :: _ :: s :: _ ->
+	begin match s with
+	  | "Word" -> LoadWord
+	  | "Multiple" -> LoadMul
+	  | "Coprocessor" -> LoadCoproc
+	  | _ -> invalid_arg "Ast.add_mode"
+	end
+    | _ -> invalid_arg "Ast.add_mode";;
