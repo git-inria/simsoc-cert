@@ -69,7 +69,7 @@ prog_idents:
 | prog_ident COMA prog_idents { $1 :: $3 }
 ;
 prog_vars:
-| /* nothing */    { [] }
+| /* nothing */         { [] }
 | LT IDENT GT prog_vars { $2 :: $4 }
 ;
 prog_name:
@@ -98,11 +98,11 @@ coproc:
 | COPROC LSQB exp RSQB { $3 }
 ;
 cond_inst:
-| IF exp THEN block                { If ($2, $4, None) }
-| IF exp THEN block ELSE block     { If ($2, $4, Some $6) }
-| WHILE exp DO block               { While ($2, $4) }
-| FOR IDENT EQ NUM TO NUM DO block { For ($2, $4, $6, $8) }
-| CASE exp OF BEGIN cases END ENDCASE        { Case ($2, $5) }
+| IF exp THEN block                   { If ($2, $4, None) }
+| IF exp THEN block ELSE block        { If ($2, $4, Some $6) }
+| WHILE exp DO block                  { While ($2, $4) }
+| FOR IDENT EQ NUM TO NUM DO block    { For ($2, $4, $6, $8) }
+| CASE exp OF BEGIN cases END ENDCASE { Case ($2, $5) }
 ;
 cases:
 | BIN block       { [$1, $2] }
@@ -181,8 +181,8 @@ exps:
 | exp COMA exps { $1 :: $3 }
 ;
 items:
-| /* nothing */  { [] }
-| item items     { $1 :: $2 }
+| /* nothing */ { [] }
+| item items    { $1 :: $2 }
 ;
 item:
 | IDENT    { $1 }
