@@ -38,8 +38,8 @@ let rec exp = function
   | Var "GE" -> Range (CPSR, Bits ("19", "16"))
 
   (* replace some "variables" by function calls *)
-  | Var ("UnallocMask" | "StateMask" | "UserMask" | "PrivMask"
-    | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" as s) -> Fun (s, [])
+  | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
+    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit"|"accvalue" as s) -> Fun (s, [])
 
   (* replace opcode[n] by a variable *)
   | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)
@@ -126,9 +126,9 @@ let rec raw_inst = function
 and raw_block = function
   | [] -> []
   | i :: is ->
-      begin match raw_inst i, raw_block is with
-	| Block is', is -> is' @ is
-	| i, is -> i :: is
+      begin match raw_inst i with
+	| Block is' -> is' @ raw_block is
+	| i -> i :: raw_block is
       end;;
 
 (***********************************************************************)
@@ -144,17 +144,24 @@ let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
 
 let rec inst = function
 
+  (* normalize block's *)
   | Block is -> raw_inst (Block (List.map inst is))
-
-  (* replace affectations to Unaffected by nop's *)
-  | Affect (e1, e2) -> let e2 = exp e2 in
-      begin match e2 with
-	| Unaffected -> nop
-	| _ -> Affect (exp e1, e2)
-      end
 
   (* we only consider ARMv5 and above *)
   | If (Var "v5_and_above", i, _) -> inst i
+
+  (* replace assert's and memory access indications by nop's *)
+  | Proc ("MemoryAccess", _) | Assert _ -> nop
+
+  (* replace English expressions by procedure calls *)
+  | Misc ss -> Proc (func ss, [])
+
+  (* replace affectations to Unaffected by nop's *)
+  | Affect (e1, e2) ->
+      begin match exp e2 with
+	| Unaffected -> nop
+	| e2 -> Affect (exp e1, e2)
+      end
 
   (* simplify conditional instructions wrt nop's *)
   | If (c, i, None) ->
@@ -184,12 +191,6 @@ let rec inst = function
 	      | _ -> If (exp c, i1, Some i2)
 	    end
 
-  (* replace assert's and memory access indications by nop's *)
-  | Proc ("MemoryAccess", _) | Assert _ -> nop
-
-  (* replace English expressions by procedure calls *)
-  | Misc ss -> Proc (func ss, [])
-
   (* recursive instructions *)
   | Proc (f, es) -> Proc (f, List.map exp es)
   | While (e, i) -> While (exp e, inst i)
@@ -208,7 +209,7 @@ let rec inst = function
 
 let rec affect = function
 
-  | Block is -> raw_inst (Block (List.map affect is))
+  | Block is -> Block (affects is)
 
   | Affect (_, Unpredictable_exp) -> Unpredictable
   | Affect (e1, If_exp (c, Unpredictable_exp, e2)) ->
@@ -220,17 +221,25 @@ let rec affect = function
   | For (s, n, p, i) -> For (s, n, p, affect i)
   | Case (e, s) -> Case (e, List.map (fun (n, i) -> (n, affect i)) s)
 
-  | i -> i;;
+  | i -> i
+
+and affects = function
+  | [] -> []
+  | i :: is ->
+      begin match affect i with
+	| Block is' -> is' @ affects is
+	| i -> i :: affects is
+      end;;
 
 (***********************************************************************)
 (** normalization of programs *)
 (***********************************************************************)
 
-let inst i = affect (inst i);;
+let norm i = affect (inst i);;
 
 let prog = function
-  | Instruction (r, id, is, i) -> Instruction (r, id, is, inst i)
-  | Operand (r, c, n, i) -> Operand (r, c, n, inst i);;
+  | Instruction (r, id, is, i) -> Instruction (r, id, is, norm i)
+  | Operand (r, c, n, i) -> Operand (r, c, n, norm i);;
 
 (***********************************************************************)
 (** global and local variables of a program *)
