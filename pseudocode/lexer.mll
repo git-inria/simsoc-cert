@@ -57,20 +57,21 @@ let incr_line_number lexbuf =
     lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
 			     pos_lnum = ln+1; pos_bol = off };;
 
-let register s =
-  let n = String.length s in
-  if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' then
-    if n <= 4 then Some (String.sub s 1 (n-1), None)
-    else match String.sub s (n-4) 4 with
-      | "_fiq" -> Some (String.sub s 1 (n-5), Some Fiq)
-      | "_irq" -> Some (String.sub s 1 (n-5), Some Irq)
-      | "_svc" -> Some (String.sub s 1 (n-5), Some Svc)
-      | "_abt" -> Some (String.sub s 1 (n-5), Some Abt)
-      | "_und" -> Some (String.sub s 1 (n-5), Some Und)
-      | "_usr" -> Some (String.sub s 1 (n-5), Some Usr)
-      | "_sys" -> Some (String.sub s 1 (n-5), Some Sys)
-      | _ -> Some (String.sub s 1 (n-1), None)
-  else None;;
+let register = function
+  | "Register" | "Rotate" -> None
+  | s -> let n = String.length s in
+      if n > 1 && s.[0] = 'R' && s.[1] > 'a' && s.[1] < 'z' then
+	if n <= 4 then Some (String.sub s 1 (n-1), None)
+	else match String.sub s (n-4) 4 with
+	  | "_fiq" -> Some (String.sub s 1 (n-5), Some Fiq)
+	  | "_irq" -> Some (String.sub s 1 (n-5), Some Irq)
+	  | "_svc" -> Some (String.sub s 1 (n-5), Some Svc)
+	  | "_abt" -> Some (String.sub s 1 (n-5), Some Abt)
+	  | "_und" -> Some (String.sub s 1 (n-5), Some Und)
+	  | "_usr" -> Some (String.sub s 1 (n-5), Some Usr)
+	  | "_sys" -> Some (String.sub s 1 (n-5), Some Sys)
+	  | _ -> Some (String.sub s 1 (n-1), None)
+      else None;;
 
 let ident s =
   try Hashtbl.find keyword_table s
