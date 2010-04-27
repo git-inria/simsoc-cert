@@ -123,13 +123,13 @@ let ident b i =
   bprintf b "%s%a%a" i.iname (list "" param) i.iparams
     (option " " version) i.iversion;;
 
-let prog_name b p =
+let name b p =
   match p.pname with
     | Inst (id, is) -> bprintf b "%a" (list ", " ident) (id::is)
     | Oper (s1, s2) ->
 	bprintf b "%a - %a" (list " " string) s1 (list " " string) s2;;
 
 let prog b p =
-  bprintf b "%s %a\n%a\n" p.pref prog_name p (inst 9) p.pinst;;
+  bprintf b "%s %a\n%a\n" p.pref name p (inst 9) p.pinst;;
 
 let lib b ps = list "" prog b ps;;

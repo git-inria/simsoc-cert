@@ -283,7 +283,7 @@ let inreg_load b s =
 
 let ident b i = bprintf b "%s%a" i.iname (option "" version) i.iversion;;
 
-let comment b p = bprintf b "// %a" Genpc.prog_name p;;
+let comment b p = bprintf b "// %a" Genpc.name p;;
 
 let abbrev b s =
   if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
