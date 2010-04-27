@@ -19,7 +19,7 @@ open Lexing;;
 (** usage and exit function in case of error *)
 (***********************************************************************)
 
-let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [-h|...] file";;
+let usage_msg () = "usage: " ^ Sys.argv.(0) ^ " [option] [file]";;
 
 let print_usage_and_exit () = prerr_endline (usage_msg()); exit 1;;
 
@@ -51,16 +51,17 @@ let get_action, is_action_set, set_action =
 (***********************************************************************)
 
 let rec options () = [
-  "-h", Unit print_help, "display the list of options";
-  "-d", Unit set_debug_mode, "turn on debug mode";
-  "-pc", Unit (fun () -> set_action GenPC), "generate pseudocode";
+  "-h", Unit print_help, " Display this list of options";
+  "-d", Unit set_debug_mode, " Turn on debug mode";
+  "-pc", Unit (fun () -> set_action GenPC), " Generate pseudocode";
   "-pc-check", Unit (fun () -> set_action GenPCCheck),
-  "generate pseudocode and reparse it";
-  "-pre", Unit (fun () -> set_action GenPre), "generate normalized pseudocode";
-  "-cxx", Unit (fun () -> set_action GenCxx), "generate instructions in C++";
-  "-coq", Unit (fun () -> set_action GenCoq), "generate instructions in Coq";
+  " Generate pseudocode and reparse it";
+  "-norm", Unit (fun () -> set_action GenPre),
+  " Generate normalized pseudocode";
+  "-cxx", Unit (fun () -> set_action GenCxx), " Generate instructions in C++";
+  "-coq", Unit (fun () -> set_action GenCoq), " Generate instructions in Coq";
   "-coq-decoder", Unit (fun () -> set_action GenCoqDec),
-  "generate decoder in Coq";
+  " Generate decoder in Coq";
 ]
 
 and print_options oc () =
