@@ -3,7 +3,7 @@
 
 .SUFFIXES:
 
-.PHONY: default clean depend tags clean-all dist install-dist
+.PHONY: default clean depend tags clean-all dist install-dist coq
 
 ifeq ($(VERBOSE),1)
   SHOW := @true
@@ -17,7 +17,9 @@ LIBS := str
 CMAFILES := $(LIBS:%=%.cma)
 CMXAFILES := $(LIBS:%=%.cmxa)
 
-INCLUDES := -I ../refARMparsing
+ARM_DIR := ../refARMparsing
+
+INCLUDES := -I $(ARM_DIR)
 
 FRAGILE := -w Ae -warn-error Ae
 
@@ -44,7 +46,12 @@ OPTS := $(BINS:%=%.opt)
 
 .PRECIOUS: $(BIN_FILES:%=%.cmo) $(BIN_FILES:%=%.cmx) $(PARSERS:%=%.ml)
 
-default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
+default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS) coq
+
+coq: $(ARM_DIR)/indentV6.v
+
+%.v: %.txt bin/main
+	bin/main -coq $< > $@ 
 
 bin:
 	mkdir -p bin
