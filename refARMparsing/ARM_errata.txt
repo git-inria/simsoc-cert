@@ -1,7 +1,15 @@
-CLZ : condition should be tested in pseudo-code
+CLZ : missing "if ConditionPassed(cond) then" ?
 
 LDRD : "memory" should be "Memory"
 
 SSAT & USAT : "Artihmetic" should be "Arithmetic"
 
 SMLSLD : in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
+
+LDRB, LDRBT: missing ZeroExtend
+
+ZeroExtend: undefined
+
+CarryFrom8: undefined
+
+SSAT16, USAT16: "OR" should be "or"
