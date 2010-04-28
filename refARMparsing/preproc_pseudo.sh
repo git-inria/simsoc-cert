@@ -66,5 +66,5 @@ sed \
     -e 's|memory\[|Memory\[|' \
     -e 's|Data processing operands|Data Processing Operands|' \
     -e 's|<shift_imm>|shift_imm|' \
-    -e 's|See “Data Processing Operands - Rotate right with extend” on page A5-17|See_Rotate_right_with_extend();|' \
+    -e 's|See “Data Processing Operands - Rotate right with extend” on page A5-17|shifter_operand = (C Flag Logical_Shift_Left 31) OR (Rm Logical_Shift_Right 1); shifter_carry_out = Rm[0]|' \
     -e 's|–|-|'
