@@ -1,5 +1,5 @@
---- ARMv6.txt.orig	2009-12-11 17:02:00.000000000 +0800
-+++ ARMv6.txt	2010-04-07 11:21:19.000000000 +0800
+--- ARMv6.txt.orig	2010-04-22 16:24:58.000000000 +0800
++++ ARMv6.txt	2010-04-27 12:48:37.000000000 +0800
 @@ -7904,8 +7904,8 @@
                          else
                               J Flag = 1
@@ -90,6 +90,15 @@
  
  
           Notes
+@@ -14774,7 +14771,7 @@
+              Rd[15:0] = SignedSat(Rm[15:0], sat_imm + 1)
+              Rd[31:16] = SignedSat(Rm[31:16], sat_imm + 1)
+              if SignedDoesSat(Rm[15:0], sat_imm + 1)
+-                                           OR SignedDoesSat(Rm[31:16], sat_imm + 1) then
++                                           or SignedDoesSat(Rm[31:16], sat_imm + 1) then
+                  Q Flag = 1
+ 
+ 
 @@ -16207,15 +16204,6 @@
                     Memory[address,4] = Rm
                     Rd = temp
@@ -106,6 +115,15 @@
                   physical_address = TLB(address)
                   ClearExclusiveByAddress(physical_address,processor_id,4)
                   /* See Summary of operation on page A2-49 */
+@@ -18442,7 +18430,7 @@
+                Rd[15:0] = UnsignedSat(Rm[15:0], sat_imm) // Rm[15:0] treated as signed
+                Rd[31:16] = UnsignedSat(Rm[31:16], sat_imm) // Rm[31:16] treated as signed
+                if UnsignedDoesSat(Rm[15:0], sat_imm)
+-                                             OR UnsignedDoesSat(Rm[31:16], sat_imm) then
++                                             or UnsignedDoesSat(Rm[31:16], sat_imm) then
+                    Q Flag = 1
+ 
+ 
 @@ -25166,7 +25154,7 @@
  
           Operation
@@ -120,5 +138,5 @@
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
 -
-\ No newline at end of file
+\ Pas de fin de ligne à la fin du fichier.
 +
