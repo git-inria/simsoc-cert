@@ -1,15 +1,20 @@
-CLZ : missing "if ConditionPassed(cond) then" ?
 
-LDRD : "memory" should be "Memory"
-
-SSAT & USAT : "Artihmetic" should be "Arithmetic"
-
-SMLSLD : in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
-
-LDRB, LDRBT: missing ZeroExtend
-
-ZeroExtend: undefined
+BXJ: "AND" should be "and"
 
 CarryFrom8: undefined
 
+CLZ : missing "if ConditionPassed(cond) then" ?
+
+LDR: "&" should be "AND"
+
+LDRD : "memory" should be "Memory"
+
+LDRB, LDRBT: missing ZeroExtend
+
+SMLSLD : in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
+
+SSAT & USAT : "Artihmetic" should be "Arithmetic"
+
 SSAT16, USAT16: "OR" should be "or"
+
+ZeroExtend: undefined
