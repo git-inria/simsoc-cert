@@ -23,7 +23,10 @@ let usage_msg() = "usage: " ^ Sys.argv.(0) ^ " [option ...]";;
 
 let print_usage_and_exit() = prerr_endline (usage_msg()); exit 1;;
 
-let error s = fprintf stderr "error: %s\n" s; print_usage_and_exit();;
+let arg_error s =
+  fprintf stderr "option error: %s\n" s; print_usage_and_exit();;
+
+let error s = fprintf stderr "%s\n" s; exit 1;;
 
 (***********************************************************************)
 (** generic functions for handling references *)
@@ -42,8 +45,8 @@ let get_set_bool() =
 let is_set_get_set m init =
   let r = ref init and s = ref false in
     (fun () -> !s),
-    (fun () -> if !s then !r else error (sprintf "no %s provided" m)),
-    (fun v -> if !s then error (sprintf "%s already provided" m)
+    (fun () -> if !s then !r else arg_error (sprintf "no %s provided" m)),
+    (fun v -> if !s then arg_error (sprintf "%s already provided" m)
               else (r := v; s := true));;
 
 (***********************************************************************)
@@ -113,7 +116,7 @@ and print_options oc () =
 and print_help () =
   print_endline (usage_msg()); print_options stdout (); exit 0;;
 
-let anon_fun _ = error "invalid option";;
+let anon_fun _ = arg_error "invalid option";;
 
 let parse_args () =
   Arg.parse (options()) anon_fun (usage_msg());
@@ -135,7 +138,7 @@ let fprint_loc oc loc =
 let parse_lexbuf lb =
   try Parser.lib Lexer.token lb
   with Parsing.Parse_error ->
-    fprintf stderr "%a: syntax error\n" fprint_loc lb.lex_curr_p; exit 1;;
+    fprintf stderr "syntax error: %a\n" fprint_loc lb.lex_curr_p; exit 1;;
 
 let parse_channel ic =
   let lb = Lexing.from_channel ic in
@@ -168,7 +171,7 @@ let check() =
 	    Genpc.lib b ps;
 	    let ps' = parse_string (Buffer.contents b) in
 	      if ps = ps' then verbose "ok\n" else error "failed"
-      | Dec _ -> error "option -check incompatible with -idec";;
+      | Dec _ -> arg_error "option -check incompatible with -idec";;
 
 let norm() =
   if get_norm() then
@@ -182,7 +185,7 @@ let norm() =
 	    else verbose "\n";
 	    set_input (Prog ps);
 	    check();
-      | Dec _ -> error "option -norm incompatible with -idec";;
+      | Dec _ -> arg_error "option -norm incompatible with -idec";;
 
 let parse_input_file() =
   verbose "parsing...\n";
@@ -201,8 +204,8 @@ let prog() =
 
 let dec() =
   match get_output_type() with
-    | PCout -> error "option -opc incompatible with -idec"
-    | Cxx -> error "option -ocxx not yet supported with -idec"
+    | PCout -> arg_error "option -opc incompatible with -idec"
+    | Cxx -> arg_error "option -ocxx not yet supported with -idec"
     | Coq -> Gencoqdec.decode;;
 
 let genr_output() =
