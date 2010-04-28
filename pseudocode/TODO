@@ -1,8 +1,6 @@
 
-- remove all TODO's and underscore's in match's
+- gencxx: simplify code and remove all TODO's and first-level underscore's
 
-- simplify gencxx
+- ast: merge Index and Flag ?
 
-- merge Index and Flag
-
-- reduce the number of conflicts in the grammar ?
+- parser: reduce the number of conflicts in the grammar ?
