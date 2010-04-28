@@ -46,7 +46,7 @@ let rec exp = function
   | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
     |"CP15_reg1_EEbit"|"CP15_reg1_Ubit" as s) -> Fun (s, [])
 
-  (* replace "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
+  (* replace variable "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
   | Var "mode" -> Range (CPSR, Bits ("4", "0"))
   | Var "GE" -> Range (CPSR, Bits ("19", "16"))
 
@@ -151,9 +151,20 @@ let nop = Block [];;
 
 let is_nop = (=) nop;;
 
-let locals = ["value"; "operand" ; "operand1" ; "operand2"; "data";
-	       "diff1"; "diff2"; "diff3"; "diff4"; "mask";
-	       "shifter_operand"; "shifter_carry_out"];;
+let locals = set_of_list
+  ["value"; "operand" ; "operand1" ; "operand2"; "data"; "mask";
+   "diff1"; "diff2"; "diff3"; "diff4"; "shifter_operand"; "shifter_carry_out";
+   "address"; "start_address"; "index"];;
+
+let is_local = function
+  | Var x | Fun (x, []) -> StrSet.mem x locals
+  | _ -> false;;
+
+let eq_local e1 e2 =
+  match e1, e2 with
+    | Var x1, Var x2 -> x1 = x2 && StrSet.mem x1 locals
+    | Fun (x1, []), Fun (x2, []) -> x1 = x2 && StrSet.mem x1 locals
+    | _, _ -> false;;
 
 let rec inst = function
 
@@ -193,24 +204,20 @@ let rec inst = function
 
 	    (* normalization of affectations for local variables *)
 	    begin match i1, i2 with
-	      | Affect (Var v1 as x, e1), Affect (Var v2, e2)
-		  when v1 = v2 && List.mem v1 locals ->
-		  inst (Affect (x, If_exp (c, e1, e2)))
-	      | Affect (Var v as x, e), Unpredictable
-		  when List.mem v locals ->
+	      | Affect (x1, e1), Affect (x2, e2) when eq_local x1 x2 ->
+		  inst (Affect (x1, If_exp (c, e1, e2)))
+	      | Affect (x, e), Unpredictable when is_local x ->
 		  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
-	      | Unpredictable, Affect (Var v as x, e)
-		  when List.mem v locals -> 
+	      | Unpredictable, Affect (x, e) when is_local x ->
 		  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
 
 	      (* case of two affectations *)
-	      | Block [Affect (Var v11 as x1, e11); Affect (Var v12, e12)],
-		Block [Affect (Var v21, e21); Affect (Var v22 as x2, e22)]
-		    when v11 = v21 && List.mem v11 locals
-		      && v12 = v22 && List.mem v12 locals ->
+	      | Block [Affect (x1, u1); Affect (y1, v1)],
+		Block [Affect (x2, u2); Affect (y2, v2)]
+		  when eq_local x1 x2 && eq_local y1 y2 ->
 		  inst (Block
-			  [Affect (x1, If_exp (c, e11, e21));
-			   Affect (x2, If_exp (c, e12, e22))])
+			  [Affect (x1, If_exp (c, u1, u2));
+			   Affect (y1, If_exp (c, v1, v2))])
 
 	      | _ -> If (exp c, i1, Some i2)
 	    end
