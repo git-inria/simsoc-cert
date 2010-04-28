@@ -32,6 +32,10 @@ let set_of_list =
 (** printing in a buffer *)
 (***********************************************************************)
 
+let print f x =
+  let b = Buffer.create 10000 in
+    f b x; Buffer.output_buffer stdout b;;
+
 let int b n = bprintf b "%d" n;;
 
 let int32 b n = bprintf b "%ld" n;;
