@@ -153,20 +153,6 @@ Definition get_half0 w := mk_half (intval w[15#0]).
 Definition get_half1 w := mk_half (intval w[31#16]).
 
 (****************************************************************************)
-(** Addresses (p. 68) *)
-(****************************************************************************)
-
-Definition address_size := 30%nat.
-Definition address := bitvec address_size.
-Definition mk_address := mk_bitvec address_size.
-Definition address_eqdec := @bitvec_eqdec address_size.
-
-(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
-since [bits 31 2 w] is always smaller than [two_power_nat 30]*)
-Definition address_of_word (w : word) : address :=
-  mk_address (bits 31 2 w).
-
-(****************************************************************************)
 (** A2.3 Registers (p. 42) *)
 (****************************************************************************)
 
@@ -182,3 +168,25 @@ Definition SP := mk_regnum 13.
 since [bits (k+3) k w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=
   mk_regnum (bits (k+3) k w).
+
+(****************************************************************************)
+(** Addresses (p. 68) *)
+(****************************************************************************)
+
+Definition address_size := 30%nat.
+Definition address := bitvec address_size.
+Definition mk_address := mk_bitvec address_size.
+Definition address_eqdec := @bitvec_eqdec address_size.
+
+(*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
+since [bits 31 2 w] is always smaller than [two_power_nat 30]*)
+Definition address_of_word (w : word) : address :=
+  mk_address (bits 31 2 w).
+
+(****************************************************************************)
+(** 64-bits words *)
+(****************************************************************************)
+
+Definition long_size := 64%nat.
+Definition long := bitvec long_size.
+Definition mk_long := mk_bitvec long_size.
