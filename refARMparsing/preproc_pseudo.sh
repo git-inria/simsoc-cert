@@ -4,14 +4,14 @@
 
 # add semi-colons at the end of various expressions
 # permute comments and semi-colons
-# add missing "then" avec some "if"
+# add missing "then" with some "if"
 # add "do" after "while" and "for"
 # in names, replace a dash by a space
 # replace "is" by "==", and "is not" by "!="
 # replace "== R15" by "== 15"
 # remove "value" of a register
 # replace some English expressions by a function call
-# fixed English typos
+# fix English typos
 # replace a strange dash character by a usual dash
 # remove the '<' and '>' around a "shift_imm"
 
@@ -55,6 +55,7 @@ sed \
     -e 's|address of|address_of|' \
     -e 's|dependent operation|dependent_operation|g' \
     -e 's|SUB ARCHITECTURE|SUBARCHITECTURE|g' \
+    -e 's|not overridden|not_overridden|' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|Start opcode execution at \(.*\);|Start_opcode_execution_at(\1);|' \
     -e 's|8_bit_immediate|immed_8|' \
