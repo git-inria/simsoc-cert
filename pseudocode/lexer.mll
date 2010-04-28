@@ -33,8 +33,8 @@ let keyword_table = Hashtbl.create 53;;
 let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t)
   (List.map (fun s -> s, RESERVED s)
      (* words starting an English expression *)
-     ["not"; "address_of"; "high"; "JE"; "IMPLEMENTATION"; "Jazelle"; "CV";
-      "SUBARCHITECTURE"; "CPSR_with"]
+     ["not_overridden"; "address_of"; "high"; "JE"; "IMPLEMENTATION";
+      "Jazelle"; "CV"; "SUBARCHITECTURE"; "CPSR_with"]
      (* language keywords *)
    @ ["if", IF; "then", THEN; "else", ELSE; "begin", BEGIN; "end", END;
       "UNPREDICTABLE", UNPREDICTABLE; "Flag", FLAG "Flag"; "bit", FLAG "bit";
