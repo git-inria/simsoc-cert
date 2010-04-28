@@ -199,7 +199,7 @@ let rec inst = function
 	  else If (exp c, i1, None)
 	else
 	  if is_nop i1
-	  then If (Fun ("NOT", [exp c]), i2, None)
+	  then If (Fun ("not", [exp c]), i2, None)
 	  else
 
 	    (* normalization of affectations for local variables *)
@@ -233,7 +233,7 @@ let rec inst = function
   | Unpredictable -> Unpredictable;;
 
 (***********************************************************************)
-(** normalization of affectations
+(** normalization of affectations (second pass)
 - replace affectation of Unpredictable_exp by Unpredictable
 - replace conditional affectation of Unpredictable by an equivalent block *)
 (***********************************************************************)
@@ -256,6 +256,10 @@ let rec affect = function
 
 and affects = function
   | [] -> []
+  | Affect (Range (Var x1 as x, Bits ("31", "0")), e1) ::
+    Affect (Range (Var x2, Bits ("63", "32")), e2) :: is when x1 = x2 ->
+      let e1 = Fun ("ZeroExtend", [e1]) and e2 = Fun ("ZeroExtend", [e2]) in
+	Affect (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
   | i :: is ->
       begin match affect i with
 	| Block is' -> is' @ affects is
@@ -266,7 +270,7 @@ and affects = function
 (** normalization of programs *)
 (***********************************************************************)
 
-let prog p = { p with pinst = affect (inst p.pinst) };;
+let norm p = { p with pinst = affect (inst p.pinst) };;
 
 (***********************************************************************)
 (** global and local variables of a program *)

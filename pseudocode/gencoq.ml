@@ -310,7 +310,7 @@ let name b p =
     | Inst (id, _) -> ident b id
     | Oper n -> operand b n;;
 
-let arg b (v, t) = bprintf b "(%s : %s)" v t;;
+let arg b (v, t) = bprintf b " (%s : %s)" v t;;
 
 let typ b p =
   match p.pname with
@@ -323,8 +323,8 @@ let postfix b p =
     | Oper _ -> ();;
 
 let prog gs b p =
-  bprintf b "(* %s %a *)\nDefinition %a_step (s0 : state) %a: %a :=\n %a%a.\n"
-    p.pref Genpc.name p name p (list " " arg) gs typ p (inst 2) p.pinst
+  bprintf b "(* %s %a *)\nDefinition %a_step (s0 : state)%a : %a :=\n %a%a.\n"
+    p.pref Genpc.name p name p (list "" arg) gs typ p (inst 2) p.pinst
     postfix p;;
 
 (***********************************************************************)
