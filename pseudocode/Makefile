@@ -17,9 +17,9 @@ LIBS := str
 CMAFILES := $(LIBS:%=%.cma)
 CMXAFILES := $(LIBS:%=%.cmxa)
 
-ARM_DIR := ../refARMparsing
+ARMDIR := ../refARMparsing
 
-INCLUDES := -I $(ARM_DIR)
+INCLUDES := -I $(ARMDIR)
 
 FRAGILE := -w Ae -warn-error Ae
 
@@ -38,20 +38,28 @@ FILES := util ast $(PARSERS) genpc preproc gencxx gencoq gencoqdec
 CMOFILES = $(FILES:%=%.cmo)
 CMXFILES = $(FILES:%=%.cmx)
 
-BIN_FILES := main
+BINFILES := main
 
-BINS := $(BIN_FILES:%=bin/%)
+BINS := $(BINFILES:%=bin/%)
 BYTS := $(BINS:%=%.byt)
 OPTS := $(BINS:%=%.opt)
 
-.PRECIOUS: $(BIN_FILES:%=%.cmo) $(BIN_FILES:%=%.cmx) $(PARSERS:%=%.ml)
+INST := indentV6
+TXTFILE := $(INST:%=$(ARMDIR)/%.txt)
+NORMFILE := $(TXTFILE:%.txt=%norm.txt)
+VFILE := $(NORMFILE:%.txt=%.v)
 
-default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS) coq
+.PRECIOUS: $(BINFILES:%=%.cmo) $(BINFILES:%=%.cmx) $(PARSERS:%=%.ml) \
+	$(NORMFILE)
 
-coq: $(ARM_DIR)/indentV6.v
+default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS) \
+	$(NORMFILE) $(VFILE)
 
 %.v: %.txt bin/main
-	bin/main -coq $< > $@ 
+	bin/main -ipc $< -ocoq > $@ 
+
+%norm.txt: %.txt bin/main
+	bin/main -ipc $< -opc -norm > $@
 
 bin:
 	mkdir -p bin
@@ -113,7 +121,7 @@ clean:
 
 .depend depend: $(PARSERS:%=%.ml)
 	$(SHOW) OCAMLDEP
-	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BIN_FILES:%=%.ml) > .depend
+	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BINFILES:%=%.ml) > .depend
 
 parser.cmi: ast.cmi
 
