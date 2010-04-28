@@ -44,7 +44,7 @@ let rec exp = function
 
   (* replace some "variables" by function calls *)
   | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
-    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit"|"accvalue" as s) -> Fun (s, [])
+    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit" as s) -> Fun (s, [])
 
   (* replace "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
   | Var "mode" -> Range (CPSR, Bits ("4", "0"))
@@ -151,7 +151,7 @@ let nop = Block [];;
 
 let is_nop = (=) nop;;
 
-let lc_decl = ["value"; "operand" ; "operand1" ; "operand2"; "data";
+let locals = ["value"; "operand" ; "operand1" ; "operand2"; "data";
 	       "diff1"; "diff2"; "diff3"; "diff4"; "mask";
 	       "shifter_operand"; "shifter_carry_out"];;
 
@@ -190,17 +190,28 @@ let rec inst = function
 	  if is_nop i1
 	  then If (Fun ("NOT", [exp c]), i2, None)
 	  else
-	    (* local declaration in if branches *)
+
+	    (* normalization of affectations for local variables *)
 	    begin match i1, i2 with
 	      | Affect (Var v1 as x, e1), Affect (Var v2, e2)
-		  when v1 = v2 && List.mem v1 lc_decl ->
+		  when v1 = v2 && List.mem v1 locals ->
 		  inst (Affect (x, If_exp (c, e1, e2)))
 	      | Affect (Var v as x, e), Unpredictable
-		  when List.mem v lc_decl ->
+		  when List.mem v locals ->
 		  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
 	      | Unpredictable, Affect (Var v as x, e)
-		  when List.mem v lc_decl -> 
+		  when List.mem v locals -> 
 		  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
+
+	      (* case of two affectations *)
+	      | Block [Affect (Var v11 as x1, e11); Affect (Var v12, e12)],
+		Block [Affect (Var v21, e21); Affect (Var v22 as x2, e22)]
+		    when v11 = v21 && List.mem v11 locals
+		      && v12 = v22 && List.mem v12 locals ->
+		  inst (Block
+			  [Affect (x1, If_exp (c, e11, e21));
+			   Affect (x2, If_exp (c, e12, e22))])
+
 	      | _ -> If (exp c, i1, Some i2)
 	    end
 
