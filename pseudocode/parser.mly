@@ -25,9 +25,8 @@ Pseudocode parser.
 %token COPROC LOAD SEND NOT_FINISHED FROM
 %token <Ast.mode option> SPSR_MODE
 %token <Ast.exp> REG
-%token <string> BIN HEX
 %token <Ast.num> NUM
-%token <string> IDENT FLAG RESERVED
+%token <string> IDENT FLAG RESERVED BIN HEX
 %token <string> NOT EVEN
 %token <string> GTEQ LT GT BANGEQ AND OR BOR LSL LSR ASR
 %token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
@@ -92,7 +91,7 @@ simple_inst:
 coproc_inst:
 | LOAD exp FOR coproc { Coproc ($4, "load", [$2]) }
 | SEND exp TO coproc  { Coproc ($4, "send", [$2]) }
-| coproc IDENT items  { Coproc ($1, $2, []) }
+| coproc IDENT        { Coproc ($1, $2, []) }
 ;
 coproc:
 | COPROC LSQB exp RSQB { $3 }
