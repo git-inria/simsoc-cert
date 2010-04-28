@@ -1,4 +1,6 @@
 
+- solve problem occuring with -norm -check
+
 - gencxx: simplify code and remove all TODO's and first-level underscore's
 
 - ast: merge Index and Flag ?
