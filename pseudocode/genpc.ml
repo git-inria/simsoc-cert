@@ -47,7 +47,6 @@ let rec exp b = function
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (_, f, _) as e -> pexp_level (level f) b e
   | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
-  | Other ss -> list " " string b ss
   | CPSR -> string b "CPSR"
   | SPSR None -> string b "SPSR"
   | SPSR (Some m) -> bprintf b "SPSR_%a" mode m
@@ -67,7 +66,7 @@ and coproc b e = bprintf b "Coprocessor[%a]" exp e
 
 and pexp b e =
   match e with
-    | If_exp _ | BinOp _ | Other _ -> par exp b e
+    | If_exp _ | BinOp _ -> par exp b e
     | _ -> exp b e
 
 and pexp_level k b = function
@@ -84,7 +83,7 @@ let rec inst k b i = indent b k; inst_sc k b i
 
 and inst_sc k b i =
   match i with
-    | Unpredictable | Affect _ | Proc _ | Misc _ | Assert _ ->
+    | Unpredictable | Affect _ | Proc _ | Assert _ ->
 	bprintf b "%a;" (inst_aux k) i
     | _ -> bprintf b "%a" (inst_aux k) i
 
@@ -104,7 +103,6 @@ and inst_aux k b = function
   | Assert e -> bprintf b "assert %a" exp e
   | For (s, n, p, i) ->
       bprintf b "for %s = %a to %a do\n%a" s num n num p (inst (k+4)) i
-  | Misc ss -> list " " string b ss
   | Coproc (c, "send", e :: _) -> bprintf b "send %a to %a" exp e coproc c
   | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
   | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s

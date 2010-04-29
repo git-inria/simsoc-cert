@@ -240,9 +240,7 @@ and exp b = function
 
   | Coproc_exp (_, _, _) as e -> todo_word b e
 
-  | Other _
-  | Unpredictable_exp
-  | Unaffected as e -> todo_word b e (*invalid_arg "Gencoq.exp"*)
+  | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
 and range b = function
   | Flag (s, _) -> bprintf b "%sbit" s
@@ -279,7 +277,7 @@ and inst_aux k b = function
       with Not_found -> todo (Genpc.inst 0) b i end
   | Proc _ | While _ | For _ | Coproc _ | Case _ as i ->
       todo (Genpc.inst 0) b i
-  | Misc _ | Assert _ -> invalid_arg "Gencoq.inst"
+  | Assert _ -> invalid_arg "Gencoq.inst"
 
 and affect b v = function
   | Var s -> bprintf b "let %s := %a in" s exp v
@@ -310,8 +308,14 @@ let ident b i =
 
 let add_mode b n = add_mode b (add_mode_of_name n);;
 
-let operand b n =
-  bprintf b "%a_%a" add_mode n string (Preproc.underscore (snd n));;
+let underscore =
+  let b = Buffer.create 100 in
+    fun ss ->
+      Buffer.clear b;
+      list "_" string b ss;
+      Buffer.contents b;;
+
+let operand b n = bprintf b "%a_%a" add_mode n string (underscore (snd n));;
 
 let name b p =
   match p.pname with

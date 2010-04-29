@@ -234,8 +234,6 @@ and inst_aux k b = function
       bprintf b "if (%a)\n%a\n%aelse\n%a"
 	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2
 
-  | _ -> string b "TODO(\"inst\")"
-
 and case_aux k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
     indent k (hex_of_bin n) (inst (k+2)) i indent (k+2)

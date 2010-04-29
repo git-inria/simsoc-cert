@@ -30,7 +30,6 @@ type exp =
 | If_exp of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
-| Other of string list
 | CPSR
 | SPSR of mode option
 | Reg of exp * mode option
@@ -63,7 +62,6 @@ type inst =
 | While of exp * inst
 | Assert of exp
 | For of string * num * num * inst
-| Misc of string list
 | Coproc of exp * string * exp list
 | Case of exp * (num * inst) list;;
 
