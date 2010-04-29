@@ -14,8 +14,27 @@ Functions of general interest about lists, printing, etc.
 open Printf;;
 
 (***********************************************************************)
-(** strings *)
+(** functions on lists *)
 (***********************************************************************)
+
+(* (firsts f l) returns the pair (l1,l2) such that l1 is the prefix of
+   l satisfying f and l2 is the remaining part of l *)
+let firsts f =
+  let rec aux acc = function
+    | [] -> List.rev acc, []
+    | x :: xs as l -> if f x then aux (x :: acc) xs else List.rev acc, l
+  in aux [];;
+
+(***********************************************************************)
+(** functions on strings *)
+(***********************************************************************)
+
+(* return a copy of [s] where underscores are replaced by spaces *)
+let remove_underscores s =
+  let s = String.copy s in
+    for i = 0 to String.length s - 1 do
+      if s.[i] = '_' then s.[i] <- ' '
+    done; s;;
 
 module StrOrd = struct
   type t = string
@@ -28,14 +47,8 @@ module StrMap = Map.Make (StrOrd);;
 let set_of_list =
   List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
 
-let remove_underscores s =
-  let s = String.copy s in
-    for i = 0 to String.length s - 1 do
-      if s.[i] = '_' then s.[i] <- ' '
-    done; s;;
-
 (***********************************************************************)
-(** printing in a buffer *)
+(** combinators for printing in a buffer *)
 (***********************************************************************)
 
 let print f x =
