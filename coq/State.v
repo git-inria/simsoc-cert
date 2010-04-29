@@ -55,9 +55,11 @@ Definition set_exns (s : state) (es : list exception) : state :=
 
 Definition mode (s : state) : proc_mode := mode (proc s).
 
-Definition cur_inst_address (s : state) : word := cur_inst_address (proc s).
+Definition address_of_current_instruction (s : state) : word
+  := address_of_current_instruction (proc s).
 
-Definition next_inst_address (s : state) : word := next_inst_address (proc s).
+Definition address_of_next_instruction (s : state) : word
+  := address_of_next_instruction (proc s).
 
 Definition CurrentModeHasSPSR (s : state) : bool := CurrentModeHasSPSR (mode s).
 
