@@ -24,9 +24,9 @@ let size_of_num = function
   | _ -> invalid_arg "Ast.size_of_num";;
 
 type exp =
-| Num of string
-| Bin of string
-| Hex of string
+| Num of num
+| Bin of num
+| Hex of num
 | If_exp of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
@@ -65,18 +65,21 @@ type inst =
 | Coproc of exp * string * exp list
 | Case of exp * (num * inst) list;;
 
-type ident = { iname : string; iparams : string list; iversion : num option };;
+type ident = { iname : string; iparams : string list; ivariant : num option };;
 
-type prog_name =
-  | Inst of ident * ident list
-  | Oper of (string list * string list);;
+type addr_mode = Data | LoadWord | LoadMisc | LoadMul | LoadCoproc;;
 
-type prog = { pref : string; pinst : inst; pname : prog_name };;
+type kind = Inst | Mode of addr_mode;;
 
-type add_mode = Data | LoadWord | LoadMisc | LoadMul | LoadCoproc;;
+type prog = {
+  pref : string;
+  pkind : kind;
+  pident : ident;
+  pidents : ident list;
+  pinst : inst };;
 
-let add_mode_of_name (s1, _) =
-  match s1 with
+let addr_mode ss =
+  match ss with
     | "Data" :: _ -> Data
     | "Miscellaneous" :: _ -> LoadMisc
     | _ :: _ :: _ :: s :: _ ->
@@ -87,3 +90,9 @@ let add_mode_of_name (s1, _) =
 	  | _ -> invalid_arg "Ast.add_mode"
 	end
     | _ -> invalid_arg "Ast.add_mode";;
+
+let rec name = function
+  | [] -> ""
+  | s :: ss -> s ^ "_" ^ name ss;;
+
+let ident ss = { iname = name ss; iparams = []; ivariant = None };;

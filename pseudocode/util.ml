@@ -28,6 +28,12 @@ module StrMap = Map.Make (StrOrd);;
 let set_of_list =
   List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
 
+let remove_underscores s =
+  let s = String.copy s in
+    for i = 0 to String.length s - 1 do
+      if s.[i] = '_' then s.[i] <- ' '
+    done; s;;
+
 (***********************************************************************)
 (** printing in a buffer *)
 (***********************************************************************)

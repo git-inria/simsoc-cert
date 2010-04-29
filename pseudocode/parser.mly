@@ -52,29 +52,30 @@ progs:
 | prog progs    { $1 :: $2 }
 ;
 prog:
-| IDENT prog_idents block
-    { { pref = $1; pinst = $3; pname = Inst (List.hd $2, List.tl $2) } }
+| IDENT idents block
+    { { pref = $1; pkind = Inst; pident = List.hd $2;
+	pidents = List.tl $2; pinst = $3 } }
 | IDENT items MINUS items block
-    { { pref = $1; pinst = $5; pname = Oper ($2, $4) } }
+    { { pref = $1; pkind = Mode (addr_mode $2); pident = ident $4;
+	pidents = []; pinst = $5 } }
 ;
-prog_ident:
-| prog_name prog_vars prog_version
-    { { iname = $1; iparams = $2; iversion = $3 } }
+idents:
+| ident             { [$1] }
+| ident COMA idents { $1 :: $3 }
 ;
-prog_idents:
-| prog_ident                  { [$1] }
-| prog_ident COMA prog_idents { $1 :: $3 }
+ident:
+| name vars variant { { iname = $1; iparams = $2; ivariant = $3 } }
 ;
-prog_vars:
-| /* nothing */         { [] }
-| LT IDENT GT prog_vars { $2 :: $4 }
-;
-prog_name:
+name:
 | IDENT { $1 }
 | BAND  { $1 }
 | EOR   { $1 }
 ;
-prog_version:
+vars:
+| /* nothing */    { [] }
+| LT IDENT GT vars { $2 :: $4 }
+;
+variant:
 | /* nothing */ { None }
 | LPAR NUM RPAR { Some $2 }
 ;

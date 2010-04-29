@@ -23,7 +23,7 @@ let comment f b x = bprintf b "(*%a*)" f x;;
 
 let type_of_var = function
   | "cond" -> "opcode"
-  | "shifter_carry_out" | "shift" | "mmod" | "opcode25" -> "bool"
+  | "shifter_carry_out" | "mmod" | "opcode25" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
   | "address" | "start_address" -> "address"
   | s -> if String.length s = 1 then "bool" else "word";;
@@ -124,14 +124,14 @@ let mode b m = string b (string_of_mode m);;
 (** addressing modes *)
 (***********************************************************************)
 
-let string_of_add_mode = function
+let string_of_addr_mode = function
   | Data -> "Mode1"
   | LoadWord -> "Mode2"
   | LoadMisc -> "Mode3"
   | LoadMul -> "Mode4"
   | LoadCoproc -> "Mode5";;
 
-let add_mode b m = string b (string_of_add_mode m);;
+let addr_mode b m = string b (string_of_addr_mode m);;
 
 (***********************************************************************)
 (** functions and binary operators *)
@@ -254,6 +254,11 @@ and range b = function
 (*REMOVE when finished! *)
 let todo f b e = bprintf b "todo \"%a\"" f e;;
 
+let case k b (n, i) =
+  match i with
+    | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n exp e
+    | _ -> raise Not_found;;
+
 let rec inst k b i = indent b k; inst_aux k b i
 
 and pinst k b i = indent b k; par (inst_aux k) b i
@@ -275,8 +280,11 @@ and inst_aux k b = function
   | Affect (e, v) as i ->
       begin try affect b v e
       with Not_found -> todo (Genpc.inst 0) b i end
-  | Proc _ | While _ | For _ | Coproc _ | Case _ as i ->
-      todo (Genpc.inst 0) b i
+  | Case (e, nis) as i ->
+      begin try bprintf b "let index :=\n%amatch %a with\n%a%aend in"
+	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+2)
+      with Not_found -> todo (Genpc.inst 0) b i end
+  | Proc _ | While _ | For _ | Coproc _ as i -> todo (Genpc.inst 0) b i
   | Assert _ -> invalid_arg "Gencoq.inst"
 
 and affect b v = function
@@ -299,40 +307,31 @@ and set b = function
   | _ -> raise Not_found;;
 
 (***********************************************************************)
-(** semantic step function of some instruction *)
+(** semantic of a program *)
 (***********************************************************************)
 
 let ident b i =
   bprintf b "%s%a%a" i.iname (list "" string) i.iparams
-    (option "" string) i.iversion;;
+    (option "" string) i.ivariant;;
 
-let add_mode b n = add_mode b (add_mode_of_name n);;
-
-let underscore =
-  let b = Buffer.create 100 in
-    fun ss ->
-      Buffer.clear b;
-      list "_" string b ss;
-      Buffer.contents b;;
-
-let operand b n = bprintf b "%a_%a" add_mode n string (underscore (snd n));;
+let operand b m i = bprintf b "%a_%a" addr_mode m ident i;;
 
 let name b p =
-  match p.pname with
-    | Inst (id, _) -> ident b id
-    | Oper n -> operand b n;;
+  match p.pkind with
+    | Inst -> ident b p.pident
+    | Mode m -> operand b m p.pident;;
 
 let arg b (v, t) = bprintf b " (%s : %s)" v t;;
 
 let typ b p =
-  match p.pname with
-    | Inst _ -> string b "result"
-    | Oper _ -> string b "word * bool";;
+  match p.pkind with
+    | Inst -> string b "result"
+    | Mode _ -> string b "word * bool";;
 
 let postfix b p =
-  match p.pname with
-    | Inst _ -> string b "true s0"
-    | Oper _ -> ();;
+  match p.pkind with
+    | Inst -> string b "true s0"
+    | Mode _ -> ();;
 
 let prog gs b p =
   bprintf b "(* %s %a *)\nDefinition %a_step (s0 : state)%a : %a :=\n %a%a.\n"
@@ -340,12 +339,13 @@ let prog gs b p =
     postfix p;;
 
 (***********************************************************************)
-(** constructor of some instruction *)
+(** constructor declaration corresponding to some instruction *)
 (***********************************************************************)
 
-let inst_typ gs b = function
-  | Oper _ -> () (*FIXME*)
-  | Inst (id, _) -> bprintf b "| %a %a" ident id (list " " arg) gs;;
+let inst_typ gs b p =
+  match p.pkind with
+    | Inst -> bprintf b "| %a %a" ident p.pident (list " " arg) gs
+    | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
@@ -353,16 +353,17 @@ let inst_typ gs b = function
 
 let var_name b (v, _) = bprintf b "%s" v;;
 
-let inst_sem gs b = function
-  | Oper _ -> () (*FIXME*)
-  | Inst (id, _) ->
-      bprintf b "    | %a %a =>" ident id (list " " var_name) gs;
-      if List.exists ((=) ("shifter_operand", "word")) gs then
-	if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
-	  bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
-	else
-	bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-      bprintf b " %a_step %a v s0" ident id (list " " var_name) gs;;
+let inst_sem gs b p =
+  match p.pkind with
+    | Inst ->
+	bprintf b "    | %a %a =>" ident p.pident (list " " var_name) gs;
+	if List.exists ((=) ("shifter_operand", "word")) gs then
+	  if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
+	    bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
+	  else
+	    bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
+	bprintf b " %a_step %a v s0" ident p.pident (list " " var_name) gs
+    | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
 (** Main coq generation function.
@@ -373,37 +374,14 @@ For each instruction:
 semantics step function *)
 (***********************************************************************)
 
-(*FIXME/REMOVE?*)
-let lsm_hack p =
-  match p.pname with
-    | Inst ({ iname = "LDM" | "STM" }, _) ->
-	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-	let a = If (Var "W", Affect (Reg (Var "n", None), Var "n"), None) in
-	let i = match p.pinst with
-          | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
-          | Block [x; If (c, Block ids, None)] ->
-              Block [x; If (c, Block (ids @ [a]), None)]
-          | _ -> invalid_arg "Gencoq.lsm_hack"
-	in { p with pinst = i }
-    | Oper n when add_mode_of_name n = LoadMul ->
-	(* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-	let rec inst = function
-	  | Block ids -> Block (List.map inst ids)
-	  | If (_, Affect (Reg (Var "n", None), e), None) ->
-	      Affect (Var "new_Rn", e)
-	  | i -> i
-	in { p with pinst = inst p.pinst }
-    | Oper _ | Inst _ -> p;;
-
 let lib b ps =
   let btyp = Buffer.create 10000 in
   let bsem = Buffer.create 10000 in
   let prog_typ_sem p =
-    let p = lsm_hack p in (*FIXME*)
     let gs, _ = variables p in
       bprintf b "%a\n" (prog gs) p;
-      bprintf btyp "%a\n" (inst_typ gs) p.pname;
-      bprintf bsem "%a\n" (inst_sem gs) p.pname
+      bprintf btyp "%a\n" (inst_typ gs) p;
+      bprintf bsem "%a\n" (inst_sem gs) p
   in
     bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\nRequire Import ZArith.\nImport Int.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;

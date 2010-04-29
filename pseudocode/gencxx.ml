@@ -266,7 +266,7 @@ and affect k b dst src =
 
 (** Generate a function modeling an instruction of the processor *)
 
-let version b k = bprintf b "_%s" k;;
+let variant b k = bprintf b "_%s" k;;
 
 let prog_var b s = bprintf b "<%s>" s;;
 
@@ -279,10 +279,11 @@ let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 let inreg_load b s =
   bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
-let ident b i = bprintf b "%s%a" i.iname (option "" version) i.iversion;;
+let ident b i = bprintf b "%s%a" i.iname (option "" variant) i.ivariant;;
 
 let comment b p = bprintf b "// %a" Genpc.name p;;
 
+(*REMOVE?*)
 let abbrev b s =
   if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
   then bprintf b "%c" s.[0]
@@ -293,20 +294,20 @@ let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 let prog gs ls b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
-    match p.pname with
-      | Inst (id, ids) ->
+    match p.pkind with
+      | Inst ->
           bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
-            (list "_" ident) (id :: ids)
+            (list "_" ident) (p.pident :: p.pidents)
             (list ",\n    " prog_arg) gs
             (list "" inreg_load) inregs
             (list "" local_decl) ls
             (inst 2) p.pinst
-      | Oper (c, n) ->
+      | Mode m ->
           let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
             bprintf b "%avoid ARM_ISS::%a_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
-              (list "" abbrev) c
-              (list "_" string) n
+              (*FIXME?list "" abbrev*) Genpc.addr_mode m
+              string p.pident.iname
               (list ",\n    " prog_arg) gs
               (arg_sep gs os)
               (list ",\n    " prog_out) os
@@ -314,42 +315,40 @@ let prog gs ls b p =
               (list "" local_decl) ls'
               (inst 2) p.pinst;;
 
-let decl gs ls b p = match p.pname with
-  | Inst (id, ids) ->
-      bprintf b "  %a  void %a(%a);\n" comment p
-        (list "_" ident) (id :: ids) (list ",\n    " prog_arg) gs
-  | Oper (c, n) ->
-      let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
-        bprintf b "  %a  void %a_%a(%a%s%a);\n" comment p
-          (list "" abbrev) c (list "_" string) n
-          (list ",\n    " prog_arg) gs
-          (arg_sep gs os)
-          (list ",\n    " prog_out) os;;
+let decl gs ls b p =
+  match p.pkind with
+    | Inst  ->
+	bprintf b "  %a  void %a(%a);\n" comment p
+          (list "_" ident) (p.pident :: p.pidents) (list ",\n    " prog_arg) gs
+    | Mode m ->
+	let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
+          bprintf b "  %a  void %a_%a(%a%s%a);\n" comment p
+            (*FIXME?list "" abbrev*) Genpc.addr_mode m
+            string p.pident.iname
+            (list ",\n    " prog_arg) gs
+            (arg_sep gs os)
+            (list ",\n    " prog_out) os;;
 
 let lsm_hack p =
   let rec inst = function
     | Block is -> Block (List.map inst is)
-    | If (_, Affect ( Reg (Var "n", None), e), None) ->
-        Affect (Var "new_Rn", e)
-    | i-> i
-  in match p.pname with
-  | Inst (id, _) ->
-      if id.iname = "LDM" or id.iname = "STM"
-      then (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-        let a = If (Var "W", Affect (Reg (Var "n", None), Var "new_Rn"), None) in
-        let i = match p.pinst with
-          | If (c, Block ids, None) ->
-              If (c, Block (ids @ [a]), None)
-          | Block ([x; If (c, Block ids, None)]) ->
-              Block ([x; If (c, Block (ids @ [a]), None)])
-          | _ -> raise (Failure ("Unexpected AST shape: " ^ id.iname))
-        in { p with pinst = i }
-      else p
-  | Oper (c, _) ->
-      if c = ["Load"; "and"; "Store"; "Multiple"]
-      then (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-        { p with pinst = inst p.pinst }
-      else p;;
+    | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
+    | i -> i
+  in
+    match p.pkind with
+      | Inst when p.pident.iname = "LDM" || p.pident.iname = "STM" ->
+	  (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+          let a = If(Var "W",Affect(Reg(Var"n",None),Var"new_Rn"),None) in
+          let i = match p.pinst with
+            | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
+            | Block ([x; If (c, Block ids, None)]) ->
+		Block ([x; If (c, Block (ids @ [a]), None)])
+            | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
+          in { p with pinst = i }
+      | Mode LoadMul ->
+	  (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+          { p with pinst = inst p.pinst }
+      | _ -> p;;
 
 let lib b ps =
   let b2 = Buffer.create 10000 in

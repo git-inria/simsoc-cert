@@ -106,26 +106,35 @@ and inst_aux k b = function
   | Coproc (c, "send", e :: _) -> bprintf b "send %a to %a" exp e coproc c
   | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
   | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s
-  | Case (e, s) ->
+  | Case (e, nis) ->
       bprintf b "case %a of\n%abegin\n%a%aend\n%aendcase"
-        exp e indent (k+4) (list "" (case_aux (k+4))) s indent (k+4) indent k
+        exp e indent (k+4) (list "" (case_aux (k+4))) nis indent (k+4) indent k
 
 and case_aux k b (n, i) =
   bprintf b "%a%a\n%a\n" indent k num n (inst (k+4)) i;;
 
-let version b k = bprintf b "(%s)" k;;
+let variant b k = bprintf b "(%s)" k;;
 
 let param b s = bprintf b "<%s>" s;;
 
 let ident b i =
   bprintf b "%s%a%a" i.iname (list "" param) i.iparams
-    (option " " version) i.iversion;;
+    (option " " variant) i.ivariant;;
+
+let string_of_addr_mode = function
+  | Data -> "Data processing operands"
+  | LoadWord -> "Load and Store Word or Unsigned Byte"
+  | LoadMisc -> "Miscellaneous Loads and Stores"
+  | LoadMul -> "Load and Store Multiple"
+  | LoadCoproc -> "Load and Store Coprocessor";;
+
+let addr_mode b m = string b (string_of_addr_mode m);;
 
 let name b p =
-  match p.pname with
-    | Inst (id, is) -> bprintf b "%a" (list ", " ident) (id::is)
-    | Oper (s1, s2) ->
-	bprintf b "%a - %a" (list " " string) s1 (list " " string) s2;;
+  match p.pkind with
+    | Inst -> bprintf b "%a" (list ", " ident) (p.pident :: p.pidents)
+    | Mode m ->
+	bprintf b "%a - %s" addr_mode m (remove_underscores p.pident.iname);;
 
 let block = function
   | Block _ as i -> i
