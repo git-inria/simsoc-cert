@@ -25,7 +25,7 @@ let type_of_var = function
   | "cond" -> "opcode"
   | "shifter_carry_out" | "mmod" | "opcode25" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
-  | "address" | "start_address" -> "address"
+(*REMOVE?  | "address" | "start_address" -> "address"*)
   | s -> if String.length s = 1 then "bool" else "word";;
 
 module G = struct
@@ -209,8 +209,8 @@ and exp b = function
   | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"
 	 |"Jazelle_Extension_accepts_opcode_at"), _) as e ->
       (*FIXME*) todo_bool b e
-  | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"|"ExecutingProcessor"
-	 |"SUB_ARCHITECTURE_DEFINED_value"
+  | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"
+	 |"ExecutingProcessor"|"SUB_ARCHITECTURE_DEFINED_value"
 	 |"CV_bit_of_Jazelle_OS_Control_register"
 	 |"JE_bit_of_Main_Configuration_register"|"accvalue"), _) as e ->
       (*FIXME*) todo_word b e
@@ -244,6 +244,7 @@ and exp b = function
 
 and range b = function
   | Flag (s, _) -> bprintf b "%sbit" s
+  | Index (BinOp (_, "-", _) as e) -> nat_exp b e
   | Index e -> num_exp b e
   | Bits (n1, n2) -> bprintf b "%a#%a" num n1 num n2;;
 
@@ -281,8 +282,9 @@ and inst_aux k b = function
       begin try affect b v e
       with Not_found -> todo (Genpc.inst 0) b i end
   | Case (e, nis) as i ->
-      begin try bprintf b "let index :=\n%amatch %a with\n%a%aend in"
-	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+2)
+      begin try bprintf b
+	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
+	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
       with Not_found -> todo (Genpc.inst 0) b i end
   | Proc _ | While _ | For _ | Coproc _ as i -> todo (Genpc.inst 0) b i
   | Assert _ -> invalid_arg "Gencoq.inst"
@@ -314,29 +316,44 @@ let ident b i =
   bprintf b "%s%a%a" i.iname (list "" string) i.iparams
     (option "" string) i.ivariant;;
 
-let operand b m i = bprintf b "%a_%a" addr_mode m ident i;;
-
 let name b p =
   match p.pkind with
     | Inst -> ident b p.pident
-    | Mode m -> operand b m p.pident;;
+    | Mode m -> bprintf b "%a_%a" addr_mode m ident p.pident;;
 
-let arg b (v, t) = bprintf b " (%s : %s)" v t;;
+let arg b (x, t) =
+  match t with
+    | "bool" -> bprintf b "zne 0 %s" x
+    | _ -> string b x;;
 
-let typ b p =
+let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
+
+let typ b (_, t) = string b t;;
+
+let result_typ ls b p =
   match p.pkind with
     | Inst -> string b "result"
-    | Mode _ -> string b "word * bool";;
+    | Mode _ -> list " * " typ b ls;;
 
-let postfix b p =
+let postfix ls b p =
   match p.pkind with
     | Inst -> string b "true s0"
-    | Mode _ -> ();;
+    | Mode _ -> par (list ", " arg) b ls;;
 
-let prog gs b p =
-  bprintf b "(* %s %a *)\nDefinition %a_step (s0 : state)%a : %a :=\n %a%a.\n"
-    p.pref Genpc.name p name p (list "" arg) gs typ p (inst 2) p.pinst
-    postfix p;;
+let mode_inst b = function
+  | Block is -> List.iter (inst 2 b) is
+  | i -> inst 2 b i;;
+
+let pinst b p =
+  match p.pkind with
+    | Inst -> inst 2 b p.pinst
+    | Mode _ -> mode_inst b p.pinst;;
+
+let prog gs ls b p =
+  bprintf b
+    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : %a :=\n%a %a.\n"
+    p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
+    pinst p (postfix ls) p;;
 
 (***********************************************************************)
 (** constructor declaration corresponding to some instruction *)
@@ -344,7 +361,7 @@ let prog gs b p =
 
 let inst_typ gs b p =
   match p.pkind with
-    | Inst -> bprintf b "| %a %a" ident p.pident (list " " arg) gs
+    | Inst -> bprintf b "| %a %a" name p (list " " arg) gs
     | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
@@ -356,13 +373,13 @@ let var_name b (v, _) = bprintf b "%s" v;;
 let inst_sem gs b p =
   match p.pkind with
     | Inst ->
-	bprintf b "    | %a %a =>" ident p.pident (list " " var_name) gs;
+	bprintf b "    | %a %a =>" name p (list " " var_name) gs;
 	if List.exists ((=) ("shifter_operand", "word")) gs then
 	  if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
 	    bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
 	  else
 	    bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-	bprintf b " %a_step %a v s0" ident p.pident (list " " var_name) gs
+	bprintf b " %a_step %a v s0" name p (list " " var_name) gs
     | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
@@ -378,8 +395,8 @@ let lib b ps =
   let btyp = Buffer.create 10000 in
   let bsem = Buffer.create 10000 in
   let prog_typ_sem p =
-    let gs, _ = variables p in
-      bprintf b "%a\n" (prog gs) p;
+    let gs, ls = variables p in
+      bprintf b "%a\n" (prog gs ls) p;
       bprintf btyp "%a\n" (inst_typ gs) p;
       bprintf bsem "%a\n" (inst_sem gs) p
   in
