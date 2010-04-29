@@ -209,10 +209,11 @@ and exp b = function
   | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"
 	 |"Jazelle_Extension_accepts_opcode_at"), _) as e ->
       (*FIXME*) todo_bool b e
-  | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"
+  | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"|"accvalue"
 	 |"ExecutingProcessor"|"SUB_ARCHITECTURE_DEFINED_value"
 	 |"CV_bit_of_Jazelle_OS_Control_register"
-	 |"JE_bit_of_Main_Configuration_register"|"accvalue"), _) as e ->
+	 |"JE_bit_of_Main_Configuration_register"
+	 |"Number_Of_Set_Bits_In"), _) as e ->
       (*FIXME*) todo_word b e
 
   | Fun (f, []) -> fun_name b f
@@ -271,6 +272,7 @@ and inst_cons k b = function
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\""
       (*FIXME: replace empty string by program name*)
+  | Block [] -> string b "block nil"
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons (k+2))) is indent (k+2)
@@ -332,26 +334,32 @@ let typ b (_, t) = string b t;;
 
 let result_typ ls b p =
   match p.pkind with
-    | Inst -> string b "result"
-    | Mode _ -> list " * " typ b ls;;
+    | Inst -> ()
+    | Mode _ -> list "" (prefix " * " typ) b ls;;
 
-let postfix ls b p =
-  match p.pkind with
-    | Inst -> string b "true s0"
-    | Mode _ -> par (list ", " arg) b ls;;
+let is_affect = function Affect _ | Case _ -> true | _ -> false;;
 
-let mode_inst b = function
-  | Block is -> List.iter (inst 2 b) is
-  | i -> inst 2 b i;;
+let split = function
+  | Block is -> firsts is_affect is
+  | Affect _ as i -> [i], []
+  | i -> [], [i];;
 
 let pinst b p =
   match p.pkind with
     | Inst -> inst 2 b p.pinst
-    | Mode _ -> mode_inst b p.pinst;;
+    | Mode _ ->
+	let is1, is2 = split p.pinst in
+	  List.iter (endline (inst 2) b) is1;
+	  bprintf b "  let s := %a true s0 in" (inst_aux 2) (Block is2);;
+
+let postfix ls b p =
+  match p.pkind with
+    | Inst -> string b "true s0"
+    | Mode _ -> bprintf b "\n  (s%a)" (list "" (prefix ", " arg)) ls;;
 
 let prog gs ls b p =
   bprintf b
-    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : %a :=\n%a %a.\n"
+    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a %a.\n"
     p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
     pinst p (postfix ls) p;;
 
