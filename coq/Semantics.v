@@ -11,17 +11,21 @@ Page numbers refer to ARMv6.pdf.
 Semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import State String Util Bitvec Arm State List.
+Require Import State Util Bitvec Arm State List.
+Require Import String. Open Scope string_scope.
+Require Import ZArith. Open Scope Z_scope.
 
 (****************************************************************************)
 (** Result of executing an instruction.
-The boolean indicates whether the PC needs to be incremented. *)
+The boolean in Ok indicates whether the PC needs to be incremented. *)
 (****************************************************************************)
 
 Inductive result : Type :=
 | Ok (b : bool) (s : state)
 | Ko (m : string)
 | Todo (m : string).
+
+Definition semfun := bool -> state -> result.
 
 (****************************************************************************)
 (** Semantic functions for pseudo-code constructions *)
@@ -31,31 +35,40 @@ Definition todo (m : string) (b : bool) (s : state) : result := Todo m.
 
 Definition unpredictable (m : string) (b : bool) (s : state) : result := Ko m.
 
-Definition if_then (c : bool) (f : bool->state->result) b s :=
+Definition if_then (c : bool) (f : semfun) (b : bool) (s : state) : result :=
   if c then f b s else Ok b s.
 
-Definition if_then_else (c : bool) (f1 f2 : bool->state->result) b1 s1 :=
-  if c then f1 b1 s1 else f2 b1 s1.
+Definition if_then_else (c : bool) (f1 f2 : semfun) (b : bool) (s : state)
+  : result := if c then f1 b s else f2 b s.
 
-Definition seq (f1 f2 : bool->state->result) (b1 : bool) (s1 : state) : result
-  := match f1 b1 s1 with
-    | Ok b2 s2 =>
-      match f2 b2 s2 with
-        | Ok b3 s3 => Ok (andb b2 b3) s3
+Definition seq (f1 f2 : semfun) (b0 : bool) (s0 : state) : result :=
+  match f1 b0 s0 with
+    | Ok b1 s1 =>
+      match f2 b1 s1 with
+        | Ok b2 s2 => Ok (andb b1 b2) s2
         | r => r
       end
     | r => r
   end.
 
-Fixpoint block (fs : list (bool->state->result)) (b1 : bool) (s1 : state) :
-  result :=
+Fixpoint block (fs : list semfun) (b0 : bool) (s0 : state) : result :=
   match fs with
-    | nil => Ok b1 s1
+    | nil => Ok b0 s0
     | f :: fs' =>
-      match f b1 s1 with
-        | Ok b2 s2 => block fs' (andb b1 b2) s2
+      match f b0 s0 with
+        | Ok b1 s1 => block fs' (andb b0 b1) s1
         | r => r
       end
+  end.
+
+Definition case (w : word) (f00 f01 f10 f11 : semfun) (b : bool) (s : state) :
+  result :=
+  match unsigned w with
+    | Z0 => f00 b s
+    | Zpos 1 => f01 b s
+    | Zpos 1~0 => f10 b s
+    | Zpos 1~1 => f11 b s
+    | _ => Ko "Semantics.case: invalid argument"
   end.
 
 (****************************************************************************)
