@@ -13,10 +13,9 @@ Bit vectors.
 
 Set Implicit Arguments.
 
-Require Import ZArith Integers Util Coqlib.
-Import Int.
-
-Open Scope Z_scope.
+Require Import Util Coqlib.
+Require Import ZArith. Open Scope Z_scope.
+Require Export Integers. Export Int.
 
 (****************************************************************************)
 (** 32-bits words, masks and bit operations *)

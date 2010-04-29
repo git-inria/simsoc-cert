@@ -13,8 +13,7 @@ Basic types and functions for describing the ARM state
 
 Set Implicit Arguments.
 
-Require Import Bitvec ZArith Coqlib Util Integers.
-Import Int.
+Require Import Bitvec ZArith Coqlib Util.
 
 Open Scope Z_scope.
 

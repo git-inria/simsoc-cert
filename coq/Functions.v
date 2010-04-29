@@ -13,8 +13,7 @@ Functions used in the pseudocode, in alphabetical order.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Integers Util Bitvec Arm.
-Import Int.
+Require Import Coqlib Util Bitvec Arm.
 
 (****************************************************************************)
 (** Table A4-1 Bit mask constants (p. 227) *)

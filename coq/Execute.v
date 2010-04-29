@@ -13,15 +13,7 @@ Instruction decoding and execution cycle.
 
 Set Implicit Arguments.
 
-Require Import State.
-Require Import Decode.
-Require Import Instructions.
-Require Import Semantics.
-Require Import Shift.
-Require Import Bitvec.
-Require Import Integers. Import Int.
-Require Import Coqlib.
-Require Import Exception.
+Require Import State Decode Instructions Semantics Shift Bitvec Exception.
 
 (*REMOVE: to be automatically generated
 
