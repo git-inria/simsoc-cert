@@ -143,9 +143,11 @@ let string_of_fun_name = function
   | s -> s;;
 
 let add_state = function
-  | "next_inst_address" | "cur_inst_address" | "CurrentModeHasSPSR"
-  | "InAPrivilegedMode" | "ConditionPassed" | "CP15_reg1_EEbit"
-  | "CP15_reg1_Ubit" as s -> s ^ " s0"
+  | "address_of_next_instruction" | "address_of_current_instruction"
+  | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
+  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit"
+  | "CV_bit_of_Jazelle_OS_Control_register"
+  | "JE_bit_of_Main_Configuration_register" as s -> s ^ " s0"
   | s -> s;;
 
 let fun_name b s = string b (add_state (string_of_fun_name s));;
@@ -204,10 +206,14 @@ and exp b = function
   | Num s -> word num b s
   | Var s -> string b s
 
-  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
+  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"
+	 |"Jazelle_Extension_accepts_opcode_at"), _) as e ->
       (*FIXME*) todo_bool b e
   | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"|"ExecutingProcessor"
-	 |"accvalue"), _) as e -> (*FIXME*) todo_word b e
+	 |"SUB_ARCHITECTURE_DEFINED_value"
+	 |"CV_bit_of_Jazelle_OS_Control_register"
+	 |"JE_bit_of_Main_Configuration_register"|"accvalue"), _) as e ->
+      (*FIXME*) todo_word b e
 
   | Fun (f, []) -> fun_name b f
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
@@ -234,7 +240,9 @@ and exp b = function
 
   | Coproc_exp (_, _, _) as e -> todo_word b e
 
-  | Other _ | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
+  | Other _
+  | Unpredictable_exp
+  | Unaffected as e -> todo_word b e (*invalid_arg "Gencoq.exp"*)
 
 and range b = function
   | Flag (s, _) -> bprintf b "%sbit" s

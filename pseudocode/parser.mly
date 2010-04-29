@@ -18,15 +18,13 @@ Pseudocode parser.
 
 %token EOF COLON SEMICOLON COMA
 %token LPAR RPAR LSQB RSQB BEGIN END
-%token EQ IN
-%token UNPREDICTABLE UNAFFECTED
+%token EQ IN UNPREDICTABLE UNAFFECTED
 %token IF THEN ELSE WHILE DO ASSERT FOR TO CASE ENDCASE OF
-%token CPSR MEMORY
-%token COPROC LOAD SEND NOT_FINISHED FROM
-%token <Ast.mode option> SPSR_MODE
-%token <Ast.exp> REG
+%token CPSR SPSR MEMORY REG GE
+%token COPROC LOAD SEND FROM NOT_FINISHED
 %token <Ast.num> NUM
-%token <string> IDENT FLAG RESERVED BIN HEX
+%token <Ast.mode> MODE
+%token <string> IDENT FLAG RESERVED BIN HEX REGNUM REGVAR
 %token <string> NOT EVEN
 %token <string> GTEQ LT GT BANGEQ AND OR BOR LSL LSR ASR
 %token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
@@ -85,7 +83,7 @@ simple_inst:
 | exp EQ exp           { Affect ($1, $3) }
 | IDENT LPAR exps RPAR { Proc ($1, $3) }
 | ASSERT exp           { Assert $2 }
-| RESERVED items       { Misc ($1 :: $2) }
+/*| RESERVED items       { Misc ($1 :: $2) }*/
 | coproc_inst          { $1 }
 ;
 coproc_inst:
@@ -124,14 +122,23 @@ simple_exp:
 | NUM           { Num $1 }
 | IDENT         { Var $1 }
 | CPSR          { CPSR }
+| GE            { Range (CPSR, Bits ("19", "16")) }
 | UNAFFECTED    { Unaffected }
 | UNPREDICTABLE { Unpredictable_exp }
-| REG           { $1 }
+| register      { Reg ($1, None) }
+| register MODE { Reg ($1, Some $2) }
+| REG           { Var "R" }
+;
+register:
+| REGNUM  { Num $1 }
+| REGVAR  { Var $1 }
+| REG exp { $2 }
 ;
 exp:
 | BIN                      { Bin $1 }
 | HEX                      { Hex $1 }
-| SPSR_MODE                { SPSR $1 }
+| SPSR                     { SPSR None }
+| SPSR MODE                { SPSR (Some $2) }
 | LPAR exp RPAR            { $2 }
 | IF exp THEN exp ELSE exp { If_exp ($2, $4, $6) }
 | NOT exp                  { Fun ($1, [$2]) }
@@ -143,8 +150,11 @@ exp:
 | IDENT FLAG               { Range (CPSR (*FIXME*), Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
-| RESERVED items           { Other ($1 :: $2) }
-| simple_exp IN IDENT COMA simple_exp IN IDENT { If_exp (Var $3, $1, $5) }
+/*| RESERVED items           { Other ($1 :: $2) }*/
+| simple_exp IN version COMA simple_exp IN version { If_exp ($3, $1, $5) }
+;
+version:
+| IDENT LPAR RPAR { Fun ($1, []) }
 ;
 coproc_exp:
 | NOT_FINISHED LPAR coproc RPAR { Coproc_exp ($3, "NotFinished", []) }
@@ -187,7 +197,7 @@ item:
 | IDENT    { $1 }
 | OF       { "of" }
 | FLAG     { $1 }
-| RESERVED { $1 }
+/*| RESERVED { $1 }*/
 ;
 operand_items:
 | IDENT               { [$1] }

@@ -34,28 +34,28 @@ let underscore =
 let rec exp = function
 
   (* we only consider ARMv5 and above *)
-  | If_exp (Var "v5_and_above", e, _) -> exp e
+  | If_exp (Fun ("v5_and_above", []), e, _) -> exp e
 
   (* replace the incorrect function call to R by a register value *)
-  | Fun ("R", e :: _) -> Reg (e, None)
+(*  | Fun ("R", e :: _) -> Reg (e, None)*)
 
   (* replace opcode[n] by a variable *)
-  | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)
+(*  | Range (Var ("opcode" as s), Index (Num n)) -> Var (s ^ n)*)
 
   (* replace some "variables" by function calls *)
-  | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
-    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit" as s) -> Fun (s, [])
+(*  | Var ("UnallocMask"|"StateMask"|"UserMask"|"PrivMask"
+    |"CP15_reg1_EEbit"|"CP15_reg1_Ubit" as s) -> Fun (s, [])*)
 
   (* replace variable "mode" by "CPSR[4:0]", and "GE" by "CPSR[19:16]" *)
-  | Var "mode" -> Range (CPSR, Bits ("4", "0"))
-  | Var "GE" -> Range (CPSR, Bits ("19", "16"))
+(*  | Var "mode" -> Range (CPSR, Bits ("4", "0"))
+  | Var "GE" -> Range (CPSR, Bits ("19", "16"))*)
 
   (* normalize ranges *)
   | Range (e1, Index e2) -> range (exp e1) (Index (exp e2))
   | Range (e, r) -> range (exp e) r
  
   (* replace English expressions by function calls *)
-  | Other ss ->
+(*  | Other ss ->
       begin match underscore ss with
 	| "address_of_BKPT_instruction" -> Fun ("cur_inst_address", [])
 	| "address_of_the_instruction_after_the_branch_instruction"
@@ -64,7 +64,7 @@ let rec exp = function
 	| "address_of_next_instruction_after_the_SWI_instruction"
 	  -> Fun ("next_inst_address", [])
 	| f -> Fun (f, [])
-      end
+      end*)
 
   (* rename some function calls depending on the argument,
      and change the argument into a list of arguments,
@@ -102,8 +102,8 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  | Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e
-    -> e
+  | Other _|Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp
+	as e -> e
 
 (* replace two successive ranges by a single one *)
 and range =
@@ -169,7 +169,7 @@ let eq_local e1 e2 =
 let rec inst = function
 
   (* we only consider ARMv5 and above *)
-  | If (Var "v5_and_above", i, _) -> inst i
+  | If (Fun ("v5_and_above", []), i, _) -> inst i
 
   (* normalize block's *)
   | Block is -> raw_inst (Block (List.map inst is))
@@ -178,7 +178,7 @@ let rec inst = function
   | Proc ("MemoryAccess", _) | Assert _ -> nop
 
   (* replace English expressions by procedure calls *)
-  | Misc ss -> Proc (underscore ss, [])
+(*  | Misc ss -> Proc (underscore ss, [])*)
 
   (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) ->
@@ -230,7 +230,7 @@ let rec inst = function
   | Case (e, s) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s)
 
   (* non-recursive instructions *)
-  | Unpredictable -> Unpredictable;;
+  | Unpredictable | Misc _ as i -> i;;
 
 (***********************************************************************)
 (** normalization of affectations (second pass)
