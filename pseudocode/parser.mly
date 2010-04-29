@@ -24,7 +24,7 @@ Pseudocode parser.
 %token COPROC LOAD SEND FROM NOT_FINISHED
 %token <Ast.num> NUM
 %token <Ast.mode> MODE
-%token <string> IDENT FLAG RESERVED BIN HEX REGNUM REGVAR
+%token <string> IDENT FLAG BIN HEX REGNUM REGVAR
 %token <string> NOT EVEN
 %token <string> GTEQ LT GT BANGEQ AND OR BOR LSL LSR ASR
 %token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
@@ -54,7 +54,7 @@ progs:
 prog:
 | IDENT prog_idents block
     { { pref = $1; pinst = $3; pname = Inst (List.hd $2, List.tl $2) } }
-| IDENT operand_items MINUS operand_items block
+| IDENT items MINUS items block
     { { pref = $1; pinst = $5; pname = Oper ($2, $4) } }
 ;
 prog_ident:
@@ -83,7 +83,6 @@ simple_inst:
 | exp EQ exp           { Affect ($1, $3) }
 | IDENT LPAR exps RPAR { Proc ($1, $3) }
 | ASSERT exp           { Assert $2 }
-/*| RESERVED items       { Misc ($1 :: $2) }*/
 | coproc_inst          { $1 }
 ;
 coproc_inst:
@@ -150,7 +149,6 @@ exp:
 | IDENT FLAG               { Range (CPSR (*FIXME*), Flag ($1, $2)) }
 | simple_exp range         { Range ($1, $2) }
 | LPAR exp RPAR range      { Range ($2, $4) }
-/*| RESERVED items           { Other ($1 :: $2) }*/
 | simple_exp IN version COMA simple_exp IN version { If_exp ($3, $1, $5) }
 ;
 version:
@@ -190,19 +188,9 @@ exps:
 | exp COMA exps { $1 :: $3 }
 ;
 items:
-| /* nothing */ { [] }
-| item items    { $1 :: $2 }
-;
-item:
-| IDENT    { $1 }
-| OF       { "of" }
-| FLAG     { $1 }
-/*| RESERVED { $1 }*/
-;
-operand_items:
-| IDENT               { [$1] }
-| COPROC              { ["Coprocessor"] }
-| IDENT operand_items { $1 :: $2 }
-| AND operand_items   { "and" :: $2 }
-| OR operand_items    { "or" :: $2 }
+| IDENT       { [$1] }
+| COPROC      { ["Coprocessor"] }
+| IDENT items { $1 :: $2 }
+| AND items   { "and" :: $2 }
+| OR items    { "or" :: $2 }
 ;
