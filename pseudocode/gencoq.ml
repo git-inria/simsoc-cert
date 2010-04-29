@@ -323,14 +323,19 @@ let name b p =
     | Inst -> ident b p.pident
     | Mode m -> bprintf b "%a_%a" addr_mode m ident p.pident;;
 
+let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
+
 let arg b (x, t) =
   match t with
     | "bool" -> bprintf b "zne 0 %s" x
     | _ -> string b x;;
 
-let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
-
 let typ b (_, t) = string b t;;
+
+let default_val b (_, t) =
+  match t with
+    | "bool" -> string b "true"
+    | _ -> string b "repr 0"
 
 let result_typ ls b p =
   match p.pkind with
@@ -344,24 +349,30 @@ let split = function
   | Affect _ as i -> [i], []
   | i -> [], [i];;
 
-let pinst b p =
-  match p.pkind with
-    | Inst -> inst 2 b p.pinst
-    | Mode _ ->
-	let is1, is2 = split p.pinst in
-	  List.iter (endline (inst 2) b) is1;
-	  bprintf b "  let s := %a true s0 in" (inst_aux 2) (Block is2);;
+let pinst_aux k b i =
+  let is1, is2 = split i in
+    List.iter (endline (inst k) b) is1;
+    bprintf b "%alet s := %a true s0 in" indent k (inst_aux k) (Block is2);;
 
-let postfix ls b p =
+let pinst ls b p =
   match p.pkind with
-    | Inst -> string b "true s0"
-    | Mode _ -> bprintf b "\n  (s%a)" (list "" (prefix ", " arg)) ls;;
+    | Inst -> bprintf b "%a true s0" (inst 2) p.pinst
+    | Mode _ ->
+	match p.pinst with
+	  | If (e, i, None) ->
+	      bprintf b "  if %a then\n%a\n    (s%a)\n  else (Ok false s0%a)"
+		exp e (pinst_aux 4) i
+		(list "" (prefix ", " arg)) ls
+		(list "" (prefix ", " default_val)) ls
+	  | i ->
+	      bprintf b "%a\n    (s%a)" (pinst_aux 2) i
+		(list "" (prefix ", " arg)) ls;;
 
 let prog gs ls b p =
   bprintf b
-    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a %a.\n"
+    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n"
     p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
-    pinst p (postfix ls) p;;
+    (pinst ls) p;;
 
 (***********************************************************************)
 (** constructor declaration corresponding to some instruction *)
