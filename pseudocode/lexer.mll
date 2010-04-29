@@ -16,21 +16,9 @@ open Parser;;
 open Ast;;
 open Lexing;;
 
-let num_of_string s = Scanf.sscanf s "%i" (fun x -> x);;
-
-let mode_of_string = function
-  | "fiq" -> Fiq
-  | "irq" -> Irq
-  | "svc" -> Svc
-  | "abt" -> Abt
-  | "und" -> Und
-  | "usr" -> Usr
-  | "sys" -> Sys
-  | _ -> invalid_arg "mode_of_string";;
-
 let keyword_table = Hashtbl.create 53;;
 
-let _ = List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
+List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   (* instructions *)
   "begin", BEGIN; "end", END; "if", IF; "then", THEN; "else", ELSE;
   "while", WHILE; "for", FOR; "to", TO; "do", DO;
