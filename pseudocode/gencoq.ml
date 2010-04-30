@@ -23,9 +23,8 @@ let comment f b x = bprintf b "(*%a*)" f x;;
 
 let type_of_var = function
   | "cond" -> "opcode"
-  | "shifter_carry_out" | "mmod" | "opcode25" -> "bool"
+  (*REMOVE?| "shifter_carry_out"*) | "mmod" | "opcode25" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
-(*REMOVE?  | "address" | "start_address" -> "address"*)
   | s -> if String.length s = 1 then "bool" else "word";;
 
 module G = struct
@@ -304,7 +303,7 @@ and set b = function
   | _ -> raise Not_found;;
 
 (***********************************************************************)
-(** semantic of a program *)
+(** semantic function of a program *)
 (***********************************************************************)
 
 let ident b i =
@@ -318,23 +317,14 @@ let name b p =
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
-let arg b (x, _) = string b x;;
-let typ b (_, t) = string b t;;
+let mode_var_typ b = function
+(*REMOVE?  | "shifter_carry_out" -> string b " * bool"*)
+  | _ -> string b " * word";;
 
-let cast_arg b (x, t) =
-  match t with
-    | "bool" -> bprintf b "zne 0 %s" x
-    | _ -> string b x;;
-
-let default_val b (_, t) =
-  match t with
-    | "bool" -> string b "true"
-    | _ -> string b "repr 0"
-
-let result_typ ls b p =
+let result b p =
   match p.pkind with
     | Inst -> ()
-    | Mode _ -> list "" (prefix " * " typ) b ls;;
+    | Mode k -> list "" mode_var_typ b (mode_vars k);;
 
 let is_affect = function Affect _ | Case _ -> true | _ -> false;;
 
@@ -348,85 +338,110 @@ let pinst_aux k b i =
     List.iter (endline (inst k) b) is1;
     bprintf b "%alet r := %a true s0 in" indent k (inst_aux k) (Block is2);;
 
-let pinst ls b p =
+let default b _ = string b ", repr 0";;
+
+let mode_var b = function
+(*REMOVE?  | "shifter_carry_out" as s -> bprintf b ", zne 0 %s" s*)
+  | s -> bprintf b ", %s" s;;
+
+let pinst =
+  let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"] in
+    fun b p ->
   match p.pkind with
     | Inst -> bprintf b "%a true s0" (inst 2) p.pinst
-    | Mode _ ->
-	if StrSet.mem p.pref
-	  (set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"]) then
+    | Mode k ->
+	let ls = mode_vars k in
+	  if StrSet.mem p.pref problems then
 	    bprintf b "  let r := %a true s0 in\n    (r%a)"
-	      (todo (Genpc.inst 0)) p.pinst
-	      (list "" (prefix ", " default_val)) ls
+	      (todo (Genpc.inst 0)) p.pinst (list "" default) ls
 	else
 	  match p.pinst with
 	    | If (e, i, None) ->
 		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
 		  exp e (pinst_aux 4) i
-		  (list "" (prefix ", " cast_arg)) ls
-		  (list "" (prefix ", " default_val)) ls
+		  (list "" mode_var) ls (list "" default) ls
 	    | i ->
 		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
-		  (list "" (prefix ", " cast_arg)) ls;;
+		  (list "" mode_var) ls;;
 
-let prog b p gs ls =
+let semfun b p gs =
   bprintf b
     "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
-    p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
-    (pinst ls) p;;
+    p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p;;
 
 (***********************************************************************)
-(** constructor declaration corresponding to some instruction *)
+(** constructor declaration corresponding to a program *)
 (***********************************************************************)
 
-let constr btyp bmod p gs =
-  bprintf
-    (match p.pkind with Inst -> btyp | Mode k -> bmod.(k-1))
-    "\n| %a%a" name p (list "" arg_typ) gs;;
-
-(***********************************************************************)
-(** call to the semantics step function of some instruction *)
-(***********************************************************************)
-
-let string_of_arg = function
-  | "S" -> "s" (* because of a name clash with Nat.S *)
-  | s -> s;;
-
-let rename_arg b (x, t) = arg b (string_of_arg x, t);;
-
-let call b p gs =
+let constr bcons_inst bcons_mode p gs =
   match p.pkind with
-    | Inst ->
-	bprintf b "    | %a %a =>" name p (list " " rename_arg) gs;
-	if List.mem_assoc "shifter_operand" gs then
-	  if List.mem_assoc "shifter_carry_out" gs then 
-	    bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n        "
-	  else
-	    bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-	bprintf b " %a_step %a v s0\n" name p (list " " rename_arg) gs
-    | Mode _ -> ();; (*FIXME*)
+    | Inst -> let b = bcons_inst in
+	begin match addr_mode_of_prog p gs with
+	  | Some k ->
+	      bprintf b "\n| %a (m_ : mode%d)%a" name p k (list "" arg_typ) gs
+	  | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
+	  end
+    | Mode k -> let b = bcons_mode.(k-1) in
+	bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
+
+(***********************************************************************)
+(** call to the semantics function of some instruction *)
+(***********************************************************************)
+
+(* to avoid name clashes or warnings in Coq *)
+let string_of_arg =
+  let set = set_of_list
+    ["S";"R";"I";"mode";"address";"StateMask";"PrivMask";"shift"] in
+    fun s -> if StrSet.mem s set then s ^ "_" else s;;
+
+let arg b (x, _) = bprintf b " %s" (string_of_arg x);;
+
+let args = list "" arg;;
+
+let call bcall_inst bcall_mode p gs =
+  match p.pkind with
+    | Inst -> let b = bcall_inst in
+	begin match addr_mode_of_prog p gs with
+	  | None ->
+	      bprintf b "    | %a%a =>" name p args gs;
+	      bprintf b " %a_step s0%a\n" name p args gs
+	  | Some k ->
+	      bprintf b "    | %a m_%a =>" name p args gs;
+	      bprintf b
+		"\n      match mode%d_step s0 m_ with (r%a) =>\n        "
+		k (list "" mode_var) (mode_vars k);
+	      bprintf b " %a_step s0%a end\n" name p args gs
+	end
+    | Mode k -> let b = bcall_mode.(k-1) in
+	bprintf b "    | %a%a =>" name p args gs;
+	bprintf b " %a_step s0%a\n" name p args gs;;
 
 (***********************************************************************)
 (** Main coq generation function.
 For each instruction:
-- generate its semantics step function
+- generate its semantic function
 - generate the corresponding constructor for the type of instructions
-- generate the call to its semantics step function in the general
-semantics step function *)
+- generate the call to its semantics function *)
 (***********************************************************************)
 
 let lib b ps =
-  let btyp = Buffer.create 10000 in
-  let bsem = Buffer.create 10000 in
-  let bmod = Array.init 5 (fun _ -> Buffer.create 1000) in
-  let prog_typ_sem p =
-    let gs, ls = variables p in
-      prog b p gs ls; constr btyp bmod p gs; call bsem p gs
+  let bcons_inst = Buffer.create 5000
+  and bcons_mode = Array.init 5 (fun _ -> Buffer.create 1000)
+  and bcall_inst = Buffer.create 5000
+  and bcall_mode = Array.init 5 (fun _ -> Buffer.create 1000) in
+  let prog p =
+    let gs, _ = variables p in
+      semfun b p gs;
+      constr bcons_inst bcons_mode p gs;
+      call bcall_inst bcall_mode p gs
   in
     bprintf b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
-    List.iter prog_typ_sem ps;
-    bprintf b "Inductive instruction : Type :=%a.\n\n" Buffer.add_buffer btyp;
+    List.iter prog ps;
     for k = 1 to 5 do
       bprintf b "Inductive mode%d : Type :=%a.\n\n"
-	k Buffer.add_buffer bmod.(k-1)
+	k Buffer.add_buffer bcons_mode.(k-1);
+      bprintf b "Definition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k Buffer.add_buffer bcall_mode.(k-1)
     done;
-    bprintf b "Definition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n%aend." Buffer.add_buffer bsem;;
+    bprintf b "Inductive inst : Type :=%a.\n\n" Buffer.add_buffer bcons_inst;
+    bprintf b "Definition step (i : inst) (s0 : state) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+    bprintf b "End Inst.\n";;
