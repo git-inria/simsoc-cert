@@ -83,3 +83,43 @@ let option p f b = function
 let par f b x = bprintf b "(%a)" f x;;
 
 let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
+
+(***********************************************************************)
+(** warnings or errors *)
+(***********************************************************************)
+
+let warning s = fprintf stderr "warning: %s\n" s;;
+
+let error s = fprintf stderr "error: %s\n" s; exit 1;;
+
+(***********************************************************************)
+(** generic functions for handling references *)
+(***********************************************************************)
+
+let get_set init =
+  let r = ref init in
+    (fun () -> !r),
+    (fun v -> r := v);;
+
+let get_set_bool() =
+  let r = ref false in
+    (fun () -> !r),
+    (fun () -> r := true);;
+
+let is_set_get_set m init =
+  let r = ref init and s = ref false in
+    (fun () -> !s),
+    (fun () -> if !s then !r else error (sprintf "no %s provided" m)),
+    (fun v -> if !s then error (sprintf "%s already provided" m)
+              else (r := v; s := true));;
+
+(***********************************************************************)
+(** verbose and debug modes *)
+(***********************************************************************)
+
+let get_verbose, set_verbose = get_set_bool();;
+let get_debug, set_debug = get_set_bool();;
+
+let fverbose fmt f x = if get_verbose() then fprintf stderr fmt f x else ();;
+
+let verbose x = if get_verbose() then fprintf stderr "%s" x else ();;

@@ -12,6 +12,7 @@ Pseudocode compiler.
 *)
 
 open Printf;;
+open Util;;
 open Arg;;
 open Lexing;;
 
@@ -19,35 +20,9 @@ open Lexing;;
 (** usage and exit function in case of error *)
 (***********************************************************************)
 
-let usage_msg() = "usage: " ^ Sys.argv.(0) ^ " [option ...]";;
+let usage_msg = "usage: " ^ Sys.argv.(0) ^ " option ...\n";;
 
-let print_usage_and_exit() = prerr_endline (usage_msg()); exit 1;;
-
-let arg_error s =
-  fprintf stderr "option error: %s\n" s; print_usage_and_exit();;
-
-let error s = fprintf stderr "%s\n" s; exit 1;;
-
-(***********************************************************************)
-(** generic functions for handling references *)
-(***********************************************************************)
-
-let get_set init =
-  let r = ref init in
-    (fun () -> !r),
-    (fun v -> r := v);;
-
-let get_set_bool() =
-  let r = ref false in
-    (fun () -> !r),
-    (fun () -> r := true);;
-
-let is_set_get_set m init =
-  let r = ref init and s = ref false in
-    (fun () -> !s),
-    (fun () -> if !s then !r else arg_error (sprintf "no %s provided" m)),
-    (fun v -> if !s then arg_error (sprintf "%s already provided" m)
-              else (r := v; s := true));;
+let error s = error (sprintf "%s\n%s" s usage_msg);;
 
 (***********************************************************************)
 (** functions for setting parameters *)
@@ -55,13 +30,11 @@ let is_set_get_set m init =
 
 let get_norm, set_norm = get_set_bool();;
 let get_check, set_check = get_set_bool();;
-let get_verbose, set_verbose = get_set_bool();;
-let get_debug, set_debug = get_set_bool();;
 
-let set_debug () =
-  let _ = Parsing.set_trace true in set_debug(); set_verbose();;
+let set_debug() =
+  ignore(Parsing.set_trace true); set_debug(); set_verbose();;
 
-let set_check () = set_check (); set_verbose();;
+let set_check() = set_check(); set_verbose();;
 
 type input_type = PCin | Decode;;
 type output_type = PCout | Cxx | Coq;;
@@ -75,18 +48,12 @@ let is_set_input_file, get_input_file, set_input_file =
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
 
-let fverbose fmt f x =
-  if get_verbose() then fprintf stderr fmt f x else ();;
-
-let verbose x =
-  if get_verbose() then fprintf stderr "%s" x else ();;
-
 (***********************************************************************)
 (** command line parsing *)
 (***********************************************************************)
 
 let rec options() =
-  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y)
+  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) (Arg.align
 [
   "-h", Unit print_help,
   " Display this list of options";
@@ -108,18 +75,19 @@ let rec options() =
   " Output Coq (implies -norm)";
   "-v", Unit set_verbose,
   " Verbose mode"
-]
+])
 
-and print_options oc () =
+and print_options oc =
   List.iter (fun (k, _, d) -> fprintf oc "%s: %s\n" k d) (options())
 
-and print_help () =
-  print_endline (usage_msg()); print_options stdout (); exit 0;;
+and print_help() = print_endline usage_msg; print_options stdout; exit 0;;
 
-let anon_fun _ = arg_error "invalid option";;
+let options = options();;
 
-let parse_args () =
-  Arg.parse (options()) anon_fun (usage_msg());
+let anon_fun _ = error "invalid option";;
+
+let parse_args() =
+  Arg.parse options anon_fun usage_msg;
   let _ = get_input_type() in
   let _ = get_input_file() in
   let _ = get_output_type() in
@@ -171,7 +139,7 @@ let check() =
 	    Genpc.lib b ps;
 	    let ps' = parse_string (Buffer.contents b) in
 	      if ps = ps' then verbose "ok\n" else error "failed"
-      | Dec _ -> arg_error "option -check incompatible with -idec";;
+      | Dec _ -> error "option -check incompatible with -idec";;
 
 let norm() =
   if get_norm() then
@@ -185,7 +153,7 @@ let norm() =
 	    else verbose "\n";
 	    set_input (Prog ps);
 	    check();
-      | Dec _ -> arg_error "option -norm incompatible with -idec";;
+      | Dec _ -> error "option -norm incompatible with -idec";;
 
 let parse_input_file() =
   verbose "parsing...\n";
@@ -204,15 +172,15 @@ let prog() =
 
 let dec() =
   match get_output_type() with
-    | PCout -> arg_error "option -opc incompatible with -idec"
-    | Cxx -> arg_error "option -ocxx not yet supported with -idec"
+    | PCout -> error "option -opc incompatible with -idec"
+    | Cxx -> error "option -ocxx not yet supported with -idec"
     | Coq -> Gencoqdec.decode;;
 
 let genr_output() =
   verbose "code generation...\n";
   match get_input() with
-    | Prog x -> Util.print (prog()) x
-    | Dec x -> Util.print (dec()) x;;
+    | Prog x -> print (prog()) x
+    | Dec x -> print (dec()) x;;
 
 let main() =
   parse_args();
