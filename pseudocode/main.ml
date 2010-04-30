@@ -64,13 +64,13 @@ let rec options() =
   "-idec", String (fun s -> set_input_type Decode; set_input_file s),
   " Take decoding instructions as input";
   "-check", Unit set_check,
-  " Check pseudocode pretty-printer (with -ipc only)";
+  " Check pseudocode pretty-printer (only with -ipc)";
   "-norm", Unit set_norm,
-  " Normalize pseudocode (with -ipc only)";
+  " Normalize pseudocode (only with -ipc)";
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
-  "-ocxx", Unit (fun () -> set_norm(); set_output_type Cxx),
-  " Output C++ (implies -norm)";
+  "-ocxx", Unit (fun () -> set_output_type Cxx),
+  " Output C++";
   "-ocoq", Unit (fun () -> set_norm(); set_output_type Coq),
   " Output Coq (implies -norm)";
   "-v", Unit set_verbose,
