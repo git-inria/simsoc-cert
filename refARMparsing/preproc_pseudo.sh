@@ -71,6 +71,7 @@ sed \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|Start opcode execution at jpc|Start_opcode_execution_at(jpc)|' \
     -e 's|8_bit_immediate|immed_8|' \
+    -e 's|8_bit_word_offset|offset_8|' \
     -e 's|coprocessor\[|Coprocessor[|' \
     -e 's|^\( *\)If |\1if |' \
     -e 's|Artihmetic|Arithmetic|' \
