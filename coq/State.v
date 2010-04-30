@@ -50,8 +50,8 @@ Definition set_reg (s : state) (k : regnum) (w : word) : state :=
 
 Definition exns (s : state) : list exception := exns (proc s).
 
-Definition set_exns (s : state) (es : list exception) : state :=
-  mk_state (set_exns (proc s) es) (scc s).
+Definition add_exn (s : state) (e : exception) : state :=
+  mk_state (add_exn (proc s) e) (scc s).
 
 Definition mode (s : state) : proc_mode := mode (proc s).
 
