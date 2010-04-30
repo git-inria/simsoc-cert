@@ -443,5 +443,5 @@ let lib b ps =
       bprintf b "Definition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k Buffer.add_buffer bcall_mode.(k-1)
     done;
     bprintf b "Inductive inst : Type :=%a.\n\n" Buffer.add_buffer bcons_inst;
-    bprintf b "Definition step (i : inst) (s0 : state) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+    bprintf b "Definition step (s0 : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
     bprintf b "End Inst.\n";;
