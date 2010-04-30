@@ -13,56 +13,67 @@ Instruction decoding and execution cycle.
 
 Set Implicit Arguments.
 
-Require Import State Decode Instructions Semantics Shift Bitvec Exception.
+Require Import Bitvec Arm Semantics State String.
 
-(*REMOVE: to be automatically generated
+Section decoder_result.
 
-Definition execute (w : word) (i : instruction)
-  (s : state) : result :=
-  match i with
-    | ADC cond Sbit Rd Rn so =>
-      let (v, _) := shifter_operand_value_and_carry s w so in
-        Adc cond Sbit Rd Rn v s
-    | ADD cond Sbit Rd Rn so =>
-      let (v, _) := shifter_operand_value_and_carry s w so in
-        Add cond Sbit Rd Rn v s
-    | AND cond Sbit Rd Rn so =>
-      let (v, c) := shifter_operand_value_and_carry s w so in
-        And cond Sbit Rd Rn v s
-    | BL cond L w => Bl cond L w s
-  end.
-*)
+ Variable inst : Type.
 
-Definition incr_PC (s : state) : option state :=
-  Some (update_reg PC (next_inst_address s) s).
+ Inductive decoder_result : Type :=
+ | DecUndefined : decoder_result
+ | DecUnpredictable : decoder_result
+ | DecInst : inst -> decoder_result.
 
-Definition next (s : state) (m : processor_mode) : option state :=
-  match mode (cpsr s) with
-    | None => None
-    | Some (m) =>
-      match inst_set (cpsr s) with
-        | None => None
-        | Some is =>
-          match is with
-            | ARM =>
-              let a := reg_content s PC in
-              let w := mem s (address_of_word a) in (*FIXME?*)
-              let r :=
-                match decode w with
-                  | Unpredictable => None
-                  | Undefined => Some (add_exn UndIns s)
-                  | Inst i =>
-                    match execute w i s with
-                      | None => None
-                      | Some (b, s') => if b then incr_PC s' else Some s'
-                    end
-                end
-              in match r with
-                   | None => None
-                   | Some s => handle_exception s
-                 end
-            | Thumb => None
-            | Jazelle => None
-          end
-      end
-  end.
+End decoder_result.
+
+Module Type INST.
+  Variable inst : Type.
+  Variable step : state -> inst -> result.
+  Variable decode : word -> decoder_result inst.
+  Variable handle_exception : state -> state.
+End INST.
+
+Definition incr_PC (s : state) : state :=
+  set_reg s PC (address_of_next_instruction s).
+
+Inductive simul_result : Type :=
+| SimOk : state -> simul_result
+| SimKo : state -> string -> simul_result.
+
+Module Make (Import I : INST).
+
+  Definition next (s : state) : simul_result :=
+    match proc_mode_of_word (cpsr s) with
+      | None => SimKo s "invalid processor mode"
+      | Some m =>
+        match inst_set (cpsr s) with
+          | None => SimKo s "invalid instruction set"
+          | Some Thumb => SimKo s "Thumb instruction set not implemented"
+          | Some Jazelle => SimKo s "Jazelle instruction set not implemented"
+          | Some ARM =>
+            let w := read s (address_of_word (reg_content s PC)) Word in
+              match decode w with
+                | DecUnpredictable => SimKo s "decoding is unpredictable"
+                | DecUndefined => SimOk (add_exn s UndIns)
+                | DecInst i =>
+                  match step s i with
+                    | Ok b s' =>
+                      SimOk (handle_exception (if b then incr_PC s' else s'))
+                    | Ko m => SimKo s m
+                    | Todo m => SimKo s m
+                  end
+              end
+        end
+    end.
+
+  Fixpoint simul (s : state) (n : nat) : nat * simul_result :=
+    match n with
+      | 0 => (n, SimOk s)
+      | S n' =>
+        match next s with
+          | SimOk s' => simul s' n'
+          | r => (n, r)
+        end
+    end.
+
+End Simul.
