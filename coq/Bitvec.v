@@ -13,8 +13,7 @@ Bit vectors.
 
 Set Implicit Arguments.
 
-Require Import Util Coqlib.
-Require Import ZArith. Open Scope Z_scope.
+Require Import Util ZArith Coqlib.
 Require Export Integers. Export Int.
 
 (****************************************************************************)

@@ -15,8 +15,6 @@ Set Implicit Arguments.
 
 Require Import Bitvec ZArith Coqlib Util.
 
-Open Scope Z_scope.
-
 (****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
 (****************************************************************************)

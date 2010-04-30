@@ -11,9 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import State Util Bitvec Arm State List.
-Require Import String. Open Scope string_scope.
-Require Import ZArith. Open Scope Z_scope.
+Require Import State Util Bitvec Arm State List String ZArith.
 
 (****************************************************************************)
 (** Result of executing an instruction.
@@ -59,16 +57,6 @@ Fixpoint block (fs : list semfun) (b0 : bool) (s0 : state) : result :=
         | Ok b1 s1 => block fs' (andb b0 b1) s1
         | r => r
       end
-  end.
-
-Definition case (w : word) (f00 f01 f10 f11 : semfun) (b : bool) (s : state) :
-  result :=
-  match unsigned w with
-    | Z0 => f00 b s
-    | Zpos 1 => f01 b s
-    | Zpos 1~0 => f10 b s
-    | Zpos 1~1 => f11 b s
-    | _ => Ko "Semantics.case: invalid argument"
   end.
 
 (****************************************************************************)

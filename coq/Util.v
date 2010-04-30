@@ -7,9 +7,9 @@ Miscellaneous definitions and lemmas extending the Coq standard library.
 
 Set Implicit Arguments.
 
-Require Import Bool List.
+Require Import Bool List ZArith.
 Require Import Integers. Import Int.
-Require Import ZArith. Open Scope Z_scope.
+Open Scope Z_scope.
 
 (****************************************************************************)
 (** boolean comparison functions on integers *)
