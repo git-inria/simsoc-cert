@@ -108,7 +108,7 @@ let string_of_size = function
 let size b s = string b (string_of_size s);;
 
 (***********************************************************************)
-(** processor modes *)
+(** processor and addressing modes *)
 (***********************************************************************)
 
 let exn_mode = Genpc.mode;;
@@ -120,18 +120,7 @@ let string_of_mode = function
 
 let mode b m = string b (string_of_mode m);;
 
-(***********************************************************************)
-(** addressing modes *)
-(***********************************************************************)
-
-let string_of_addr_mode = function
-  | Data -> "M1"
-  | LoadWord -> "M2"
-  | LoadMisc -> "M3"
-  | LoadMul -> "M4"
-  | LoadCoproc -> "M5";;
-
-let addr_mode b m = string b (string_of_addr_mode m);;
+let addr_mode b m = bprintf b "M%d" m;;
 
 (***********************************************************************)
 (** functions and binary operators *)
@@ -283,13 +272,17 @@ and inst_aux k b = function
   | Affect (e, v) as i ->
       begin try affect b v e
       with Not_found -> todo (Genpc.inst 0) b i end
+
+  (* adhoc treatment of case's *)
   | Case (e, nis) as i ->
       begin try bprintf b
 	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
 	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
       with Not_found -> todo (Genpc.inst 0) b i end
+
+  (*FIXME*)
   | Proc _ | While _ | For _ | Coproc _ as i -> todo (Genpc.inst 0) b i
-  | Assert _ -> invalid_arg "Gencoq.inst"
+  | Assert _ -> invalid_arg "Gencoq.inst_aux"
 
 and affect b v = function
   | Var s -> bprintf b "let %s := %a in" s exp v
@@ -325,12 +318,13 @@ let name b p =
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
-let arg b (x, t) =
+let arg b (x, _) = string b x;;
+let typ b (_, t) = string b t;;
+
+let cast_arg b (x, t) =
   match t with
     | "bool" -> bprintf b "zne 0 %s" x
     | _ -> string b x;;
-
-let typ b (_, t) = string b t;;
 
 let default_val b (_, t) =
   match t with
@@ -360,7 +354,7 @@ let pinst ls b p =
     | Mode _ ->
 	if StrSet.mem p.pref
 	  (set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"]) then
-	    bprintf b "  let r := %a true s0 in\n    (r%a)\n"
+	    bprintf b "  let r := %a true s0 in\n    (r%a)"
 	      (todo (Genpc.inst 0)) p.pinst
 	      (list "" (prefix ", " default_val)) ls
 	else
@@ -368,15 +362,15 @@ let pinst ls b p =
 	    | If (e, i, None) ->
 		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
 		  exp e (pinst_aux 4) i
-		  (list "" (prefix ", " arg)) ls
+		  (list "" (prefix ", " cast_arg)) ls
 		  (list "" (prefix ", " default_val)) ls
 	    | i ->
 		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
-		  (list "" (prefix ", " arg)) ls;;
+		  (list "" (prefix ", " cast_arg)) ls;;
 
 let prog gs ls b p =
   bprintf b
-    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n"
+    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
     p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
     (pinst ls) p;;
 
@@ -386,25 +380,29 @@ let prog gs ls b p =
 
 let inst_typ gs b p =
   match p.pkind with
-    | Inst -> bprintf b "| %a %a" name p (list " " arg_typ) gs
+    | Inst -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
     | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
 (***********************************************************************)
 
-let var_name b (v, _) = bprintf b "%s" v;;
+let string_of_arg = function
+  | "S" -> "s" (* because of a name clash with Nat.S *)
+  | s -> s;;
+
+let rename_arg b (x, t) = arg b (string_of_arg x, t);;
 
 let inst_sem gs b p =
   match p.pkind with
     | Inst ->
-	bprintf b "    | %a %a =>" name p (list " " var_name) gs;
-	if List.exists ((=) ("shifter_operand", "word")) gs then
-	  if List.exists ((=) ("shifter_carry_out", "bool")) gs then 
-	    bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n       "
+	bprintf b "    | %a %a =>" name p (list " " rename_arg) gs;
+	if List.mem_assoc "shifter_operand" gs then
+	  if List.mem_assoc "shifter_carry_out" gs then 
+	    bprintf b "\n      let (v, shifter_carry_out) := shifter_operand_value_and_carry s0 w shifter_operand in\n        "
 	  else
 	    bprintf b "\n      let (v, _) := shifter_operand_value_and_carry s0 w shifter_operand in\n       ";
-	bprintf b " %a_step %a v s0" name p (list " " var_name) gs
+	bprintf b " %a_step %a v s0\n" name p (list " " rename_arg) gs
     | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)
@@ -421,13 +419,9 @@ let lib b ps =
   let bsem = Buffer.create 10000 in
   let prog_typ_sem p =
     let gs, ls = variables p in
-      bprintf b "%a\n" (prog gs ls) p;
-      bprintf btyp "%a\n" (inst_typ gs) p;
-      bprintf bsem "%a\n" (inst_sem gs) p
+      prog gs ls b p; inst_typ gs btyp p; inst_sem gs bsem p
   in
     bprintf b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;
-    bprintf b "Inductive instruction : Type :=\n";
-    Buffer.add_buffer b btyp;
-    bprintf b "\nDefinition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n";
-    Buffer.add_buffer b bsem;;
+    bprintf b "Inductive instruction : Type :=%a.\n\n" Buffer.add_buffer btyp;
+    bprintf b "Definition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n%aend." Buffer.add_buffer bsem;;

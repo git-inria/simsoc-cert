@@ -345,7 +345,7 @@ let lsm_hack p =
 		Block ([x; If (c, Block (ids @ [a]), None)])
             | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
           in { p with pinst = i }
-      | Mode LoadMul ->
+      | Mode 4 ->
 	  (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
           { p with pinst = inst p.pinst }
       | _ -> p;;

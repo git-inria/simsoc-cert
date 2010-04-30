@@ -122,11 +122,12 @@ let ident b i =
     (option " " variant) i.ivariant;;
 
 let string_of_addr_mode = function
-  | Data -> "Data processing operands"
-  | LoadWord -> "Load and Store Word or Unsigned Byte"
-  | LoadMisc -> "Miscellaneous Loads and Stores"
-  | LoadMul -> "Load and Store Multiple"
-  | LoadCoproc -> "Load and Store Coprocessor";;
+  | 1 -> "Data processing operands"
+  | 2 -> "Load and Store Word or Unsigned Byte"
+  | 3 -> "Miscellaneous Loads and Stores"
+  | 4 -> "Load and Store Multiple"
+  | 5 -> "Load and Store Coprocessor"
+  | _ -> invalid_arg "Genpc.string_of_addr_mode";;
 
 let addr_mode b m = string b (string_of_addr_mode m);;
 

@@ -74,7 +74,7 @@ type inst =
 | Case of exp * (string * inst) list;;
 
 (***********************************************************************)
-(** programs *)
+(** program names *)
 (***********************************************************************)
 
 type ident = {
@@ -82,9 +82,35 @@ type ident = {
   iparams : string list;
   ivariant : string option };;
 
-type addr_mode = Data | LoadWord | LoadMisc | LoadMul | LoadCoproc;;
+let rec underscore = function
+  | [] -> ""
+  | [s] -> s
+  | s :: ss -> s ^ "_" ^ underscore ss;;
 
-type kind = Inst | Mode of addr_mode;;
+let ident ss = { iname = underscore ss; iparams = []; ivariant = None };;
+
+(***********************************************************************)
+(** addressing modes *)
+(***********************************************************************)
+
+let addr_mode ss =
+  match ss with
+    | "Data" :: _ -> 1
+    | "Miscellaneous" :: _ -> 3
+    | _ :: _ :: _ :: s :: _ ->
+	begin match s with
+	  | "Word" -> 2
+	  | "Multiple" -> 4
+	  | "Coprocessor" -> 5
+	  | _ -> invalid_arg "Ast.add_mode"
+	end
+    | _ -> invalid_arg "Ast.addr_mode";;
+
+(***********************************************************************)
+(** programs *)
+(***********************************************************************)
+
+type kind = Inst | Mode of int;;
 
 type prog = {
   pref : string;
@@ -93,24 +119,18 @@ type prog = {
   pidents : ident list;
   pinst : inst };;
 
-let addr_mode ss =
-  match ss with
-    | "Data" :: _ -> Data
-    | "Miscellaneous" :: _ -> LoadMisc
-    | _ :: _ :: _ :: s :: _ ->
-	begin match s with
-	  | "Word" -> LoadWord
-	  | "Multiple" -> LoadMul
-	  | "Coprocessor" -> LoadCoproc
-	  | _ -> invalid_arg "Ast.add_mode"
-	end
-    | _ -> invalid_arg "Ast.add_mode";;
-
-let rec underscore = function
-  | [] -> ""
-  | s :: ss -> s ^ "_" ^ underscore ss;;
-
-let ident ss = { iname = underscore ss; iparams = []; ivariant = None };;
+let addr_mode_of_prog =
+  let mode3 = set_of_list ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
+  let mode4 = set_of_list ["RFE";"SRS"] in
+  let mode5 = set_of_list ["LDC";"STC"] in
+    fun p gs ->
+      if List.mem "shifter_operand" gs then Some 1
+      else if List.mem "addr_mode" gs then
+	if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
+      else if List.mem "register_list" gs
+	|| StrSet.mem p.pident.iname mode4 then Some 4
+      else if StrSet.mem p.pident.iname mode5 then Some 5
+      else None;;
 
 (***********************************************************************)
 (** global and local variables of a program *)
