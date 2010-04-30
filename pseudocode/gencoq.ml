@@ -352,7 +352,7 @@ let split = function
 let pinst_aux k b i =
   let is1, is2 = split i in
     List.iter (endline (inst k) b) is1;
-    bprintf b "%alet s := %a true s0 in" indent k (inst_aux k) (Block is2);;
+    bprintf b "%alet r := %a true s0 in" indent k (inst_aux k) (Block is2);;
 
 let pinst ls b p =
   match p.pkind with
@@ -360,16 +360,18 @@ let pinst ls b p =
     | Mode _ ->
 	if StrSet.mem p.pref
 	  (set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"]) then
-	    todo (Genpc.inst 0) b p.pinst
+	    bprintf b "  let r := %a true s0 in\n    (r%a)\n"
+	      (todo (Genpc.inst 0)) p.pinst
+	      (list "" (prefix ", " default_val)) ls
 	else
 	  match p.pinst with
 	    | If (e, i, None) ->
-		bprintf b "  if %a then\n%a\n    (s%a)\n  else (Ok false s0%a)"
+		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
 		  exp e (pinst_aux 4) i
 		  (list "" (prefix ", " arg)) ls
 		  (list "" (prefix ", " default_val)) ls
 	    | i ->
-		bprintf b "%a\n    (s%a)" (pinst_aux 2) i
+		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
 		  (list "" (prefix ", " arg)) ls;;
 
 let prog gs ls b p =
@@ -423,7 +425,7 @@ let lib b ps =
       bprintf btyp "%a\n" (inst_typ gs) p;
       bprintf bsem "%a\n" (inst_sem gs) p
   in
-    bprintf b "Require Import Bitvec List Integers Util Functions Config Arm State Semantics.\nRequire Import ZArith.\nImport Int.\n\nModule Inst (Import C : CONFIG).\n\n";
+    bprintf b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;
     bprintf b "Inductive instruction : Type :=\n";
     Buffer.add_buffer b btyp;
