@@ -368,7 +368,7 @@ let pinst ls b p =
 		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
 		  (list "" (prefix ", " cast_arg)) ls;;
 
-let prog gs ls b p =
+let prog b p gs ls =
   bprintf b
     "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
     p.pref Genpc.name p name p (list "" arg_typ) gs (result_typ ls) p
@@ -378,10 +378,10 @@ let prog gs ls b p =
 (** constructor declaration corresponding to some instruction *)
 (***********************************************************************)
 
-let inst_typ gs b p =
-  match p.pkind with
-    | Inst -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
-    | Mode _ -> ();; (*FIXME*)
+let constr btyp bmod p gs =
+  bprintf
+    (match p.pkind with Inst -> btyp | Mode k -> bmod.(k-1))
+    "\n| %a%a" name p (list "" arg_typ) gs;;
 
 (***********************************************************************)
 (** call to the semantics step function of some instruction *)
@@ -393,7 +393,7 @@ let string_of_arg = function
 
 let rename_arg b (x, t) = arg b (string_of_arg x, t);;
 
-let inst_sem gs b p =
+let call b p gs =
   match p.pkind with
     | Inst ->
 	bprintf b "    | %a %a =>" name p (list " " rename_arg) gs;
@@ -417,11 +417,16 @@ semantics step function *)
 let lib b ps =
   let btyp = Buffer.create 10000 in
   let bsem = Buffer.create 10000 in
+  let bmod = Array.init 5 (fun _ -> Buffer.create 1000) in
   let prog_typ_sem p =
     let gs, ls = variables p in
-      prog gs ls b p; inst_typ gs btyp p; inst_sem gs bsem p
+      prog b p gs ls; constr btyp bmod p gs; call bsem p gs
   in
     bprintf b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog_typ_sem ps;
     bprintf b "Inductive instruction : Type :=%a.\n\n" Buffer.add_buffer btyp;
+    for k = 1 to 5 do
+      bprintf b "Inductive mode%d : Type :=%a.\n\n"
+	k Buffer.add_buffer bmod.(k-1)
+    done;
     bprintf b "Definition execute (w : word) (i : instruction) (s0 : state) : result :=\n  match i with\n%aend." Buffer.add_buffer bsem;;
