@@ -76,4 +76,4 @@ Module Make (Import I : INST).
         end
     end.
 
-End Simul.
+End Make.
