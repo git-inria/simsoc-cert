@@ -123,14 +123,20 @@ let addr_mode_of_prog =
   let mode3 = set_of_list ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
   let mode4 = set_of_list ["RFE";"SRS"] in
   let mode5 = set_of_list ["LDC";"STC"] in
-    fun p gs ->
-      if List.mem "shifter_operand" gs then Some 1
-      else if List.mem "addr_mode" gs then
+    fun p (gs : (string * string) list) ->
+      if List.mem_assoc "shifter_operand" gs then Some 1
+      else if List.mem_assoc "addr_mode" gs then
 	if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
-      else if List.mem "register_list" gs
+      else if List.mem_assoc "register_list" gs
 	|| StrSet.mem p.pident.iname mode4 then Some 4
       else if StrSet.mem p.pident.iname mode5 then Some 5
       else None;;
+
+let mode_vars = function
+  | 1 -> ["shifter_operand"; "shifter_carry_out"]
+  | 2 | 3 -> ["address"]
+  | 4 | 5 -> ["start_address"; "end_address"]
+  | _ -> invalid_arg " Ast.mode_vars";;
 
 (***********************************************************************)
 (** global and local variables of a program *)
