@@ -8,7 +8,8 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Transform an AST into an AST ready for code generation.
+Pseudocode normalization: transform an AST into another AST
+better suited for code generation in a functional language.
 *)
 
 open Ast;;
@@ -110,7 +111,8 @@ and raw_block = function
       end;;
 
 (***********************************************************************)
-(** normalization of instructions *)
+(** normalization of instructions (1st pass):
+an instruction is replaced by at most one instruction *)
 (***********************************************************************)
 
 let nop = Block [];;
@@ -196,7 +198,7 @@ let rec inst = function
   | Unpredictable as i -> i;;
 
 (***********************************************************************)
-(** normalization of affectations (second pass)
+(** normalization of affectations (second pass):
 - replace affectation of Unpredictable_exp by Unpredictable
 - replace conditional affectation of Unpredictable by an equivalent block *)
 (***********************************************************************)
@@ -219,10 +221,14 @@ let rec affect = function
 
 and affects = function
   | [] -> []
+
+  (* adhoc treatment of the affectation of a 64-bits word
+     with two 32-bits affectations *)
   | Affect (Range (Var x1 as x, Bits ("31", "0")), e1) ::
     Affect (Range (Var x2, Bits ("63", "32")), e2) :: is when x1 = x2 ->
       let e1 = Fun ("ZeroExtend", [e1]) and e2 = Fun ("ZeroExtend", [e2]) in
 	Affect (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
+
   | i :: is ->
       begin match affect i with
 	| Block is' -> is' @ affects is
@@ -233,61 +239,4 @@ and affects = function
 (** normalization of programs *)
 (***********************************************************************)
 
-let norm p = { p with pinst = affect (inst p.pinst) };;
-
-(***********************************************************************)
-(** global and local variables of a program *)
-(***********************************************************************)
-
-module type Var = sig
-  type typ;;
-  val global_type : string -> typ;;
-  val local_type : string -> exp -> typ;;
-  val key_type : typ;;
-end;;
-
-module Make (G : Var) = struct
-
-  let rec vars_exp ((gs,ls) as acc) = function
-    | Var s when not (StrMap.mem s ls || s = "i") ->
-	(* "i" is used in loops *)
-	StrMap.add s (G.global_type s) gs, ls
-    | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
-    | Fun (_, es) -> vars_exps acc es
-    | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
-    | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
-    | Coproc_exp (e, _ , es) -> vars_exps (vars_exp acc e) es
-    | _ -> acc
-
-  and vars_exps acc es = List.fold_left vars_exp acc es;;
-
-  let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
-
-  let rec vars_inst ((gs,ls) as acc) = function
-    | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
-	(if StrMap.mem s gs || StrMap.mem s ls || s = "i"
-	 then acc
-	 else
-	   if StrSet.mem s output_registers
-	   then StrMap.add s (G.global_type s) gs, ls
-	   else gs, StrMap.add s (G.local_type s e) ls) e
-    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
-    | Block is -> vars_insts acc is
-    | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
-    | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
-    | Proc (_, es) -> vars_exps acc es
-    | For (_, _, _, i) -> vars_inst acc i
-    | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (Var s, nis) -> vars_cases
-	(if StrMap.mem s ls || s = "i" then acc
-	 else StrMap.add s G.key_type gs, ls) nis
-    | _ -> acc
-
-  and vars_insts acc is = List.fold_left vars_inst acc is
-
-  and vars_cases acc nis =
-    List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
-
-  let vars p = vars_inst (StrMap.empty, StrMap.empty) p.pinst;;
-
-end;;
+let prog p = { p with pinst = affect (inst p.pinst) };;

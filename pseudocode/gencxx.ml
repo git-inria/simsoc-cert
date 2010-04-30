@@ -73,7 +73,7 @@ module G = struct
 
 end;;
 
-module V = Preproc.Make(G);;
+module V = Ast.Make(G);;
 
 let variables p =
   let gs, ls = V.vars p in

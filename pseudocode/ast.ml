@@ -11,22 +11,26 @@ Page numbers refer to ARMv6.pdf.
 Pseudocode abstract syntax tree.
 *)
 
-type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
+open Util;;
 
-type num = string;;
+(***********************************************************************)
+(** expressions *)
+(***********************************************************************)
+
+type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 
 type size = Byte | Half | Word;;
 
-let size_of_num = function
+let size_of_string = function
   | "4" -> Word
   | "2" -> Half
   | "1" -> Byte
-  | _ -> invalid_arg "Ast.size_of_num";;
+  | _ -> invalid_arg "Ast.size_of_string";;
 
 type exp =
-| Num of num
-| Bin of num
-| Hex of num
+| Num of string
+| Bin of string
+| Hex of string
 | If_exp of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
@@ -41,7 +45,7 @@ type exp =
 | Coproc_exp of exp * string * exp list
 
 and range =
-| Bits of num * num
+| Bits of string * string
 | Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
 | Index of exp;;
 
@@ -53,6 +57,10 @@ let args = function
       in aux e
   | e -> [e];;
 
+(***********************************************************************)
+(** instructions *)
+(***********************************************************************)
+
 type inst =
 | Block of inst list
 | Unpredictable
@@ -61,11 +69,18 @@ type inst =
 | Proc of string * exp list
 | While of exp * inst
 | Assert of exp
-| For of string * num * num * inst
+| For of string * string * string * inst
 | Coproc of exp * string * exp list
-| Case of exp * (num * inst) list;;
+| Case of exp * (string * inst) list;;
 
-type ident = { iname : string; iparams : string list; ivariant : num option };;
+(***********************************************************************)
+(** programs *)
+(***********************************************************************)
+
+type ident = {
+  iname : string;
+  iparams : string list;
+  ivariant : string option };;
 
 type addr_mode = Data | LoadWord | LoadMisc | LoadMul | LoadCoproc;;
 
@@ -91,8 +106,65 @@ let addr_mode ss =
 	end
     | _ -> invalid_arg "Ast.add_mode";;
 
-let rec name = function
+let rec underscore = function
   | [] -> ""
-  | s :: ss -> s ^ "_" ^ name ss;;
+  | s :: ss -> s ^ "_" ^ underscore ss;;
 
-let ident ss = { iname = name ss; iparams = []; ivariant = None };;
+let ident ss = { iname = underscore ss; iparams = []; ivariant = None };;
+
+(***********************************************************************)
+(** global and local variables of a program *)
+(***********************************************************************)
+
+module type Var = sig
+  type typ;;
+  val global_type : string -> typ;;
+  val local_type : string -> exp -> typ;;
+  val key_type : typ;;
+end;;
+
+module Make (G : Var) = struct
+
+  let rec vars_exp ((gs,ls) as acc) = function
+    | Var s when not (StrMap.mem s ls || s = "i") ->
+	(* "i" is used in loops *)
+	StrMap.add s (G.global_type s) gs, ls
+    | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
+    | Fun (_, es) -> vars_exps acc es
+    | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
+    | Range (e, _) | Reg (e, _) | Memory (e, _) -> vars_exp acc e
+    | Coproc_exp (e, _ , es) -> vars_exps (vars_exp acc e) es
+    | _ -> acc
+
+  and vars_exps acc es = List.fold_left vars_exp acc es;;
+
+  let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
+
+  let rec vars_inst ((gs,ls) as acc) = function
+    | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
+	(if StrMap.mem s gs || StrMap.mem s ls || s = "i"
+	 then acc
+	 else
+	   if StrSet.mem s output_registers
+	   then StrMap.add s (G.global_type s) gs, ls
+	   else gs, StrMap.add s (G.local_type s e) ls) e
+    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
+    | Block is -> vars_insts acc is
+    | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
+    | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
+    | Proc (_, es) -> vars_exps acc es
+    | For (_, _, _, i) -> vars_inst acc i
+    | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
+    | Case (Var s, nis) -> vars_cases
+	(if StrMap.mem s ls || s = "i" then acc
+	 else StrMap.add s G.key_type gs, ls) nis
+    | _ -> acc
+
+  and vars_insts acc is = List.fold_left vars_inst acc is
+
+  and vars_cases acc nis =
+    List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
+
+  let vars p = vars_inst (StrMap.empty, StrMap.empty) p.pinst;;
+
+end;;

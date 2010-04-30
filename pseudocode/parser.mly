@@ -22,9 +22,8 @@ Pseudocode parser.
 %token IF THEN ELSE WHILE DO ASSERT FOR TO CASE ENDCASE OF
 %token CPSR SPSR MEMORY REG GE
 %token COPROC LOAD SEND FROM NOT_FINISHED
-%token <Ast.num> NUM
 %token <Ast.mode> MODE
-%token <string> IDENT FLAG BIN HEX REGNUM REGVAR
+%token <string> IDENT FLAG NUM BIN HEX REGNUM REGVAR
 %token <string> NOT EVEN
 %token <string> GTEQ LT GT BANGEQ AND OR BOR LSL LSR ASR
 %token <string> PLUS EQEQ BAND LTLT MINUS EOR ROR STAR
@@ -143,7 +142,7 @@ exp:
 | IF exp THEN exp ELSE exp { If_exp ($2, $4, $6) }
 | NOT exp                  { Fun ($1, [$2]) }
 | IDENT LPAR exps RPAR     { Fun ($1, $3) }
-| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, size_of_num $5) }
+| MEMORY LSQB exp COMA NUM RSQB { Memory ($3, size_of_string $5) }
 | coproc_exp               { $1 }
 | binop_exp                { $1 }
 | simple_exp               { $1 }

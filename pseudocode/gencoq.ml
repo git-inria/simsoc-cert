@@ -48,7 +48,7 @@ module G = struct
 
 end;;
 
-module V = Preproc.Make(G);;
+module V = Ast.Make(G);;
 
 let variables p =
   let gs, ls = V.vars p in
@@ -125,11 +125,11 @@ let mode b m = string b (string_of_mode m);;
 (***********************************************************************)
 
 let string_of_addr_mode = function
-  | Data -> "Mode1"
-  | LoadWord -> "Mode2"
-  | LoadMisc -> "Mode3"
-  | LoadMul -> "Mode4"
-  | LoadCoproc -> "Mode5";;
+  | Data -> "M1"
+  | LoadWord -> "M2"
+  | LoadMisc -> "M3"
+  | LoadMul -> "M4"
+  | LoadCoproc -> "M5";;
 
 let addr_mode b m = string b (string_of_addr_mode m);;
 
@@ -254,7 +254,7 @@ and range b = function
 (***********************************************************************)
 
 (*REMOVE when finished! *)
-let todo f b e = bprintf b "todo \"%a\"" f e;;
+let todo f b x = bprintf b "todo \"%a\"" f x;;
 
 let case k b (n, i) =
   match i with
@@ -358,15 +358,19 @@ let pinst ls b p =
   match p.pkind with
     | Inst -> bprintf b "%a true s0" (inst 2) p.pinst
     | Mode _ ->
-	match p.pinst with
-	  | If (e, i, None) ->
-	      bprintf b "  if %a then\n%a\n    (s%a)\n  else (Ok false s0%a)"
-		exp e (pinst_aux 4) i
-		(list "" (prefix ", " arg)) ls
-		(list "" (prefix ", " default_val)) ls
-	  | i ->
-	      bprintf b "%a\n    (s%a)" (pinst_aux 2) i
-		(list "" (prefix ", " arg)) ls;;
+	if StrSet.mem p.pref
+	  (set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"]) then
+	    todo (Genpc.inst 0) b p.pinst
+	else
+	  match p.pinst with
+	    | If (e, i, None) ->
+		bprintf b "  if %a then\n%a\n    (s%a)\n  else (Ok false s0%a)"
+		  exp e (pinst_aux 4) i
+		  (list "" (prefix ", " arg)) ls
+		  (list "" (prefix ", " default_val)) ls
+	    | i ->
+		bprintf b "%a\n    (s%a)" (pinst_aux 2) i
+		  (list "" (prefix ", " arg)) ls;;
 
 let prog gs ls b p =
   bprintf b
@@ -380,7 +384,7 @@ let prog gs ls b p =
 
 let inst_typ gs b p =
   match p.pkind with
-    | Inst -> bprintf b "| %a %a" name p (list " " arg) gs
+    | Inst -> bprintf b "| %a %a" name p (list " " arg_typ) gs
     | Mode _ -> ();; (*FIXME*)
 
 (***********************************************************************)

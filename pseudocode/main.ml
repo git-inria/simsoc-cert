@@ -146,9 +146,9 @@ let norm() =
     match get_input() with
       | Prog ps ->
 	  verbose "normalization... ";
-	  let ps = List.map Preproc.norm ps in
+	  let ps = List.map Norm.prog ps in
 	    if get_check() then
-	      let ps' = List.map Preproc.norm ps in
+	      let ps' = List.map Norm.prog ps in
 		if ps = ps' then verbose "ok\n" else error "failed"
 	    else verbose "\n";
 	    set_input (Prog ps);
