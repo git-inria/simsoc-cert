@@ -1,0 +1,142 @@
+--- arm6.txt	2010-04-22 16:24:58.000000000 +0800
++++ arm6inst.txt	2010-04-27 12:48:37.000000000 +0800
+@@ -7904,8 +7904,8 @@
+                         else
+                              J Flag = 1
+                              Start opcode execution at jpc
+-                   else
+-                        if ((CV bit of Jazelle OS Control register) == 0) AND
++                    else
++                        if ((CV bit of Jazelle OS Control register) == 0) and
+                                          (IMPLEMENTATION DEFINED CONDITION) then
+                              PC = invalidhandler
+                         else
+@@ -10358,26 +10358,25 @@
+ 
+ 
+          Operation
+-         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
+-         page A2-11 for details.
+-
+-         The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these
+-         masks depend on the architecture version, see Table A4-1.
+-
+-                                                                               Table A4-1 Bit mask constants
+-
+-           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
+-
+-           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
+-
+-           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
+-
+-           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
+-
+-           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
+-
+-           6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
+-
++         /* There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on    */
++         /* page A2-11 for details.                                                                                    */
++         /*                                                                                                            */
++         /* The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these */
++         /* masks depend on the architecture version, see Table A4-1.                                                  */
++         /*                                                                                                            */
++         /*                                                                       Table A4-1 Bit mask constants        */
++         /*                                                                                                            */
++         /*   Architecture versions         UnallocMask          UserMask          PrivMask          StateMask         */
++         /*                                                                                                            */
++         /*   4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000        */
++         /*                                                                                                            */
++         /*   4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020        */
++         /*                                                                                                            */
++         /*   5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020        */
++         /*                                                                                                            */
++         /*   5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020        */
++         /*                                                                                                            */
++         /*   6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020        */
+ 
+          if ConditionPassed(cond) then
+              if opcode[25] == 1 then
+@@ -11915,9 +11914,9 @@
+ 
+            assert end_address == address + 8
+ 
+-           where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
++           /* where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
+            Multiple on page A5-41, except that Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than
+-           depending on bits[15:0] of the instruction.
++           depending on bits[15:0] of the instruction. */
+ 
+ 
+            Notes
+@@ -14583,14 +14582,12 @@
+               UNPREDICTABLE
+          assert end_address == address + 8
+ 
+-         where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store
+-         Multiple on page A5-41, with the following modifications:
+-
+-         •      Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than depending on bits[15:0] of the
+-                instruction.
+-
+-         •      Rn is the banked version of R13 belonging to the mode specified by the instruction, rather than being
+-                the version of R13 of the current mode.
++         /* where start_address and end_address are determined as described in Addressing Mode 4 - Load and Store        */
++         /* Multiple on page A5-41, with the following modifications:                                                    */
++         /* .      Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than depending on bits[15:0] of the       */
++         /*        instruction.                                                                                          */
++         /* .      Rn is the banked version of R13 belonging to the mode specified by the instruction, rather than being */
++         /*        the version of R13 of the current mode.                                                               */
+ 
+ 
+          Notes
+@@ -14774,7 +14771,7 @@
+              Rd[15:0] = SignedSat(Rm[15:0], sat_imm + 1)
+              Rd[31:16] = SignedSat(Rm[31:16], sat_imm + 1)
+              if SignedDoesSat(Rm[15:0], sat_imm + 1)
+-                                           OR SignedDoesSat(Rm[31:16], sat_imm + 1) then
++                                           or SignedDoesSat(Rm[31:16], sat_imm + 1) then
+                  Q Flag = 1
+ 
+ 
+@@ -16207,15 +16204,6 @@
+                    Memory[address,4] = Rm
+                    Rd = temp
+                if Shared(address) then   /* ARMv6 */
+-
+-
+-
+-
+-A4-212                 Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.          ARM DDI 0100I
+-                                                                                                      ARM Instructions
+-
+-
+-
+                  physical_address = TLB(address)
+                  ClearExclusiveByAddress(physical_address,processor_id,4)
+                  /* See Summary of operation on page A2-49 */
+@@ -18442,7 +18430,7 @@
+                Rd[15:0] = UnsignedSat(Rm[15:0], sat_imm) // Rm[15:0] treated as signed
+                Rd[31:16] = UnsignedSat(Rm[31:16], sat_imm) // Rm[31:16] treated as signed
+                if UnsignedDoesSat(Rm[15:0], sat_imm)
+-                                             OR UnsignedDoesSat(Rm[31:16], sat_imm) then
++                                             or UnsignedDoesSat(Rm[31:16], sat_imm) then
+                    Q Flag = 1
+ 
+ 
+@@ -25166,7 +25154,7 @@
+ 
+          Operation
+          MemoryAccess(B-bit, E-bit)
+-         address = (PC & 0xFFFFFFFC) + (immed_8 * 4)
++         address = (PC AND 0xFFFFFFFC) + (immed_8 * 4)
+          Rd = Memory[address, 4]
+ 
+ 
+@@ -49653,4 +49641,4 @@
+ 
+ 
+ Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
+-
+\ Pas de fin de ligne à la fin du fichier.
++
