@@ -40,6 +40,12 @@ default: $(TARGETS:%=%.vo)
 %.vo: %.v
 	coqc -I ../coq $<
 
+%inst.cpp: %inst.arm
+	$(GEN) -ipc $< -ocpp > $@ 
+
+%dec.cpp: %dec.dat
+	$(GEN) -idec $< -ocpp > $@ 
+
 clean:
 	rm -f *~ *.v *.glob *.txt *.dat *.arm *.vo
 
