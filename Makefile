@@ -3,7 +3,7 @@
 
 .SUFFIXES:
 
-SUBDIRS := refARMparsing pseudocode coq cxx
+SUBDIRS := refARMparsing pseudocode coq testgen
 TARGETS := arm6
 
 .PHONY: default clean $(SUBDIRS) $(TARGETS)
