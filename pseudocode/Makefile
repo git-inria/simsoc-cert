@@ -3,7 +3,7 @@
 
 .SUFFIXES:
 
-.PHONY: default clean depend tags clean-all dist install-dist coq
+.PHONY: default clean depend tags clean-all dist install-dist
 
 ifeq ($(VERBOSE),1)
   SHOW := @true
@@ -44,22 +44,9 @@ BINS := $(BINFILES:%=bin/%)
 BYTS := $(BINS:%=%.byt)
 OPTS := $(BINS:%=%.opt)
 
-INST := indentV6
-TXTFILE := $(INST:%=$(ARMDIR)/%.txt)
-NORMFILE := $(TXTFILE:%.txt=%norm.txt)
-VFILE := $(NORMFILE:%.txt=%.v)
+.PRECIOUS: $(BINFILES:%=%.cmo) $(BINFILES:%=%.cmx) $(PARSERS:%=%.ml)
 
-.PRECIOUS: $(BINFILES:%=%.cmo) $(BINFILES:%=%.cmx) $(PARSERS:%=%.ml) \
-	$(NORMFILE)
-
-default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS) \
-	$(NORMFILE) $(VFILE)
-
-%.v: %.txt bin/main
-	bin/main -ipc $< -ocoq > $@ 
-
-%norm.txt: %.txt bin/main
-	bin/main -ipc $< -opc -norm > $@
+default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
 
 bin:
 	mkdir -p bin
