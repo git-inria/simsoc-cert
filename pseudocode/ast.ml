@@ -152,8 +152,7 @@ end;;
 module Make (G : Var) = struct
 
   let rec vars_exp ((gs,ls) as acc) = function
-    | Var s when not (StrMap.mem s ls || s = "i") ->
-	(* "i" is used in loops *)
+    | Var s when not (StrMap.mem s ls || s = "i") -> (* "i" is used in loops *)
 	StrMap.add s (G.global_type s) gs, ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
@@ -170,10 +169,9 @@ module Make (G : Var) = struct
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
 	(if StrMap.mem s gs || StrMap.mem s ls || s = "i"
 	 then acc
-	 else
-	   if StrSet.mem s output_registers
-	   then StrMap.add s (G.global_type s) gs, ls
-	   else gs, StrMap.add s (G.local_type s e) ls) e
+	 else if StrSet.mem s output_registers
+	 then StrMap.add s (G.global_type s) gs, ls
+	 else gs, StrMap.add s (G.local_type s e) ls) e
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
@@ -191,6 +189,8 @@ module Make (G : Var) = struct
   and vars_cases acc nis =
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
 
-  let vars p = vars_inst (StrMap.empty, StrMap.empty) p.pinst;;
+  let vars p =
+    let gs, ls = vars_inst (StrMap.empty, StrMap.empty) p.pinst in
+      list_of_map gs, list_of_map ls;;
 
 end;;

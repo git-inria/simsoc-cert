@@ -75,11 +75,6 @@ end;;
 
 module V = Ast.Make(G);;
 
-let variables p =
-  let gs, ls = V.vars p in
-    (StrMap.fold (fun s t l -> (s,t)::l) gs [],
-     StrMap.fold (fun s t l -> (s,t)::l) ls []);;
-
 (** Generate the code corresponding to an expression *)
 
 let func = function
@@ -353,10 +348,10 @@ let lsm_hack p =
 let lib b ps =
   let b2 = Buffer.create 10000 in
   let decl_and_prog b p =
-    let p' = lsm_hack p in
-    let gs, ls = variables p' in
-      bprintf b "%a\n" (decl gs ls) p';
-      bprintf b2 "%a\n" (prog gs ls) p'
+    let p = lsm_hack p in
+    let gs, ls = V.vars p in
+      bprintf b "%a\n" (decl gs ls) p;
+      bprintf b2 "%a\n" (prog gs ls) p
   in
     bprintf b
 "#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"

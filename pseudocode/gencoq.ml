@@ -49,11 +49,6 @@ end;;
 
 module V = Ast.Make(G);;
 
-let variables p =
-  let gs, ls = V.vars p in
-    (StrMap.fold (fun s t l -> (s,t)::l) gs [],
-     StrMap.fold (fun s t l -> (s,t)::l) ls []);;
-
 (***********************************************************************)
 (** numbers *)
 (***********************************************************************)
@@ -430,7 +425,7 @@ let lib b ps =
   and bcall_inst = Buffer.create 5000
   and bcall_mode = Array.init 5 (fun _ -> Buffer.create 1000) in
   let prog p =
-    let gs, _ = variables p in
+    let gs, _ = V.vars p in
       semfun b p gs;
       constr bcons_inst bcons_mode p gs;
       call bcall_inst bcall_mode p gs
