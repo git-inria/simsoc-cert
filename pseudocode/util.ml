@@ -29,7 +29,7 @@ let firsts f =
 (** functions on strings *)
 (***********************************************************************)
 
-(* return a copy of [s] where underscores are replaced by spaces *)
+(* return a copy of s where underscores are replaced by spaces *)
 let remove_underscores s =
   let s = String.copy s in
     for i = 0 to String.length s - 1 do
@@ -50,14 +50,10 @@ let set_of_list =
 let list_of_map m =
   List.sort (fun (s1,_) (s2,_) -> Pervasives.compare s1 s2)
     (StrMap.fold (fun s t l -> (s,t)::l) m []);;
- 
+
 (***********************************************************************)
 (** combinators for printing in a buffer *)
 (***********************************************************************)
-
-let print f x =
-  let b = Buffer.create 10000 in
-    f b x; Buffer.output_buffer stdout b;;
 
 let int b n = bprintf b "%d" n;;
 
@@ -87,6 +83,9 @@ let option p f b = function
 let par f b x = bprintf b "(%a)" f x;;
 
 let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
+
+let print f x =
+  let b = Buffer.create 10000 in f b x; Buffer.output_buffer stdout b;;
 
 (***********************************************************************)
 (** warnings or errors *)
