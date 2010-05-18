@@ -19,31 +19,31 @@ default: $(TARGETS:%=%.vo)
 %.txt: %.pdf
 	pdftotext -layout $< $@
 
-%inst.txt: %.txt
+%inst.txt: %.txt %inst.patch
 	cp -a $< $@; patch $@ < $*inst.patch
 
-%dec.txt: %.txt
+%dec.txt: %.txt %dec.patch
 	cp -a $< $@; patch $@ < $*dec.patch
 
-%inst.arm: %inst.txt
+%inst.arm: %inst.txt $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/preproc_pseudo.sh $(DIR)/indentation
 	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@
 
-%dec.dat: %dec.txt
+%dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
 	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@
 
-%inst.v: %inst.arm
+%inst.v: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocoq > $@ 
 
-%dec.v: %dec.dat
+%dec.v: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocoq > $@ 
 
 %.vo: %.v
 	coqc -I ../coq $<
 
-%inst.cpp: %inst.arm
+%inst.cpp: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@ 
 
-%dec.cpp: %dec.dat
+%dec.cpp: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocpp > $@ 
 
 clean:
