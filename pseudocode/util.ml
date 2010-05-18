@@ -47,6 +47,10 @@ module StrMap = Map.Make (StrOrd);;
 let set_of_list =
   List.fold_left (fun set s -> StrSet.add s set) StrSet.empty;;
 
+let list_of_map m =
+  List.sort (fun (s1,_) (s2,_) -> Pervasives.compare s1 s2)
+    (StrMap.fold (fun s t l -> (s,t)::l) m []);;
+ 
 (***********************************************************************)
 (** combinators for printing in a buffer *)
 (***********************************************************************)
