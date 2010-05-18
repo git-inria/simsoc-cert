@@ -49,6 +49,7 @@ and range =
 | Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
 | Index of exp;;
 
+(* arguments of a BinOp after flattening *)
 let args = function
   | BinOp (_, f, _) as e ->
       let rec aux = function
@@ -82,17 +83,35 @@ type ident = {
   iparams : string list;
   ivariant : string option };;
 
+(* convert a list of strings into an underscore-separated string *)
 let rec underscore = function
   | [] -> ""
   | [s] -> s
   | s :: ss -> s ^ "_" ^ underscore ss;;
 
+(* convert a list of strings into an ident *)
 let ident ss = { iname = underscore ss; iparams = []; ivariant = None };;
+
+(***********************************************************************)
+(** programs *)
+(***********************************************************************)
+
+type kind =
+  | Inst (* instruction *)
+  | Mode of int (* addressing mode *);;
+
+type prog = {
+  pref : string; (* chapter in the ARM documentation (e.g. A4.1.20) *)
+  pkind : kind;
+  pident : ident;
+  pidents : ident list; (* alternative idents *)
+  pinst : inst };;
 
 (***********************************************************************)
 (** addressing modes *)
 (***********************************************************************)
 
+(* heuristic providing the addressing mode from a list of strings *)
 let addr_mode ss =
   match ss with
     | "Data" :: _ -> 1
@@ -106,19 +125,8 @@ let addr_mode ss =
 	end
     | _ -> invalid_arg "Ast.addr_mode";;
 
-(***********************************************************************)
-(** programs *)
-(***********************************************************************)
-
-type kind = Inst | Mode of int;;
-
-type prog = {
-  pref : string;
-  pkind : kind;
-  pident : ident;
-  pidents : ident list;
-  pinst : inst };;
-
+(* heuristic providing the addressing mode of a program from its name
+   and its list of global variables *)
 let addr_mode_of_prog =
   let mode3 = set_of_list ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
   let mode4 = set_of_list ["RFE";"SRS"] in
@@ -132,14 +140,22 @@ let addr_mode_of_prog =
       else if StrSet.mem p.pident.iname mode5 then Some 5
       else None;;
 
+(* provides the variables computed by an addressing mode *)
 let mode_vars = function
   | 1 -> ["shifter_operand"; "shifter_carry_out"]
   | 2 | 3 -> ["address"]
   | 4 | 5 -> ["start_address"; "end_address"]
   | _ -> invalid_arg " Ast.mode_vars";;
 
+(* set of variables computed by addressing modes *) 
+let mode_variables =
+  let s = ref StrSet.empty in
+    for i = 1 to 5 do
+      s := StrSet.union !s (set_of_list (mode_vars i))
+    done; !s;;
+		 
 (***********************************************************************)
-(** global and local variables of a program *)
+(** global, local and mode variables of a program *)
 (***********************************************************************)
 
 module type Var = sig
@@ -149,11 +165,17 @@ module type Var = sig
   val key_type : typ;;
 end;;
 
+let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
+
 module Make (G : Var) = struct
 
+  (* add every variable as global except if it is already declared as
+     local or if its the for-loop variable "i" *)
   let rec vars_exp ((gs,ls) as acc) = function
-    | Var s when not (StrMap.mem s ls || s = "i") -> (* "i" is used in loops *)
-	StrMap.add s (G.global_type s) gs, ls
+    | Var s  ->
+	if StrMap.mem s ls || s = "i" (* variable used in for-loops *)
+	then acc
+	else StrMap.add s (G.global_type s) gs, ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
     | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
@@ -163,13 +185,11 @@ module Make (G : Var) = struct
 
   and vars_exps acc es = List.fold_left vars_exp acc es;;
 
-  let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
-
+  (* add every affected variable as local except if it is an output
+     register *)
   let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
-	(if StrMap.mem s gs || StrMap.mem s ls || s = "i"
-	 then acc
-	 else if StrSet.mem s output_registers
+	(if StrSet.mem s output_registers
 	 then StrMap.add s (G.global_type s) gs, ls
 	 else gs, StrMap.add s (G.local_type s e) ls) e
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
@@ -179,15 +199,15 @@ module Make (G : Var) = struct
     | Proc (_, es) -> vars_exps acc es
     | For (_, _, _, i) -> vars_inst acc i
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (Var s, nis) -> vars_cases
-	(if StrMap.mem s ls || s = "i" then acc
-	 else StrMap.add s G.key_type gs, ls) nis
+    | Case (e, nis) -> vars_cases (vars_exp acc e) nis
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
 
   and vars_cases acc nis =
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
+
+  (*REMOVE?*)let is_mode_var (s, _) =  StrSet.mem s mode_variables;;
 
   let vars p =
     let gs, ls = vars_inst (StrMap.empty, StrMap.empty) p.pinst in
