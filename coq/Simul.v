@@ -38,32 +38,30 @@ Definition incr_PC (s : state) : state :=
 
 Inductive simul_result : Type :=
 | SimOk : state -> simul_result
-| SimKo : state -> string -> simul_result.
+| SimKo : state (* state before the current instruction *)
+  -> string (* error message *) -> simul_result.
 
 Module Make (Import I : INST).
 
   Definition next (s : state) : simul_result :=
-    match proc_mode_of_word (cpsr s) with
-      | None => SimKo s "invalid processor mode"
-      | Some m =>
-        match inst_set (cpsr s) with
-          | None => SimKo s "invalid instruction set"
-          | Some Thumb => SimKo s "Thumb instruction set not implemented"
-          | Some Jazelle => SimKo s "Jazelle instruction set not implemented"
-          | Some ARM =>
-            let w := read s (address_of_word (reg_content s PC)) Word in
-              match decode w with
-                | DecUnpredictable => SimKo s "decoding is unpredictable"
-                | DecUndefined => SimOk (add_exn s UndIns)
-                | DecInst i =>
-                  match step s i with
-                    | Ok b s' =>
-                      SimOk (handle_exception (if b then incr_PC s' else s'))
-                    | Ko m => SimKo s m
-                    | Todo m => SimKo s m
-                  end
+    match inst_set (cpsr s) with
+      | None => SimKo s "invalid instruction set"
+      | Some Jazelle => SimKo s "Jazelle instruction set not implemented"
+      | Some Thumb => SimKo s "Thumb instruction set not implemented"
+      | Some ARM =>
+        let w := read s (address_of_word (reg_content s PC)) Word in
+          match decode w with
+            | DecUnpredictable => SimKo s "decoding returns unpredictable"
+            | DecUndefined =>
+              SimOk (handle_exception (add_exn s UndIns))
+            | DecInst i =>
+              match step s i with
+                | Ok b s' =>
+                  SimOk (handle_exception (if b then incr_PC s' else s'))
+                | Ko m => SimKo s m
+                | Todo m => SimKo s m
               end
-        end
+          end
     end.
 
   Fixpoint simul (s : state) (n : nat) : nat * simul_result :=
