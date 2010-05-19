@@ -133,7 +133,7 @@ let addr_mode_of_prog =
   let mode5 = set_of_list ["LDC";"STC"] in
     fun p (gs : (string * string) list) ->
       if List.mem_assoc "shifter_operand" gs then Some 1
-      else if List.mem_assoc "addr_mode" gs then
+      else if List.mem_assoc "address" gs then
 	if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
       else if List.mem_assoc "register_list" gs
 	|| StrSet.mem p.pident.iname mode4 then Some 4
