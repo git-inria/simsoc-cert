@@ -17,10 +17,13 @@ open Util;;
 (** expressions *)
 (*****************************************************************************)
 
+(* processor modes *)
 type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys;;
 
+(* word sizes read from/written to memory *)
 type size = Byte | Half | Word;;
 
+(* convert a number string into a word size *)
 let size_of_string = function
   | "4" -> Word
   | "2" -> Half
@@ -159,16 +162,26 @@ let is_mode_var s =  StrSet.mem s mode_variables;;
 let remove_mode_vars gs = List.filter (fun (s, _) -> not (is_mode_var s)) gs;;
 
 (*****************************************************************************)
-(** global, local and mode variables of a program *)
+(** Global and local variables of a program and their types in
+    the target language. A variable is:
+- global if it is not local,
+- local if it is affected to some value.
+The variable "i" used in for-loops is not counted in variables. *)
 (*****************************************************************************)
 
 module type Var = sig
+  (* type of target language types *)
   type typ;;
+  (* type of a variable from its name *)
   val global_type : string -> typ;;
+  (* type of a local variable from its name and the expression to
+     which it is affected *)
   val local_type : string -> exp -> typ;;
-  val key_type : typ;;
+  (* type of variables used in case instructions *)
+  val case_type : typ;;
 end;;
 
+(* register variables that are set by instructions *)
 let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
 
 module Make (G : Var) = struct
@@ -176,10 +189,8 @@ module Make (G : Var) = struct
   (* add every variable as global except if it is already declared as
      local or if its the for-loop variable "i" *)
   let rec vars_exp ((gs,ls) as acc) = function
-    | Var s  ->
-	if StrMap.mem s ls || s = "i" (* variable used in for-loops *)
-	then acc
-	else StrMap.add s (G.global_type s) gs, ls
+    | Var s when not (StrMap.mem s ls || s = "i") ->
+	StrMap.add s (G.global_type s) gs, ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
     | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
@@ -190,7 +201,7 @@ module Make (G : Var) = struct
   and vars_exps acc es = List.fold_left vars_exp acc es;;
 
   (* add every affected variable as local except if it is an output
-     register *)
+     register or in a case instruction *)
   let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
 	(if StrSet.mem s output_registers
@@ -203,7 +214,7 @@ module Make (G : Var) = struct
     | Proc (_, es) -> vars_exps acc es
     | For (_, _, _, i) -> vars_inst acc i
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (e, nis) -> vars_cases (vars_exp acc e) nis
+    | Case (Var s, nis) -> vars_cases (StrMap.add s G.case_type gs, ls) nis
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
@@ -211,6 +222,7 @@ module Make (G : Var) = struct
   and vars_cases acc nis =
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
 
+  (* sort variables by their names *)
   let vars p =
     let gs, ls = vars_inst (StrMap.empty, StrMap.empty) p.pinst in
       list_of_map gs, list_of_map ls;;

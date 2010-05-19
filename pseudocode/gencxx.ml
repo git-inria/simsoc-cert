@@ -69,7 +69,7 @@ module G = struct
       | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
-  let key_type = "uint8_t";;
+  let case_type = "uint8_t";;
 
 end;;
 

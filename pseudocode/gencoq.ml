@@ -21,29 +21,35 @@ let comment f b x = bprintf b "(*%a*)" f x;;
 (** variable types *)
 (*****************************************************************************)
 
-let type_of_var = function
-  | "cond" -> "opcode"
-  | "mmod" | "opcode25" -> "bool"
-  | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
-  | s -> if String.length s = 1 then "bool" else "word";;
-
 module G = struct
 
   type typ = string;;
 
+  (* heuristic giving a type to a variable from its name *)
+  let type_of_var = function
+    | "cond" -> "opcode"
+    | "mmod" | "opcode25" | "shift" -> "bool"
+    | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
+    | s -> if String.length s = 1 then "bool" else "word";;
+
+  (* the type of global variables is given by their names *)
   let global_type = type_of_var;;
 
+  (* type for memory values *)
   let type_of_size = function
     | Byte -> "byte"
     | Half -> "half"
     | Word -> "word";;
 
+  (* the type of a local variable is given by its name, except when it
+     is affected to some memory value *)
   let local_type s e =
     match e with
       | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
-  let key_type = "word";;
+  (* type of variables used in case instructions *)
+  let case_type = "word";;
 
 end;;
 
