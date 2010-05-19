@@ -1,4 +1,6 @@
 
+- eliminate todo's in expressions
+
 - add comments
 
 - solve problem occuring with -norm -check
@@ -8,3 +10,5 @@
 - ast: merge Index and Flag ?
 
 - parser: reduce the number of conflicts in the grammar ?
+
+DONE:

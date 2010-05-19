@@ -59,8 +59,10 @@ module V = Ast.Make(G);;
 (** numbers *)
 (*****************************************************************************)
 
+(* convert a number string into a Coq integer *)
 let num = string;;
 
+(* convert a string of the form 0b[01]* into a Coq integer *)
 let bin b s =
   let n = String.length s in
     if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
@@ -74,6 +76,7 @@ let bin b s =
 
 let bin b s = par bin b s;;
 
+(* convert a string of the form 0x[0-9a-f]* into a Coq integer *)
 (*IMPROVE: use a Coq function to convert an hexa string into a word*)
 let hex b s =
   let n = Scanf.sscanf s "%li" (fun x -> x) in
@@ -82,12 +85,18 @@ let hex b s =
 
 let hex b s = par hex b s;;
 
+(* convert a number string into a Coq word by first converting the
+   string into a Coq integer using f and then applying the Coq repr
+   function *)
 let word f b s = bprintf b "repr %a" f s;;
 
 (*****************************************************************************)
 (** registers *)
 (*****************************************************************************)
 
+(* convert a number string into a register number using the Coq
+   mk_regnum function (use some pre-defined constant for some special
+   registers) *)
 let string_of_regnum = function
   | "15" -> "PC"
   | "14" -> "LR"
@@ -163,6 +172,8 @@ let binop b s = string b (string_of_binop s);;
 (** expressions *)
 (*****************************************************************************)
 
+(*FIXME: raise an exception instead of use a todo for the instruction
+  containing this expression*)
 (*REMOVE when finished! *)
 let todo_exp s b e = bprintf b "(*todo: %a*) %s" Genpc.exp e s;;
 let todo_word = todo_exp "(repr 0)";;
@@ -172,24 +183,33 @@ let is_not_num = function
   | Num _ -> false
   | _ -> true;;
 
+(* add parentheses around complex expressions *)
 let rec pexp b = function
   | Var _ as e -> exp b e
   | e -> par exp b e
 
+(* like pexp but prints numbers as integers (not words) *)
 and num_exp b = function
   | Num s -> num b s
   | e -> pexp b e
 
+(* convert an expression into a register number using the Coq function
+   mk_regnum except if it is a number or a variable *)
 and regnum_exp b = function
   | Num s -> regnum b s
   | Var s -> string b s
   | e -> bprintf b "(mk_regnum %a)" pexp e
 
+(* convert an expression into an address using the Coq function
+   mk_address *)
 and address b e = bprintf b "(mk_address %a)" pexp e
 
+(* convert an expression into a Coq natural number using the Coq
+   function nat_of_Z *)
 and nat_exp b e = bprintf b "(nat_of_Z %a)" pexp e
 
 and exp b = function
+    (* convert numbers into Coq words *)
   | Bin s -> word bin b s
   | Hex s -> word hex b s
   | Num s -> word num b s
@@ -205,14 +225,21 @@ and exp b = function
 	 |"Number_Of_Set_Bits_In"), _) as e ->
       (*FIXME*) todo_word b e
 
+  (* print no parenthesis if there is no argument (functions are
+     curryfied in Coq) *)
   | Fun (f, []) -> fun_name b f
+  (* for saturation functions, add a cast to nat if the second
+     argument is not a number *)
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
 	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f pexp e1 nat_exp e2
+  (* default printing of function calls *)
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
 
-  | BinOp (e1, ("==" as f), Num n) -> (* optimization avoiding a repr *)
+  (* optimization avoiding a call to repr *)
+  | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f pexp e1 num n
+  (* default printing of binary operators (like function calls) *)
   | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f pexp e1 pexp e2
 
   | If_exp (e1, e2, e3) ->
@@ -233,9 +260,12 @@ and exp b = function
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
 and range b = function
+  (* convert the flag named s into the pre-defined Coq constant sbit *)
   | Flag (s, _) -> bprintf b "%sbit" s
+  (* add a cast to nat when the index is a complex expression *)
   | Index (BinOp (_, "-", _) as e) -> nat_exp b e
   | Index e -> num_exp b e
+  (* convert a bit range into a Coq bit range *)
   | Bits (n1, n2) -> bprintf b "%a#%a" num n1 num n2;;
 
 (*****************************************************************************)
@@ -261,31 +291,40 @@ and inst_cons k b = function
 and inst_aux k b = function
   | Unpredictable -> string b "unpredictable \"\""
       (*FIXME: replace empty string by program name*)
+
   | Block [] -> string b "block nil"
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons (k+2))) is indent (k+2)
+
   | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
+
+  (* try to generate the code of an affectation; in case of failure,
+     output a "todo" *)
   | Affect (e, v) as i ->
       begin try affect b v e
       with Not_found -> todo (Genpc.inst 0) b i end
 
-  (* adhoc treatment of case's *)
+  (* adhoc treatment of case's: as case's are only used for defining
+     the variable index, we convert a case which branches define index
+     into a let index := followed by a Coq match *)
   | Case (e, nis) as i ->
       begin try bprintf b
 	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
 	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
       with Not_found -> todo (Genpc.inst 0) b i end
 
-  (*FIXME*)
+  (* FIXME: to be finished *)
   | Proc _ | While _ | For _ | Coproc _ as i -> todo (Genpc.inst 0) b i
   | Assert _ -> invalid_arg "Gencoq.inst_aux"
 
 and affect b v = function
+  (* an affectation of a variable is converted into a Coq "let" *)
   | Var s -> bprintf b "let %s := %a in" s exp v
+  (* otherwise, we use some Coq update function *)
   | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp v pexp e
   | e -> bprintf b "%a %a" set e pexp v
 
@@ -307,6 +346,8 @@ and set b = function
 (** semantic function of a program *)
 (*****************************************************************************)
 
+(* program name *)
+
 let ident b i =
   bprintf b "%s%a%a" i.iname (list "" string) i.iparams
     (option "" string) i.ivariant;;
@@ -316,7 +357,7 @@ let name b p =
     | Inst -> ident b p.pident
     | Mode m -> bprintf b "%a_%a" addr_mode m ident p.pident;;
 
-let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
+(* result type of a program *)
 
 let mode_var_typ b = function
 (*REMOVE?  | "shifter_carry_out" -> string b " * bool"*)
@@ -326,6 +367,10 @@ let result b p =
   match p.pkind with
     | Inst -> ()
     | Mode k -> list "" mode_var_typ b (mode_vars k);;
+
+(* split an instruction block into two blocks:
+- the prefix of the block consisting of the affectations and cases
+- the remainder of the instructions *)
 
 let is_affect = function Affect _ | Case _ -> true | _ -> false;;
 
@@ -339,15 +384,18 @@ let pinst_aux k b i =
     List.iter (endline (inst k) b) is1;
     bprintf b "%alet r := %a true s0 in" indent k (inst_aux k) (Block is2);;
 
+(* default result component value *)
 let default b _ = string b ", repr 0";;
 
 let mode_var b = function
 (*REMOVE?  | "shifter_carry_out" as s -> bprintf b ", zne 0 %s" s*)
   | s -> bprintf b ", %s" s;;
 
-let pinst =
-  let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"] in
-    fun b p ->
+(* FIXME: programs which normalized form do not consist of affectations only
+  are not handled yet. Moreover, they use while-loops... *)
+let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
+
+let pinst b p =
   match p.pkind with
     | Inst -> bprintf b "%a true s0" (inst 2) p.pinst
     | Mode k ->
@@ -365,6 +413,8 @@ let pinst =
 		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
 		  (list "" mode_var) ls;;
 
+let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
+
 let semfun b p gs =
   bprintf b
     "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
@@ -381,8 +431,10 @@ let constr bcons_inst bcons_mode p gs =
 	  | Some k ->
 	      bprintf b "\n| %a (m_ : mode%d)%a"
 		name p k (list "" arg_typ) (remove_mode_vars gs)
+		(* mode variables are not constructor arguments since
+		   they are computed from the mode argument *)
 	  | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
-	  end
+	end
     | Mode k -> let b = bcons_mode.(k-1) in
 	bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
 
@@ -390,7 +442,7 @@ let constr bcons_inst bcons_mode p gs =
 (** call to the semantics function of some instruction *)
 (*****************************************************************************)
 
-(* to avoid name clashes or warnings in Coq *)
+(* we rename some argument names to avoid name clashes or warnings in Coq *)
 let string_of_arg =
   let set = set_of_list
     ["S";"R";"I";"mode";"StateMask";"PrivMask";"shift"] in

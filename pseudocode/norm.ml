@@ -42,7 +42,9 @@ let rec exp = function
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
 	   List.map exp es)
 
-  (* normalize if-expressions wrt Unpredictable_exp's *)
+  (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
+     are flattened so that there is at most one Unpredictable_exp in the
+     then-branch *)
   | If_exp (_, e1, e2) when e1 = e2 -> exp e1
   | If_exp (c0, If_exp (c1, Unpredictable_exp, e1), e2) ->
       exp (If_exp (BinOp (c0, "and", c1),
@@ -91,7 +93,8 @@ and range =
 	| e -> Range (e, r);;
 
 (*****************************************************************************)
-(** normalization of blocks *)
+(** normalization of blocks:
+blocks are flattened and removed if they reduce to a single instruction *)
 (*****************************************************************************)
 
 let rec raw_inst = function
@@ -119,19 +122,20 @@ let nop = Block [];;
 
 let is_nop = (=) nop;;
 
+(* variables used as local variables *)
 let locals = set_of_list
   ["value"; "operand" ; "operand1" ; "operand2"; "data"; "mask";
    "diff1"; "diff2"; "diff3"; "diff4"; "shifter_operand"; "shifter_carry_out";
    "address"; "start_address"; "index"];;
 
 let is_local = function
-  | Var x | Fun (x, []) -> StrSet.mem x locals
+  | Var x (*REMOVE?| Fun (x, [])*) -> StrSet.mem x locals
   | _ -> false;;
 
 let eq_local e1 e2 =
   match e1, e2 with
-    | Var x1, Var x2 -> x1 = x2 && StrSet.mem x1 locals
-    | Fun (x1, []), Fun (x2, []) -> x1 = x2 && StrSet.mem x1 locals
+    | Var x1, Var x2 (*REMOVE?| Fun (x1, []), Fun (x2, [])*) ->
+	x1 = x2 && StrSet.mem x1 locals
     | _, _ -> false;;
 
 let rec inst = function
@@ -139,11 +143,11 @@ let rec inst = function
   (* we only consider ARMv5 and above *)
   | If (Fun ("v5_and_above", []), i, _) -> inst i
 
-  (* normalize block's *)
-  | Block is -> raw_inst (Block (List.map inst is))
-
   (* replace assert's and memory access indications by nop's *)
   | Proc ("MemoryAccess", _) | Assert _ -> nop
+
+  (* normalize block's *)
+  | Block is -> raw_inst (Block (List.map inst is))
 
   (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) ->
@@ -167,7 +171,10 @@ let rec inst = function
 	  then If (Fun ("not", [exp c]), i2, None)
 	  else
 
-	    (* normalization of affectations for local variables *)
+	    (* normalization of affectations for local variables: if
+	       both branches of an if-instruction affect the same
+	       variable, then it is converted into a single affectation
+	       which value is defined with an if-expression *)
 	    begin match i1, i2 with
 	      | Affect (x1, e1), Affect (x2, e2) when eq_local x1 x2 ->
 		  inst (Affect (x1, If_exp (c, e1, e2)))
@@ -198,13 +205,12 @@ let rec inst = function
   | Unpredictable as i -> i;;
 
 (*****************************************************************************)
-(** normalization of affectations (second pass):
+(** normalization of affectations (2nd pass):
 - replace affectation of Unpredictable_exp by Unpredictable
 - replace conditional affectation of Unpredictable by an equivalent block *)
 (*****************************************************************************)
 
 let rec affect = function
-
   | Block is -> Block (affects is)
 
   | Affect (_, Unpredictable_exp) -> Unpredictable
