@@ -23,7 +23,7 @@ let comment f b x = bprintf b "(*%a*)" f x;;
 
 let type_of_var = function
   | "cond" -> "opcode"
-  (*REMOVE?| "shifter_carry_out"*) | "mmod" | "opcode25" -> "bool"
+  | "mmod" | "opcode25" -> "bool"
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
   | s -> if String.length s = 1 then "bool" else "word";;
 
@@ -68,7 +68,7 @@ let bin b s =
 
 let bin b s = par bin b s;;
 
-(*IMPROVE: use a Coq function to convert an hexa string into a word?*)
+(*IMPROVE: use a Coq function to convert an hexa string into a word*)
 let hex b s =
   let n = Scanf.sscanf s "%li" (fun x -> x) in
     if Int32.compare n Int32.zero = 0 then bprintf b "Z0"
@@ -373,7 +373,8 @@ let constr bcons_inst bcons_mode p gs =
     | Inst -> let b = bcons_inst in
 	begin match addr_mode_of_prog p gs with
 	  | Some k ->
-	      bprintf b "\n| %a (m_ : mode%d)%a" name p k (list "" arg_typ) gs
+	      bprintf b "\n| %a (m_ : mode%d)%a"
+		name p k (list "" arg_typ) (remove_mode_vars gs)
 	  | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
 	  end
     | Mode k -> let b = bcons_mode.(k-1) in
@@ -386,7 +387,7 @@ let constr bcons_inst bcons_mode p gs =
 (* to avoid name clashes or warnings in Coq *)
 let string_of_arg =
   let set = set_of_list
-    ["S";"R";"I";"mode";"address";"StateMask";"PrivMask";"shift"] in
+    ["S";"R";"I";"mode";"StateMask";"PrivMask";"shift"] in
     fun s -> if StrSet.mem s set then s ^ "_" else s;;
 
 let arg b (x, _) = bprintf b " %s" (string_of_arg x);;
@@ -401,7 +402,7 @@ let call bcall_inst bcall_mode p gs =
 	      bprintf b "    | %a%a =>" name p args gs;
 	      bprintf b " %a_step s0%a\n" name p args gs
 	  | Some k ->
-	      bprintf b "    | %a m_%a =>" name p args gs;
+	      bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
 	      bprintf b
 		"\n      match mode%d_step s0 m_ with (r%a) =>\n        "
 		k (list "" mode_var) (mode_vars k);
