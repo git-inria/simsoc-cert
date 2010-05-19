@@ -153,7 +153,11 @@ let mode_variables =
     for i = 1 to 5 do
       s := StrSet.union !s (set_of_list (mode_vars i))
     done; !s;;
-		 
+
+let is_mode_var s =  StrSet.mem s mode_variables;;
+
+let remove_mode_vars gs = List.filter (fun (s, _) -> not (is_mode_var s)) gs;;
+
 (***********************************************************************)
 (** global, local and mode variables of a program *)
 (***********************************************************************)
@@ -206,8 +210,6 @@ module Make (G : Var) = struct
 
   and vars_cases acc nis =
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
-
-  (*REMOVE?*)let is_mode_var (s, _) =  StrSet.mem s mode_variables;;
 
   let vars p =
     let gs, ls = vars_inst (StrMap.empty, StrMap.empty) p.pinst in
