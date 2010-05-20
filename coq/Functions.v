@@ -18,7 +18,7 @@ Require Import Coqlib Util Bitvec Arm.
 (****************************************************************************)
 (** Table A4-1 Bit mask constants (p. 227) *)
 
-(*FIXME using some hexadecimal notation*)
+(*IMPROVE: use some hexadecimal notation instead of integers*)
 Definition UnallocMask : word := repr 116456448.
 Definition UserMask : word := repr 4161733120.
 Definition PrivMask : word := repr 479.
