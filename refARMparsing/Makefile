@@ -23,5 +23,8 @@ keepbincode: keepbincode.ml
 codetype.cmx: codetype.ml
 	ocamlopt -c $< 
 
+codetype.cmo: codetype.ml
+	ocamlc -c $< 
+
 parsebincode: parsebincode.ml codetype.cmx
 	ocamlopt -pp camlp4o codetype.cmx parsebincode.ml -o $@

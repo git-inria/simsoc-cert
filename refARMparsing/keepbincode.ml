@@ -99,11 +99,17 @@ let rec blanks_alpha = parser
       try SH (end_header c s )
       with Not_header -> NH (take_eol c s) 
 
+(* A capital alpha at the very beginning of the line *)
+let beg_alpha = parser
+  | [< ''A'..'Z' as c; s >] -> 
+      try SH (end_header c s )
+      with Not_header -> NH (take_eol c s) 
+
 
 exception PB_to_next_header
 
 let rec to_next_header = parser
-  | [< ho = blanks_alpha; s >] ->
+  | [< ho = beg_alpha; s >] ->
     (match ho with
       | NH _ -> to_next_header s
       | SH h -> h)
