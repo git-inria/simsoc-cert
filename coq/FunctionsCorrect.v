@@ -15,7 +15,7 @@ Set Implicit Arguments.
 
 Require Import Coqlib Util Bitvec Arm List.
 
-(**Check f i = b i ?*)
+(**Check f i = b i *)
 
 Definition f := bits_of_Z 32 9.
 
@@ -33,8 +33,6 @@ Fixpoint remove_last (x: bool)(l: list bool) :=
      nil => nil
     |y :: tl => x :: remove_last y tl
   end.
-
-Eval compute in (remove_last true (true::false::false ::nil)).
 
 Inductive rem_last_rel : list bool -> list bool -> Prop :=
 | rem_last_intro : forall b0 l, rem_last_rel (l ++ b0 :: nil) l.
@@ -55,59 +53,55 @@ Lemma copy_first_correct: forall x l, copy_first_rel (x :: l) (copy_first x l).
 Proof. intros x l. unfold copy_first. exact (copy_first_intro x l).
 Qed.
 
-Theorem len1: forall x l, S(length (remove_last x l)) = length (remove_last x (x ::l)).
+Theorem len_remove_last_1: forall x l, S(length (remove_last x l)) = length (remove_last x (x :: l)).
 Proof. intros x l. simpl. auto.
 Qed.
 
-Theorem len2: forall (x a: bool)(l: list bool),length (remove_last x l) = length (remove_last a l).
+Theorem len_remove_last_2: forall (x a: bool)(l: list bool),length (remove_last x l) = length (remove_last a l).
 Proof. intros x a l. induction l. auto. simpl. auto.
 Qed.
 
-Lemma len: forall x l, length l = length (remove_last x l).
+Lemma len_remove_last: forall x l, length l = length (remove_last x l).
 Proof. intros. induction l.  auto. 
- simpl. rewrite IHl. rewrite len2 with x a l. auto.
+ simpl. rewrite IHl. rewrite len_remove_last_2 with x a l. auto.
 Qed.
 
 Lemma remove_last_eq: forall x l, l = nil -> remove_last x l = nil.
-intros. rewrite H. simpl. auto.
+Proof. intros. rewrite H. simpl. auto.
 Qed.
  
 Lemma len_remove_last_nil : forall x, List.length (remove_last x nil) = 0%nat.
-intros. simpl. auto.
+Proof. intros. simpl. auto.
 Qed.
 
-Lemma len_nil_remove_last: forall x l, l = nil -> List.length (remove_last x l) = 0%nat.
-Proof. intros.
+Lemma len_copy_first_1: forall x l, S(length (copy_first x l)) = length (copy_first x (x :: l)).
+Proof. intros. simpl. auto. 
+Qed.
 
-Lemma copy_first_eq: forall x l, l = nil -> copy_first x l = nil.
- intros. rewrite H. 
+Lemma len_copy_first_2: forall (x a : bool) (l: list bool), length (copy_first x l) = length (copy_first a l).
+Proof. intros. simpl. auto. 
+Qed.
 
-Lemma len_copy_first: forall x, List.length (copy_first x nil) = 0%nat.
-
-Lemma len_nil_copy_first: forall l, l = nil -> len_copy_first l = 0%nat.
-
-Lemma len_lst_copy_first: forall l, len_copy_first l = length l.
-
-Definition ASR (x y: bool)(l: list bool) :=
+Definition ASR' (x y: bool)(l: list bool) :=
   let result := remove_last x (y :: l) in
     match result with
       |nil => nil
       |z :: r => copy_first z r
     end.
 
-Definition ASR1 (l : list bool) :=
+Definition ASR1' (l : list bool) :=
   match l with
     |nil => nil
     |hd :: tl => 
       match tl with
         |nil => (hd::nil)
-        |a :: b => ASR hd a b
+        |a :: b => ASR' hd a b
       end
   end. 
 
 (* Provides the value of the n-th bit of some word *)
 
-Definition bit (n : Z) (w : word) : bool := bits_of_Z word_size w n.
+Definition bit (n : Z) (w : word) : bool := bits_of_Z wordsize w n.
 
 (* Logical_Shift_Left *)
 
@@ -117,11 +111,12 @@ Definition LSL1 (w w' : word) : Prop :=
 
 Fixpoint LSL (w : word) (n : nat) (w' : word) : Prop :=
   match n with
-    | 0 => w' = w
+    | O => w' = w
     | S n' => exists w1, LSL w n' w1 /\ LSL1 w1 w'
   end.
 
 Lemma LSL_correct : forall w n, LSL w n (shl w (repr (Z_of_nat n))).
+Proof. intros w n. induction n. simpl in |-*. inversion w. 
 
 (* Arithmetic_Shift_Right *)
 
@@ -131,7 +126,7 @@ Definition ASR1 (w w' : word) : Prop :=
 
 Fixpoint ASR (w : word) (n : nat) (w' : word) : Prop :=
   match n with
-    | 0 => w' = w
+    | O => w' = w
     | S n' => exists w1, ASR w n' w1 /\ ASR1 w1 w'
   end.
 
