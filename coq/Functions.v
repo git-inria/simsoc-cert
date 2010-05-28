@@ -189,6 +189,15 @@ positions on the left. *)
 Definition Logical_Shift_Right := shru. (*FIXME?*)
 
 (****************************************************************************)
+(** Number_Of_Set_Bits_In (p. 1130)
+
+Performs a population count on (counts the set bits in) the bitfield
+argument. *)
+(****************************************************************************)
+
+Definition Number_Of_Set_Bits_In (w : word) : word := w0. (*FIXME*)
+
+(****************************************************************************)
 (** OverflowFrom (p. 1131)
 
 Returns 1 if the addition or subtraction specified as its parameter
