@@ -1,14 +1,20 @@
 
-- eliminate todo's in expressions
+< if there is only one processor, then we can simplify the
+   pseudo-code: the local variable processor_id is not useful anymore
+   and can be removed (remove calls to ExecutingProcessor and
+   occurrences of processor_id: MarkExclusiveGlobal and the like need
+   only 2 arguments)
 
-- add comments
+< eliminate todo's in expressions
 
-- solve problem occuring with -norm -check
+< add comments
 
-- gencxx: simplify code and remove all TODO's and first-level underscore's
+< solve problem occuring with -norm -check
 
-- ast: merge Index and Flag ?
+< gencxx: simplify code and remove all TODO's and first-level underscore's
 
-- parser: reduce the number of conflicts in the grammar ?
+< ast: merge Index and Flag ?
+
+< parser: reduce the number of conflicts in the grammar ?
 
 DONE:
