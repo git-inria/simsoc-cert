@@ -135,20 +135,26 @@ let addr_mode b m = bprintf b "M%d" m;;
 (** functions and binary operators *)
 (*****************************************************************************)
 
+let depend_on_state = function
+  | "address_of_next_instruction" | "address_of_current_instruction"
+  | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
+  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" -> true
+  | _ -> false;;
+
+let depend_on_config = function
+  | "JE_bit_of_Main_Configuration_register" | "SUB_ARCHITECTURE_DEFINED_value"
+  | "CV_bit_of_Jazelle_OS_Control_register" | "high_vectors_configured"
+  | "Jazelle_Extension_accepts_opcode_at" -> true
+  | _ -> false;;
+
 let string_of_fun_name = function
   | "NOT" -> "not"
   | "not" -> "negb"
+  | s when depend_on_config s -> "C." ^ s
+  | s when depend_on_state s -> s ^ " s0"
   | s -> s;;
 
-let add_state = function
-  | "address_of_next_instruction" | "address_of_current_instruction"
-  | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
-  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit"
-  | "CV_bit_of_Jazelle_OS_Control_register"
-  | "JE_bit_of_Main_Configuration_register" as s -> s ^ " s0"
-  | s -> s;;
-
-let fun_name b s = string b (add_state (string_of_fun_name s));;
+let fun_name b s = string b (string_of_fun_name s);;
 
 let string_of_binop = function
   | "AND" -> "and"
@@ -186,6 +192,7 @@ let is_not_num = function
 (* add parentheses around complex expressions *)
 let rec pexp b = function
   | Var _ as e -> exp b e
+  | Fun (f, []) as e when depend_on_config f -> exp b e
   | e -> par exp b e
 
 (* like pexp but prints numbers as integers (not words) *)
@@ -215,14 +222,9 @@ and exp b = function
   | Num s -> word num b s
   | Var s -> string b s
 
-  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"
-	 |"Jazelle_Extension_accepts_opcode_at"), _) as e ->
+  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
       (*FIXME*) todo_bool b e
-  | Fun (("CPSR_with_specified_E_bit_modification"|"TLB"|"accvalue"
-	 |"ExecutingProcessor"|"SUB_ARCHITECTURE_DEFINED_value"
-	 |"CV_bit_of_Jazelle_OS_Control_register"
-	 |"JE_bit_of_Main_Configuration_register"
-	 |"Number_Of_Set_Bits_In"), _) as e ->
+  | Fun (("TLB"|"accvalue"|"ExecutingProcessor"), _) as e ->
       (*FIXME*) todo_word b e
 
   (* print no parenthesis if there is no argument (functions are
