@@ -3,18 +3,20 @@ BXJ: "AND" should be "and"
 
 CarryFrom8: undefined
 
-CLZ : missing "if ConditionPassed(cond) then" ?
+CLZ: missing "if ConditionPassed(cond) then" ?
 
 LDR: "&" should be "AND"
 
-LDRD : "memory" should be "Memory"
+LDRD: "memory" should be "Memory"
 
 LDRB, LDRBT: missing ZeroExtend
 
-SMLSLD : in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
+SMLSLD: in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
 
-SSAT & USAT : "Artihmetic" should be "Arithmetic"
+SSAT, USAT: "Artihmetic" should be "Arithmetic"
 
 SSAT16, USAT16: "OR" should be "or"
 
 ZeroExtend: undefined
+
+NumberOfSetBitsIn in Glossary: should be Number_Of_Set_Bits_In
