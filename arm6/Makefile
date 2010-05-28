@@ -38,7 +38,7 @@ default: $(TARGETS:%=%.vo)
 	$(GEN) -idec $< -ocoq > $@ 
 
 %.vo: %.v
-	coqc -I ../coq $<
+	coqc -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@ 
@@ -47,7 +47,7 @@ default: $(TARGETS:%=%.vo)
 	$(GEN) -idec $< -ocpp > $@ 
 
 clean:
-	rm -f *~ *.v *.glob *.txt *.dat *.arm *.vo
+	rm -f *~ *.v *.glob *.dat *.arm *.vo $(PROC).txt $(TARGETS:%=%.txt)
 
 # Usage: update $(PROC)inst.txt to the desired contents, then make patch-inst
 patch-inst:
