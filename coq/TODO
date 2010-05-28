@@ -1,5 +1,4 @@
 
-
 < avoid repr as much as possible
 
 < use a shift instead of a division by two_power_nat
