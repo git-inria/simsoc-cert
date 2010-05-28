@@ -5,12 +5,14 @@ SUBDIRS := refARMparsing pseudocode coq testgen
 
 TARGETS := arm6
 
-.PHONY: default clean $(SUBDIRS) $(TARGETS)
+.PHONY: default clean all $(SUBDIRS) $(TARGETS)
 
 .SUFFIXES:
 
 default: $(SUBDIRS)
 	@echo; echo "do make [$(TARGETS)] to generate the simulator"
+
+all: default $(TARGETS)
 
 $(SUBDIRS) $(TARGETS):
 	@$(MAKE) -C $@
