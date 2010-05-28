@@ -9,7 +9,7 @@ DIR := ../refARMparsing
 
 GEN := ../pseudocode/bin/main
 
-.PHONY: default clean patch-inst patch-dec
+.PHONY: default clean cleansympa patch-inst patch-dec
 
 .PRECIOUS: $(PROC:%=%.txt) $(TARGETS:%=%.txt) $(TARGETS:%=%.v) \
 	$(PROC:%=%inst.arm) $(PROC:%=%dec.dat)
@@ -26,10 +26,10 @@ default: $(TARGETS:%=%.vo)
 	cp -a $< $@; patch $@ < $*dec.patch
 
 %inst.arm: %inst.txt $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/preproc_pseudo.sh $(DIR)/indentation
-	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@ || rm -f $@; exit 1
+	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@ || (rm -f $@; exit 1)
 
 %dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
-	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || rm -f $@; exit 1
+	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || (rm -f $@; exit 1)
 
 %inst.v: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocoq > $@
@@ -45,6 +45,9 @@ default: $(TARGETS:%=%.vo)
 
 %dec.cpp: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocpp > $@ 
+
+cleansympa:
+	rm -f *~ *.v *.glob *.dat *.arm *.vo $(TARGETS:%=%.txt)
 
 clean:
 	rm -f *~ *.v *.glob *.dat *.arm *.vo $(PROC).txt $(TARGETS:%=%.txt)
