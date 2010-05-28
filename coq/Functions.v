@@ -34,7 +34,8 @@ bit (the sign bit) in the vacated bit positions on the left. *)
 Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
 
 (****************************************************************************)
-(** bit position of most significant '1' (p. 175) *)
+(** bit position of most significant '1' assuming that the argument is
+not 0 (p. 175) *)
 (****************************************************************************)
 
 Definition bit_position_of_most_significant_1 (w : word) : word :=
@@ -86,9 +87,9 @@ Definition CarryFrom16_add2 (x y : word) : bool :=
   zgt (unsigned x + unsigned y) (two_power_nat 16 - 1).
 
 (****************************************************************************)
-(** CarryFrom8
+(** CarryFrom8 (UADD8, p. 383)
 
-Not defined. Used in UADD8. We guess:
+Not defined in the Glossary. We guess:
 Returns 1 if the addition specified as its parameter caused a carry 
 (true result is bigger than 2^8−1, where the operands are treated as
 unsigned integers), and returns 0 in all other cases. This delivers further
@@ -165,7 +166,7 @@ Definition InAPrivilegedMode (m : proc_mode) : bool :=
   end.
 
 (****************************************************************************)
-(** is_even *)
+(** is even-numbered (LDRD p. 200, STRD p. 349) *)
 (****************************************************************************)
 
 Definition is_even (x : Z) : bool := zeq (Zmod x 2) 0.
@@ -258,6 +259,13 @@ Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 
 Definition SignExtend := sign_ext 32. (*FIXME?*)
 
+(****************************************************************************)
+(** SignExtend_30 (B, BL p. 160)
+
+Not defined in the Glossary. We guess:
+Sign-extends (propagates the sign bit) its 24-bits argument to 32 bits. *)
+(****************************************************************************)
+
 Definition SignExtend_30 := sign_ext 24. (*FIXME?*)
 
 (****************************************************************************)
@@ -306,11 +314,10 @@ Definition UnsignedSat (x : word) (n : nat) : word :=
       else repr (k-1).
 
 (****************************************************************************)
-(** ZeroExtend
+(** ZeroExtend (LDRH p. 205, USAD8 p. 412, USADA8 p. 414, LDRH(1)
+p. 573, LDRH(2) p. 575)
 
-Not defined in the Glossary, occurs in the pseudo-code for LDRH
-(p. 205), USAD8 (p. 412), USADA8 (p. 414), LDRH(1) (p. 573), LDRH(2)
-(p. 575). *)
+Not defined in the Glossary. We guess: FIXME *)
 (****************************************************************************)
 
 Definition ZeroExtend (w : word) : word := w. (*REMOVE?*)
