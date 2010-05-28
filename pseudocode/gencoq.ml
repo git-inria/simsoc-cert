@@ -180,7 +180,8 @@ let binop b s = string b (string_of_binop s);;
 
 (*FIXME: raise an exception instead of use a todo for the instruction
   containing this expression*)
-(*REMOVE when finished! *)
+
+(*REMOVE when finished*)
 let todo_exp s b e = bprintf b "(*todo: %a*) %s" Genpc.exp e s;;
 let todo_word = todo_exp "(repr 0)";;
 let todo_bool = todo_exp "true";;
@@ -222,10 +223,11 @@ and exp b = function
   | Num s -> word num b s
   | Var s -> string b s
 
+  (*FIXME: functions not supported yet*)
   | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
-      (*FIXME*) todo_bool b e
-  | Fun (("TLB"|"accvalue"|"ExecutingProcessor"), _) as e ->
-      (*FIXME*) todo_word b e
+      todo_bool b e
+  | Fun (("TLB"|"ExecutingProcessor"), _) | Coproc_exp _ as e ->
+      todo_word b e
 
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
@@ -256,8 +258,6 @@ and exp b = function
   | Reg (e, None) -> bprintf b "reg_content s0 %a" regnum_exp e
   | Reg (e, Some m) ->
       bprintf b "reg_content_mode s0 %a %a" regnum_exp e mode m
-
-  | Coproc_exp (_, _, _) as e -> todo_word b e
 
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
@@ -299,7 +299,8 @@ and inst_aux k b = function
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons (k+2))) is indent (k+2)
 
-  | If (e, i, None) -> bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i
+  | If (e, i1, None) ->
+      bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i1
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
@@ -381,7 +382,7 @@ let split = function
   | Affect _ as i -> [i], []
   | i -> [], [i];;
 
-let pinst_aux k b i =
+let block k b i =
   let is1, is2 = split i in
     List.iter (endline (inst k) b) is1;
     bprintf b "%alet r := %a true s0 in" indent k (inst_aux k) (Block is2);;
@@ -409,10 +410,10 @@ let pinst b p =
 	  match p.pinst with
 	    | If (e, i, None) ->
 		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
-		  exp e (pinst_aux 4) i
+		  exp e (block 4) i
 		  (list "" mode_var) ls (list "" default) ls
 	    | i ->
-		bprintf b "%a\n    (r%a)" (pinst_aux 2) i
+		bprintf b "%a\n    (r%a)" (block 2) i
 		  (list "" mode_var) ls;;
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
