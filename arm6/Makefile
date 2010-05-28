@@ -26,19 +26,19 @@ default: $(TARGETS:%=%.vo)
 	cp -a $< $@; patch $@ < $*dec.patch
 
 %inst.arm: %inst.txt $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/preproc_pseudo.sh $(DIR)/indentation
-	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@
+	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@ || rm -f $@; exit 1
 
 %dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
-	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@
+	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || rm -f $@; exit 1
 
 %inst.v: %inst.arm $(GEN)
-	$(GEN) -ipc $< -ocoq > $@ 
+	$(GEN) -ipc $< -ocoq > $@
 
 %dec.v: %dec.dat $(GEN)
-	$(GEN) -idec $< -ocoq > $@ 
+	$(GEN) -idec $< -ocoq > $@
 
 %.vo: %.v
-	coqc -R ../coq SimSoCCert $<
+	coqc -q -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@ 
