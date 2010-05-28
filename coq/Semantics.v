@@ -59,6 +59,20 @@ Fixpoint block (fs : list semfun) (b0 : bool) (s0 : state) : result :=
       end
   end.
 
+Fixpoint loop_aux (p k : nat) (f : nat -> semfun) (b0 : bool) (s0 : state)
+  : result :=
+  match k with
+    | 0 => Ok b0 s0
+    | S k' =>
+      match f p b0 s0 with
+        | Ok b1 s1 => loop_aux (S p) k' f b1 s1
+        | r => r
+      end
+  end.
+
+Definition loop (p q : nat) (f : nat -> semfun) (b0 : bool) (s0 : state)
+  : result := loop_aux p (q - p) f b0 s0.
+
 (****************************************************************************)
 (** Semantic functions for the processor *)
 (****************************************************************************)
