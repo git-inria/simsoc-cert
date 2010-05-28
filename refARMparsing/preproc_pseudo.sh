@@ -66,7 +66,7 @@ sed \
     -e 's|address of instruction after the BLX instruction|address_of_next_instruction()|' \
     -e 's|address of next instruction after the SWI instruction|address_of_next_instruction()|' \
     -e 's|address of the instruction after the branch instruction|address_of_next_instruction()|' \
-    -e 's|CPSR with specified E bit modification|CPSR_with_specified_E_bit_modification()|' \
+    -e 's|CPSR = CPSR with specified E bit modification|CPSR[9] = E|' \
     -e 's|(not overridden by debug hardware)|not_overridden_by_debug_hardware()|' \
     -e "s|bit position of most significant'1' in Rm|bit_position_of_most_significant_1(Rm)|" \
     -e 's|Start opcode execution at jpc|Start_opcode_execution_at(jpc)|' \
