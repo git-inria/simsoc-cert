@@ -15,12 +15,26 @@ Set Implicit Arguments.
 
 Require Import Proc Arm SCC Bitvec List Functions.
 
+(*REMARK: we assume that there is only one processor and only one
+coprocessor: the system control coprocessor. *)
+
 Record state : Type := mk_state {
   (* Processor *)
   proc : Proc.state;
   (* System control coprocessor *)
   scc : SCC.state
 }.
+
+(****************************************************************************)
+(* ExecutingProcessor (p. 87)
+
+returns a value distinct amongst all processors in a given system,
+corresponding to the processor executing the operation. *)
+(****************************************************************************)
+
+(*REMARK: since there is only one processor, we can return any value *)
+
+Definition ExecutingProcessor (s : state) := w0.
 
 (****************************************************************************)
 (** Processor *)
