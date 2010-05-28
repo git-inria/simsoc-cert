@@ -320,8 +320,11 @@ and inst_aux k b = function
 	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
       with Not_found -> todo (Genpc.inst 0) b i end
 
+  | For (x, p, q, i) ->
+      bprintf b "loop %s %s (fun %s =>\n%a)" p q x (inst (k+2)) i
+
   (* FIXME: to be finished *)
-  | Proc _ | While _ | For _ | Coproc _ as i -> todo (Genpc.inst 0) b i
+  | Proc _ | While _ | Coproc _ as i -> todo (Genpc.inst 0) b i
   | Assert _ -> invalid_arg "Gencoq.inst_aux"
 
 and affect b v = function
