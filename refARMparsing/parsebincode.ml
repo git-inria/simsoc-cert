@@ -112,6 +112,7 @@ let rec code_contents = parser
 	  | "0" -> B0
 	  | "1" -> B1
 	  | "mmod" -> Onebit (id)
+	  | "sh" -> Onebit (id)
 	  | _ -> if String.length id = 1 then Onebit (id) else Several (id)
 	    
 let rec seq_contents = parser
@@ -188,9 +189,19 @@ let build_map lint lcont =
 
 let light = function Header (_, _, l, s) -> (CT.LH (l, s))
 
+let print_err_header (Header (c, n, l, s)) =
+  Printf.fprintf stderr "Inconsistent %c%i" c n;
+  List.iter (fun n -> Printf.fprintf stderr ".%i" n) l;
+  Printf.fprintf stderr " %s\n"s
+
 let rec maplist = function
   | [] -> []
-  | Instruction (h, li, lc) :: l -> (light h, build_map li lc) :: maplist l
+  | Instruction (h, li, lc) :: l -> 
+      let k =
+	try let b = build_map li lc in fun q -> (light h, b) :: q 
+	with Inconsistent (_, _, _, _) ->
+	  print_err_header h; fun q -> q in
+      k (maplist l)
 
 exception No_exc
 
