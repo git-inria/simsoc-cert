@@ -138,7 +138,7 @@ let addr_mode b m = bprintf b "M%d" m;;
 let depend_on_state = function
   | "address_of_next_instruction" | "address_of_current_instruction"
   | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
-  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" -> true
+  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "ExecutingProcessor" -> true
   | _ -> false;;
 
 let depend_on_config = function
@@ -226,8 +226,7 @@ and exp b = function
   (*FIXME: functions not supported yet*)
   | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
       todo_bool b e
-  | Fun (("TLB"|"ExecutingProcessor"), _) | Coproc_exp _ as e ->
-      todo_word b e
+  | Fun ("TLB", _) | Coproc_exp _ as e -> todo_word b e
 
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
