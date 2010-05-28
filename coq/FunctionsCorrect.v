@@ -115,8 +115,17 @@ Fixpoint LSL (w : word) (n : nat) (w' : word) : Prop :=
     | S n' => exists w1, LSL w n' w1 /\ LSL1 w1 w'
   end.
 
+(*Inductive LSL : word -> nat -> word -> Prop :=
+| LSL0 : forall w, LSL w 0 w
+| LSLS : forall w n' w1 w', LSL w n' w1 -> LSL1 w1 w' -> LSL w (S n') w'.*)
+
 Lemma LSL_correct : forall w n, LSL w n (shl w (repr (Z_of_nat n))).
-Proof. intros w n. induction n. simpl in |-*. inversion w. 
+
+Proof.
+induction n.
+(* case 0 *)
+simpl. unfold shl.
+(* case S *)
 
 (* Arithmetic_Shift_Right *)
 
