@@ -80,7 +80,8 @@ Module Type CONFIG.
   (* A4.1.11 BXJ (p. 172) *)
   Variable JE_bit_of_Main_Configuration_register : Z.
   Variable CV_bit_of_Jazelle_OS_Control_register : Z.
-  Variable SUB_ARCHITECTURE_DEFINED_value : word.
+  Variable jpc_SUB_ARCHITECTURE_DEFINED_value : word.
+  Variable invalidhandler_SUB_ARCHITECTURE_DEFINED_value : word.
   Variable Jazelle_Extension_accepts_opcode_at : word -> bool.
   Variable IMPLEMENTATION_DEFINED_CONDITION : bool.
 
