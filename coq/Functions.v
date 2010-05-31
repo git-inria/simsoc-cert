@@ -31,18 +31,17 @@ Performs a right shift, repeatedly inserting the original left-most
 bit (the sign bit) in the vacated bit positions on the left. *)
 (****************************************************************************)
 
-Definition Arithmetic_Shift_Right := shr. (*FIXME?*)
+Definition Arithmetic_Shift_Right := shr.
 
 (****************************************************************************)
 (** bit position of most significant '1' assuming that the argument is
 not 0 (p. 175) *)
 (****************************************************************************)
 
-Definition bit_position_of_most_significant_1 (w : word) : word :=
-  w0. (*FIXME*)
+Definition bit_position_of_most_significant_1 (w : word) : word := w0. (*FIXME*)
 
 (****************************************************************************)
-(** BorrowFrom (p. 1131)
+(** BorrowFrom (p. 1123)
 
 Returns 1 if the subtraction specified as its parameter caused a borrow 
 (the true result is less than 0, where the operands are treated as unsigned
@@ -53,6 +52,7 @@ The subtraction is not repeated. *)
 
 Definition BorrowFrom_sub2 (x y : word) : bool :=
   zlt (unsigned x - unsigned y) 0.
+
 
 Definition BorrowFrom_sub3 (x y z : word) : bool :=
   zlt (unsigned x - unsigned y - unsigned z) 0.
@@ -178,7 +178,7 @@ Performs a left shift, inserting zeros in the vacated bit positions
 on the right. *)
 (****************************************************************************)
 
-Definition Logical_Shift_Left := shl. (*FIXME?*)
+Definition Logical_Shift_Left := shl. 
 
 (****************************************************************************)
 (** Logical_Shift_Right (p. 1129)
@@ -187,7 +187,7 @@ Performs a right shift, inserting zeros in the vacated bit
 positions on the left. *)
 (****************************************************************************)
 
-Definition Logical_Shift_Right := shru. (*FIXME?*)
+Definition Logical_Shift_Right := shru. 
 
 (****************************************************************************)
 (** Number_Of_Set_Bits_In (p. 1130)
@@ -234,7 +234,7 @@ Performs a right rotate, where each bit that is shifted off the
 right is inserted on the left. *)
 (****************************************************************************)
 
-Definition Rotate_Right := ror. (*FIXME?*)
+Definition Rotate_Right := ror.
 
 (****************************************************************************)
 (** SignedDoesSat(x,n) (p. 1134)
@@ -257,7 +257,7 @@ Definition SignedDoesSat (x : word) (n : nat) : bool :=
 Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend := sign_ext 32. (*FIXME?*)
+Definition SignExtend := sign_ext 32. 
 
 (****************************************************************************)
 (** SignExtend_30 (B, BL p. 160)
@@ -266,7 +266,7 @@ Not defined in the Glossary. We guess:
 Sign-extends (propagates the sign bit) its 24-bits argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend_30 := sign_ext 24. (*FIXME?*)
+Definition SignExtend_30 := sign_ext 24.
 
 (****************************************************************************)
 (** SignedSat(x,n) (p. 1134)
@@ -314,10 +314,11 @@ Definition UnsignedSat (x : word) (n : nat) : word :=
       else repr (k-1).
 
 (****************************************************************************)
-(** ZeroExtend (LDRH p. 205, USAD8 p. 412, USADA8 p. 414, LDRH(1)
+(** ZeroExtend(arg) (LDRH p. 205, USAD8 p. 412, USADA8 p. 414, LDRH(1)
 p. 573, LDRH(2) p. 575)
 
-Not defined in the Glossary. We guess: FIXME *)
+Not defined in the Glossary. We guess: 
+Zero-extends (propagates the zero bit) its argument to 32 bits. FIXME *)
 (****************************************************************************)
 
-Definition ZeroExtend (w : word) : word := w. (*REMOVE?*)
+Definition ZeroExtend := zero_ext 32. (*REMOVE?*)
