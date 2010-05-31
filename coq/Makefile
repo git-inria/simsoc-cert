@@ -29,6 +29,7 @@ config Makefile.coq:
 clean:
 	rm -f `find . -name \*~ -o -name \*.d -o -name \*.glob -o -name \*.vo` graph.ps graph.dep
 	$(MAKECOQ) clean
+	$(MAKE) config
 
 clean-doc:
 	rm -f doc/$(NAME).*.html doc/index.html doc/main.html
