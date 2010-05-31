@@ -8,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Basic types and functions for describing the ARM state
+Basic types and functions for describing the ARM state.
 *)
 
 Set Implicit Arguments.
@@ -42,7 +42,8 @@ Definition word_of_proc_mode (m : proc_mode) : word := repr (Zpos
    end)).
 
 (****************************************************************************)
-(** A2.3 Registers (p. 42) & A2.4 General-purpose registers (p. 44) *)
+(** A2.3 Registers (p. 42)
+A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
 Inductive register : Type :=
@@ -124,7 +125,7 @@ Definition Qbit := 27%nat.
 
 (* The GE bits (p. 51) *)
 
-Definition GEbits := bits 19 16.
+Definition GEbits := bits_val 19 16.
 
 (* The E bit (p. 51) *)
 
@@ -186,6 +187,7 @@ Definition exception_mode (e : exception) : exn_mode :=
     | FIQ => fiq
   end.
 
+(*IMPROVE: by using some Coq hexadecimal notation*)
 Definition exception_vector_address (e : exception) (use_high_vectors : bool)
   : Z :=
   match use_high_vectors with

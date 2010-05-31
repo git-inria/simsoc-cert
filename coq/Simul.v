@@ -15,6 +15,10 @@ Set Implicit Arguments.
 
 Require Import Bitvec Arm Semantics State String.
 
+(****************************************************************************)
+(** decoding result type *)
+(****************************************************************************)
+
 Section decoder_result.
 
  Variable inst : Type.
@@ -26,12 +30,20 @@ Section decoder_result.
 
 End decoder_result.
 
+(****************************************************************************)
+(** types and functions necessary for building a simulator *)
+(****************************************************************************)
+
 Module Type INST.
   Variable inst : Type.
   Variable step : state -> inst -> result.
   Variable decode : word -> decoder_result inst.
   Variable handle_exception : state -> state.
 End INST.
+
+(****************************************************************************)
+(** functor building a simulator *)
+(****************************************************************************)
 
 Definition incr_PC (s : state) : state :=
   set_reg s PC (address_of_next_instruction s).

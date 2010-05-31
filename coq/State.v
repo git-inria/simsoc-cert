@@ -91,7 +91,7 @@ not set, or the system does not implement a virtual to physical
 translation, it returns the value in Rm. *)
 (****************************************************************************)
 
-(** IMPROVE: handle virtual memory*)
+(*IMPROVE: handle virtual memory*)
 Definition TLB (w : word) : word := w.
 
 (****************************************************************************)
@@ -106,8 +106,8 @@ behavior (see Chapter B4 Virtual Memory System Architecture and
 Chapter B5 Protected Memory System Architecture). *)
 (****************************************************************************)
 
-(** REMARK: returns always false since there is only one processor *)
-Definition Shared (w : word) : bool := false. (** FIXME*)
+(*REMARK: returns always false since there is only one processor *)
+Definition Shared (w : word) : bool := false. (*FIXME*)
 
 (****************************************************************************)
 (** ExecutingProcessor (p. 87)
@@ -116,7 +116,7 @@ returns a value distinct amongst all processors in a given system,
 corresponding to the processor executing the operation. *)
 (****************************************************************************)
 
-(** REMARK: since there is only one processor, we can return any value *)
+(*REMARK: since there is only one processor, we can return any value *)
 Definition ExecutingProcessor (s : state) := w0.
 
 (****************************************************************************)
@@ -133,7 +133,7 @@ address by the same processor to be cleared. *)
 (****************************************************************************)
 
 Definition MarkExclusiveGlobal (s : state) (addr : word) (pid : nat)
-  (size : nat) : state := s. (** FIXME*)
+  (size : nat) : state := s. (*FIXME*)
 
 (****************************************************************************)
 (** MarkExclusiveLocal (p. 87)
@@ -150,7 +150,7 @@ MarkExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
 (****************************************************************************)
 
 Definition MarkExclusiveLobal (s : state) (addr : word) (pid : nat)
-  (size : nat) : state := s. (** FIXME*)
+  (size : nat) : state := s. (*FIXME*)
 
 (****************************************************************************)
 (** IsExclusiveGlobal (p. 87)
@@ -167,7 +167,7 @@ return FALSE. *)
 (****************************************************************************)
 
 Definition IsExclusiveGlobal (s : state) (addr : word) (pid : nat)
-  (size : nat) : bool := false. (** FIXME*)
+  (size : nat) : bool := false. (*FIXME*)
 
 (****************************************************************************)
 (** IsExclusiveLocal (p. 88)
@@ -185,7 +185,7 @@ IsExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
 (****************************************************************************)
 
 Definition IsExclusiveLobal (s : state) (addr : word) (pid : nat)
-  (size : nat) : bool := false. (** FIXME*)
+  (size : nat) : bool := false. (*FIXME*)
 
 (****************************************************************************)
 (** ClearExclusiveByAddress (p. 88)
@@ -203,7 +203,7 @@ access. *)
 (****************************************************************************)
 
 Definition ClearExclusiveByAddress (s : state) (addr: word) (pid : nat)
-  (size : nat) : state := s. (** FIXME*)
+  (size : nat) : state := s. (*FIXME*)
 
 (****************************************************************************)
 (** ClearExclusiveLocal (p. 88)
@@ -215,4 +215,4 @@ also clears the global record of processor <processor_id> that an
 address has had a request for an exclusive access. *)
 (****************************************************************************)
 
-Definition ClearExclusiveLocal (s : state) (pid : nat) : state := s. (** FIXME*)
+Definition ClearExclusiveLocal (s : state) (pid : nat) : state := s. (*FIXME*)
