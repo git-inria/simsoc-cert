@@ -1,4 +1,6 @@
 
+BLX: "SignExtend" should be "SignExtend_30"
+
 BXJ: "AND" should be "and"
 
 CarryFrom8: undefined
@@ -11,6 +13,8 @@ LDRD: "memory" should be "Memory"
 
 LDRB, LDRBT: missing ZeroExtend
 
+NumberOfSetBitsIn in Glossary: should be Number_Of_Set_Bits_In
+
 SMLSLD: in "Notes, Use or R15", "Rd" should be "RdHi, RdLo"
 
 SSAT, USAT: "Artihmetic" should be "Arithmetic"
@@ -18,5 +22,3 @@ SSAT, USAT: "Artihmetic" should be "Arithmetic"
 SSAT16, USAT16: "OR" should be "or"
 
 ZeroExtend: undefined
-
-NumberOfSetBitsIn in Glossary: should be Number_Of_Set_Bits_In
