@@ -1,4 +1,6 @@
 
+< add comment about ZeroExtend
+
 < implement exception handlers
 
 < for processors and co-processors, use a function on nat
