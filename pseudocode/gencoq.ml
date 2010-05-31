@@ -138,7 +138,8 @@ let addr_mode b m = bprintf b "M%d" m;;
 let depend_on_state = function
   | "address_of_next_instruction" | "address_of_current_instruction"
   | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
-  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "ExecutingProcessor" -> true
+  | "ExecutingProcessor" | "IsExclusiveGlobal" | "IsExclusiveLocal"
+  | "TLB" | "Shared" -> true
   | _ -> false;;
 
 let depend_on_config = function
@@ -184,7 +185,6 @@ let binop b s = string b (string_of_binop s);;
 (*REMOVE when finished*)
 let todo_exp s b e = bprintf b "(*todo: %a*) %s" Genpc.exp e s;;
 let todo_word = todo_exp "(repr 0)";;
-let todo_bool = todo_exp "true";;
 
 let is_not_num = function
   | Num _ -> false
@@ -224,10 +224,11 @@ and exp b = function
   | Var s -> string b s
 
   (*FIXME: functions not supported yet*)
-  | Fun (("Shared"|"IsExclusiveGlobal"|"IsExclusiveLocal"), _) as e ->
-      todo_bool b e
-  | Fun ("TLB", _) | Coproc_exp _ as e -> todo_word b e
+  | Coproc_exp _ as e -> todo_word b e
 
+  (* system coprocessor register bits *)
+  | Fun ("CP15_reg1_EEbit"|"CP15_reg1_Ubit" as f, _) ->
+      bprintf b "(CP15_reg1 s0)[%s]" (String.sub f 10 (String.length f - 10))
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
   | Fun (f, []) -> fun_name b f
@@ -290,6 +291,12 @@ and inst_cons k b = function
   | i -> indent b k; postfix " ::" (inst_aux k) b i
 
 and inst_aux k b = function
+  (*FIXME: to be done*)
+  | Proc ("Start_opcode_execution_at", _) | While _ | Coproc _ as i ->
+      todo (Genpc.inst 0) b i
+
+  | Assert _ -> invalid_arg "Gencoq.inst_aux"
+
   | Unpredictable -> string b "unpredictable \"\""
       (*FIXME: replace empty string by program name*)
 
@@ -322,9 +329,11 @@ and inst_aux k b = function
   | For (x, p, q, i) ->
       bprintf b "loop %s %s (fun %s =>\n%a)" p q x (inst (k+2)) i
 
-  (* FIXME: to be finished *)
-  | Proc _ | While _ | Coproc _ as i -> todo (Genpc.inst 0) b i
-  | Assert _ -> invalid_arg "Gencoq.inst_aux"
+  (* print no parenthesis if there is no argument (functions are
+     curryfied in Coq) *)
+  | Proc (f, []) -> fun_name b f
+  (* default printing of function calls *)
+  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
 
 and affect b v = function
   (* an affectation of a variable is converted into a Coq "let" *)
@@ -494,7 +503,7 @@ let lib b ps =
       constr bcons_inst bcons_mode p gs;
       call bcall_inst bcall_mode p gs
   in
-    bprintf b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
+    bprintf b "Require Import Bitvec List Util Functions Config Arm SCC State Semantics ZArith.\n\nModule Inst (Import C : CONFIG).\n\n";
     List.iter prog ps;
     for k = 1 to 5 do
       bprintf b "Inductive mode%d : Type :=%a.\n\n"
