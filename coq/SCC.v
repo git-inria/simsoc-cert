@@ -38,21 +38,6 @@ Record state : Type := mk_state {
 
 Definition CP15_reg1 (s : state) : word := reg s (mk_regnum 1).
 
-(* The following bits in the System Control CP reg1 are used to
-   control the MMU (p. 740)*)
-
-(* Mbit is the enable/disablebit for the MMU *)
-Definition CP15_reg_Mbit (s : state) : bool :=
-  zne 0 (reg s (mk_regnum 1)) [Mbit].
-
-(* Abit is the enable/disable bit for alignment fault checking *)
-Definition CP15_reg_Abit (s : state) : bool :=
-  zne 0 (reg s (mk_regnum 1)) [Abit].
-
-(* Wbit is the enable/disable bit for the write buffer *)
-Definition CP15_reg_Wbit (s : state) : bool :=
-  zne 0 (reg s (mk_regnum 1)) [Wbit].
-
 Definition read_bits (n : size) (w : word) :=
   match n with
     | Word => w
