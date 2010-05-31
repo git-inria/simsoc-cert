@@ -95,3 +95,18 @@ Definition set_reg_mode (m : proc_mode) (k : regnum) (v : word)
 
 Definition write (a : address) (n : size) (w : word) (b : bool) (s : state) :
   result := Ok b (write s a n w).
+
+Definition MarkExclusiveGlobal (addr : word) (pid : nat) (size : nat)
+  (b : bool) (s : state) : result :=
+  Ok b (MarkExclusiveGlobal s addr pid size).
+
+Definition MarkExclusiveLocal (addr : word) (pid : nat) (size : nat)
+  (b : bool) (s : state) : result :=
+  Ok b (MarkExclusiveLocal s addr pid size).
+
+Definition ClearExclusiveByAddress (addr: word) (pid : nat) (size : nat)
+  (b : bool) (s : state) : result :=
+  Ok b (ClearExclusiveByAddress s addr pid size).
+
+Definition ClearExclusiveLocal (pid : nat) (b : bool) (s : state) : result :=
+  Ok b (ClearExclusiveLocal s pid).
