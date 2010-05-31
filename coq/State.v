@@ -92,7 +92,7 @@ translation, it returns the value in Rm. *)
 (****************************************************************************)
 
 (*IMPROVE: handle virtual memory*)
-Definition TLB (w : word) : word := w.
+Definition TLB (s : state) (w : word) : word := w.
 
 (****************************************************************************)
 (** Shared (p. 87)
@@ -107,7 +107,7 @@ Chapter B5 Protected Memory System Architecture). *)
 (****************************************************************************)
 
 (*REMARK: returns always false since there is only one processor *)
-Definition Shared (w : word) : bool := false. (*FIXME*)
+Definition Shared (s : state) (w : word) : bool := false. (*FIXME*)
 
 (****************************************************************************)
 (** ExecutingProcessor (p. 87)
@@ -117,7 +117,7 @@ corresponding to the processor executing the operation. *)
 (****************************************************************************)
 
 (*REMARK: since there is only one processor, we can return any value *)
-Definition ExecutingProcessor (s : state) := w0.
+Definition ExecutingProcessor (s : state) : nat := 0%nat.
 
 (****************************************************************************)
 (** MarkExclusiveGlobal (p. 87)
@@ -149,7 +149,7 @@ this also performs a
 MarkExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
 (****************************************************************************)
 
-Definition MarkExclusiveLobal (s : state) (addr : word) (pid : nat)
+Definition MarkExclusiveLocal (s : state) (addr : word) (pid : nat)
   (size : nat) : state := s. (*FIXME*)
 
 (****************************************************************************)
