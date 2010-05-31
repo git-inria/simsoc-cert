@@ -184,7 +184,7 @@ DEFINED whether this result is ANDed with the result of an
 IsExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
 (****************************************************************************)
 
-Definition IsExclusiveLobal (s : state) (addr : word) (pid : nat)
+Definition IsExclusiveLocal (s : state) (addr : word) (pid : nat)
   (size : nat) : bool := false. (*FIXME*)
 
 (****************************************************************************)
