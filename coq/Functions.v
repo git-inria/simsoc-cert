@@ -256,16 +256,17 @@ Definition SignedDoesSat (x : word) (n : nat) : bool :=
 Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend (w : word) : word := sign_ext 32 w. 
+Definition SignExtend8 (w : word) : word := sign_ext 8 w. 
+Definition SignExtend16 (w : word) : word := sign_ext 16 w. 
 
 (****************************************************************************)
 (** SignExtend_30 (B, BL p. 160)
 
 Not defined in the Glossary. We guess:
-Sign-extends (propagates the sign bit) its 24-bits argument to 32 bits. *)
+Sign-extends (propagates the sign bit) its 24-bits argument to 30 bits. *)
 (****************************************************************************)
 
-Definition SignExtend_30 (w : word) : word := sign_ext 32 w.
+Definition SignExtend_30 (w : word) : word := sign_ext 24 w.
 
 (****************************************************************************)
 (** SignedSat(x,n) (p. 1134)
