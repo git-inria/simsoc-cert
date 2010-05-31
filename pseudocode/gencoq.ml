@@ -226,9 +226,15 @@ and exp b = function
   (*FIXME: functions not supported yet*)
   | Coproc_exp _ as e -> todo_word b e
 
+  (* optimization: since, in SimSoC-Cert, everything is represented by
+     words, zero-extension is always done (implicitly) and does not
+     need to be applied explicitly *)
+  | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" exp e
+
   (* system coprocessor register bits *)
   | Fun ("CP15_reg1_EEbit"|"CP15_reg1_Ubit" as f, _) ->
       bprintf b "(CP15_reg1 s0)[%s]" (String.sub f 10 (String.length f - 10))
+
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
   | Fun (f, []) -> fun_name b f
