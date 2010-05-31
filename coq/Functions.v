@@ -53,7 +53,6 @@ The subtraction is not repeated. *)
 Definition BorrowFrom_sub2 (x y : word) : bool :=
   zlt (unsigned x - unsigned y) 0.
 
-
 Definition BorrowFrom_sub3 (x y z : word) : bool :=
   zlt (unsigned x - unsigned y - unsigned z) 0.
 
@@ -139,7 +138,7 @@ Definition ConditionPassed (w : word) (op : opcode) : bool :=
   end.
 
 (****************************************************************************)
-(** CurrentModeHasSPSR (p. 1125)
+(** CurrentModeHasSPSR() (p. 1125)
 
 Returns TRUE if the current processor mode is not User mode or
 System mode, and returns FALSE if the current mode is User mode or
@@ -257,7 +256,7 @@ Definition SignedDoesSat (x : word) (n : nat) : bool :=
 Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend := sign_ext 32. 
+Definition SignExtend (w : word) : word := sign_ext 32 w. 
 
 (****************************************************************************)
 (** SignExtend_30 (B, BL p. 160)
@@ -266,7 +265,7 @@ Not defined in the Glossary. We guess:
 Sign-extends (propagates the sign bit) its 24-bits argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend_30 := sign_ext 24.
+Definition SignExtend_30 (w : word) : word := sign_ext 32 w.
 
 (****************************************************************************)
 (** SignedSat(x,n) (p. 1134)
@@ -318,7 +317,7 @@ Definition UnsignedSat (x : word) (n : nat) : word :=
 p. 573, LDRH(2) p. 575)
 
 Not defined in the Glossary. We guess: 
-Zero-extends (propagates the zero bit) its argument to 32 bits. FIXME *)
+Zero-extends (propagates the zero bit) its argument to 32 bits. *)
 (****************************************************************************)
 
-Definition ZeroExtend := zero_ext 32. (*REMOVE?*)
+Definition ZeroExtend (w : word) : word := zero_ext 32 w.
