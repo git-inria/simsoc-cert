@@ -38,7 +38,16 @@ Definition Arithmetic_Shift_Right := shr.
 not 0 (p. 175) *)
 (****************************************************************************)
 
-Definition bit_position_of_most_significant_1 (w : word) : word := w0. (*FIXME*)
+Fixpoint bit_position_of_most_significant_1_list (b: list bool): nat :=
+  match b with
+    |nil => 0%nat
+    |hd :: tl => match hd with
+                 |true => length tl
+                 |false => bit_position_of_most_significant_1_list tl
+                 end
+  end.
+
+Definition bit_position_of_most_significant_1 (w : word) := bit_position_of_most_significant_1_list (bools_of_word w). (*FIXME*)
 
 (****************************************************************************)
 (** BorrowFrom (p. 1123)
@@ -195,7 +204,19 @@ Performs a population count on (counts the set bits in) the bitfield
 argument. *)
 (****************************************************************************)
 
-Definition Number_Of_Set_Bits_In (w : word) : word := w0. (*FIXME*)
+Fixpoint count b: Z :=
+  match b with
+    |true => 1
+    |false => 0
+  end.
+
+Fixpoint Number_Of_Set_Bits_In_list (l: list bool): Z :=
+  match l with
+    |nil => 0
+    |hd :: tl => (count hd) + (Number_Of_Set_Bits_In_list tl)
+  end.
+
+Definition Number_Of_Set_Bits_In (w : word) := Number_Of_Set_Bits_In_list (bools_of_word w). (*FIXME*)
 
 (****************************************************************************)
 (** OverflowFrom (p. 1131)
