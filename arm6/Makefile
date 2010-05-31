@@ -46,11 +46,8 @@ default: $(TARGETS:%=%.vo)
 %dec.cpp: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocpp > $@ 
 
-cleansympa:
-	rm -f *~ *.v *.glob *.dat *.arm *.vo $(TARGETS:%=%.txt)
-
 clean:
-	rm -f *~ *.v *.glob *.dat *.arm *.vo $(PROC).txt $(TARGETS:%=%.txt)
+	rm -f *~ *.v *.glob *.dat *.arm *.vo $(TARGETS:%=%.txt)
 
 # Usage: update $(PROC)inst.txt to the desired contents, then make patch-inst
 patch-inst:
