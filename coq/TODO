@@ -1,5 +1,7 @@
 
-< add comment about ZeroExtend
+< fix problems with ZeroExtend and SignExtend
+
+< define some notation for hexadecimal numbers
 
 < implement exception handlers
 
@@ -15,6 +17,8 @@
 
 ------------------------------------------------------------------------------
 Done:
+
+< add comment about ZeroExtend
 
 < replace (m : processor_mode) arguments by a function call
 > processor_mode added as an extra field in the state
