@@ -1,4 +1,10 @@
 
+< implement exception handlers
+
+< for processors and co-processors, use a function on nat
+
+< replace CP15_reg1_*bit by R(CP[15],1)[*] ?
+
 < avoid repr as much as possible
 
 < use a shift instead of a division by two_power_nat
