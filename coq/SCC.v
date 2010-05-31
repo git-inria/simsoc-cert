@@ -16,11 +16,12 @@ Set Implicit Arguments.
 Require Import Bitvec Util.
 
 (****************************************************************************)
-(** B3.4.1 Control register *)
+(** B3.4.1 Control register (p. 694) *)
 (****************************************************************************)
 
-Definition EEbit := 25%nat.
+Definition Mbit := 0%nat.
 Definition Ubit := 22%nat.
+Definition EEbit := 25%nat.
 
 (****************************************************************************)
 (** State *)
@@ -33,11 +34,7 @@ Record state : Type := mk_state {
   mem : address -> word
 }.
 
-Definition CP15_reg1_EEbit (s : state) : bool :=
-  zne 0 (reg s (mk_regnum 1)) [EEbit].
-
-Definition CP15_reg1_Ubit (s : state) : bool :=
-  zne 0 (reg s (mk_regnum 1)) [Ubit].
+Definition CP15_reg1 (s : state) : word := reg s (mk_regnum 1).
 
 Definition read_bits (n : size) (w : word) :=
   match n with
