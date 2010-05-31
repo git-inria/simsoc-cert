@@ -96,8 +96,8 @@ End clist.
 
 Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
   match p with
-    | xI p' => bools_of_positive p' (false :: acc)
-    | xO p' => bools_of_positive p' (true :: acc)
+    | xI p' => bools_of_positive p' (true :: acc)
+    | xO p' => bools_of_positive p' (false :: acc)
     | xH => true :: acc
   end.
 
@@ -106,3 +106,4 @@ Definition bools_of_word (w : int) : list bool :=
     | Zpos p => bools_of_positive p nil
     | _ => clist false wordsize
   end.
+
