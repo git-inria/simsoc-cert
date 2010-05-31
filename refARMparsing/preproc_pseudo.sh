@@ -56,7 +56,7 @@ sed \
     -e 's|architecture version 5 or above|v5_and_above()|' \
     -e 's|ARMv5 or above|v5_and_above()|' \
     -e 's|IMPLEMENTATION DEFINED CONDITION|IMPLEMENTATION_DEFINED_CONDITION()|g' \
-    -e 's|SUB ARCHITECTURE DEFINED value|SUB_ARCHITECTURE_DEFINED_value()|g' \
+    -e 's|\(.*\) = SUB ARCHITECTURE DEFINED value|\1 = \1_SUB_ARCHITECTURE_DEFINED_value()|g' \
     -e 's|high vectors configured|high_vectors_configured()|' \
     -e 's|(JE bit of Main Configuration register)|JE_bit_of_Main_Configuration_register()|' \
     -e 's|(CV bit of Jazelle OS Control register)|CV_bit_of_Jazelle_OS_Control_register()|' \
