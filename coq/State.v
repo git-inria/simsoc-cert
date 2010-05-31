@@ -8,15 +8,13 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Global state.
-*)
+Global state. We assume that there is only one processor and only one
+coprocessor: the system control coprocessor (CP15). Hence, there is no
+shared memory. We do not handle virtual memory either. *)
 
 Set Implicit Arguments.
 
 Require Import Proc Arm SCC Bitvec List Functions.
-
-(*REMARK: we assume that there is only one processor and only one
-coprocessor: the system control coprocessor. *)
 
 Record state : Type := mk_state {
   (* Processor *)
@@ -26,18 +24,7 @@ Record state : Type := mk_state {
 }.
 
 (****************************************************************************)
-(* ExecutingProcessor (p. 87)
-
-returns a value distinct amongst all processors in a given system,
-corresponding to the processor executing the operation. *)
-(****************************************************************************)
-
-(*REMARK: since there is only one processor, we can return any value *)
-
-Definition ExecutingProcessor (s : state) := w0.
-
-(****************************************************************************)
-(** Processor *)
+(** Processor access/update functions *)
 (****************************************************************************)
 
 Definition cpsr (s : state) : word := cpsr (proc s).
@@ -83,14 +70,149 @@ Definition ConditionPassed (s : state) (op : opcode) : bool :=
   ConditionPassed (cpsr s) op.
 
 (****************************************************************************)
-(** System control coprocessor and Memory *)
+(** System control coprocessor and Memory access/update functions *)
 (****************************************************************************)
 
-Definition CP15_reg1_EEbit (s : state) : bool := CP15_reg1_EEbit (scc s).
-Definition CP15_reg1_Ubit (s : state) : bool := CP15_reg1_Ubit (scc s).
+Definition CP15_reg1 (s : state) : word := CP15_reg1 (scc s).
 
 Definition read (s : state) (a : address) (n : size) : word :=
   read (scc s) a n.
 
 Definition write (s : state) (a : address) (n : size) (w : word) : state :=
   mk_state (proc s) (write (scc s) a n w).
+
+(****************************************************************************)
+(** TLB (p. 87)
+
+If CP15 register 1 bit[0] (Mbit) is set, TLB(<Rm>) returns the
+physical address corresponding to the virtual address in Rm for the
+executing processor's current process ID and TLB entries. If Mbit is
+not set, or the system does not implement a virtual to physical
+translation, it returns the value in Rm. *)
+(****************************************************************************)
+
+(** IMPROVE: handle virtual memory*)
+Definition TLB (w : word) : word := w.
+
+(****************************************************************************)
+(** Shared (p. 87)
+
+If CP15 register 1 bit[0] (Mbit) is set, Shared(<Rm>) returns the
+value of the shared memory region attribute corresponding to the
+virtual address in Rm for the executing processor's current process ID
+and TLB entries for the VMSA, or the PMSA region descriptors. If Mbit
+is not set, the value returned is a function of the memory system
+behavior (see Chapter B4 Virtual Memory System Architecture and
+Chapter B5 Protected Memory System Architecture). *)
+(****************************************************************************)
+
+(** REMARK: returns always false since there is only one processor *)
+Definition Shared (w : word) : bool := false. (** FIXME*)
+
+(****************************************************************************)
+(** ExecutingProcessor (p. 87)
+
+returns a value distinct amongst all processors in a given system,
+corresponding to the processor executing the operation. *)
+(****************************************************************************)
+
+(** REMARK: since there is only one processor, we can return any value *)
+Definition ExecutingProcessor (s : state) := w0.
+
+(****************************************************************************)
+(** MarkExclusiveGlobal (p. 87)
+
+MarkExclusiveGlobal(<physical_address>,<processor_id>,<size>) records
+the fact that processor <processor_id> has requested exclusive access
+covering at least <size> bytes from address <physical_address>. The
+size of region marked as exclusive is IMPLEMENTATION DEFINED, up to a
+limit of 128 bytes, and no smaller than <size>, and aligned in the
+address space to the size of the region. It is UNPREDICTABLE whether
+this causes any previous request for exclusive access to any other
+address by the same processor to be cleared. *)
+(****************************************************************************)
+
+Definition MarkExclusiveGlobal (s : state) (addr : word) (pid : nat)
+  (size : nat) : state := s. (** FIXME*)
+
+(****************************************************************************)
+(** MarkExclusiveLocal (p. 87)
+
+MarkExclusiveLocal(<physical_address>,<processor_id>,<size>) records
+in a local record the fact that processor <processor_id> has requested
+exclusive access to an address covering at least <size> bytes from
+address <physical_address>. The size of the region marked as exclusive
+is IMPLEMENTATION DEFINED, and can at its largest cover the whole of
+memory, but is no smaller than <size>, and is aligned in the address
+space to the size of the region. It is IMPLEMENTATION DEFINED whether
+this also performs a
+MarkExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
+(****************************************************************************)
+
+Definition MarkExclusiveLobal (s : state) (addr : word) (pid : nat)
+  (size : nat) : state := s. (** FIXME*)
+
+(****************************************************************************)
+(** IsExclusiveGlobal (p. 87)
+
+IsExclusiveGlobal(<physical_address>,<processor_id>,<size>) returns
+TRUE if the processor <processor_id> has marked in a global record an
+address range as exclusive access requested which covers at least the
+<size> bytes from address <physical_address>. It is IMPLEMENTATION
+DEFINED whether it returns TRUE or FALSE if a global record has marked
+a different address as exclusive access requested. If no address is
+marked in a global record as exclusive access,
+IsExclusiveGlobal(<physical_address>,<processor_id>,<size>) will
+return FALSE. *)
+(****************************************************************************)
+
+Definition IsExclusiveGlobal (s : state) (addr : word) (pid : nat)
+  (size : nat) : bool := false. (** FIXME*)
+
+(****************************************************************************)
+(** IsExclusiveLocal (p. 88)
+
+IsExclusiveLocal(<physical_address>,<processor_id>,<size>) returns
+TRUE if the processor <processor_id> has marked an address range as
+exclusive access requested which covers at least the <size> bytes from
+address <physical_address>. It is IMPLEMENTATION DEFINED whether this
+function returns TRUE or FALSE if the address marked as exclusive
+access requested does not cover all of the <size> bytes from address
+<physical_address>. If no address is marked as exclusive access
+requested, then this function returns FALSE. It is IMPLEMENTATION
+DEFINED whether this result is ANDed with the result of an
+IsExclusiveGlobal(<physical_address>,<processor_id>,<size>). *)
+(****************************************************************************)
+
+Definition IsExclusiveLobal (s : state) (addr : word) (pid : nat)
+  (size : nat) : bool := false. (** FIXME*)
+
+(****************************************************************************)
+(** ClearExclusiveByAddress (p. 88)
+
+ClearExclusiveByAddress(<physical_address>,<processor_id>,<size>)
+clears the global records of all processors, other than
+<processor_id>, that an address region including any of the bytes
+between <physical_address> and (<physical_address>+<size>-1) has had a
+request for an exclusive access.  It is IMPLEMENTATION DEFINED whether
+the equivalent global record of the processor <processor_id> is also
+cleared if any of the bytes between <physical_address> and
+(<physical_address>+<size>-1) have had a request for an exclusive
+access, or if any other address has had a request for an exclusive
+access. *)
+(****************************************************************************)
+
+Definition ClearExclusiveByAddress (s : state) (addr: word) (pid : nat)
+  (size : nat) : state := s. (** FIXME*)
+
+(****************************************************************************)
+(** ClearExclusiveLocal (p. 88)
+
+ClearExclusiveLocal(<processor_id>) clears the local record of
+processor <processor_id> that an address has had a request for an
+exclusive access. It is IMPLEMENTATION DEFINED whether this operation
+also clears the global record of processor <processor_id> that an
+address has had a request for an exclusive access. *)
+(****************************************************************************)
+
+Definition ClearExclusiveLocal (s : state) (pid : nat) : state := s. (** FIXME*)
