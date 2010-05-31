@@ -25,6 +25,10 @@ let string_of_op = function
   | "-" -> "sub"
   | s -> s;;
 
+let size = function
+  | Range (_, Bits (("15"|"31"), _)) -> "16"
+  | _ -> "8";;
+
 let rec exp = function
 
   (* we only consider ARMv5 and above *)
@@ -33,8 +37,11 @@ let rec exp = function
   (* normalize ranges *)
   | Range (e1, Index e2) -> range (exp e1) (Index (exp e2))
   | Range (e, r) -> range (exp e) r
+
+  (* rename calls to SignExtend depending on the size of the argument *)
+  | Fun ("SignExtend" as f, (e :: _ as es)) -> Fun (f ^ size e, es)
  
-  (* rename some function calls depending on the argument,
+  (* rename calls to *From depending on the argument,
      and change the argument into a list of arguments,
      e.g. CarrayFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
   | Fun (("OverflowFrom"|"BorrowFrom"|"CarryFrom"|"CarryFrom8"|"CarryFrom16"
