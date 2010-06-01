@@ -285,7 +285,7 @@ let dec_inst b (lh, ls) =
 	      comment lh (bits dec dbits) (shouldbe_test (lh, ls))
 	| Encoding -> ()
 	| Addr_mode _ -> 
-	    bprintf b "    %a\n    | %t =>\n      %s %t\n"
+	    bprintf b "    %a\n    | %t =>\n      DecInst (%s %t)\n"
 	      comment lh (bits dec dbits)
 	      (id (lh, ls)) (params string (lh, ls))
 ;;
@@ -293,31 +293,17 @@ let dec_inst b (lh, ls) =
 let is_inst l =
   if ((add_mode (name_lst l)) = Inst) then true else false;;
 
-let is_addr_mode1 l =
-  if ((add_mode (name_lst l)) = Addr_mode 1) then true else false;;
-let is_addr_mode2 l =
-  if ((add_mode (name_lst l)) = Addr_mode 2) then true else false;;
-let is_addr_mode3 l =
-  if ((add_mode (name_lst l)) = Addr_mode 3) then true else false;;
-let is_addr_mode4 l =
-  if ((add_mode (name_lst l)) = Addr_mode 4) then true else false;;
-let is_addr_mode5 l =
-  if ((add_mode (name_lst l)) = Addr_mode 5) then true else false;;
-
+let is_addr_mode i l =
+  if ((add_mode (name_lst l)) = Addr_mode i) then true else false;;
 
 let decode b ps =
-  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
-  bprintf b "\n\nDefinition decode_addr_mode1 (w : word) : mode1 :=\n match bools_of_word w with\n";
-  (list "" dec_inst) b (List.filter (is_addr_mode1) ps);
-  bprintf b "end.\n\nDefinition decode_addr_mode2 (w : word) : mode2 :=\n matc bools_of_wordh w with\n";
-  (list "" dec_inst) b (List.filter (is_addr_mode2) ps);
-  bprintf b "end.\n\nDefinition decode_addr_mode3 (w : word) : mode3 :=\n match bools_of_word w with\n";
-  (list "" dec_inst) b (List.filter (is_addr_mode3) ps);
-  bprintf b "end.\n\nDefinition decode_addr_mode4 (w : word) : mode4 :=\n match bools_of_word w with\n";
-  (list "" dec_inst) b (List.filter (is_addr_mode4) ps);
-  bprintf b "end.\n\nDefinition decode_addr_mode5 (w : word) : mode5 :=\n match bools_of_word w with\n";
-  (list "" dec_inst) b (List.filter (is_addr_mode5) ps);
-  bprintf b "end.\n\nDefinition decode (w : word) : decode_result :=\n  match bools_of_word w with\n";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  for i = 1 to 5 do
+    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result :=\n match bools_of_word w with\n" i;
+  (list "" dec_inst) b (List.filter (is_addr_mode i) ps);
+  string b "    | _ => DecUndefined\n  end."
+  done;
+  bprintf b "\n\nDefinition decode (w : word) : decoder_result :=\n  match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_inst) ps);
-  bprintf b "    | _ -> DecUndefined\n  end."
+  bprintf b "    | _ => DecUndefined\n  end."
 ;;
