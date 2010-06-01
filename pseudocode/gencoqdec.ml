@@ -275,7 +275,7 @@ let mode_tst (lh, ls) =
   let lst = Array.to_list (param_m ls) in
   let md = mode_var (name_lst (lh, ls)) lst in
   match md with
-    | (1|2|3|4|5 as i) -> bprintf b "match (decode_addr_mode%d w) with\n        | i%d =>\n          %t\n        | _ => DecError \"not a addressing mode %d\"\n      end" i i (shouldbe_test (lh, ls)) i
+    | (1|2|3|4|5 as i) -> bprintf b "match (decode_addr_mode%d w) with\n        | DecInst i%d =>\n            %t\n        | _ => i%d\n      end" i i (shouldbe_test (lh, ls)) i
     | _ -> bprintf b "%t" (shouldbe_test (lh, ls))
   in aux;;
 
@@ -308,11 +308,11 @@ let is_addr_mode i l =
 let decode b ps =
   string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
   for i = 1 to 5 do
-    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result :=\n match bools_of_word w with\n" i;
+    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
   (list "" dec_inst) b (List.filter (is_addr_mode i) ps);
-  string b "    | _ => DecUndefined\n  end."
+  bprintf b "    | _ => DecError \"not a addressing mode %d\"\n  end." i
   done;
-  bprintf b "\n\nDefinition decode (w : word) : decoder_result :=\n  match bools_of_word w with\n";
+  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_inst) ps);
   bprintf b "    | _ => DecUndefined\n  end."
 ;;
