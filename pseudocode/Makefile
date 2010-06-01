@@ -40,28 +40,25 @@ CMXFILES = $(FILES:%=%.cmx)
 
 BINFILES := main
 
-BINS := $(BINFILES:%=bin/%)
+BINS := $(BINFILES:%=%)
 BYTS := $(BINS:%=%.byt)
 OPTS := $(BINS:%=%.opt)
 
 .PRECIOUS: $(BINFILES:%=%.cmo) $(BINFILES:%=%.cmx) $(PARSERS:%=%.ml)
 
-default: bin $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
+default: $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
 
-bin:
-	mkdir -p bin
+%: %.opt
+	ln -f -s $*.opt $*
 
-bin/%: bin/%.opt
-	cd bin; ln -f -s $*.opt $*
+%: %.byt
+	ln -f -s $*.byt $*
 
-bin/%: bin/%.byt
-	cd bin; ln -f -s $*.byt $*
-
-bin/%.byt: %.cmo
+%.byt: %.cmo
 	$(SHOW) OCAMLC -o $@
 	$(HIDE) $(OCAMLC) -o $@ $(CMAFILES) $(CMOFILES) $<
 
-bin/%.opt: %.cmx
+%.opt: %.cmx
 	$(SHOW) OCAMLOPT -o $@
 	$(HIDE) $(OCAMLOPT) -o $@ $(CMXAFILES) $(CMXFILES) $<
 	$(SHOW) STRIP $@
