@@ -319,5 +319,5 @@ let decode b ps =
   (list "" dec_inst) b (List.filter (is_addr_mode5) ps);
   bprintf b "end.\n\nDefinition decode (w : word) : decode_result :=\n  match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_inst) ps);
-  bprintf b "    | _ -> Unpredictable\n  end."
+  bprintf b "    | _ -> DecUndefined\n  end."
 ;;
