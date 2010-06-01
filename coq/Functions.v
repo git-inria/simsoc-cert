@@ -38,16 +38,15 @@ Definition Arithmetic_Shift_Right := shr.
 not 0 (p. 175) *)
 (****************************************************************************)
 
-Fixpoint bit_position_of_most_significant_1_list (b: list bool): nat :=
-  match b with
-    |nil => 0%nat
-    |hd :: tl => match hd with
-                 |true => length tl
-                 |false => bit_position_of_most_significant_1_list tl
-                 end
+Fixpoint bit_position_of_most_significant_1_list (bs : list bool) : nat :=
+  match bs with
+    | nil => 0%nat
+    | true :: tl => length tl
+    | false :: tl => bit_position_of_most_significant_1_list tl
   end.
 
-Definition bit_position_of_most_significant_1 (w : word) := bit_position_of_most_significant_1_list (bools_of_word w). (*FIXME*)
+Definition bit_position_of_most_significant_1 (w : word) :=
+  bit_position_of_most_significant_1_list (bools_of_word w).
 
 (****************************************************************************)
 (** BorrowFrom (p. 1123)
@@ -204,19 +203,15 @@ Performs a population count on (counts the set bits in) the bitfield
 argument. *)
 (****************************************************************************)
 
-Fixpoint count b: Z :=
-  match b with
-    |true => 1
-    |false => 0
+Fixpoint Number_Of_Set_Bits_In_list (bs : list bool) : Z :=
+  match bs with
+    | nil => 0
+    | true :: tl => 1 + Number_Of_Set_Bits_In_list tl
+    | false :: tl => Number_Of_Set_Bits_In_list tl
   end.
 
-Fixpoint Number_Of_Set_Bits_In_list (l: list bool): Z :=
-  match l with
-    |nil => 0
-    |hd :: tl => (count hd) + (Number_Of_Set_Bits_In_list tl)
-  end.
-
-Definition Number_Of_Set_Bits_In (w : word) := Number_Of_Set_Bits_In_list (bools_of_word w). (*FIXME*)
+Definition Number_Of_Set_Bits_In (w : word) : word :=
+  repr (Number_Of_Set_Bits_In_list (bools_of_word w)).
 
 (****************************************************************************)
 (** OverflowFrom (p. 1131)
