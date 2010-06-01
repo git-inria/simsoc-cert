@@ -38,15 +38,15 @@ Definition Arithmetic_Shift_Right := shr.
 not 0 (p. 175) *)
 (****************************************************************************)
 
-Fixpoint bit_position_of_most_significant_1_list (bs : list bool) : nat :=
+Fixpoint bit_position_of_most_significant_1_list (bs : list bool) : Z :=
   match bs with
-    | nil => 0%nat
-    | true :: tl => length tl
+    | nil => 0
+    | true :: tl => Z_of_nat (length tl)
     | false :: tl => bit_position_of_most_significant_1_list tl
   end.
 
-Definition bit_position_of_most_significant_1 (w : word) :=
-  bit_position_of_most_significant_1_list (bools_of_word w).
+Definition bit_position_of_most_significant_1 (w : word) : word :=
+  repr (bit_position_of_most_significant_1_list (bools_of_word w)).
 
 (****************************************************************************)
 (** BorrowFrom (p. 1123)
