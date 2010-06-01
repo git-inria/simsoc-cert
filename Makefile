@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-SUBDIRS := refARMparsing pseudocode coq testgen
+SUBDIRS := tools refARMparsing pseudocode coq testgen
 
 TARGETS := arm6
 
