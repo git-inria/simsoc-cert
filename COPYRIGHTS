@@ -1,9 +1,9 @@
 SimSoC-Cert, a Coq library for certifying Systems-on-Chips
 ----------------------------------------------------------
 
-The copyrights on the parts due to Frederic Blanqui and Xiaomu Shi
-belong to the "Institut National de Recherche en Informatique et
-Automatique" (http://www.inria.fr/).
+The copyrights on the parts due to Frederic Blanqui, Claude
+Helmstetter and Xiaomu Shi belong to the "Institut National de
+Recherche en Informatique et Automatique" (http://www.inria.fr/).
 
 The copyrights on the parts due to Jean-Francois Monin belong to the
 University Joseph Fourier (http://www.ujf-grenoble.fr/) and the CNRS
