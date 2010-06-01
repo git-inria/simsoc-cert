@@ -175,6 +175,9 @@ let string_of_binop = function
 
 let binop b s = string b (string_of_binop s);;
 
+let is_cp15_reg1 s =
+  String.length s > 10 && String.sub s 0 10 = "CP15_reg1_";;
+
 (*****************************************************************************)
 (** expressions *)
 (*****************************************************************************)
@@ -232,7 +235,7 @@ and exp b = function
   | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" exp e
 
   (* system coprocessor register bits *)
-  | Fun ("CP15_reg1_EEbit"|"CP15_reg1_Ubit" as f, _) ->
+  | Fun (f, _) when is_cp15_reg1 f ->
       bprintf b "(CP15_reg1 s0)[%s]" (String.sub f 10 (String.length f - 10))
 
   (* print no parenthesis if there is no argument (functions are
