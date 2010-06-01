@@ -127,7 +127,7 @@ let mode_var m lst =
 
 let add_mode_var n lst =
     if (mode_var n lst != 0) then
-      let v = Printf.sprintf "(decode_addr_mode%d w)" (mode_var n lst) in
+      let v = Printf.sprintf "i%d" (mode_var n lst) in
 	List.append [(v, 0, 0)] lst
     else lst;;
 
@@ -136,7 +136,7 @@ let not_var1 i =
     | 1 -> ["S"; "cond"; "d"; "n"; "opcode"]
     | 2 -> ["B"; "L"; "cond"; "d"; "H"; "S"]
     | 3 -> ["B"; "L"; "cond"; "d"; "H"; "S"]
-    | 4 -> ["L"; "S"; "CRd"; "N"; "option"]
+    | 4 -> ["L"; "S"; "CRd"; "N"; "option"; "i4"]
     | 5 -> ["L"; "U"; "S" ; "CRd"; "N"; "option"]
     | _ -> [];;
 
@@ -256,18 +256,27 @@ let shouldbe_test (lh, ls) =
   let sbz = List.filter ((<>) "") (List.map sbz_tst ps) in
   let aux b =
     if ((List.mem (Shouldbe true) lst) && (not (List.mem (Shouldbe false) lst))) then
-      bprintf b "if (%a) then\n      DecInst (%s %t)\n      else Unpredictable"
+      bprintf b "if (%a) then\n      DecInst (%s %t)\n      else DecUnpredictable"
 	(list "&&" string) sbo (id (lh,ls)) (params string (lh, ls))
     else 
       if (List.mem (Shouldbe false) lst && (not (List.mem (Shouldbe true) lst))) then
-	bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else Unpredictable"
+	bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else DecUnpredictable"
 	  (list "&&" string) sbz (id (lh,ls)) (params string (lh, ls))
       else 
 	if (List.mem (Shouldbe false) lst && (List.mem (Shouldbe true) lst)) then
-	  bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else Unpredictable"
+	  bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
 	 (list "&&" string) sbo (list "&" string) sbz (id (lh,ls)) (params string (lh, ls))
 	else
 	  bprintf b "DecInst (%s %t)" (id (lh,ls)) (params string (lh, ls))
+  in aux;;
+
+let mode_tst (lh, ls) =
+  let aux b =
+  let lst = Array.to_list (param_m ls) in
+  let md = mode_var (name_lst (lh, ls)) lst in
+  match md with
+    | (1|2|3|4|5 as i) -> bprintf b "match (decode_addr_mode%d w) with\n        | i%d =>\n          %t\n        | _ => DecError \"not a addressing mode %d\"\n      end" i i (shouldbe_test (lh, ls)) i
+    | _ -> bprintf b "%t" (shouldbe_test (lh, ls))
   in aux;;
 
 let bits f x =
@@ -282,7 +291,7 @@ let dec_inst b (lh, ls) =
       match md with
 	| Inst -> 
 	    bprintf b "    %a\n    | %t =>\n      %t\n"
-	      comment lh (bits dec dbits) (shouldbe_test (lh, ls))
+	      comment lh (bits dec dbits) (mode_tst (lh, ls))
 	| Encoding -> ()
 	| Addr_mode _ -> 
 	    bprintf b "    %a\n    | %t =>\n      DecInst (%s %t)\n"
