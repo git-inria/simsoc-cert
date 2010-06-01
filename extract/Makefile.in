@@ -1,0 +1,73 @@
+# Rainbow, a termination proof certification tool
+# See the COPYRIGHTS and LICENSE files.
+#
+# - Frederic Blanqui, 2009-09-22
+
+.SUFFIXES:
+
+.PHONY: default tags clean depend
+
+ifeq ($(VERBOSE),1)
+  SHOW := @true
+  HIDE :=
+else
+  SHOW := @echo
+  HIDE := @
+endif
+
+INCLUDES :=
+
+WARNINGS :=
+
+OCAMLC = ocamlc -g $(INCLUDES) $(WARNINGS)
+OCAMLLEX := ocamllex
+OCAMLYACC := ocamlyacc
+OCAMLDEP := ocamldep $(INCLUDES)
+OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
+
+# the order is important !
+FILES := __FILES__
+CMOFILES := $(FILES:%=%.cmo)
+CMXFILES := $(FILES:%=%.cmx)
+
+NAME := __NAME__
+
+default: $(NAME).cma
+
+$(NAME).cma: $(CMOFILES)
+	$(SHOW) OCAMLC -a -o $@
+	$(HIDE) $(OCAMLC) -a -o $@ $+
+
+$(NAME).cmxa: $(CMXFILES)
+	$(SHOW) OCAMLOPT -a -o $@
+	$(HIDE) $(OCAMLOPT) -a -o $@ $+
+
+%.cmi: %.mli
+	$(SHOW) OCAMLC -c $*.mli
+	$(HIDE) $(OCAMLC) -c $*.mli
+
+%.cmo: %.ml
+	$(SHOW) OCAMLC -c $*.ml
+	$(HIDE) $(OCAMLC) -c $*.ml
+
+%.cmx: %.ml
+	$(SHOW) OCAMLOPT -c $*.ml
+	$(HIDE) $(OCAMLOPT) -c $*.ml
+
+tags:
+	otags -sr '.mli' -r .
+
+clean:
+	rm -f *~ *.cm* *.o *.a *.glob *.vo *.html
+
+clean-all: clean
+	rm -f *.ml *.mli
+
+depend:
+	$(SHOW) OCAMLDEP
+	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(FILES:%=%.mli) > .depend
+
+.depend:
+	touch .depend
+
+include .depend
