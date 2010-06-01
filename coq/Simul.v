@@ -39,7 +39,7 @@ Module Type INST.
   Variable inst : Type.
   Variable step : state -> inst -> result.
   Variable decode : word -> decoder_result inst.
-  Variable handle_exception : state -> state.
+  Variable handle_exception : state -> result.
 End INST.
 
 (****************************************************************************)
@@ -56,6 +56,12 @@ Inductive simul_result : Type :=
 
 Module Make (Import I : INST).
 
+  Definition handle_exception (s : state) : simul_result :=
+    match handle_exception s with
+      | Ok _ s' => SimOk s'
+      | Ko m | Todo m => SimKo s m
+    end.
+
   Definition next (s : state) : simul_result :=
     match inst_set (cpsr s) with
       | None => SimKo s "invalid instruction set"
@@ -66,13 +72,11 @@ Module Make (Import I : INST).
           match decode w with
             | DecError m => SimKo s m
             | DecUnpredictable => SimKo s "decoding returns unpredictable"
-            | DecUndefined => SimOk (handle_exception (add_exn s UndIns))
+            | DecUndefined => handle_exception (add_exn s UndIns)
             | DecInst i =>
               match step s i with
-                | Ok b s' =>
-                  SimOk (handle_exception (if b then incr_PC s' else s'))
-                | Ko m => SimKo s m
-                | Todo m => SimKo s m
+                | Ok b s' => handle_exception (if b then incr_PC s' else s')
+                | Ko m | Todo m => SimKo s m
               end
           end
     end.
