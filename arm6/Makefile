@@ -7,7 +7,7 @@ TARGETS := $(PROC:%=%inst) $(PROC:%=%dec)
 
 DIR := ../refARMparsing
 
-GEN := ../pseudocode/bin/main
+GEN := ../pseudocode/main
 
 .PHONY: default clean patch-inst patch-dec
 
