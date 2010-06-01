@@ -14,7 +14,7 @@ A2.6.2    Reset
               PC    = 0x00000000
           end
 
-A2.6.3   Undefined /*Instruction exception*/
+A2.6.3   UndIns /*Undefined Instruction exception*/
 	 begin
          R14_und     =
                      address of next instruction after the Undefined instruction
@@ -34,7 +34,7 @@ A2.6.3   Undefined /*Instruction exception*/
               PC   = 0x00000004
          end
 
-A2.6.4    Software /*Interrupt exception*/
+A2.6.4    SoftInt /*Software Interrupt exception*/
           begin
           R14_svc     =
                       address of next instruction after the SWI instruction
@@ -54,7 +54,7 @@ A2.6.4    Software /*Interrupt exception*/
               PC    = 0x00000008
           end
 
-A2.6.5    Prefetch /*Abort (instruction fetch memory abort)*/
+A2.6.5    PFAbort /*Prefetch Abort (instruction fetch memory abort)*/
           begin
           R14_abt     = address of the aborted instruction + 4
           SPSR_abt    = CPSR
@@ -70,7 +70,7 @@ A2.6.5    Prefetch /*Abort (instruction fetch memory abort)*/
               PC      = 0x0000000C
           end
 
-A2.6.6   Data /*Abort (data access memory abort)*/
+A2.6.6   DataAbort /*Data Abort (data access memory abort)*/
          begin
          R14_abt     = address of the aborted instruction + 8
          SPSR_abt    = CPSR
