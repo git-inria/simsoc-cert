@@ -32,7 +32,7 @@ CMXFILES := $(FILES:%=%.cmx)
 
 NAME := __NAME__
 
-default: $(NAME).cma
+default: $(NAME).cma $(NAME).cmxa
 
 $(NAME).cma: $(CMOFILES)
 	$(SHOW) OCAMLC -a -o $@
