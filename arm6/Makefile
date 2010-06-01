@@ -9,10 +9,11 @@ DIR := ../refARMparsing
 
 GEN := ../pseudocode/bin/main
 
-.PHONY: default clean cleansympa patch-inst patch-dec
+.PHONY: default clean patch-inst patch-dec
 
-.PRECIOUS: $(PROC:%=%.txt) $(TARGETS:%=%.txt) $(TARGETS:%=%.v) \
-	$(PROC:%=%inst.arm) $(PROC:%=%dec.dat)
+FILES := $(TARGETS:%=%.txt) $(PROC:%=%inst.arm) $(PROC:%=%dec.dat) $(TARGETS:%=%.v)
+
+.PRECIOUS: $(PROC:%=%.txt) $(FILES)
 
 default: $(TARGETS:%=%.vo)
 
@@ -47,7 +48,7 @@ default: $(TARGETS:%=%.vo)
 	$(GEN) -idec $< -ocpp > $@ 
 
 clean:
-	rm -f *~ *.v *.glob *.dat *.arm *.vo $(TARGETS:%=%.txt)
+	rm -f *~ *.glob *.vo $(FILES)
 
 # Usage: update $(PROC)inst.txt to the desired contents, then make patch-inst
 patch-inst:
