@@ -3,7 +3,9 @@
 
 PROC := arm6
 
-TARGETS := $(PROC:%=%inst) $(PROC:%=%dec)
+FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
+	$(PROC)exn.txt $(PROC)exn.arm $(PROC)exn.v \
+	$(PROC)dec.txt $(PROC)dec.dat $(PROC)dec.v
 
 DIR := ../refARMparsing
 
@@ -11,11 +13,9 @@ GEN := ../pseudocode/main
 
 .PHONY: default clean patch-inst patch-dec
 
-FILES := $(TARGETS:%=%.txt) $(PROC:%=%inst.arm) $(PROC:%=%dec.dat) $(TARGETS:%=%.v)
+.PRECIOUS: $(PROC).txt $(FILES)
 
-.PRECIOUS: $(PROC:%=%.txt) $(FILES)
-
-default: $(TARGETS:%=%.vo)
+default: $(PROC)inst.vo $(PROC)exn.vo $(PROC)dec.vo
 
 %.txt: %.pdf
 	pdftotext -layout $< $@
@@ -23,25 +23,37 @@ default: $(TARGETS:%=%.vo)
 %inst.txt: %.txt %inst.patch
 	cp -a $< $@; patch $@ < $*inst.patch
 
+%exn.txt: %.txt %exn.patch
+	cp -a $< $@; patch $@ < $*exn.patch
+
 %dec.txt: %.txt %dec.patch
 	cp -a $< $@; patch $@ < $*dec.patch
 
 %inst.arm: %inst.txt $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/preproc_pseudo.sh $(DIR)/indentation
 	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@ || (rm -f $@; exit 1)
 
+%exn.arm: %exn.txt $(DIR)/preproc_pseudo.sh
+	cat $< | $(DIR)/preproc_pseudo.sh > $@ || (rm -f $@; exit 1)
+
 %dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
 	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || (rm -f $@; exit 1)
 
 %inst.v: %inst.arm $(GEN)
-	$(GEN) -ipc $< -ocoq > $@
+	$(GEN) -ipc $< -ocoq > $@ || (rm -f $@; exit 1)
+
+%exn.v: %exn.arm $(GEN)
+	$(GEN) -ipc $< -ocoq > $@ || (rm -f $@; exit 1)
 
 %dec.v: %dec.dat $(GEN)
-	$(GEN) -idec $< -ocoq > $@
+	$(GEN) -idec $< -ocoq > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
+	$(GEN) -ipc $< -ocpp > $@ 
+
+%exn.cpp: %exn.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@ 
 
 %dec.cpp: %dec.dat $(GEN)
@@ -52,8 +64,12 @@ clean:
 
 # Usage: update $(PROC)inst.txt to the desired contents, then make patch-inst
 patch-inst:
-	-diff -u $(PROC).txt $(PROC)inst.txt > $(PROC)inst.patch
+	diff -u $(PROC).txt $(PROC)inst.txt > $(PROC)inst.patch || exit 0
 
 # Usage: update $(PROC)dec.txt to the desired contents, then make patch-dec
 patch-dec:
-	-diff -u $(PROC).txt $(PROC)dec.txt > $(PROC)dec.patch
+	diff -u $(PROC).txt $(PROC)dec.txt > $(PROC)dec.patch || exit 0
+
+# Usage: update $(PROC)exn.txt to the desired contents, then make patch-exn
+#patch-exn:
+#	diff -u $(PROC).txt $(PROC)exn.txt > $(PROC)exn.patch || exit 0
