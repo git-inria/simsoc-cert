@@ -31,7 +31,7 @@ order_deps=../tools/order_deps/order_deps
 
 rm -f *.ml *.mli
 echo extract OCaml files ...
-coqc -q -R .. SimSoCCert Extraction.v || exit $?
+coqc -q -R ../coq SimSoCCert Extraction.v || exit $?
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
 files=`ls *.ml | sed -e 's|.ml||g'`
