@@ -105,7 +105,7 @@ let dec b pc =
 	  | true -> bprintf b "SBO%d" i 
 	  | false -> bprintf b "SBZ%d" i
 	end
-    | (Param1 c, _) -> bprintf b "%s"  (Char.escaped c)
+    | (Param1 c, _) -> bprintf b "%s_"  (Char.escaped c)
     | (Param1s s, _) -> bprintf b "%s" s
     | (Range _, _) -> string b "_"
     | (Nothing, _) -> ()
@@ -179,7 +179,7 @@ let remove_vars n lst =
 let inst_param ls =
   match ls with
     | (("s" | "m" | "n" | "d" | "dHi" | "dLo"), i, _) ->
-	Printf.sprintf "(reg_num_from bit %d w)" i
+	Printf.sprintf "(regnum_from_bit %d w)" i
     | ("shifter_operand", _, _) ->
 	"(decode_shifter_operand w I x)"
     | ("cond", _, _) ->
@@ -306,17 +306,18 @@ let is_addr_mode5 l =
 
 
 let decode b ps =
-  bprintf b "Definition decode_addr_mode1 (w : word) : mode1 :=\n match w with\n";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  bprintf b "\n\nDefinition decode_addr_mode1 (w : word) : mode1 :=\n match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_addr_mode1) ps);
-  bprintf b "\n\nDefinition decode_addr_mode2 (w : word) : mode2 :=\n match w with\n";
+  bprintf b "end.\n\nDefinition decode_addr_mode2 (w : word) : mode2 :=\n matc bools_of_wordh w with\n";
   (list "" dec_inst) b (List.filter (is_addr_mode2) ps);
-  bprintf b "\n\nDefinition decode_addr_mode3 (w : word) : mode3 :=\n match w with\n";
+  bprintf b "end.\n\nDefinition decode_addr_mode3 (w : word) : mode3 :=\n match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_addr_mode3) ps);
-  bprintf b "\n\nDefinition decode_addr_mode4 (w : word) : mode4 :=\n match w with\n";
+  bprintf b "end.\n\nDefinition decode_addr_mode4 (w : word) : mode4 :=\n match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_addr_mode4) ps);
-  bprintf b "\n\nDefinition decode_addr_mode5 (w : word) : mode5 :=\n match w with\n";
+  bprintf b "end.\n\nDefinition decode_addr_mode5 (w : word) : mode5 :=\n match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_addr_mode5) ps);
-  bprintf b "\n\nDefinition decode (w : word) : decode_result :=\n  match bools_of_word w with\n";
+  bprintf b "end.\n\nDefinition decode (w : word) : decode_result :=\n  match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_inst) ps);
   bprintf b "    | _ -> Unpredictable\n  end."
 ;;
