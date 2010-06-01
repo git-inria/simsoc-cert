@@ -26,7 +26,8 @@ Section decoder_result.
  Inductive decoder_result : Type :=
  | DecUndefined : decoder_result
  | DecUnpredictable : decoder_result
- | DecInst : inst -> decoder_result.
+ | DecInst : inst -> decoder_result
+ | DecError : string -> decoder_result.
 
 End decoder_result.
 
@@ -63,9 +64,9 @@ Module Make (Import I : INST).
       | Some ARM =>
         let w := read s (address_of_word (reg_content s PC)) Word in
           match decode w with
+            | DecError m => SimKo s m
             | DecUnpredictable => SimKo s "decoding returns unpredictable"
-            | DecUndefined =>
-              SimOk (handle_exception (add_exn s UndIns))
+            | DecUndefined => SimOk (handle_exception (add_exn s UndIns))
             | DecInst i =>
               match step s i with
                 | Ok b s' =>
