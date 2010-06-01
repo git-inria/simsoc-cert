@@ -57,10 +57,8 @@ Module Type CONFIG.
   Variable store_PC_offset : store_PC_offset_value.
 
   (* A2.6 Exceptions (p. 54) *)
-  Variable VE_irq_normal_address : Z.
-  Variable VE_fiq_normal_address : Z.
-  Variable VE_irq_high_vector_address : Z.
-  Variable VE_fiq_high_vector_address : Z.
+  Variable VE_IRQ_address : word.
+  Variable VE_FIQ_address : word.
 
   (* A2.6.5 Abort models (p. 61) *)
   Variable abort_model : abort_model.
@@ -78,8 +76,8 @@ Module Type CONFIG.
   Variable not_overridden_by_debug_hardware : bool.
 
   (* A4.1.11 BXJ (p. 172) *)
-  Variable JE_bit_of_Main_Configuration_register : Z.
-  Variable CV_bit_of_Jazelle_OS_Control_register : Z.
+  Variable JE_bit_of_Main_Configuration_register : bool.
+  Variable CV_bit_of_Jazelle_OS_Control_register : bool.
   Variable jpc_SUB_ARCHITECTURE_DEFINED_value : word.
   Variable invalidhandler_SUB_ARCHITECTURE_DEFINED_value : word.
   Variable Jazelle_Extension_accepts_opcode_at : word -> bool.
