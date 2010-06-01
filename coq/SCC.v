@@ -23,6 +23,7 @@ Definition Mbit := 0%nat.
 Definition Abit := 1%nat.
 Definition Wbit := 3%nat.
 Definition Ubit := 22%nat.
+Definition VEbit := 24%nat.
 Definition EEbit := 25%nat.
 
 (****************************************************************************)
