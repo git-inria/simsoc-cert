@@ -142,7 +142,7 @@ let not_var1 i =
 
 let not_var2 i =
   match i with
-    | 1 -> ["shifter_operand"; "I"]
+    | 1 -> ["shifter_operand"; "I_"]
     | 2 -> ["P"; "U"; "W"; "addr_mode"]
     | 3 -> ["I"; "P"; "W"; "U"; "Rn"; "addr_mode"]
     | 4 -> ["P"; "U"; "W"; "Rn"]
@@ -203,7 +203,7 @@ let param_m ar =
 	| (Nothing | Value _ | Shouldbe _) -> 
 	    res.(i) <- ("", 0, 0)
 	| Param1 c -> 
-	    res.(i) <-  ((Char.escaped c), i, 1)
+	    res.(i) <-  ((Printf.sprintf "%s_" (Char.escaped c)), i, 1)
 	| Param1s s -> 
 	    res.(i) <- (s, i, 1)
     done;
@@ -299,6 +299,8 @@ let dec_inst b (lh, ls) =
 	      (id (lh, ls)) (params string (lh, ls))
 ;;
 
+
+
 let is_inst l =
   if ((add_mode (name_lst l)) = Inst) then true else false;;
 
@@ -306,11 +308,11 @@ let is_addr_mode i l =
   if ((add_mode (name_lst l)) = Addr_mode i) then true else false;;
 
 let decode b ps =
-  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul String.\n\nOpen Scope string_scope.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
   for i = 1 to 5 do
     bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
   (list "" dec_inst) b (List.filter (is_addr_mode i) ps);
-  bprintf b "    | _ => DecError \"not a addressing mode %d\"\n  end." i
+  bprintf b "    | _ => DecError mode%d \"not a addressing mode %d\"\n  end." i i
   done;
   bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match bools_of_word w with\n";
   (list "" dec_inst) b (List.filter (is_inst) ps);
