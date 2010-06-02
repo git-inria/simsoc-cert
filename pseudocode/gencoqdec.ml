@@ -133,20 +133,20 @@ let add_mode_var n lst =
 
 let not_var1 i =
   match i with
-    | 1 -> ["S"; "cond"; "d"; "n"; "opcode"]
-    | 2 -> ["B"; "L"; "cond"; "d"; "H"; "S"]
-    | 3 -> ["B"; "L"; "cond"; "d"; "H"; "S"]
-    | 4 -> ["L"; "S"; "CRd"; "N"; "option"; "i4"]
-    | 5 -> ["L"; "U"; "S" ; "CRd"; "N"; "option"]
+    | 1 -> ["S_"; "cond"; "d"; "n"; "opcode"]
+    | 2 -> ["B_"; "L_"; "cond"; "d"; "H"; "S_"]
+    | 3 -> ["B_"; "L_"; "cond"; "d"; "H"; "S_"]
+    | 4 -> ["L_"; "S_"; "CRd"; "N_"; "option"; "i4"]
+    | 5 -> ["L_"; "U_"; "S_" ; "CRd"; "N_"; "option"]
     | _ -> [];;
 
 let not_var2 i =
   match i with
     | 1 -> ["shifter_operand"; "I_"]
-    | 2 -> ["P"; "U"; "W"; "addr_mode"]
-    | 3 -> ["I"; "P"; "W"; "U"; "Rn"; "addr_mode"]
-    | 4 -> ["P"; "U"; "W"; "Rn"]
-    | 5 -> ["8_bit_word_offset"; "CRd"; "P"; "U"; "W"]
+    | 2 -> ["P_"; "U_"; "W_"; "addr_mode"]
+    | 3 -> ["I_"; "P_"; "W_"; "U_"; "Rn"; "addr_mode"]
+    | 4 -> ["P_"; "U_"; "W_"; "Rn"]
+    | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"]
     | _ -> [];;
 
 let not_var n =
