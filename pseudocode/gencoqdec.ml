@@ -134,10 +134,10 @@ let add_mode_var n lst =
 let not_var1 i =
   match i with
     | 1 -> ["S_"; "cond"; "d"; "n"; "opcode"]
-    | 2 -> ["B_"; "L_"; "cond"; "d"; "H"; "S_"]
-    | 3 -> ["B_"; "L_"; "cond"; "d"; "H"; "S_"]
+    | 2 -> ["B_"; "L_"; "d"; "H_"; "S_"]
+    | 3 -> ["B_"; "L_"; "d"; "H_"; "S_"]
     | 4 -> ["L_"; "S_"; "CRd"; "N_"; "option"; "i4"]
-    | 5 -> ["L_"; "U_"; "S_" ; "CRd"; "N_"; "option"]
+    | 5 -> ["L_"; "S_" ; "CRd"; "N_"; "option"]
     | _ -> [];;
 
 let not_var2 i =
@@ -148,6 +148,21 @@ let not_var2 i =
     | 4 -> ["P_"; "U_"; "W_"; "Rn"]
     | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"]
     | _ -> [];;
+
+let remove_var_cond n lst =
+  match n with
+    | ("M2" ::_ :: "offset" :: _ |"M2" ::_ :: _ :: "offset" :: _ | "M3" :: _ :: "offset" :: _) ->
+	List.map (fun (s, i1, i2) -> 
+		    if (s = "cond") then ("",0,0) else (s, i1, i2)) lst
+    | ("MRC"|"CDP")::_ ->
+	List.map (fun (s, i1, i2) -> 
+		    if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn") then ("",0,0) else (s, i1, i2)) lst
+    | "M3" :: "Register" :: _ ->
+	List.map (fun (s, i1, i2) -> 
+		    if (s = "immedL")||(s = "immedH") then ("",0,0) else (s, i1, i2)) lst
+    | "M5" :: "Unindexed" :: _ ->
+	List.map (fun (s, i1, i2) -> if (s = "U_") then ("",0,0) else (s, i1, i2)) lst
+    | _ -> lst;;
 
 let not_var n =
     match n with
@@ -166,7 +181,8 @@ let remove_var n lst =
     List.map (fun s -> if (
 		match md with
 		  | Addr_mode i -> is_not_var1 i s
-		  | Inst -> is_not_var2 im s
+		  | Inst ->
+		      is_not_var2 im s
 		  | Encoding -> false) then
 		("",0,0) else s) lst;;
 
@@ -199,7 +215,10 @@ let param_m ar =
 	    if s.[0] = 'R' then
 	      res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
 	    else
-	      res.(i) <- (s, i, len)
+	      if s = "ImmedL" then
+		res.(i) <- ("immedL", i, len)
+	      else
+		res.(i) <- (s, i, len)
 	| (Nothing | Value _ | Shouldbe _) -> 
 	    res.(i) <- ("", 0, 0)
 	| Param1 c -> 
@@ -209,7 +228,7 @@ let param_m ar =
     done;
     for i = 0 to (Array.length ar -1) do
     match res.(i) with
-      | ("immed", _, _) ->
+      | ("immed", _, _) ->      
 	  res.(i) <- ("", 0, 0)
       | ("I", 25, _) -> 
 	  res.(i) <- ("", 0, 0)
@@ -228,11 +247,12 @@ let params f (lh, ls) =
     let lst =
 	(List.filter ((<>) "")
 	      (List.map inst_param
-		 (remove_vars n
-		    (add_mode_var dname
-		       (List.sort (fun (s1, _, _) (s2, _, _) -> 
-				     Pervasives.compare s1 s2)
-			  (Array.to_list (param_m ls)))))))
+		    (remove_var_cond dname
+		       (remove_vars n
+			  (add_mode_var dname
+			     (List.sort (fun (s1, _, _) (s2, _, _) -> 
+					   Pervasives.compare s1 s2)
+				(Array.to_list (param_m ls))))))))
     in
       (list " " f) b lst
   in aux;;
