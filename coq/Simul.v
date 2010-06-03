@@ -31,6 +31,16 @@ Section decoder_result.
 
 End decoder_result.
 
+Definition decode_mode (mode : Type) (inst : Type) 
+  (f : word -> decoder_result mode) (w : word) (g : mode -> inst) :
+  decoder_result inst :=
+  match f w with
+    | DecInst i => DecInst (g i)
+    | DecError m => @DecError inst m
+    | DecUndefined => @DecUndefined inst
+    | DecUnpredictable => @DecUnpredictable inst
+  end.
+
 (****************************************************************************)
 (** types and functions necessary for building a simulator *)
 (****************************************************************************)
