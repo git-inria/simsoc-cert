@@ -156,9 +156,9 @@ let not_var2 i =
   match i with
     | 1 -> ["shifter_operand"; "I_"]
     | 2 -> ["P_"; "U_"; "W_"; "addr_mode"]
-    | 3 -> ["I_"; "P_"; "W_"; "U_"; "Rn"; "addr_mode"]
-    | 4 -> ["P_"; "U_"; "W_"; "Rn"]
-    | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"]
+    | 3 -> ["I_"; "P_"; "W_"; "U_"; "n"; "addr_mode"]
+    | 4 -> ["P_"; "U_"; "W_"; "n"; "mode"]
+    | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"; "N_"; "n"]
     | _ -> [];;
 
 let remove_var_cond n lst =
@@ -166,9 +166,9 @@ let remove_var_cond n lst =
     | ("M2" ::_ :: "offset" :: _ |"M2" ::_ :: _ :: "offset" :: _ | "M3" :: _ :: "offset" :: _) ->
 	List.map (fun (s, i1, i2) -> 
 		    if (s = "cond") then ("",0,0) else (s, i1, i2)) lst
-    | ("MRC"|"MCR"|"CDP")::_ ->
+    | ("MRC"|"MCR"|"MCRR"|"CDP")::_ ->
 	List.map (fun (s, i1, i2) -> 
-		    if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn") then ("",0,0) else (s, i1, i2)) lst
+		    if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn")||(s = "opcode") then ("",0,0) else (s, i1, i2)) lst
     | "M3" :: "Register" :: _ ->
 	List.map (fun (s, i1, i2) -> 
 		    if (s = "immedL")||(s = "immedH") then ("",0,0) else (s, i1, i2)) lst
@@ -298,7 +298,7 @@ let shouldbe_test (lh, ls) =
 	  bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
 	 (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
 	else*)
-	  bprintf b "DecInst (%s %t)" (id_inst (lh,ls)) (params string (lh, ls))
+	  bprintf b " (%s %t)" (id_inst (lh,ls)) (params string (lh, ls))
   in aux;;
 
 let mode_tst (lh, ls) =
@@ -306,8 +306,8 @@ let mode_tst (lh, ls) =
   let lst = Array.to_list (param_m ls) in
   let md = mode_var (name_lst (lh, ls)) lst in
   match md with
-    | (1|2|3|4|5 as i) -> bprintf b "match (decode_addr_mode%d w) with\n        | DecInst i%d =>\n            %t\n        | i%d => i%d\n      end" i i (shouldbe_test (lh, ls)) i i
-    | _ -> bprintf b "%t" (shouldbe_test (lh, ls))
+    | (1|2|3|4|5 as i) -> bprintf b "decode_mode decode_addr_mode%d w (fun i%d => %t)" i i (shouldbe_test (lh, ls))
+    | _ -> bprintf b "DecInst %t" (shouldbe_test (lh, ls))
   in aux;;
 
 let bits f x =
