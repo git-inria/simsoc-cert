@@ -15,7 +15,7 @@ GEN := ../pseudocode/main
 
 .PRECIOUS: $(PROC).txt $(FILES)
 
-default: $(PROC)inst.vo $(PROC)exn.vo $(PROC)dec.vo
+default: $(PROC)inst.vo $(PROC)dec.vo $(PROC)exn.vo
 
 %.txt: %.pdf
 	pdftotext -layout $< $@
@@ -23,8 +23,8 @@ default: $(PROC)inst.vo $(PROC)exn.vo $(PROC)dec.vo
 %inst.txt: %.txt %inst.patch
 	cp -a $< $@; patch $@ < $*inst.patch
 
-%exn.txt: %.txt %exn.patch
-	cp -a $< $@; patch $@ < $*exn.patch
+#%exn.txt: %.txt %exn.patch
+#	cp -a $< $@; patch $@ < $*exn.patch
 
 %dec.txt: %.txt %dec.patch
 	cp -a $< $@; patch $@ < $*dec.patch
