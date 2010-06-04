@@ -55,7 +55,7 @@ Module Type CONFIG.
   (* Architecture versions (p. 13) *)
   Variable version : version.*)
 
-(*WARNING: only O8 is supported
+(*WARNING: only O8 is supported currently
 
   (* A2.4.3 Reading the program counter (p. 47) *)
   Variable store_PC_offset : store_PC_offset_value.*)
