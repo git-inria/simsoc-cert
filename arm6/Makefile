@@ -4,7 +4,7 @@
 PROC := arm6
 
 FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
-	$(PROC)exn.txt $(PROC)exn.arm $(PROC)exn.v \
+	$(PROC)exn.arm $(PROC)exn.v \
 	$(PROC)dec.txt $(PROC)dec.dat $(PROC)dec.v
 
 DIR := ../refARMparsing
