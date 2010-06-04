@@ -75,31 +75,21 @@ Qed.
 Definition reg_of_exn_mode (m : exn_mode) (k : regnum)
   : register :=
   match m with
-    | svc =>
-      match between_dec 13 k 14 with
-        | left h => R_svc h
-        | _  => R k
-      end
-    | abt =>
-      match between_dec 13 k 14 with
-        | left h => R_abt h
-        |   => R k
-      end
-    | und =>
-      match between_dec 13 k 14 with
-        | left h => R_und h
-        |   => R k
-      end
-    | irq =>
-      match between_dec 13 k 14 with
-        | left h => R_irq h
-        |   => R k
-      end
-    | fiq =>
-      match between_dec 8 k 14 with
-        | left h => R_fiq h
-        |   => R k
-      end
+    | svc => match between_dec 13 k 14 with
+               | left h => R_svc h
+               | _  => R k end
+    | abt => match between_dec 13 k 14 with
+               | left h => R_abt h
+               |   => R k end
+    | und => match between_dec 13 k 14 with
+               | left h => R_und h
+               |   => R k end
+    | irq => match between_dec 13 k 14 with
+               | left h => R_irq h
+               |   => R k end
+    | fiq => match between_dec 8 k 14 with
+               | left h => R_fiq h
+               |   => R k end
   end.
 
 Definition reg_mode (m : proc_mode) (k : regnum) : register :=
@@ -187,43 +177,6 @@ Definition exception_mode (e : exception) : exn_mode :=
     | FIQ => fiq
   end.
 
-(*IMPROVE: by using some Coq hexadecimal notation*)
-Definition exception_vector_address (e : exception) (use_high_vectors : bool)
-  : Z :=
-  match use_high_vectors with
-    | false =>
-      match e with
-        | Reset =>     (*0x00000000*)  0
-        | UndIns =>    (*0x00000004*)  4
-        | SoftInt =>   (*0x00000008*)  8
-        | PFAbort =>   (*0x0000000C*) 12
-        | ImpAbort (*FIXME?*)
-        | DataAbort => (*0x00000010*) 16
-(*FIXME: depends on VE bit in the system control coprocessor *)
-        | IRQ =>       (*0x00000018*) 24
-        | FIQ =>       (*0x0000001C*) 28
-      end
-    | true =>
-      match e with
-        | Reset =>     (*0xFFFF0000*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0~0
-        | UndIns =>    (*0xFFFF0004*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0
-        | SoftInt =>   (*0xFFFF0008*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0
-        | PFAbort =>   (*0xFFFF000C*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0
-        | ImpAbort (*FIXME?*)
-        | DataAbort => (*0xFFFF0010*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~0~0~0~0
-(*FIXME: depends on VE bit in the system control coprocessor *)
-        | IRQ =>       (*0xFFFF0018*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~1~0~0~0
-        | FIQ =>       (*0xFFFF001C*)
-          Zpos 1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~1~0~0~0~0~0~0~0~0~0~0~0~1~1~1~0~0
-      end
-  end.
-
 (****************************************************************************)
 (* Exception priorities (p. 63) *)
 (****************************************************************************)
@@ -239,7 +192,7 @@ Definition priority (e : exception) : BinInt.Z :=
     | UndIns | SoftInt => 7 (* lowest *)
   end.
 
-(*WARNING: by using this functions, exceptions are always sorted from
+(*WARNING: by using this function, exceptions are always sorted from
 the highest priority to the lowest, so that the exception with highest
 priority is the first one *)
 
@@ -256,7 +209,7 @@ Fixpoint insert (e : exception) (l : list exception) : list exception :=
 
 Inductive opcode : Type :=
 | EQ | NE | CS | CC | MI | PL | VS | VC
-| HI | LS | GE | LT | GT | LE | AL | UN.
+| HI | LS | GE | LT | GT | LE | AL.
 
 Notation HS := CS.
 Notation LO := CC.
@@ -265,24 +218,22 @@ Notation LO := CC.
 (** Table A3-1 Condition codes (p. 112) *)
 (****************************************************************************)
 
-(*IMPROVE: by allowing heading 0's? *)
-
-Fixpoint condition (w : word) : opcode :=
+Fixpoint condition (w : word) : option opcode :=
   match bits_val 31 28 w with
-    | Z0           => EQ
-    | Zpos       1 => NE
-    | Zpos     1~0 => CS
-    | Zpos     1~1 => CC
-    | Zpos   1~0~0 => MI
-    | Zpos   1~0~1 => PL
-    | Zpos   1~1~0 => VS
-    | Zpos   1~1~1 => VC
-    | Zpos 1~0~0~0 => HI
-    | Zpos 1~0~0~1 => LS
-    | Zpos 1~0~1~0 => GE
-    | Zpos 1~0~1~1 => LT
-    | Zpos 1~1~0~0 => GT
-    | Zpos 1~1~0~1 => LE
-    | Zpos 1~1~1~0 => AL
-    | _ => UN
+    | Z0           => Some EQ
+    | Zpos       1 => Some NE
+    | Zpos     1~0 => Some CS
+    | Zpos     1~1 => Some CC
+    | Zpos   1~0~0 => Some MI
+    | Zpos   1~0~1 => Some PL
+    | Zpos   1~1~0 => Some VS
+    | Zpos   1~1~1 => Some VC
+    | Zpos 1~0~0~0 => Some HI
+    | Zpos 1~0~0~1 => Some LS
+    | Zpos 1~0~1~0 => Some GE
+    | Zpos 1~0~1~1 => Some LT
+    | Zpos 1~1~0~0 => Some GT
+    | Zpos 1~1~0~1 => Some LE
+    | Zpos 1~1~1~0 => Some AL
+    | _ => None
   end.

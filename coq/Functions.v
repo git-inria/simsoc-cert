@@ -142,7 +142,6 @@ Definition ConditionPassed (w : word) (op : opcode) : bool :=
          (Z==1 or N!=V) *)
       orb (is_set Zbit w) (negb (beq (is_set Nbit w) (is_set Vbit w)))
     | AL => true
-    | UN => true
   end.
 
 (****************************************************************************)
