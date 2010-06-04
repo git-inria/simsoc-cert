@@ -139,12 +139,12 @@ let depend_on_state = function
   | "address_of_next_instruction" | "address_of_current_instruction"
   | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
   | "ExecutingProcessor" | "IsExclusiveGlobal" | "IsExclusiveLocal"
-  | "TLB" | "Shared" -> true
+  | "TLB" | "Shared" | "high_vectors_configured" -> true
   | _ -> false;;
 
 let depend_on_config = function
   | "JE_bit_of_Main_Configuration_register" | "SUB_ARCHITECTURE_DEFINED_value"
-  | "CV_bit_of_Jazelle_OS_Control_register" | "high_vectors_configured"
+  | "CV_bit_of_Jazelle_OS_Control_register"
   | "Jazelle_Extension_accepts_opcode_at" -> true
   | _ -> false;;
 

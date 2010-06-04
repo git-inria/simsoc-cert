@@ -26,7 +26,7 @@ Definition Reset_step (s0 : state) : result :=
     set_cpsr (set_bit 7 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 8 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
-    if_then_else C.high_vectors_configured
+    if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901760)))
       (set_reg PC (repr (Z0))) ::
     nil) true s0.
@@ -40,7 +40,7 @@ Definition UndIns_step (s0 : state) : result :=
     set_cpsr (set_bit 5 (repr 0) (cpsr s0)) ::
     set_cpsr (set_bit 7 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
-    if_then_else C.high_vectors_configured
+    if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901764)))
       (set_reg PC (repr (Zpos 4))) ::
     nil) true s0.
@@ -54,7 +54,7 @@ Definition SoftInt_step (s0 : state) : result :=
     set_cpsr (set_bit 5 (repr 0) (cpsr s0)) ::
     set_cpsr (set_bit 7 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
-    if_then_else C.high_vectors_configured
+    if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901768)))
       (set_reg PC (repr (Zpos 8))) ::
     nil) true s0.
@@ -69,7 +69,7 @@ Definition PFAbort_step (s0 : state) : result :=
     set_cpsr (set_bit 7 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 8 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
-    if_then_else C.high_vectors_configured
+    if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901772)))
       (set_reg PC (repr (Zpos 12))) ::
     nil) true s0.
@@ -84,7 +84,7 @@ Definition DataAbort_step (s0 : state) : result :=
     set_cpsr (set_bit 7 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 8 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
-    if_then_else C.high_vectors_configured
+    if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901776)))
       (set_reg PC (repr (Zpos 16))) ::
     nil) true s0.
@@ -100,7 +100,7 @@ Definition IRQ_step (s0 : state) : result :=
     set_cpsr (set_bit 8 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
     if_then_else (zeq ((CP15_reg1 s0)[VEbit]) 0)
-      (if_then_else C.high_vectors_configured
+      (if_then_else (high_vectors_configured s0)
         (set_reg PC (repr (Zpos 4294901784)))
         (set_reg PC (repr (Zpos 24))))
       (set_reg PC (VE_IRQ_address)) ::
@@ -118,7 +118,7 @@ Definition FIQ_step (s0 : state) : result :=
     set_cpsr (set_bit 8 (repr 1) (cpsr s0)) ::
     set_cpsr (set_bit 9 ((CP15_reg1 s0)[EEbit]) (cpsr s0)) ::
     if_then_else (zeq ((CP15_reg1 s0)[VEbit]) 0)
-      (if_then_else C.high_vectors_configured
+      (if_then_else (high_vectors_configured s0)
         (set_reg PC (repr (Zpos 4294901788)))
         (set_reg PC (repr (Zpos 28))))
       (set_reg PC (VE_FIQ_address)) ::

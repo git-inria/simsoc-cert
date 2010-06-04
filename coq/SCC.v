@@ -22,6 +22,7 @@ Require Import Bitvec Util.
 Definition Mbit := 0%nat.
 Definition Abit := 1%nat.
 Definition Wbit := 3%nat.
+Definition Vbit := 13%nat.
 Definition Ubit := 22%nat.
 Definition VEbit := 24%nat.
 Definition EEbit := 25%nat.
@@ -38,6 +39,9 @@ Record state : Type := mk_state {
 }.
 
 Definition CP15_reg1 (s : state) : word := reg s (mk_regnum 1).
+
+Definition high_vectors_configured (s : state) : bool :=
+  is_set Vbit (CP15_reg1 s). 
 
 Definition read_bits (n : size) (w : word) :=
   match n with

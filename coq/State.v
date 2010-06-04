@@ -75,6 +75,9 @@ Definition ConditionPassed (s : state) (op : opcode) : bool :=
 
 Definition CP15_reg1 (s : state) : word := CP15_reg1 (scc s).
 
+Definition high_vectors_configured (s : state) : bool :=
+  high_vectors_configured (scc s).
+
 Definition read (s : state) (a : address) (n : size) : word :=
   read (scc s) a n.
 
