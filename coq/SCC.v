@@ -62,4 +62,4 @@ Definition write_bits (n : size) (v w : word) :=
 
 Definition write (s : state) (a : address) (n : size) (v : word) : state :=
   mk_state (reg s)
-  (update_map address_eqdec (mem s) a (write_bits n v (mem s a))).
+  (update_map Address.eq_dec (mem s) a (write_bits n v (mem s a))).

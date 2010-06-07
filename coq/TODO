@@ -1,4 +1,6 @@
 
+< prove Util.two_power_nat_monotone and improve functions Bitvec.word_of_*
+
 < fix problems with ZeroExtend and SignExtend
 
 < define some notation for hexadecimal numbers

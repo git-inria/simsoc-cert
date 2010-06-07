@@ -357,6 +357,13 @@ Proof.
   rewrite two_power_nat_S. omega.
 Qed.
 
+Lemma two_power_nat_two_p:
+  forall x, two_power_nat x = two_p (Z_of_nat x).
+Proof.
+  induction x. auto. 
+  rewrite two_power_nat_S. rewrite inj_S. rewrite two_p_S. omega. omega.
+Qed.
+
 Lemma two_p_monotone:
   forall x y, 0 <= x <= y -> two_p x <= two_p y.
 Proof.
@@ -369,11 +376,31 @@ Proof.
   assert (two_p x > 0). apply two_p_gt_ZERO. omega. omega.
 Qed.
 
-Lemma two_power_nat_two_p:
-  forall x, two_power_nat x = two_p (Z_of_nat x).
+Lemma two_p_monotone_strict:
+  forall x y, 0 <= x < y -> two_p x < two_p y.
 Proof.
-  induction x. auto. 
-  rewrite two_power_nat_S. rewrite inj_S. rewrite two_p_S. omega. omega.
+  intros. assert (two_p x <= two_p (y - 1)). apply two_p_monotone; omega.
+  assert (two_p (y - 1) > 0). apply two_p_gt_ZERO. omega.
+  replace y with (Zsucc (y - 1)) by omega. rewrite two_p_S. omega. omega.
+Qed.
+
+Lemma two_p_strict:
+  forall x, x >= 0 -> x < two_p x.
+Proof.
+  intros x0 GT. pattern x0. apply natlike_ind.
+  simpl. omega.
+  intros. rewrite two_p_S; auto. generalize (two_p_gt_ZERO x H). omega. 
+  omega.
+Qed.
+
+Lemma two_p_strict_2:
+  forall x, x >= 0 -> 2 * x - 1 < two_p x.
+Proof.
+  intros. assert (x = 0 \/ x - 1 >= 0) by omega. destruct H0.
+  subst. vm_compute. auto.
+  replace (two_p x) with (2 * two_p (x - 1)).
+  generalize (two_p_strict _ H0). omega. 
+  rewrite <- two_p_S. decEq. omega. omega.
 Qed.
 
 (** Properties of [Zmin] and [Zmax] *)
@@ -513,7 +540,7 @@ Qed.
 
 Lemma Zdiv_interval_2:
   forall lo hi a b,
-  lo <= a <= hi -> lo <= 0 -> hi > 0 -> b > 0 ->
+  lo <= a <= hi -> lo <= 0 -> hi >= 0 -> b > 0 ->
   lo <= a/b <= hi.
 Proof.
   intros.
@@ -524,6 +551,27 @@ Proof.
   assert ((hi + 1) * 1 <= (hi + 1) * b). apply Zmult_le_compat_l. omega. omega.
   replace ((hi + 1) * 1) with (hi + 1) in H4 by ring.
   omega.
+  omega.
+Qed.
+
+Lemma Zmod_recombine:
+  forall x a b,
+  a > 0 -> b > 0 ->
+  x mod (a * b) = ((x/b) mod a) * b + (x mod b).
+Proof.
+  intros. 
+  set (xb := x/b). 
+  apply Zmod_unique with (xb/a).
+  generalize (Z_div_mod_eq x b H0); fold xb; intro EQ1.
+  generalize (Z_div_mod_eq xb a H); intro EQ2.
+  rewrite EQ2 in EQ1. 
+  eapply trans_eq. eexact EQ1. ring.
+  generalize (Z_mod_lt x b H0). intro. 
+  generalize (Z_mod_lt xb a H). intro.
+  assert (0 <= xb mod a * b <= a * b - b).
+    split. apply Zmult_le_0_compat; omega.
+    replace (a * b - b) with ((a - 1) * b) by ring.
+    apply Zmult_le_compat; omega. 
   omega.
 Qed.
 
@@ -545,6 +593,45 @@ Proof.
   right; red; intros. elim n. apply Z_div_exact_1; auto. 
   inv H0. rewrite Z_div_mult; auto. ring.
 Qed.
+
+(** Conversion from [Z] to [nat]. *)
+
+Definition nat_of_Z (z: Z) : nat :=
+  match z with
+  | Z0 => O
+  | Zpos p => nat_of_P p
+  | Zneg p => O
+  end.
+
+Lemma nat_of_Z_max:
+  forall z, Z_of_nat (nat_of_Z z) = Zmax z 0.
+Proof.
+  intros. unfold Zmax. destruct z; simpl; auto.
+  symmetry. apply Zpos_eq_Z_of_nat_o_nat_of_P.
+Qed.
+
+Lemma nat_of_Z_eq:
+  forall z, z >= 0 -> Z_of_nat (nat_of_Z z) = z.
+Proof.
+  intros. rewrite nat_of_Z_max. apply Zmax_left. auto.
+Qed.
+
+Lemma nat_of_Z_neg:
+  forall n, n <= 0 -> nat_of_Z n = O.
+Proof.
+  destruct n; unfold Zle; simpl; auto. congruence.
+Qed.
+
+Lemma nat_of_Z_plus:
+  forall p q,
+  p >= 0 -> q >= 0 ->
+  nat_of_Z (p + q) = (nat_of_Z p + nat_of_Z q)%nat.
+Proof.
+  intros. 
+  apply inj_eq_rev. rewrite inj_plus.
+  repeat rewrite nat_of_Z_eq; auto. omega.
+Qed.
+
 
 (** Alignment: [align n amount] returns the smallest multiple of [amount]
   greater than or equal to [n]. *)
@@ -611,6 +698,87 @@ Proof.
   induction idx; simpl; intros; reflexivity.
 Qed.
 Hint Resolve nth_error_nil: coqlib.
+
+(** Compute the length of a list, with result in [Z]. *)
+
+Fixpoint list_length_z_aux (A: Type) (l: list A) (acc: Z) {struct l}: Z :=
+  match l with
+  | nil => acc
+  | hd :: tl => list_length_z_aux tl (Zsucc acc)
+  end.
+
+Remark list_length_z_aux_shift:
+  forall (A: Type) (l: list A) n m,
+  list_length_z_aux l n = list_length_z_aux l m + (n - m).
+Proof.
+  induction l; intros; simpl.
+  omega.
+  replace (n - m) with (Zsucc n - Zsucc m) by omega. auto.
+Qed.
+
+Definition list_length_z (A: Type) (l: list A) : Z :=
+  list_length_z_aux l 0.
+
+Lemma list_length_z_cons:
+  forall (A: Type) (hd: A) (tl: list A),
+  list_length_z (hd :: tl) = list_length_z tl + 1.
+Proof.
+  intros. unfold list_length_z. simpl.
+  rewrite (list_length_z_aux_shift tl 1 0). omega. 
+Qed.
+
+Lemma list_length_z_pos:
+  forall (A: Type) (l: list A),
+  list_length_z l >= 0.
+Proof.
+  induction l; simpl. unfold list_length_z; simpl. omega. 
+  rewrite list_length_z_cons. omega.
+Qed.
+
+Lemma list_length_z_map:
+  forall (A B: Type) (f: A -> B) (l: list A),
+  list_length_z (map f l) = list_length_z l.
+Proof.
+  induction l. reflexivity. simpl. repeat rewrite list_length_z_cons. congruence.
+Qed. 
+
+(** Extract the n-th element of a list, as [List.nth_error] does,
+    but the index [n] is of type [Z]. *)
+
+Fixpoint list_nth_z (A: Type) (l: list A) (n: Z) {struct l}: option A :=
+  match l with
+  | nil => None
+  | hd :: tl => if zeq n 0 then Some hd else list_nth_z tl (Zpred n)
+  end.
+
+Lemma list_nth_z_in:
+  forall (A: Type) (l: list A) n x,
+  list_nth_z l n = Some x -> In x l.
+Proof.
+  induction l; simpl; intros. 
+  congruence.
+  destruct (zeq n 0). left; congruence. right; eauto.
+Qed.
+
+Lemma list_nth_z_map:
+  forall (A B: Type) (f: A -> B) (l: list A) n,
+  list_nth_z (List.map f l) n = option_map f (list_nth_z l n).
+Proof.
+  induction l; simpl; intros.
+  auto.
+  destruct (zeq n 0). auto. eauto.
+Qed.
+
+Lemma list_nth_z_range:
+  forall (A: Type) (l: list A) n x,
+  list_nth_z l n = Some x -> 0 <= n < list_length_z l.
+Proof.
+  induction l; simpl; intros.
+  discriminate.
+  rewrite list_length_z_cons. destruct (zeq n 0).
+  generalize (list_length_z_pos l); omega.
+  exploit IHl; eauto. unfold Zpred. omega. 
+Qed.
 
 (** Properties of [List.incl] (list inclusion). *)
 
@@ -707,6 +875,18 @@ Lemma list_append_map:
 Proof.
   induction l1; simpl; intros.
   auto. rewrite IHl1. auto.
+Qed.
+
+Lemma list_append_map_inv:
+  forall (A B: Type) (f: A -> B) (m1 m2: list B) (l: list A),
+  List.map f l = m1 ++ m2 ->
+  exists l1, exists l2, List.map f l1 = m1 /\ List.map f l2 = m2 /\ l = l1 ++ l2.
+Proof.
+  induction m1; simpl; intros.
+  exists (@nil A); exists l; auto.
+  destruct l; simpl in H; inv H. 
+  exploit IHm1; eauto. intros [l1 [l2 [P [Q R]]]]. subst l. 
+  exists (a0 :: l1); exists l2; intuition. simpl; congruence.
 Qed.
 
 (** Properties of list membership. *)
@@ -942,6 +1122,14 @@ Inductive list_forall2: list A -> list B -> Prop :=
       list_forall2 al bl ->
       list_forall2 (a1 :: al) (b1 :: bl).
 
+Lemma list_forall2_app:
+  forall a2 b2 a1 b1,
+  list_forall2 a1 b1 -> list_forall2 a2 b2 -> 
+  list_forall2 (a1 ++ a2) (b1 ++ b2).
+Proof.
+  induction 1; intros; simpl. auto. constructor; auto. 
+Qed.
+
 End FORALL2.
 
 Lemma list_forall2_imply:
@@ -957,49 +1145,54 @@ Proof.
   intros. auto with coqlib.
 Qed.
 
-(** Dropping the first or first two elements of a list. *)
+(** Dropping the first N elements of a list. *)
 
-Definition list_drop1 (A: Type) (x: list A) :=
-  match x with nil => nil | hd :: tl => tl end.
-Definition list_drop2 (A: Type) (x: list A) :=
-  match x with nil => nil | hd :: nil => nil | hd1 :: hd2 :: tl => tl end.
+Fixpoint list_drop (A: Type) (n: nat) (x: list A) {struct n} : list A :=
+  match n with
+  | O => x
+  | S n' => match x with nil => nil | hd :: tl => list_drop n' tl end
+  end.
 
-Lemma list_drop1_incl:
-  forall (A: Type) (x: A) (l: list A), In x (list_drop1 l) -> In x l.
+Lemma list_drop_incl:
+  forall (A: Type) (x: A) n (l: list A), In x (list_drop n l) -> In x l.
 Proof.
-  intros. destruct l. elim H. simpl in H. auto with coqlib.
+  induction n; simpl; intros. auto. 
+  destruct l; auto with coqlib.
 Qed.
 
-Lemma list_drop2_incl:
-  forall (A: Type) (x: A) (l: list A), In x (list_drop2 l) -> In x l.
+Lemma list_drop_norepet:
+  forall (A: Type) n (l: list A), list_norepet l -> list_norepet (list_drop n l).
 Proof.
-  intros. destruct l. elim H. destruct l. elim H.
-  simpl in H. auto with coqlib.
+  induction n; simpl; intros. auto.
+  inv H. constructor. auto.
 Qed.
 
-Lemma list_drop1_norepet:
-  forall (A: Type) (l: list A), list_norepet l -> list_norepet (list_drop1 l).
+Lemma list_map_drop:
+  forall (A B: Type) (f: A -> B) n (l: list A),
+  list_drop n (map f l) = map f (list_drop n l).
 Proof.
-  intros. destruct l; simpl. constructor. inversion H. auto.
+  induction n; simpl; intros. auto. 
+  destruct l; simpl; auto.
 Qed.
 
-Lemma list_drop2_norepet:
-  forall (A: Type) (l: list A), list_norepet l -> list_norepet (list_drop2 l).
+(** A list of [n] elements, all equal to [x]. *)
+
+Fixpoint list_repeat {A: Type} (n: nat) (x: A) {struct n} :=
+  match n with
+  | O => nil
+  | S m => x :: list_repeat m x
+  end.
+
+Lemma length_list_repeat:
+  forall (A: Type) n (x: A), length (list_repeat n x) = n.
 Proof.
-  intros. destruct l; simpl. constructor.
-  destruct l; simpl. constructor. inversion H. inversion H3. auto.
+  induction n; simpl; intros. auto. decEq; auto.
 Qed.
 
-Lemma list_map_drop1:
-  forall (A B: Type) (f: A -> B) (l: list A), list_drop1 (map f l) = map f (list_drop1 l).
+Lemma in_list_repeat:
+  forall (A: Type) n (x: A) y, In y (list_repeat n x) -> y = x.
 Proof.
-  intros; destruct l; reflexivity.
-Qed.
-
-Lemma list_map_drop2:
-  forall (A B: Type) (f: A -> B) (l: list A), list_drop2 (map f l) = map f (list_drop2 l).
-Proof.
-  intros; destruct l. reflexivity. destruct l; reflexivity.
+  induction n; simpl; intros. elim H. destruct H; auto.
 Qed.
 
 (** * Definitions and theorems over boolean types *)
@@ -1015,6 +1208,12 @@ Lemma proj_sumbool_true:
   forall (P Q: Prop) (a: {P}+{Q}), proj_sumbool a = true -> P.
 Proof.
   intros P Q a. destruct a; simpl. auto. congruence.
+Qed.
+
+Lemma proj_sumbool_is_true:
+  forall (P: Prop) (a: {P}+{~P}), P -> proj_sumbool a = true.
+Proof.
+  intros. unfold proj_sumbool. destruct a. auto. contradiction. 
 Qed.
 
 Section DECIDABLE_EQUALITY.
@@ -1048,3 +1247,24 @@ Proof.
 Qed.
 
 End DECIDABLE_EQUALITY.
+
+Section DECIDABLE_PREDICATE.
+
+Variable P: Prop.
+Variable dec: {P} + {~P}.
+Variable A: Type.
+
+Lemma pred_dec_true:
+  forall (a b: A), P -> (if dec then a else b) = a.
+Proof.
+  intros. destruct dec. auto. contradiction.
+Qed.
+
+Lemma pred_dec_false:
+  forall (a b: A), ~P -> (if dec then a else b) = b.
+Proof.
+  intros. destruct dec. contradiction. auto.
+Qed.
+
+End DECIDABLE_PREDICATE.
+

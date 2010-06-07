@@ -13,14 +13,25 @@ Bit vectors.
 
 Set Implicit Arguments.
 
-Require Import Util ZArith Coqlib.
-Require Export Integers. Export Int.
+Require Import Util ZArith Coqlib Integers.
+Export Int.
+
+(****************************************************************************)
+(** A2.1 Data types (p. 39) *)
+(****************************************************************************)
+
+Inductive size : Type := Byte | Half | Word.
 
 (****************************************************************************)
 (** 32-bits words, masks and bit operations *)
 (****************************************************************************)
 
+Module Word := Int.
+
 Notation word := int.
+Notation mk_word := mkint.
+
+Implicit Arguments mkint [intval].
 
 Coercion intval : word >-> Z.
 
@@ -88,75 +99,76 @@ Definition set_bits (p n : nat) (v w : word) : word :=
   set_bits_aux p (p-n) v w.
 
 (****************************************************************************)
-(** n-bits words *)
+(** bytes (8-bits words) *)
 (****************************************************************************)
 
-(*IMPROVE: replace bits by generalizing in Integers the type int by
-taking wordsize as a parameter?*)
+Notation mk_byte := Byte.repr.
+Coercion Byte.intval : byte >-> Z.
 
-Section bitvec.
+(*FIXME: uncomment when Util.two_power_nat_monotone is proved
 
-Variable n : nat.
-
-Let modulus := two_power_nat n.
-
-Record bitvec : Type := build_bitvec {
-  bitvec_val :> Z;
-  bitvec_prf : 0 <= bitvec_val < modulus
-}.
-
-Lemma bitvec_in_range: forall x, 0 <= Zmod x modulus < modulus.
+Lemma byte_in_range : forall b : byte, 0 <= b < Word.modulus.
 
 Proof.
-intro x. exact (Z_mod_lt x modulus (two_power_nat_pos n)).
+intros [x h]. simpl. unfold Byte.modulus in h. unfold modulus.
+assert (two_power_nat Byte.wordsize <= two_power_nat wordsize).
+apply two_power_nat_monotone. omega.
 Qed.
 
-Definition mk_bitvec (x : Z) : bitvec := build_bitvec (bitvec_in_range x).
+Definition word_of_byte (x : byte) : word := mkint (byte_in_range x).*)
 
-Lemma bitvec_eqdec : forall b1 b2 : bitvec, {b1=b2}+{~b1=b2}.
+Definition word_of_byte (x : byte) : word := repr x.
+Coercion word_of_byte : byte >-> word.
 
-Proof.
-intros [v1 p1] [v2 p2]. case (zeq v1 v2); intro.
-left. subst. rewrite (proof_irrelevance _ p1 p2). auto.
-right. intro h. inversion h. contradiction.
-Qed.
-
-(*IMPROVE: to be improved when n<=32*)
-Definition word_of_bitvec (v : bitvec) : word := repr v.
-
-Coercion word_of_bitvec : bitvec >-> word.
-
-End bitvec.
+Definition get_byte0 w := mk_byte (w[7#0]).
+Definition get_byte1 w := mk_byte (w[15#8]).
+Definition get_byte2 w := mk_byte (w[23#16]).
+Definition get_byte3 w := mk_byte (w[31#24]).
 
 (****************************************************************************)
-(** A2.1 Data types (p. 39) *)
+(** half-words (16-bits words) *)
 (****************************************************************************)
 
-Inductive size : Type := Word | Half | Byte.
+Module Wordsize_16.
+  Definition wordsize := 16%nat.
+  Remark wordsize_not_zero: wordsize <> 0%nat.
+  Proof. unfold wordsize; congruence. Qed.
+End Wordsize_16.
 
-Definition byte_size := 8%nat.
-Definition byte := bitvec byte_size.
-Definition mk_byte := mk_bitvec byte_size.
+Module Half := Make(Wordsize_16).
 
-Definition get_byte0 w := mk_byte (intval w[7#0]).
-Definition get_byte1 w := mk_byte (intval w[15#8]).
-Definition get_byte2 w := mk_byte (intval w[23#16]).
-Definition get_byte3 w := mk_byte (intval w[31#24]).
+Notation half := Half.int.
+Notation mk_half := Half.repr.
 
-Definition half_size := 16%nat.
-Definition half := bitvec half_size.
-Definition mk_half := mk_bitvec half_size.
+Coercion Half.intval : half >-> Z.
 
-Definition get_half0 w := mk_half (intval w[15#0]).
-Definition get_half1 w := mk_half (intval w[31#16]).
+(*IMPROVE*)
+Definition word_of_half (x : half) : word := repr x.
+Coercion word_of_half : half >-> word.
+
+Definition get_half0 w := mk_half (w[15#0]).
+Definition get_half1 w := mk_half (w[31#16]).
 
 (****************************************************************************)
 (** A2.3 Registers (p. 42) *)
 (****************************************************************************)
 
-Definition regnum_size := 4%nat.
-Definition regnum := bitvec regnum_size.
-Definition mk_regnum := mk_bitvec regnum_size.
+Module Wordsize_4.
+  Definition wordsize := 4%nat.
+  Remark wordsize_not_zero: wordsize <> 0%nat.
+  Proof. unfold wordsize; congruence. Qed.
+End Wordsize_4.
+
+Module Regnum := Make(Wordsize_4).
+
+Notation regnum := Regnum.int.
+Notation mk_regnum := Regnum.repr.
+
+Coercion Regnum.intval : regnum >-> Z.
+
+(*IMPROVE*)
+Definition word_of_regnum (x : regnum) : word := repr x.
+Coercion word_of_regnum : regnum >-> word.
 
 Definition PC := mk_regnum 15.
 Definition LR := mk_regnum 14.
@@ -171,20 +183,46 @@ Definition regnum_from_bit (k : nat) (w : word) : regnum :=
 (** Addresses (p. 68) *)
 (****************************************************************************)
 
-Definition address_size := 30%nat.
-Definition address := bitvec address_size.
-Definition mk_address := mk_bitvec address_size.
-Definition address_eqdec := @bitvec_eqdec address_size.
+Module Wordsize_30.
+  Definition wordsize := 30%nat.
+  Remark wordsize_not_zero: wordsize <> 0%nat.
+  Proof. unfold wordsize; congruence. Qed.
+End Wordsize_30.
+
+Module Address := Make(Wordsize_30).
+
+Notation address := Address.int.
+Notation mk_address := Address.repr.
+
+Coercion Address.intval : address >-> Z.
+
+(*IMPROVE*)
+Definition word_of_address (x : address) : word := repr x.
+Coercion word_of_address : address >-> word.
+
+(*REMOVE:Definition address_eqdec := @bitvec_eqdec address_size.*)
 
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
 since [bits 31 2 w] is always smaller than [two_power_nat 30]*)
-Definition address_of_word (w : word) : address :=
-  mk_address (bits 31 2 w).
+Definition address_of_word (w : word) : address := mk_address (bits 31 2 w).
 
 (****************************************************************************)
 (** 64-bits words *)
 (****************************************************************************)
 
-Definition long_size := 64%nat.
-Definition long := bitvec long_size.
-Definition mk_long := mk_bitvec long_size.
+Module Wordsize_64.
+  Definition wordsize := 64%nat.
+  Remark wordsize_not_zero: wordsize <> 0%nat.
+  Proof. unfold wordsize; congruence. Qed.
+End Wordsize_64.
+
+Module Long := Make(Wordsize_64).
+
+Notation long := Long.int.
+Notation mk_long := Long.repr.
+
+Coercion Long.intval : long >-> Z.
+
+(*IMPROVE*)
+Definition long_of_word (x : word) : long := mk_long x.
+Coercion long_of_word : word >-> long.

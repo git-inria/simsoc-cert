@@ -58,7 +58,7 @@ Lemma register_eqdec : forall x y : register, {x=y}+{~x=y}.
 
 Proof.
 destruct x; destruct y; intros; try (right; discriminate).
-destruct (bitvec_eqdec k k0). subst. auto.
+destruct (Regnum.eq_dec k k0). subst. auto.
 right. intro h. inversion h. contradiction.
 destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
 right. intro p. inversion p. contradiction.
