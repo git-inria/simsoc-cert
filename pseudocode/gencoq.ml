@@ -266,7 +266,7 @@ and exp b = function
 
   | Reg (e, None) -> bprintf b "reg_content s0 %a" regnum_exp e
   | Reg (e, Some m) ->
-      bprintf b "reg_content_mode s0 %a %a" regnum_exp e mode m
+      bprintf b "reg_content_mode s0 %a %a" mode m regnum_exp e
 
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
