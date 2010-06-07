@@ -126,17 +126,13 @@ let dec b pc =
 let mode_var m lst =
   let l = List.map (fun (s,_,_) -> s) lst in
   let n = List.hd m in
-  let mode2 = ["SWP";"SWPB"] in
   let mode3 = ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
   let mode4 = ["RFE";"SRS"] in
   let mode5 = ["LDC";"STC"] in
-  let no_mode = ["PLD"] in
     if (List.mem "shifter_operand" l) then 1
     else if (List.mem "register_list" l) then 4
     else if (List.mem "addr_mode" l) then 
-      if (List.mem n mode3) then 3 else
-	if (List.mem n no_mode) then 0 else 2
-    else if (List.mem n mode2) then 2
+      if (List.mem n mode3) then 3 else 2
     else if (List.mem n mode4) then 4
     else if (List.mem n mode5) then 5
     else 0;;
