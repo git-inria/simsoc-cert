@@ -181,7 +181,8 @@ let remove_var_cond n lst =
     | "MSR" :: _ -> List.map (fun (s, i1, i2) -> if (s = "field_mask")||(s = "cond")||(s = "m")||(s = "8_bit_immediate")||(s = "rotate_imm")||(s = "R_") then 
 				("",0,0) else (s, i1, i2)) lst
     | "SWI" :: _ -> List.map (fun (s, i1, i2) -> if (s = "immed_24") then ("",0,0) else (s, i1, i2)) lst
-    | "LDRB" :: _ -> List.map (fun (s, i1, i2) -> if (s = "n") then ("",0,0) else (s, i1, i2)) lst
+    | ("LDRB"|"STRB"|"LDR"|"STR"|"STRBT"|"LDRT"|"STRT"|"SWPB"|"SWP") :: _ -> List.map (fun (s, i1, i2) -> if (s = "n") then ("",0,0) else (s, i1, i2)) lst
+    | ("PLD") :: _ -> List.map (fun (s, i1, i2) -> if (s = "I_")||(s = "U_")||(s = "n")||(s = "addr_mode") then ("",0,0) else (s, i1, i2)) lst
     | _ -> lst;;
 
 
