@@ -29,7 +29,7 @@ List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   "Bit", FLAG "Bit"; "CPSR", Parser.CPSR; "SPSR", Parser.SPSR;
   "LR", REGNUM "14"; "PC", REGNUM "15"; "R", REG; "GE", GE;
   "Rd", REGVAR "d"; "RdHi", REGVAR "dHi"; "RdLo", REGVAR "dLo";
-  "Rs", REGVAR "s"; "Rm", REGVAR "m"; "Rs", REGVAR "s"; "Rn", REGVAR "n";
+  "Rs", REGVAR "s"; "Rm", REGVAR "m"; "Rn", REGVAR "n"; "Ri", REGVAR "i";
   (* modes *) 
   "_fiq", MODE Fiq; "_irq", MODE Irq; "_svc", MODE Svc; "_abt", MODE Abt;
   "_und", MODE Und; "_usr", MODE Usr; "_sys", MODE Sys;
@@ -60,14 +60,17 @@ let ident s =
 
 }
 
-let mode = "fiq" | "irq" | "svc" | "abt" | "und"
-
 let digit = ['0'-'9']
+
 let letter = ['a'-'z' 'A'-'Z']
 let letter_but_R = ['a'-'z' 'A'-'Q' 'S'-'Z']
 
-let char = letter | digit |'.' | '_'
-let ident = "R" | 'R' letter char* | letter_but_R char* | '_' char*
+let char = letter | digit
+let sep = '.' | '_'
+let char_sep = char | sep
+
+let reg = "R" | 'R' char | 'R' char char char_sep*
+let ident = reg | letter_but_R char_sep* | '_' char_sep*
 
 let num = digit+
 let bin = "0b" ['0' '1']+
