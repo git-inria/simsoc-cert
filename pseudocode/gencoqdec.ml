@@ -126,13 +126,17 @@ let dec b pc =
 let mode_var m lst =
   let l = List.map (fun (s,_,_) -> s) lst in
   let n = List.hd m in
+  let mode2 = ["SWP";"SWPB"] in
   let mode3 = ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
   let mode4 = ["RFE";"SRS"] in
   let mode5 = ["LDC";"STC"] in
+  let no_mode = ["PLD"] in
     if (List.mem "shifter_operand" l) then 1
     else if (List.mem "register_list" l) then 4
     else if (List.mem "addr_mode" l) then 
-      if (List.mem n mode3) then 3 else 2
+      if (List.mem n mode3) then 3 else
+	if (List.mem n no_mode) then 0 else 2
+    else if (List.mem n mode2) then 2
     else if (List.mem n mode4) then 4
     else if (List.mem n mode5) then 5
     else 0;;
@@ -155,7 +159,7 @@ let not_var1 i =
 let not_var2 i =
   match i with
     | 1 -> ["shifter_operand"; "I_"]
-    | 2 -> ["P_"; "U_"; "W_"; "addr_mode"]
+    | 2 -> ["P_"; "U_"; "W_"; "addr_mode"; "I_"]
     | 3 -> ["I_"; "P_"; "W_"; "U_"; "n"; "addr_mode"]
     | 4 -> ["P_"; "U_"; "W_"; "n"; "mode"]
     | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"; "N_"; "n"]
@@ -163,10 +167,10 @@ let not_var2 i =
 
 let remove_var_cond n lst =
   match n with
-    | ("M2" ::_ :: "offset" :: _ |"M2" ::_ :: _ :: "offset" :: _ | "M3" :: _ :: "offset" :: _) ->
+    | ("M2" ::_ :: "offset" :: _ |"M2" ::_ :: _ :: "offset" :: _ | "M3" :: _ :: "offset" :: _ | "CLZ":: _) ->
 	List.map (fun (s, i1, i2) -> 
 		    if (s = "cond") then ("",0,0) else (s, i1, i2)) lst
-    | ("MRC"|"MCR"|"MCRR"|"CDP")::_ ->
+    | ("MRC"|"MCR"|"MCRR"|"CDP"|"MRRC")::_ ->
 	List.map (fun (s, i1, i2) -> 
 		    if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn")||(s = "opcode") then ("",0,0) else (s, i1, i2)) lst
     | "M3" :: "Register" :: _ ->
@@ -177,6 +181,7 @@ let remove_var_cond n lst =
     | "MSR" :: _ -> List.map (fun (s, i1, i2) -> if (s = "field_mask")||(s = "cond")||(s = "m")||(s = "8_bit_immediate")||(s = "rotate_imm")||(s = "R_") then 
 				("",0,0) else (s, i1, i2)) lst
     | "SWI" :: _ -> List.map (fun (s, i1, i2) -> if (s = "immed_24") then ("",0,0) else (s, i1, i2)) lst
+    | "LDRB" :: _ -> List.map (fun (s, i1, i2) -> if (s = "n") then ("",0,0) else (s, i1, i2)) lst
     | _ -> lst;;
 
 
@@ -330,10 +335,39 @@ let dec_inst b (lh, ls) =
 	      (id (lh, ls)) (params string (lh, ls))
 ;;
 
-let order p =
+let order_ad p =
   match num p with
     | 13 -> 0
-    | _ -> 1
+    | _ -> 1;;
+
+let order_inst p =
+  match num p with
+    | 45 -> -6
+    | (8|59|67) -> -5
+    | (7|16|90|126) -> -4
+    | (124|125) -> -3
+    | (121|122|123|148) -> -2
+    | 145 -> -1
+    | 115 -> 0
+    | (112|113) -> 1
+    | (110|114) -> 2
+    | (71|72|73) -> 3
+    | 70 -> 4
+    | (69|68) -> 5
+    | (56|57|58) -> 6
+    | (34|37|40|62|63) -> 7
+    | (46|47|48|49|50|53|54|55|64|85|84) -> 8
+    | (74|76|77|82|83|87|89|91|92|93|94|95|103|108|109|111|146) -> 9
+    | (143|147) -> 10
+    | 144 -> 11
+    | (118|119|120) ->12
+    | (25|31|105) -> 14
+    | (35|106|116|117) -> 15
+    | (99|100) -> 16
+    | (23|24|41|42|65) -> 17
+    | (60|61|18) -> 18
+    | (2|3|4|6|14|15) -> 19
+    | _ -> 13;;
 
 let is_inst l =
   if ((add_mode (name_lst l)) = Inst) then true else false;;
@@ -344,7 +378,7 @@ let is_addr_mode i l =
 let decode b ps =
   string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul String.\n\nOpen Scope string_scope.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
   string b "\n\nDefinition decode_addr_mode1 (w : word) : decoder_result mode1 :=\n match bools_of_word w with\n";
-  (list "" dec_inst) b (List.sort (fun a b -> order a - order b) (List.filter (is_addr_mode 1) ps));
+  (list "" dec_inst) b (List.sort (fun a b -> order_ad a - order_ad b) (List.filter (is_addr_mode 1) ps));
   string b "    | _ => DecError mode1 \"not a addressing mode 1\"\n  end.";
   for i = 2 to 5 do
     bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
@@ -352,6 +386,6 @@ let decode b ps =
   bprintf b "    | _ => DecError mode%d \"not a addressing mode %d\"\n  end." i i
   done;
   bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match bools_of_word w with\n";
-  (list "" dec_inst) b (List.filter (is_inst) ps);
+  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_inst) ps));
   bprintf b "    | _ => DecUndefined inst\n  end."
 ;;
