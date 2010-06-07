@@ -8,7 +8,17 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Bit vectors.
+Bit vectors, based on Xavier Leroy Compcert.Integers file.
+
+Defines also the following implicit coercions:
+
+regnum, byte, half, address, word > Z
+bool > word
+nat > regnum > word
+byte > word
+half > word
+address > word
+word > long
 *)
 
 Set Implicit Arguments.
@@ -178,6 +188,10 @@ Definition SP := mk_regnum 13.
 since [bits (k+3) k w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=
   mk_regnum (bits (k+3) k w).
+
+Definition regnum_of_nat (n : nat) : regnum := mk_regnum (Z_of_nat n).
+
+Coercion regnum_of_nat : nat >-> regnum.
 
 (****************************************************************************)
 (** Addresses (p. 68) *)
