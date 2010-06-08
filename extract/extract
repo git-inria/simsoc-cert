@@ -27,16 +27,20 @@ esac
 
 if test $# -ne 0; then args; fi
 
-order_deps=../tools/order_deps/order_deps
+root=../..
+order_deps=$root/tools/order_deps/order_deps
 
-rm -f *.ml *.mli
+echo remove tmp directory ...
+rm -rf tmp
+mkdir tmp
+cd tmp
 echo extract OCaml files ...
-coqc -q -R ../coq SimSoCCert Extraction.v || exit $?
+coqc -q -R $root/coq SimSoCCert ../Extraction.v || exit $?
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
 files=`ls *.ml | sed -e 's|.ml||g'`
 files=`sed -e 's|.cm[iox]||g' .depend | $order_deps $files`
 echo create Makefile ...
-sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" Makefile.in > Makefile || exit $?
+sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" ../Makefile.in > Makefile || exit $?
 echo compile OCaml files ...
 make

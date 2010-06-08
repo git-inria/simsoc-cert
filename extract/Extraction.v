@@ -23,16 +23,19 @@ Set Extraction AutoInline.
 
 (*Extraction Blacklist ... .*)
 
-Extract Inductive unit => "unit" [ "()" ].
-Extract Inductive bool => "bool" [ "true" "false" ].
-Extract Inductive sumbool => "bool" [ "true" "false" ].
-Extract Inductive option => "option" [ "Some" "None" ].
-Extract Inductive prod => "(*)"  [ "(,)" ].
+(*with coq-svn:
+Require ExtrOcamlBasic ExtrOcamlString ExtrOcamlNatInt.*)
+
+(*without coq-svn:*)
+Extract Inductive unit => unit [ "()" ].
+Extract Inductive bool => bool [ true false ].
+Extract Inductive sumbool => bool [ true false ].
+Extract Inductive option => option [ Some None ].
+Extract Inductive prod => "(*)"  [ "" ]. (* instead of "(,)" *)
 
 Require Import List.
 
-Extract Inductive list => "list" [ "[]" "(::)" ].
+Extract Inductive list => list [ "[]" "(::)" ].
 
 Require Simul.
-
 Recursive Extraction Library Simul.
