@@ -1,5 +1,5 @@
---- arm6.txt	2010-05-28 15:05:32.000000000 +0800
-+++ arm6inst.txt	2010-05-31 17:20:14.000000000 +0800
+--- arm6.txt	2010-05-25 17:48:56.000000000 +0800
++++ arm6inst.txt	2010-06-08 17:03:38.000000000 +0800
 @@ -7687,7 +7687,7 @@
             Operation
             LR = address of the instruction after the BLX instruction
@@ -20,7 +20,23 @@
                                           (IMPLEMENTATION DEFINED CONDITION) then
                               PC = invalidhandler
                          else
-@@ -10358,6 +10358,7 @@
+@@ -8065,10 +8065,11 @@
+ 
+ 
+          Operation
+-         if Rm == 0
+-              Rd = 32
+-         else
+-              Rd = 31 - (bit position of most significant'1' in Rm)
++         if ConditionPassed(cond) then
++           if Rm == 0
++                Rd = 32
++           else
++                Rd = 31 - (bit position of most significant'1' in Rm)
+ 
+ 
+          Usage
+@@ -10358,6 +10359,7 @@
  
  
           Operation
@@ -28,7 +44,7 @@
           There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
           page A2-11 for details.
  
-@@ -10377,6 +10378,7 @@
+@@ -10377,6 +10379,7 @@
             5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
  
             6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
@@ -36,7 +52,7 @@
  
  
           if ConditionPassed(cond) then
-@@ -11915,9 +11917,11 @@
+@@ -11915,9 +11918,11 @@
  
             assert end_address == address + 8
  
@@ -48,7 +64,7 @@
  
  
             Notes
-@@ -14583,14 +14587,16 @@
+@@ -14583,14 +14588,16 @@
                UNPREDICTABLE
           assert end_address == address + 8
  
@@ -67,7 +83,7 @@
  
  
           Notes
-@@ -14774,7 +14780,7 @@
+@@ -14774,7 +14781,7 @@
               Rd[15:0] = SignedSat(Rm[15:0], sat_imm + 1)
               Rd[31:16] = SignedSat(Rm[31:16], sat_imm + 1)
               if SignedDoesSat(Rm[15:0], sat_imm + 1)
@@ -76,7 +92,7 @@
                   Q Flag = 1
  
  
-@@ -16207,15 +16213,6 @@
+@@ -16207,15 +16214,6 @@
                     Memory[address,4] = Rm
                     Rd = temp
                 if Shared(address) then   /* ARMv6 */
@@ -92,7 +108,7 @@
                   physical_address = TLB(address)
                   ClearExclusiveByAddress(physical_address,processor_id,4)
                   /* See Summary of operation on page A2-49 */
-@@ -18442,7 +18439,7 @@
+@@ -18442,7 +18440,7 @@
                 Rd[15:0] = UnsignedSat(Rm[15:0], sat_imm) // Rm[15:0] treated as signed
                 Rd[31:16] = UnsignedSat(Rm[31:16], sat_imm) // Rm[31:16] treated as signed
                 if UnsignedDoesSat(Rm[15:0], sat_imm)
@@ -101,7 +117,7 @@
                     Q Flag = 1
  
  
-@@ -25166,7 +25163,7 @@
+@@ -25166,7 +25164,7 @@
  
           Operation
           MemoryAccess(B-bit, E-bit)
@@ -110,10 +126,10 @@
           Rd = Memory[address, 4]
  
  
-@@ -49653,4 +49650,4 @@
+@@ -49653,4 +49651,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
 -
-\ Pas de fin de ligne à la fin du fichier.
+\ No newline at end of file
 +
