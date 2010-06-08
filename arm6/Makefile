@@ -62,14 +62,21 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC)exn.vo
 clean:
 	rm -f *~ *.glob *.vo $(FILES)
 
-# Usage: update $(PROC)inst.txt to the desired contents, then make patch-inst
+
+usage-patch-inst:
+	echo update $(PROC)inst.txt to the desired contents, then make patch-inst
+
 patch-inst:
 	diff -u $(PROC).txt $(PROC)inst.txt > $(PROC)inst.patch || exit 0
 
-# Usage: update $(PROC)dec.txt to the desired contents, then make patch-dec
+usage-patch-dec:
+	echo update $(PROC)dec.txt to the desired contents, then make patch-dec
+
 patch-dec:
 	diff -u $(PROC).txt $(PROC)dec.txt > $(PROC)dec.patch || exit 0
 
-# Usage: update $(PROC)exn.txt to the desired contents, then make patch-exn
+usage-patch-exn:
+	echo update $(PROC)exn.txt to the desired contents, then make patch-exn
+
 #patch-exn:
 #	diff -u $(PROC).txt $(PROC)exn.txt > $(PROC)exn.patch || exit 0
