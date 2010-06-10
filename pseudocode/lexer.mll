@@ -69,7 +69,7 @@ let char = letter | digit
 let sep = '.' | '_'
 let char_sep = char | sep
 
-let reg = "R" | 'R' char | 'R' char char char_sep*
+let reg = "R" | 'R' letter | 'R' letter char char_sep*
 let ident = reg | letter_but_R char_sep* | '_' char_sep*
 
 let num = digit+
