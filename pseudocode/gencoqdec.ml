@@ -117,7 +117,7 @@ let dec b pc =
 	  | true -> bprintf b "SBO%d" i 
 	  | false -> bprintf b "SBZ%d" i
 	end
-    | (Param1 c, _) -> bprintf b "%s_"  (Char.escaped c)
+    | (Param1 c, _) -> bprintf b "%c_" c (*REMOVE: (Char.escaped c)*)
     | (Param1s s, _) -> bprintf b "%s" s
     | (Range _, _) -> string b "_"
     | (Nothing, _) -> ()
@@ -139,8 +139,8 @@ let mode_var m lst =
 
 let add_mode_var n lst =
     if (mode_var n lst != 0) then
-      let v = Printf.sprintf "i%d" (mode_var n lst) in
-	List.append [(v, 0, 0)] lst
+      (*REMOVE:let v = Printf.sprintf "i%d" (mode_var n lst) in*)
+	List.append [("i", 0, 0)] lst
     else lst;;
 
 let not_var1 i =
@@ -211,8 +211,7 @@ let inst_param ls =
 	Printf.sprintf "(regnum_from_bit %d w)" i
     | ("shifter_operand", _, _) ->
 	"(decode_shifter_operand w I x)"
-    | ("cond", _, _) ->
-	"(condition w)"
+    | ("cond", _, _) ->	"op" (*REMOVE:"(condition w)"*)
     | (s, p, l) -> 
 	if l > 1 then 
 	  Printf.sprintf "w[%d#%d]" (p+l-1) p
@@ -300,7 +299,7 @@ let shouldbe_test (lh, ls) =
 	  bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
 	 (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
 	else*)
-	  bprintf b " (%s %t)" (id_inst (lh,ls)) (params string (lh, ls))
+	  bprintf b "%s %t" (id_inst (lh,ls)) (params string (lh, ls))
   in aux;;
 
 let mode_tst (lh, ls) =
@@ -308,8 +307,8 @@ let mode_tst (lh, ls) =
   let lst = Array.to_list (param_m ls) in
   let md = mode_var (name_lst (lh, ls)) lst in
   match md with
-    | (1|2|3|4|5 as i) -> bprintf b "decode_mode decode_addr_mode%d w (fun i%d => %t)" i i (shouldbe_test (lh, ls))
-    | _ -> bprintf b "DecInst %t" (shouldbe_test (lh, ls))
+    | (1|2|3|4|5 as i) -> bprintf b "decode_cond_mode decode_addr_mode%d w (fun i op => %t)" i (shouldbe_test (lh, ls))
+    | _ -> bprintf b "decode_cond w (fun op => %t)" (shouldbe_test (lh, ls))
   in aux;;
 
 let bits f x =
@@ -326,10 +325,16 @@ let dec_inst b (lh, ls) =
 	    bprintf b "    %a\n    | %t =>\n      %t\n"
 	      comment lh (bits dec dbits) (mode_tst (lh, ls))
 	| Encoding -> ()
-	| Addr_mode _ -> 
-	    bprintf b "    %a\n    | %t =>\n      DecInst (%s %t)\n"
-	      comment lh (bits dec dbits)
-	      (id (lh, ls)) (params string (lh, ls))
+	| Addr_mode i ->
+	    (*FIXME*)
+	    if i = 1 || (i = 2 && false) || (i = 3 && false) then
+	      bprintf b "    %a\n    | %t =>\n      DecInst (%s %t)\n"
+		comment lh (bits dec dbits)
+		(id (lh, ls)) (params string (lh, ls))
+	    else
+	      bprintf b "    %a\n    | %t =>\n      decode_cond w (fun op => %s %t)\n"
+		comment lh (bits dec dbits)
+		(id (lh, ls)) (params string (lh, ls))
 ;;
 
 let order_ad p =
