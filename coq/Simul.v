@@ -31,6 +31,7 @@ Section decoder_result.
 
 End decoder_result.
 
+(*REMOVE:*)
 Definition decode_mode (mode : Type) (inst : Type) 
   (f : word -> decoder_result mode) (w : word) (g : mode -> inst) :
   decoder_result inst :=
@@ -39,6 +40,27 @@ Definition decode_mode (mode : Type) (inst : Type)
     | DecError m => @DecError inst m
     | DecUndefined => @DecUndefined inst
     | DecUnpredictable => @DecUnpredictable inst
+  end.
+
+Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
+  decoder_result inst :=
+  match condition w with
+    | Some oc => DecInst (g oc)
+    | None => @DecUndefined inst
+  end.
+
+Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
+  (w : word) (inst : Type) (g : mode -> opcode -> inst) :
+  decoder_result inst :=
+  match condition w with
+    | Some oc =>
+      match f w with
+        | DecInst i => DecInst (g i oc)
+        | DecError m => @DecError inst m
+        | DecUndefined => @DecUndefined inst
+        | DecUnpredictable => @DecUnpredictable inst
+      end
+    | None => @DecUndefined inst
   end.
 
 (****************************************************************************)
