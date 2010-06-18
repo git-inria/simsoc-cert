@@ -134,10 +134,12 @@ let addr_mode_of_prog =
   let mode3 = set_of_list ["LDRD";"LDRH";"LDRSB";"LDRSH";"STRD";"STRH"] in
   let mode4 = set_of_list ["RFE";"SRS"] in
   let mode5 = set_of_list ["LDC";"STC"] in
+  let no_mode = set_of_list ["SWP"; "SWPB"] in
     fun p (gs : (string * string) list) ->
       if List.mem_assoc "shifter_operand" gs then Some 1
       else if List.mem_assoc "address" gs then
-	if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
+        if StrSet.mem p.pident.iname no_mode then None
+	else if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
       else if List.mem_assoc "register_list" gs
 	|| StrSet.mem p.pident.iname mode4 then Some 4
       else if StrSet.mem p.pident.iname mode5 then Some 5
