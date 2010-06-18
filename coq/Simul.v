@@ -42,20 +42,20 @@ Definition decode_mode (mode : Type) (inst : Type)
     | DecUnpredictable => @DecUnpredictable inst
   end.
 
-Definition decode_cond (w : word) (inst : Type) (g :option opcode -> inst) :
+Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
   decoder_result inst :=
   match condition w with
-    | Some oc => DecInst (g (Some oc))
+    | Some oc => DecInst (g oc)
     | None => @DecUndefined inst
   end.
 
 Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
-  (w : word) (inst : Type) (g : mode -> option opcode -> inst) :
+  (w : word) (inst : Type) (g : mode -> opcode -> inst) :
   decoder_result inst :=
   match condition w with
     | Some oc =>
       match f w with
-        | DecInst i => DecInst (g i (Some oc))
+        | DecInst i => DecInst (g i oc)
         | DecError m => @DecError inst m
         | DecUndefined => @DecUndefined inst
         | DecUnpredictable => @DecUnpredictable inst
