@@ -35,7 +35,7 @@ rm -rf tmp
 mkdir tmp
 cd tmp
 echo extract OCaml files ...
-coqc -q -R $root/coq SimSoCCert ../Extraction.v || exit $?
+coqc -q -R $root/coq SimSoCCert -I $root/arm6 ../Extraction.v || exit $?
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
 files=`ls *.ml | sed -e 's|.ml||g'`
