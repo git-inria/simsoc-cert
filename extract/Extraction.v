@@ -21,7 +21,7 @@ Set Extraction AutoInline.
 
 (*Extraction NoInline ... .*)
 
-(*Extraction Blacklist ... .*)
+Extraction Blacklist list string.
 
 (*with coq-svn:
 Require ExtrOcamlBasic ExtrOcamlString ExtrOcamlNatInt.*)
@@ -37,5 +37,5 @@ Require Import List.
 
 Extract Inductive list => list [ "[]" "(::)" ].
 
-Require Simul.
-Recursive Extraction Library Simul.
+Require arm6.
+Recursive Extraction Library arm6.
