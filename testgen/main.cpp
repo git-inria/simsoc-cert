@@ -27,12 +27,12 @@ int main(int argc, const char *argv[]) {
     "(* Initial CPSR: ARM32 instruction set, FIQ and IRQ disabled, System mode *)\n"
     "Definition initial_cpsr : word := repr (Zpos 1~1~1~1~1~1~1).\n"
     "\n"
-    "Definition initial_spsr (m: option processor_exception_mode) : word := zero.\n"
+    "Definition initial_spsr (m: option exn_mode) : word := zero.\n"
     "\n"
     "(* Initial registers: only PC value is significant *)\n"
     "Definition initial_reg (r: register) : word :=\n"
     "  match r with\n"
-    "    | R p => if Zeq_bool p.(bitvec_val) 15 then repr "
+    "    | R p => if zeq p 15 then repr "
       <<initial_pc <<" else zero\n"
     "    | _ => zero\n"
     "  end.\n"
@@ -40,8 +40,16 @@ int main(int argc, const char *argv[]) {
   elf_file.load_sections(ofs);
   ofs <<
     "\n"
+    "Definition initial_scc_reg (r : regnum) : word := w0.\n"
+    "\n"
+    "Definition proc_initial_state : Proc.state :=\n"
+    "  Proc.mk_state initial_cpsr initial_spsr initial_reg nil sys.\n"
+    "\n"
+    "Definition scc_initial_state : SCC.state :=\n"
+    "  SCC.mk_state initial_scc_reg initial_mem.\n"
+    "\n"
     "Definition initial_state : state :=\n"
-    "  mk_state initial_cpsr initial_spsr initial_reg initial_mem nil sys.\n";
+    "  mk_state proc_initial_state scc_initial_state.\n";
   ofs.close();
   return 0;
 }
