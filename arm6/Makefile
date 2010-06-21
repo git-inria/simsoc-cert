@@ -15,7 +15,7 @@ GEN := ../pseudocode/main
 
 .PRECIOUS: $(PROC).txt $(FILES)
 
-default: $(PROC)inst.vo $(PROC)dec.vo $(PROC)exn.vo
+default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 
 %.txt: %.pdf
 	pdftotext -layout $< $@
