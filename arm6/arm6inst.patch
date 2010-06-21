@@ -1,5 +1,5 @@
---- arm6.txt	2010-05-25 17:48:56.000000000 +0800
-+++ arm6inst.txt	2010-06-08 17:03:38.000000000 +0800
+--- arm6.txt	2010-05-31 14:35:04.000000000 +0800
++++ arm6inst.txt	2010-06-21 13:03:51.000000000 +0800
 @@ -7687,7 +7687,7 @@
             Operation
             LR = address of the instruction after the BLX instruction
@@ -92,7 +92,15 @@
                   Q Flag = 1
  
  
-@@ -16207,15 +16214,6 @@
+@@ -16198,6 +16205,7 @@
+            MemoryAccess(B-bit, E-bit)
+            processor_id = ExecutingProcessor()
+            if ConditionPassed(cond) then
++               address = Rn
+                if (CP15_reg1_Ubit == 0) then
+                    temp = Memory[address,4] Rotate_Right (8 * address[1:0])
+                    Memory[address,4] = Rm
+@@ -16207,15 +16215,6 @@
                     Memory[address,4] = Rm
                     Rd = temp
                 if Shared(address) then   /* ARMv6 */
@@ -108,7 +116,15 @@
                   physical_address = TLB(address)
                   ClearExclusiveByAddress(physical_address,processor_id,4)
                   /* See Summary of operation on page A2-49 */
-@@ -18442,7 +18440,7 @@
+@@ -16302,6 +16301,7 @@
+            MemoryAccess(B-bit, E-bit)
+            processor_id = ExecutingProcessor()
+            if ConditionPassed(cond) then
++               address = Rn
+                temp = Memory[address,1]
+                Memory[address,1] = Rm[7:0]
+                Rd = temp
+@@ -18442,7 +18442,7 @@
                 Rd[15:0] = UnsignedSat(Rm[15:0], sat_imm) // Rm[15:0] treated as signed
                 Rd[31:16] = UnsignedSat(Rm[31:16], sat_imm) // Rm[31:16] treated as signed
                 if UnsignedDoesSat(Rm[15:0], sat_imm)
@@ -117,7 +133,7 @@
                     Q Flag = 1
  
  
-@@ -25166,7 +25164,7 @@
+@@ -25166,7 +25166,7 @@
  
           Operation
           MemoryAccess(B-bit, E-bit)
@@ -126,7 +142,7 @@
           Rd = Memory[address, 4]
  
  
-@@ -49653,4 +49651,4 @@
+@@ -49653,4 +49653,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
