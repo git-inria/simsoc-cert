@@ -206,7 +206,8 @@ uint32_t ElfFile::get_text_size() const {
 }
 
 void ElfFile::load_sections(ostream &os) {
-  os <<dec <<"Definition initial_mem (a: address) : word :=\n";
+  os <<dec <<"Definition initial_mem_i (i: Z) : word :=\n"
+     <<"  match i with\n";
   for (size_t i = 0; i<header.sections.size(); ++i) {
     if (header.sections[i]->is_load()) {
       uint32_t mem_start = header.sections[i]->start();
@@ -223,10 +224,12 @@ void ElfFile::load_sections(ostream &os) {
       if (!ifs)
         UNREACHABLE;
       for (uint32_t j = 0; j<mem_size; j+=4)
-        os <<"  if zeq a " <<(mem_start+j)/4 <<" then repr "
-           <<reinterpret_cast<uint32_t*>(tmp)[j/4] <<" else\n";
+        os <<"    | " <<(mem_start+j)/4 <<" => repr "
+           <<reinterpret_cast<uint32_t*>(tmp)[j/4] <<'\n';
       delete[] tmp;
     }
   }
-  os <<"  zero.\n";
+  os <<"    | _ => zero\n"
+     <<"  end.\n"
+     <<"Definition initial_mem a := initial_mem_i (intval a).\n";
 }
