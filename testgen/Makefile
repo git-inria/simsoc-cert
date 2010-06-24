@@ -1,3 +1,9 @@
+FILES := sum_iterative
+
+.PRECIOUS: $(FILES:%=%.elf)
+
+default: elf2coq $(FILES:%=%.v)
+
 main.o: main.cpp elf_loader.hpp elf.h
 
 elf_loader.o: elf_loader.cpp elf_loader.hpp elf.h
