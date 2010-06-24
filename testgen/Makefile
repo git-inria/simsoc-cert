@@ -1,8 +1,8 @@
 FILES := sum_iterative
 
-.PRECIOUS: $(FILES:%=%.elf)
+.PRECIOUS: $(FILES:%=%.elf) $(FILES:%=%.v)
 
-default: elf2coq $(FILES:%=%.v)
+default: elf2coq $(FILES:%=%.vo)
 
 main.o: main.cpp elf_loader.hpp elf.h
 
@@ -17,5 +17,8 @@ elf2coq: main.o elf_loader.o
 %.v: %.elf elf2coq
 	./elf2coq $< $@
 
+%.vo: %.v
+	coqc -I ../arm6 $<
+
 clean:
-	rm -f *.elf *.v *.o elf2coq
+	rm -f elf2coq *.elf *.v *.o *.vo
