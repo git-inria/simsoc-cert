@@ -18,7 +18,7 @@ elf2coq: main.o elf_loader.o
 	./elf2coq $< $@
 
 %.vo: %.v
-	coqc -I ../arm6 $<
+	coqc -q -R ../coq SimSoCCert $<
 
 clean:
 	rm -f elf2coq *.elf *.v *.o *.vo
