@@ -49,7 +49,7 @@ sed \
     -e 's|first value|first_value|' \
     -e 's|second value|second_value|' \
     -e 's|dependent operation|dependent_operation|g' \
-    -e 's|Mask|Mask()|' \
+    -e 's|Mask|Mask()|g' \
     -e 's|CP15\(.*\)bit|CP15\1bit()|' \
     -e 's|v4 and earlier|v4_and_earlier()|' \
     -e 's|v5 and above|v5_and_above()|' \
