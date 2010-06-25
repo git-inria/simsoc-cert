@@ -231,5 +231,5 @@ void ElfFile::load_sections(ostream &os) {
   }
   os <<"    | _ => 0\n"
      <<"  end.\n"
-     <<"Definition initial_mem (a : address) : word := Address.repr (initial_mem_aux a).\n";
+     <<"Definition initial_mem (a : address) : word := repr (initial_mem_aux a).\n";
 }
