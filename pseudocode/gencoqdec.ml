@@ -23,7 +23,6 @@ open Printf;;
 open Util;;     (* for the "list" function *)
 open Codetype;; (* from the directory "refARMparsing" *)
 
-
 (*****************************************************************************)
 (** generate the comment above the pattern *)
 (*****************************************************************************)
@@ -74,7 +73,6 @@ let add_mode ss =
 let num (lh, _) =
   match lh with LH (is, _) -> List.nth is 1;;
 
-
 (* This function is used by the "params" function *)
 (* rename addressing modes*)
 let name (ps: maplist_element) =
@@ -83,7 +81,7 @@ let name (ps: maplist_element) =
     match lh with
       | LH (_, "B, BL") -> ["B"]
       | LH (_, "MSR  Immediate operand:") -> ["MSR"]
-      | LH (_, "MSR  Register operand:") -> ["MSR"]
+      | LH (_, "MSR  Register operand:") -> ["MSR2"]
       | LH (_, s) ->
 	  str_to_lst s
   in
@@ -118,8 +116,20 @@ let id_inst (ps: maplist_element) =
 (** binary list *)
 (*****************************************************************************)
 
+(* replace the 25th bit by opcode25*)
+let msr_op25 (lh, ls) =
+  let n = name (lh, ls) in
+    begin match n with 
+      | "MSR" :: _ -> ls.(25) <- (Param1s "opcode25")
+      | _ -> ()
+    end;
+    (lh, ls)
+;;
+
 (*add the position of element in the array*)
-let pos_info (pc: pos_contents array) =
+let pos_info (l, a) =
+  let lm = msr_op25 (l,a) in
+    match lm with (_, pc) ->
   let ar = Array.create (Array.length pc) (Nothing, 0) in
     for i = 0 to Array.length pc - 1 do
       ar.(i) <- (pc.(i), i)
@@ -131,8 +141,8 @@ let pos_info (pc: pos_contents array) =
 (* The bits are separated by ' *)
  *)
 let gen_pattern x =
-  let dec b pc =
-    match pc with
+  let dec b ls =
+    match ls with
       | (Value s, _) -> 
 	  begin match s with
 	    | true -> string b "1"
@@ -250,9 +260,6 @@ let remove_params n lst =
       | "M5" :: "Unindexed" :: _ ->
 	  List.map (fun (s, i1, i2) -> if (s = "U_") then ("",0,0) else (s, i1, i2)) lst
 
-      | "MSR" :: _ -> List.map (fun (s, i1, i2) -> if (s = "field_mask")||(s = "cond")||(s = "m")||(s = "8_bit_immediate")||(s = "rotate_imm")||(s = "R_") then 
-				  ("",0,0) else (s, i1, i2)) lst
-
       | "SWI" :: _ -> List.map (fun (s, i1, i2) -> if (s = "immed_24") then ("",0,0) else (s, i1, i2)) lst
 
       | ("LDRB"|"STRB"|"LDR"|"STR"|"STRBT"|"LDRT"|"STRT") :: _ -> List.map (fun (s, i1, i2) -> if (s = "n") then ("",0,0) else (s, i1, i2)) lst
@@ -279,18 +286,21 @@ let inst_param ls =
 
 (*keep only one of the same elements in a range*)
 (*rerange the data type of instruction parameters with name, position and length*)
-let param_m ar =
-  let res = Array.create (Array.length ar) ("", 0, 0) in
-    for i = 0 to (Array.length ar -1) do
-      match ar.(i) with
+let param_m (_, ls) =
+  let res = Array.create (Array.length ls) ("", 0, 0) in
+    for i = 0 to (Array.length ls -1) do
+      match ls.(i) with
 	| Range (s, len, _) ->
 	    if s.[0] = 'R' then
 	      res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
 	    else
 	      if s = "ImmedL" then
 		res.(i) <- ("immedL", i, len)
-	      else
-		res.(i) <- (s, i, len)
+	      else 
+		if s = "8_bit_immediate" then
+		  res.(i) <- ("immed_8", i, len)
+		else
+		  res.(i) <- (s, i, len)
 	| (Nothing | Value _ | Shouldbe _) -> 
 	    res.(i) <- ("", 0, 0)
 	| Param1 c -> 
@@ -298,7 +308,7 @@ let param_m ar =
 	| Param1s s -> 
 	    res.(i) <- (s, i, 1)
     done;
-    for i = 0 to (Array.length ar -1) do
+    for i = 0 to (Array.length ls -1) do
     match res.(i) with
       | ("immed", _, _) ->      
 	  res.(i) <- ("", 0, 0)
@@ -312,6 +322,13 @@ let param_m ar =
 	  done;
     res;;
 
+(* insert 'Rm' in the array of MSR parameters*)
+let msr_reg (lh, ls) =
+  let n = name (lh, ls) in
+    match n with
+      | "MSR"::_ -> Array.append (Array.make 1 ("m", 0, 4)) (param_m (lh,ls))
+      | _ -> (param_m (lh,ls));;
+
 (*get the final well typed parameters list*)
 let params f (lh, ls) =
   let dname = name (lh,ls) in
@@ -323,7 +340,7 @@ let params f (lh, ls) =
 	       (add_mode_param dname
 		  (List.sort (fun (s1, _, _) (s2, _, _) -> 
 				Pervasives.compare s1 s2)
-		     (Array.to_list (param_m ls)))))))
+		     (Array.to_list (msr_reg (lh,ls))))))))
     in
       (list " " f) b lst
   in aux;;
@@ -377,7 +394,7 @@ let shouldbe_test (lh, ls) =
 (*call the decode mode function according to the addressing mode*)
 let mode_tst (lh, ls) =
   let aux b =
-  let lst = Array.to_list (param_m ls) in
+  let lst = Array.to_list (param_m (lh,ls)) in
   let md = mode_of_inst (name (lh, ls)) lst in
   match md with
     | (1|2|3|4|5 as i) -> bprintf b "decode_cond_mode decode_addr_mode%d w (fun add_mode condition => %t)" i (shouldbe_test (lh, ls))
@@ -389,12 +406,17 @@ let mode_tst (lh, ls) =
 (*****************************************************************************)
 
 let dec_inst b (lh, ls) =
-  let dbits = pos_info ls in
+  let dbits = pos_info (lh,ls) in
     let md = add_mode (name (lh,ls)) in
+    let id = id_inst (lh, ls) in
       match md with
 	| Inst -> 
-	    bprintf b "    %a\n    | %t =>\n      %t\n"
-	      comment lh (gen_pattern dbits) (mode_tst (lh, ls))
+	    begin match id with
+	      | "MSR2" -> () (* remove pattern for MSR-immediate operation *)
+	      | _ ->
+		  bprintf b "    %a\n    | %t =>\n      %t\n"
+		    comment lh (gen_pattern dbits) (mode_tst (lh, ls))
+	    end
 	| Encoding -> ()
 	| Addr_mode i ->
 	    (*FIXME*)
@@ -452,13 +474,13 @@ let is_addr_mode i l =
 
 let decode b ps =
   (*print the import require and notations*)
-  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul Message.\n\nOpen Scope string_scope.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul String.\n\nOpen Scope string_scope.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
 
   (*print the decoder of addrss mode 1 - 5*)
   for i = 1 to 5 do
     bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
     (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
-    bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
+    bprintf b "    | _ => DecError mode%d \"not a addressing mode %d\"\n  end." i i
   done;
 
   (*print the instruction decoder*)
