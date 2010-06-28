@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Exception handling. Step functions are taken from the generated file
 arm6/arm6exn.v. *)
 
-Require Import Config List ZArith Bitvec Arm SCC State Semantics Util String.
+Require Import Config List ZArith Bitvec Arm SCC State Semantics Util Message.
 
 Module InstSem (Import C : CONFIG).
 
@@ -134,7 +134,7 @@ Definition step (s : state) : result :=
         | SoftInt => SoftInt_step s
         | PFAbort => PFAbort_step s
         | DataAbort => DataAbort_step s
-        | ImpAbort => todo "Imprecise data abort" false s
+        | ImpAbort => todo ImpreciseDataAbort false s
         | IRQ => IRQ_step s
         | FIQ => FIQ_step s
       end

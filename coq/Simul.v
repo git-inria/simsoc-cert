@@ -13,7 +13,7 @@ Instruction decoding and execution cycle.
 
 Set Implicit Arguments.
 
-Require Import Bitvec Arm Semantics State String.
+Require Import Bitvec Arm Semantics State Message.
 
 (****************************************************************************)
 (** decoding result type *)
@@ -27,20 +27,9 @@ Section decoder_result.
  | DecUndefined : decoder_result
  | DecUnpredictable : decoder_result
  | DecInst : inst -> decoder_result
- | DecError : string -> decoder_result.
+ | DecError : message -> decoder_result.
 
 End decoder_result.
-
-(*REMOVE:*)
-Definition decode_mode (mode : Type) (inst : Type) 
-  (f : word -> decoder_result mode) (w : word) (g : mode -> inst) :
-  decoder_result inst :=
-  match f w with
-    | DecInst i => DecInst (g i)
-    | DecError m => @DecError inst m
-    | DecUndefined => @DecUndefined inst
-    | DecUnpredictable => @DecUnpredictable inst
-  end.
 
 Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
   decoder_result inst :=
@@ -84,7 +73,7 @@ Definition incr_PC (s : state) : state :=
 Inductive simul_result : Type :=
 | SimOk : state -> simul_result
 | SimKo : state (* state before the current instruction *)
-  -> string (* error message *) -> simul_result.
+  -> message (* error message *) -> simul_result.
 
 Module Make (Import I : INST).
 
@@ -96,14 +85,14 @@ Module Make (Import I : INST).
 
   Definition next (s : state) : simul_result :=
     match inst_set (cpsr s) with
-      | None => SimKo s "invalid instruction set"
-      | Some Jazelle => SimKo s "Jazelle instruction set not implemented"
-      | Some Thumb => SimKo s "Thumb instruction set not implemented"
+      | None => SimKo s InvalidInstructionSet
+      | Some Jazelle => SimKo s JazelleInstructionSetNotImplemented
+      | Some Thumb => SimKo s ThumbInstructionSetNotImplemented
       | Some ARM =>
         let w := read s (address_of_word (reg_content s PC)) Word in
           match decode w with
             | DecError m => SimKo s m
-            | DecUnpredictable => SimKo s "decoding returns unpredictable"
+            | DecUnpredictable => SimKo s DecodingReturnsUnpredictable
             | DecUndefined => handle_exception (add_exn s UndIns)
             | DecInst i =>
               match step s i with

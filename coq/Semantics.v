@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import State Util Bitvec Arm State List String ZArith.
+Require Import State Util Bitvec Arm State List Message ZArith.
 
 (****************************************************************************)
 (** Result of executing an instruction.
@@ -20,8 +20,8 @@ The boolean in Ok indicates whether the PC needs to be incremented. *)
 
 Inductive result : Type :=
 | Ok (b : bool) (s : state)
-| Ko (m : string)
-| Todo (m : string).
+| Ko (m : message)
+| Todo (m : message).
 
 Definition semfun := bool -> state -> result.
 
@@ -29,9 +29,9 @@ Definition semfun := bool -> state -> result.
 (** Semantic functions for pseudo-code constructions *)
 (****************************************************************************)
 
-Definition todo (m : string) (b : bool) (s : state) : result := Todo m.
+Definition todo (m : message) (b : bool) (s : state) : result := Todo m.
 
-Definition unpredictable (m : string) (b : bool) (s : state) : result := Ko m.
+Definition unpredictable (m : message) (b : bool) (s : state) : result := Ko m.
 
 Definition if_then (c : bool) (f : semfun) (b : bool) (s : state) : result :=
   if c then f b s else Ok b s.

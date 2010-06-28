@@ -48,7 +48,7 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 	$(GEN) -idec $< -ocoq > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
-	coqc -q -R ../coq SimSoCCert $<
+	time coqc -q -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@ 
