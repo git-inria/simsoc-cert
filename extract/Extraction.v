@@ -34,7 +34,6 @@ Extract Inductive option => option [ Some None ].
 Extract Inductive prod => "(*)"  [ "" ]. (* instead of "(,)" *)
 
 Require Import List.
-
 Extract Inductive list => list [ "[]" "(::)" ].
 
 Require arm6.
