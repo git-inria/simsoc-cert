@@ -43,7 +43,7 @@ let rec exp = function
  
   (* rename calls to *From depending on the argument,
      and change the argument into a list of arguments,
-     e.g. CarrayFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
+     e.g. CarryFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
   | Fun (("OverflowFrom"|"BorrowFrom"|"CarryFrom"|"CarryFrom8"|"CarryFrom16"
 	      as f), (BinOp (_, op, _) as e) :: _) -> let es = args e in
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
