@@ -21,7 +21,7 @@ int main(int argc, const char *argv[]) {
     "Require Import ZArith Bitvec State Arm Util List.\n"
     "\n"
     "(* Initial CPSR: ARM32 instruction set, FIQ and IRQ disabled, System mode *)\n"
-    "Definition initial_cpsr : word := repr (Zpos 1~1~1~1~1~1~1).\n"
+    "Definition initial_cpsr : word := repr (Zpos 1~1~1~0~1~1~1~1~1).\n"
     "\n"
     "Definition initial_spsr (m : option exn_mode) : word := w0.\n"
     "\n"
