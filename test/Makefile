@@ -16,7 +16,7 @@ default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
 
-%.v: %.elf
+%.v: %.elf ../testgen/elf2coq
 	../testgen/elf2coq $< $@
 
 %.elf: %.c
