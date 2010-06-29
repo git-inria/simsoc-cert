@@ -474,13 +474,13 @@ let is_addr_mode i l =
 
 let decode b ps =
   (*print the import require and notations*)
-  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul String.\n\nOpen Scope string_scope.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
 
   (*print the decoder of addrss mode 1 - 5*)
   for i = 1 to 5 do
     bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
     (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
-    bprintf b "    | _ => DecError mode%d \"not a addressing mode %d\"\n  end." i i
+    bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
   done;
 
   (*print the instruction decoder*)
