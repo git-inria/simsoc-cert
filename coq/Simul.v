@@ -67,8 +67,12 @@ End INST.
 (** functor building a simulator *)
 (****************************************************************************)
 
-Definition incr_PC (s : state) : state :=
-  set_reg s PC (address_of_next_instruction s).
+(* b true means that the last instruction executed was not a jump *)
+(* Because the PC register contains the address of the current instruction
+ * plus 8 (cf A2.4.3), we add 8 to the PC if a jump occured (b false) *)
+(* The implementation assumes that the processor is in ARM mode *)
+Definition incr_PC_ARM (b: bool) (s : state) : state :=
+  set_reg s PC (add (reg_content s PC) (repr (if b then 4 else 8))).
 
 Inductive simul_result : Type :=
 | SimOk : state -> simul_result
@@ -89,14 +93,15 @@ Module Make (Import I : INST).
       | Some Jazelle => SimKo s JazelleInstructionSetNotImplemented
       | Some Thumb => SimKo s ThumbInstructionSetNotImplemented
       | Some ARM =>
-        let w := read s (address_of_word (reg_content s PC)) Word in
+        let a := address_of_word (address_of_current_instruction s) in
+        let w := read s a Word in
           match decode w with
             | DecError m => SimKo s m
             | DecUnpredictable => SimKo s DecodingReturnsUnpredictable
             | DecUndefined => handle_exception (add_exn s UndIns)
             | DecInst i =>
               match step s i with
-                | Ok b s' => handle_exception (if b then incr_PC s' else s')
+                | Ok b s' => handle_exception (incr_PC_ARM b s')
                 | Ko m | Todo m => SimKo s m
               end
           end

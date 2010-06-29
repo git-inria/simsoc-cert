@@ -74,6 +74,7 @@ Reading the program counter (p. 47) *)
 (****************************************************************************)
 
 (*IMPROVE: add as new field in state?*)
+(*REMARK: this function is not correct in Thumb mode *)
 Definition address_of_current_instruction (s : state) : word :=
   sub (reg_content s PC) (repr 8).
 
@@ -82,6 +83,7 @@ Definition address_of_current_instruction (s : state) : word :=
 cf. A2.7.1 Address space (p. 70) *)
 (****************************************************************************)
 
+(*REMARK: this function is not correct in Thumb mode *)
 Definition address_of_next_instruction (s : state) : word :=
   (*REMARK: [add (cur_inst_address s m PC) (repr 4)] is replaced by: *)
   sub (reg_content s PC) (repr 4).

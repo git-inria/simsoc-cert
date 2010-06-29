@@ -29,7 +29,7 @@ int main(int argc, const char *argv[]) {
     "Definition initial_reg (r : register) : word :=\n"
     "  match r with\n"
     "    | R p => if zeq p 15 then repr "
-      <<initial_pc <<" else w0\n"
+      <<initial_pc+8 <<" else w0\n"
     "    | _ => w0\n"
     "  end.\n"
     "\n";
