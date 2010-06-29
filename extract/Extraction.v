@@ -8,7 +8,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Configuration of a ARM processor (IMPLEMENTATION DEFINED parameters).
+Extraction parameters.
 *)
 
 Extraction Language Ocaml.
@@ -35,6 +35,3 @@ Extract Inductive prod => "(*)"  [ "" ]. (* instead of "(,)" *)
 
 Require Import List.
 Extract Inductive list => list [ "[]" "(::)" ].
-
-Require arm6.
-Recursive Extraction Library arm6.

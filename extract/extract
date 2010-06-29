@@ -36,6 +36,7 @@ mkdir tmp
 cd tmp
 echo extract OCaml files ...
 coqc -q -R $root/coq SimSoCCert -I $root/arm6 ../Extraction.v || exit $?
+coqc -q -R $root/coq SimSoCCert -I $root/arm6 -I .. ../ExtractArm6.v || exit $?
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
 files=`ls *.ml | sed -e 's|.ml||g'`
@@ -43,4 +44,4 @@ files=`sed -e 's|.cm[iox]||g' .depend | $order_deps $files`
 echo create Makefile ...
 sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" ../Makefile.in > Makefile || exit $?
 echo compile OCaml files ...
-make
+make -r -k
