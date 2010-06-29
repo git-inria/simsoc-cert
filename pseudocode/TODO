@@ -1,4 +1,6 @@
 
+< add interface files (.mli)
+
 < if there is only one processor, then we can simplify the
    pseudo-code: the local variable processor_id is not useful anymore
    and can be removed (remove calls to ExecutingProcessor and
