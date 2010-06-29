@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# See the COPYRIGHTS and LICENSE files.
+
 # this script does the following modifications:
 
 # add semi-colons at the end of various expressions
@@ -15,9 +18,8 @@
 # inline some code
 # replace a strange dash character by a usual dash
 
-
 # WARNING: do not remove the last strange -e command !
-# it is due to a strange dash character
+# it is due to an unusual dash character
 
 sed \
     -e '/^ *[a-zA-Z][a-zA-Z0-9 _(\+)]* = /s|$|;|' \
