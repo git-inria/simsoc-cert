@@ -6,13 +6,12 @@
 # - Frederic Blanqui, 2009-11-06
 
 prog=`basename $0`
-dir=`dirname $0`
 
 usage () { echo "usage: $prog [-h]"; }
 
 help () {
   cat <<EOF
-Extract all OCaml files with Extraction.v and compile them.
+Extract all OCaml files with ExtractArm6.v and compile them.
 
 Options:
 -h Provide this help and exit
@@ -27,20 +26,23 @@ esac
 
 if test $# -ne 0; then args; fi
 
-root=../..
-order_deps=$root/tools/order_deps/order_deps
-
 echo remove tmp directory ...
 rm -rf tmp
 mkdir tmp
 cd tmp
+root=../..
+
 echo extract OCaml files ...
 coqc -q -R $root/coq SimSoCCert -I $root/arm6 ../ExtractArm6.v || exit $?
+
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
 files=`ls *.ml | sed -e 's|.ml||g'`
+order_deps=$root/tools/order_deps/order_deps
 files=`sed -e 's|.cm[iox]||g' .depend | $order_deps $files`
+
 echo create Makefile ...
 sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" ../Makefile.in > Makefile || exit $?
+
 echo compile OCaml files ...
 make -r -k
