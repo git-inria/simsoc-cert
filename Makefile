@@ -19,6 +19,9 @@ all: default $(TARGETS)
 $(SUBDIRS) $(TARGETS):
 	@$(MAKE) -C $@
 
+config:
+	@for d in coq; do make -C $$d $@; done
+
 clean:
 	rm -f *~
-	@for d in $(SUBDIRS); do make -C $$d clean; done
+	@for d in $(SUBDIRS); do make -C $$d $@; done
