@@ -11,7 +11,7 @@ default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 	ocamlc -c -g -I ../extract/tmp extract.cma $<
 
 %.ml %.mli: %.v
-	extract_file $<
+	./extract_file $<
 
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
