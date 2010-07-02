@@ -69,8 +69,8 @@ let rec options() =
   " Normalize pseudocode (only with -ipc)";
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
-  "-ocxx", Unit (fun () -> set_output_type Cxx),
-  " Output C++";
+  "-ocxx", Unit (fun () -> set_norm(); set_output_type Cxx),
+  " Output C++ (implies -norm)";
   "-ocoq", Unit (fun () -> set_norm(); set_output_type Coq),
   " Output Coq (implies -norm)";
   "-v", Unit set_verbose,

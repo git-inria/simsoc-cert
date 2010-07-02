@@ -24,14 +24,14 @@ let hex_of_bin = function
   | "0b11" -> "3"
   | "0b10111" -> "ARM_Processor::abt"
   | "0b10011" -> "ARM_Processor::svc"
-  | _ -> "TODO";;
+  | _ -> "TODO_hex_of_bin";;
 
 (** C++ types of usual variables *)
 
 let type_of_var = function
 
   | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
-  | "shifter_carry_out" | "shift" -> "bool"
+  | "shifter_carry_out" | "shift" | "opcode25" | "E" -> "bool"
 
   | "signed_immed_24" | "H" | "shifter_operand" | "alu_out" | "target"
   | "data" | "value" | "diffofproducts" | "address" | "start_address"
@@ -49,7 +49,7 @@ let type_of_var = function
   | "register_list" | "offset_12" -> "uint16_t"
   | "accvalue" | "result" -> "uint64_t"
   | "processor_id" -> "size_t"
-  | _ -> "TODO";;
+  | _ -> "TODO_type_of_var";;
 
 (** List the variables of a prog *)
 
@@ -109,7 +109,7 @@ let binop = function
   | "*" -> "*"
   | "Rotate_Right" -> "rotate_right"
   | "Arithmetic_Shift_Right" -> "asr"
-  | _ -> "TODO";;
+  | _ -> "TODO_binop";;
 
 let reg_id = function
   | "15" -> "ARM_Processor::PC"
@@ -124,16 +124,20 @@ let cpsr_flag = function
   | "28" -> "V_flag"
   | "27" -> "Q_flag"
   | "24" -> "J_flag"
+  | "19" -> "GE3"
+  | "18" -> "GE2"
+  | "17" -> "GE1"
+  | "16" -> "GE0"
   | "9" -> "E_flag"
   | "8" -> "A_flag"
   | "7" -> "I_flag"
   | "6" -> "F_flag"
   | "5" -> "T_flag"
-  | _ -> "TODO";;
+  | s -> "TODO_cpsr_flag_"^s;;
 
 let cpsr_field = function
   | "4", "0" -> "mode"
-  | _ -> "TODO";;
+  | s1, s2 -> "TODO_cpsr_field_"^s1^"_"^s2;;
 
 let access_type = function
   | Byte -> "byte"
@@ -152,6 +156,8 @@ let rec exp b = function
       exp b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
       bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
+  | BinOp (e, ("<"|">=" as op), Num "0") ->
+      bprintf b "(static_cast<int32_t>(%a) %s 0)" exp e op
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
   | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
   | CPSR -> string b "proc.cpsr"
@@ -166,6 +172,7 @@ let rec exp b = function
   | Var s -> string b s
   | Memory (e, n) -> bprintf b "proc.mmu.read_%s(%a)" (access_type n) exp e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
+  | Range (CPSR, Index (Num s)) -> bprintf b "proc.cpsr.%s" (cpsr_flag s)
   | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2
   | Range (e, Bits (n1, n2)) ->
       begin match n1, n2 with
@@ -243,13 +250,17 @@ and affect k b dst src =
     | Reg (e, None) -> bprintf b "proc.reg(%a) = %a" exp e exp src
     | Reg (e, Some m) ->
 	bprintf b "proc.reg(%a,%s) = %a" exp e (mode m) exp src
-    | Var v -> bprintf b "%a = %a" exp (Var v) exp src
     | CPSR -> bprintf b "proc.cpsr = %a" exp src
     | SPSR _ as e -> bprintf b "%a = %a" exp e exp src
+    | Var v -> bprintf b "%a = %a" exp (Var v) exp src
     | Range (CPSR, Flag (s,_)) ->
         bprintf b "proc.cpsr.%s_flag = %a" s exp src
     | Range (CPSR, Index (Num n)) ->
         bprintf b "proc.cpsr.%s = %a" (cpsr_flag n) exp src
+    | Range (CPSR, Bits ("19", "18")) ->
+        bprintf b "proc.cpsr.set_GE_32(%a)" exp src
+    | Range (CPSR, Bits ("17", "16")) ->
+        bprintf b "proc.cpsr.set_GE_10(%a)" exp src
     | Range (CPSR, Bits (n1, n2)) ->
         bprintf b "proc.cpsr.%s = %a" (cpsr_field (n1,n2)) exp src
     | Range (e1, Bits (n1, n2)) ->
@@ -272,17 +283,11 @@ let prog_out b (v,t) = bprintf b "%s &%s" t v;;
 let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
 let inreg_load b s =
-  bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
+  bprintf b "  const uint32_t old_R%s = proc.reg(%s); (void)old_R%s;\n" s s s;;
 
 let ident b i = bprintf b "%s%a" i.iname (option "" variant) i.ivariant;;
 
-let comment b p = bprintf b "// %a" Genpc.name p;;
-
-(*REMOVE?*)
-let abbrev b s =
-  if s <> "" && 'A' < s.[0] && s.[0] < 'Z'
-  then bprintf b "%c" s.[0]
-  else bprintf b ""
+let comment b p = bprintf b "// %a\n" Genpc.name p;;
 
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
@@ -300,8 +305,8 @@ let prog gs ls b p =
       | Mode m ->
           let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
-            bprintf b "%avoid ARM_ISS::%a_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
-              (*FIXME?list "" abbrev*) Genpc.addr_mode m
+            bprintf b "%avoid ARM_ISS::M%d_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
+              m
               string p.pident.iname
               (list ",\n    " prog_arg) gs
               (arg_sep gs os)
@@ -317,8 +322,8 @@ let decl gs ls b p =
           (list "_" ident) (p.pident :: p.pidents) (list ",\n    " prog_arg) gs
     | Mode m ->
 	let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
-          bprintf b "  %a  void %a_%a(%a%s%a);\n" comment p
-            (*FIXME?list "" abbrev*) Genpc.addr_mode m
+          bprintf b "  %a  void M%d_%a(%a%s%a);\n" comment p
+            m
             string p.pident.iname
             (list ",\n    " prog_arg) gs
             (arg_sep gs os)

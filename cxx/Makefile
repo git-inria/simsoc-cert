@@ -1,17 +1,18 @@
+CXXFLAGS=-Wall -Wextra
 
 all: arm_iss.o diff
 
 arm_iss.o: arm_iss.cpp arm_iss_base.hpp
 
-arm_iss.cpp: ../pseudocode/bin/main ../refARMparsing/indentV6.txt
-	../pseudocode/bin/main -ocxx -ipc ../refARMparsing/indentV6.txt >$@.tmp
+arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm
+	../pseudocode/main -ocxx -ipc ../arm6/arm6inst.arm >$@.tmp
 	mv $@.tmp $@
 
-../pseudocode/bin/main: FORCE
+../pseudocode/main: FORCE
 	cd ../pseudocode && $(MAKE)
 
-../refARMparsing/indentV6.txt: FORCE
-	cd ../refARMparsing && $(MAKE)
+../arm6/arm6inst.arm: FORCE
+	cd ../arm6 && $(MAKE) $@
 
 diff: arm_iss.cpp arm_iss-ref.cpp
 	diff -qw $^

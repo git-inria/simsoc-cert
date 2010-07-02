@@ -24,13 +24,13 @@ List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   "while", WHILE; "for", FOR; "to", TO; "do", DO;
   "case", CASE; "of", OF; "endcase", ENDCASE;
   "assert", ASSERT; "UNPREDICTABLE", UNPREDICTABLE;
-  (* registers *)    
+  (* registers *)
   "Flag", FLAG "Flag"; "flag", FLAG "flag"; "bit", FLAG "bit";
   "Bit", FLAG "Bit"; "CPSR", Parser.CPSR; "SPSR", Parser.SPSR;
-  "LR", REGNUM "14"; "PC", REGNUM "15"; "R", REG; "GE", GE;
+  "LR", REGNUM "14"; "PC", REGNUM "15"; "pc", REGNUM "15"; "R", REG; "GE", GE;
   "Rd", REGVAR "d"; "RdHi", REGVAR "dHi"; "RdLo", REGVAR "dLo";
   "Rs", REGVAR "s"; "Rm", REGVAR "m"; "Rn", REGVAR "n"; "Ri", REGVAR "i";
-  (* modes *) 
+  (* modes *)
   "_fiq", MODE Fiq; "_irq", MODE Irq; "_svc", MODE Svc; "_abt", MODE Abt;
   "_und", MODE Und; "_usr", MODE Usr; "_sys", MODE Sys;
   (* conditions *)
@@ -68,7 +68,7 @@ let char_sep = char | sep
 
 let ident = "R" | 'R' letter | 'R' letter char char_sep*
   | (letter # ['R' 'S']) char_sep*
-  | "S" | "SPSR" | 'S' (letter # 'P') char_sep* 
+  | "S" | "SPSR" | 'S' (letter # 'P') char_sep*
   | '_' char_sep*
 
 let num = digit+
