@@ -61,16 +61,15 @@ let ident s =
 }
 
 let digit = ['0'-'9']
-
 let letter = ['a'-'z' 'A'-'Z']
-let letter_but_R = ['a'-'z' 'A'-'Q' 'S'-'Z']
-
 let char = letter | digit
 let sep = '.' | '_'
 let char_sep = char | sep
 
-let reg = "R" | 'R' letter | 'R' letter char char_sep*
-let ident = reg | letter_but_R char_sep* | '_' char_sep*
+let ident = "R" | 'R' letter | 'R' letter char char_sep*
+  | (letter # ['R' 'S']) char_sep*
+  | "S" | "SPSR" | 'S' (letter # 'P') char_sep* 
+  | '_' char_sep*
 
 let num = digit+
 let bin = "0b" ['0' '1']+
