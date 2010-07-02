@@ -27,7 +27,7 @@ List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   (* registers *)
   "Flag", FLAG "Flag"; "flag", FLAG "flag"; "bit", FLAG "bit";
   "Bit", FLAG "Bit"; "CPSR", Parser.CPSR; "SPSR", Parser.SPSR;
-  "LR", REGNUM "14"; "PC", REGNUM "15"; "pc", REGNUM "15"; "R", REG; "GE", GE;
+  "LR", REGNUM "14"; "PC", REGNUM "15"; "R", REG; "GE", GE;
   "Rd", REGVAR "d"; "RdHi", REGVAR "dHi"; "RdLo", REGVAR "dLo";
   "Rs", REGVAR "s"; "Rm", REGVAR "m"; "Rn", REGVAR "n"; "Ri", REGVAR "i";
   (* modes *)

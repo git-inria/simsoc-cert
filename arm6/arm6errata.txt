@@ -21,4 +21,6 @@ SSAT, USAT: "Artihmetic" should be "Arithmetic"
 
 SSAT16, USAT16: "OR" should be "or"
 
+LDM (1): "pc" should be "PC"
+
 ZeroExtend: undefined

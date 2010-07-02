@@ -83,6 +83,7 @@ sed \
     -e 's|Artihmetic|Arithmetic|' \
     -e 's|(diff4]|(diff4)|' \
     -e 's|memory\[|Memory\[|' \
+    -e 's| pc | PC |' \
     -e 's|<shift_imm>|shift_imm|' \
     -e 's|See “Data processing operands - Rotate right with extend” on page A5-17|shifter_operand = (C Flag Logical_Shift_Left 31) OR (Rm Logical_Shift_Right 1); shifter_carry_out = Rm[0]|' \
     -e 's|opcode\[\(.*\)\]|opcode\1|' \
