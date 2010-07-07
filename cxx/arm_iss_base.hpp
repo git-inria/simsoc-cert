@@ -14,6 +14,14 @@
 #include <inttypes.h>
 #include <cstdlib>
 #include <cassert>
+#include <iostream>
+
+#define TODO(msg) do {                                                  \
+    std::cerr <<std::dec <<"TODO: " <<msg <<"(" __FILE__ ":" <<__LINE__ <<")\n"; \
+    abort(); } while (0);
+#define ERROR(msg) do {                                                 \
+    std::cerr <<std::dec <<"ERROR: " <<msg <<"(" __FILE__ ":" <<__LINE__ <<")\n"; \
+    abort(); } while (0);
 
 struct ARM_MMU {
   uint8_t read_byte(uint32_t addr);
@@ -25,18 +33,25 @@ struct ARM_MMU {
 };
 
 struct ARM_Coprocessor {
-  virtual void dependent_operation();
-  virtual void load(uint32_t);
-  virtual void send(uint32_t);
-  virtual bool NotFinished() const;
-  virtual uint32_t first_value();
-  virtual uint32_t second_value();
-  virtual uint32_t value();
+  virtual void dependent_operation() {
+    TODO("Coprocessor dependent operation"); }
+  virtual void load(uint32_t) {
+    TODO("Coprocessor load");}
+  virtual void send(uint32_t) {
+    TODO("Coprocessor send");}
+  virtual bool NotFinished() const {
+    TODO("Coprocessor NotFinished"); return false;}
+  virtual uint32_t first_value() {
+    TODO("Coprocessor first value"); return 0;}
+  virtual uint32_t second_value() {
+    TODO("Coprocessor second value"); return 0;}
+  virtual uint32_t value() {
+    TODO("Coprocessor value"); return 0;}
 };
 
 struct ARM_SystemCoprocessor: ARM_Coprocessor {
-  bool get_reg1_EEbit() const;
-  bool get_reg1_Ubit() const;
+  bool get_reg1_EEbit() const {return 0;}
+  bool get_reg1_Ubit() const {return 0;}
 };
 
 struct ARM_Processor {
@@ -62,10 +77,13 @@ struct ARM_Processor {
     bool T_flag;
     Mode mode;
     uint32_t background;
+
     operator uint32_t ();
     StatusRegister &operator = (uint32_t value);
+
     void set_GE_32(uint8_t n) {GE2 = n&1; GE3 = n>>1;}
     void set_GE_10(uint8_t n) {GE0 = n&1; GE1 = n>>1;}
+    StatusRegister(uint32_t w) {*this = w;}
   };
 
   // constants
@@ -76,8 +94,12 @@ struct ARM_Processor {
   // members
   ARM_MMU mmu;
   StatusRegister cpsr;
+  StatusRegister spsrs[5];
   ARM_SystemCoprocessor cp15;
   size_t id;
+
+  // constructor
+  ARM_Processor(size_t id);
 
   // methods
   uint32_t &reg(uint8_t reg_id);
@@ -87,10 +109,13 @@ struct ARM_Processor {
   bool condition_passed(Condition cond) const;
   void set_pc(uint32_t new_pc); // may set thumb/arm32 mode
   void set_pc_raw(uint32_t new_pc); // never set thumb/arm32 mode
-  bool current_mode_has_spsr() const;
-  StatusRegister &spsr();
-  StatusRegister &spsr(Mode);
-  ARM_Coprocessor *coproc(uint8_t cp_num);
+  bool current_mode_has_spsr() const {return cpsr.mode<sys;}
+  StatusRegister &spsr() {return spsr(cpsr.mode);}
+  StatusRegister &spsr(Mode) {
+    if (current_mode_has_spsr()) return spsrs[cpsr.mode];
+    else ERROR("Current mode does not have a SPSR"); }
+  ARM_Coprocessor *coproc(uint8_t cp_num) {
+    if (cp_num==15) return &cp15; else return NULL;}
 
   // static methods
   static uint32_t msr_UnallocMask();
@@ -130,9 +155,6 @@ struct ARM_ISS_Base {
   void Start_opcode_execution_at(uint32_t) {}
   bool IMPLEMENTATION_DEFINED_CONDITION() {return false;}
 
-  static void See_Rotate_right_with_extend() {
-    assert(false && "Decoding error: ROR instead of RRX");}
-
   static uint32_t bit_position_of_most_significant_1(uint32_t);
   static bool is_even(uint8_t x) {return !(x&1);}
   static uint32_t Number_Of_Set_Bits_In(uint16_t x);
@@ -162,7 +184,7 @@ struct ARM_ISS_Base {
   static uint32_t NOT(bool x) {return !x;}
   static uint32_t rotate_right(uint32_t x, uint32_t n) {
     return (x<<(32-n)) | (x>>n);}
-  static uint32_t asr(uint32_t x, uint32_t n) {
+  static uint32_t asr(uint32_t x, uint32_t n) { // FIXME: shift by 32
     return static_cast<uint32_t>(static_cast<int32_t>(x)>>n);}
   static uint16_t get_half_0(uint32_t x) {return x;}
   static uint16_t get_half_1(uint32_t x) {return x>>16;}
