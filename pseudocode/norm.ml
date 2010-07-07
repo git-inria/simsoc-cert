@@ -40,7 +40,7 @@ let rec exp = function
 
   (* rename calls to SignExtend depending on the size of the argument *)
   | Fun ("SignExtend" as f, (e :: _ as es)) -> Fun (f ^ size e, es)
- 
+
   (* rename calls to *From depending on the argument,
      and change the argument into a list of arguments,
      e.g. CarryFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
@@ -163,6 +163,10 @@ let rec inst = function
 	| e2 -> Affect (exp e1, e2)
       end
 
+  (* simplify conditional instructions with a computable condition *)
+  | If (BinOp (Num a, "==", Num b), i1, Some i2) ->
+          if a = b then inst i1 else inst i2
+
   (* simplify conditional instructions wrt nop's *)
   | If (c, i, None) ->
       let i = inst i in
@@ -247,6 +251,57 @@ and affects = function
 	| Block is' -> is' @ affects is
 	| i -> i :: affects is
       end;;
+
+(*****************************************************************************)
+(** normalization of MSR *)
+(*****************************************************************************)
+
+(* The ARM reference manual provides two encodings for the MSR instruction,
+ * but only one pseudo-code. The function below splits the pseudo-code to
+ * create two real instructions. *)
+
+(* replace expression 'o' by expresssion 'n' in instruction 'i' *)
+let replace_exp (o: exp) (n: exp) (i: inst) =
+  let rec exp e =
+    if e = o then n else match e with
+      | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
+      | Fun (s, es) -> Fun (s, List.map exp es)
+      | BinOp (e1, s, e2) -> BinOp (exp e1, s, exp e2)
+      | Reg (e, m) -> Reg (exp e, m)
+      | Range (e, r) -> Range (exp e, range r)
+      | Memory (e, s) -> Memory (exp e, s)
+      | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
+      | x -> x
+  and range r = match r with
+    | Index e -> Index (exp e)
+    | x -> x
+  and inst i = match i with
+    | Block is -> Block (List.map inst is)
+    | Affect (e1, e2) -> Affect (exp e1, exp e2)
+    | If (e, i1, Some i2) -> If (exp e, inst i1, Some (inst i2))
+    | If (e, i, None) -> If (exp e, inst i, None)
+    | Proc (s, es) -> Proc (s, List.map exp es)
+    | While (e, i) -> While (exp e, inst i)
+    | Assert e -> Assert (exp e)
+    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+    | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
+    | Case (e, sis) ->
+        Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
+    | x -> x
+  in inst i;;
+
+let rec split_msr ps =
+  match ps with
+    | p :: ps' ->
+        if p.pident.iname <> "MSR" then p :: (split_msr ps') else
+          let opcode25 = Range (Var "opcode", Index (Num "25")) in
+          let imm = replace_exp opcode25 (Num "1") p.pinst
+          and reg = replace_exp opcode25 (Num "0") p.pinst
+          and imm_id = {p.pident with iname = "MSRimm"}
+          and reg_id = {p.pident with iname = "MSRreg"} in
+            {p with pident = imm_id; pinst = imm} ::
+              {p with pident = reg_id; pinst = reg} :: ps'
+    | [] -> [];;
 
 (*****************************************************************************)
 (** normalization of programs *)

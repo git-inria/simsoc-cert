@@ -2,12 +2,12 @@ type lightheader = LH of int list * string
 (* the int list contains always two elements:
  * - the first is the section number:
      o always 1 for instructions
-     o for addressing modes, it is the addressing mopde number (from 1 to 5)
- * - the second is the instruction number or the addressing mode case number 
- * NB: the chapter number is not given 
+     o for addressing modes, it is the addressing mode number (from 1 to 5)
+ * - the second is the instruction number or the addressing mode case number
+ * NB: the chapter number is not given
  *)
 
-type pos_contents = 
+type pos_contents =
   | Nothing
   | Value of bool                  (* false -> 0, true -> 1 *)
   | Param1 of char                 (* e.g. S *)

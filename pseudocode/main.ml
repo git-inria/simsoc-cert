@@ -36,14 +36,13 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
-type input_type = PCin | Decode;;
-type output_type = PCout | Cxx | Coq;;
+type output_type = PCout | Cxx | CoqInst | CoqDec;;
 
-let is_set_input_type, get_input_type, set_input_type =
-  is_set_get_set "input type" PCin;;
+let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
+  is_set_get_set "input file name for pseudocode instructions" "";;
 
-let is_set_input_file, get_input_file, set_input_file =
-  is_set_get_set "input file name" "";;
+let is_set_dec_input_file, get_dec_input_file, set_dec_input_file =
+  is_set_get_set "input file name for decoding instructions" "";;
 
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
@@ -59,9 +58,9 @@ let rec options() =
   " Display this list of options";
   "-d", Unit set_debug,
   " Debugging mode";
-  "-ipc", String (fun s -> set_input_type PCin; set_input_file s),
+  "-ipc", String (fun s -> set_pc_input_file s),
   " Take pseudocode instructions as input";
-  "-idec", String (fun s -> set_input_type Decode; set_input_file s),
+  "-idec", String (fun s -> set_dec_input_file s),
   " Take decoding instructions as input";
   "-check", Unit set_check,
   " Check pseudocode pretty-printer (only with -ipc)";
@@ -70,9 +69,11 @@ let rec options() =
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
   "-ocxx", Unit (fun () -> set_norm(); set_output_type Cxx),
-  " Output C++ (implies -norm)";
-  "-ocoq", Unit (fun () -> set_norm(); set_output_type Coq),
-  " Output Coq (implies -norm)";
+  " Output C++ (implies -norm, requires -ipc and -idec)";
+  "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
+  " Output Coq instructions (implies -norm, requires -ipc)";
+  "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
+  " Output Coq decoder (requires -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
@@ -88,10 +89,21 @@ let anon_fun _ = error "invalid option";;
 
 let parse_args() =
   Arg.parse options anon_fun usage_msg;
-  let _ = get_input_type() in
-  let _ = get_input_file() in
-  let _ = get_output_type() in
-    ();;
+  (* Verify that the right input files are provided *)
+  match get_output_type() with
+    | PCout ->
+        if is_set_dec_input_file() then
+          error "option -opc incompatible with -idec"
+        else ignore(get_pc_input_file());
+    | Cxx -> ignore(get_pc_input_file());  ignore(get_dec_input_file())
+    | CoqInst ->
+        if is_set_dec_input_file() then
+          error "option -ocoq-inst incompatible with -idec"
+        else ignore(get_pc_input_file())
+    | CoqDec ->
+        if is_set_pc_input_file() then
+          error "option -ocoq-dec incompatible with -ipc"
+        else ignore (get_dec_input_file());;
 
 (*****************************************************************************)
 (** parsing functions *)
@@ -110,7 +122,7 @@ let parse_lexbuf lb =
 
 let parse_channel ic =
   let lb = Lexing.from_channel ic in
-    lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = get_input_file() };
+    lb.lex_curr_p <- { lb.lex_curr_p with pos_fname = get_pc_input_file() };
     parse_lexbuf lb;;
 
 let parse_string s = parse_lexbuf (Lexing.from_string s);;
@@ -124,63 +136,46 @@ let parse_file fn =
 (** main procedure *)
 (*****************************************************************************)
 
-type input =
-  | Prog of Ast.prog list
-  | Dec of Codetype.maplist;;
-
-let get_input, set_input = get_set (Prog []);;
+let get_pc_input, set_pc_input = get_set [];;
+let get_dec_input, set_dec_input = get_set [];;
 
 let check() =
   if get_check() then
-    match get_input() with
-      | Prog ps ->
-	  let b = Buffer.create 10000 in
-	    verbose "reparsing... ";
-	    Genpc.lib b ps;
-	    let ps' = parse_string (Buffer.contents b) in
-	      if ps = ps' then verbose "ok\n" else error "failed"
-      | Dec _ -> error "option -check incompatible with -idec";;
+    let ps = get_pc_input() in
+    let b = Buffer.create 10000 in
+      verbose "reparsing... ";
+      Genpc.lib b ps;
+      let ps' = parse_string (Buffer.contents b) in
+	if ps = ps' then verbose "ok\n" else error "failed";;
 
 let norm() =
   if get_norm() then
-    match get_input() with
-      | Prog ps ->
-	  verbose "normalization... ";
-	  let ps = List.map Norm.prog ps in
-	    if get_check() then
-	      let ps' = List.map Norm.prog ps in
-		if ps = ps' then verbose "ok\n" else error "failed"
-	    else verbose "\n";
-	    set_input (Prog ps);
-	    check();
-      | Dec _ -> error "option -norm incompatible with -idec";;
+    let ps = get_pc_input() in
+      verbose "normalization... ";
+      let ps = List.map Norm.prog (Norm.split_msr ps) in
+	if get_check() then
+	  let ps' = List.map Norm.prog ps in
+	    if ps = ps' then verbose "ok\n" else error "failed"
+	else verbose "\n";
+	set_pc_input ps;
+	check();;
 
 let parse_input_file() =
   verbose "parsing...\n";
-  match get_input_type() with
-    | PCin ->
-	set_input (Prog (parse_file (get_input_file())));
-	check();
-	norm()
-    | Decode -> set_input (Dec (input_value (open_in (get_input_file()))));;
-
-let prog() =
-  match get_output_type() with
-    | PCout -> Genpc.lib
-    | Cxx -> Gencxx.lib
-    | Coq -> Gencoq.lib;;
-
-let dec() =
-  match get_output_type() with
-    | PCout -> error "option -opc incompatible with -idec"
-    | Cxx -> error "option -ocxx not yet supported with -idec"
-    | Coq -> Gencoqdec.decode;;
+  if is_set_pc_input_file() then (
+    set_pc_input (parse_file (get_pc_input_file()));
+    check();
+    norm());
+  if is_set_dec_input_file() then
+    set_dec_input (input_value (open_in (get_dec_input_file())));;
 
 let genr_output() =
   verbose "code generation...\n";
-  match get_input() with
-    | Prog x -> print (prog()) x
-    | Dec x -> print (dec()) x;;
+  match get_output_type() with
+    | PCout -> print Genpc.lib (get_pc_input())
+    | Cxx -> print Gencxx.lib ((get_pc_input()), (get_dec_input()))
+    | CoqInst -> print Gencoq.lib (get_pc_input())
+    | CoqDec -> print Gencoqdec.decode (get_dec_input());;
 
 let main() =
   parse_args();

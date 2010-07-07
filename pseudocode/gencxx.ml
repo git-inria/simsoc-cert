@@ -14,6 +14,7 @@ C++ code generator for simulation (see directory ../cxx)
 open Ast;;
 open Printf;;
 open Util;;
+open Dec;;
 
 let num = string;;
 
@@ -350,7 +351,21 @@ let lsm_hack p =
           { p with pinst = inst p.pinst }
       | _ -> p;;
 
-let lib b ps =
+let dec_split decs =
+  let is = ref [] and es = ref [] and ms = Array.create 5 [] in
+  let rec split l =
+    match l with
+      | e :: t -> (
+          match add_mode (name e) with
+            | DecMode i -> ms.(i-1) <- e::ms.(i-1)
+            | DecInst -> is := e::!is
+            | DecEncoding ->es := e::!es);
+          split t
+      | [] -> (!is, !es, ms)
+  in split decs;;
+
+let lib b (pcs, decs) =
+  ignore decs;
   let b2 = Buffer.create 10000 in
   let decl_and_prog b p =
     let p = lsm_hack p in
@@ -360,4 +375,4 @@ let lib b ps =
   in
     bprintf b
 "#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
-    (list "" decl_and_prog) ps Buffer.add_buffer b2;;
+    (list "" decl_and_prog) pcs Buffer.add_buffer b2;;

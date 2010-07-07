@@ -39,13 +39,13 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || (rm -f $@; exit 1)
 
 %inst.v: %inst.arm $(GEN)
-	$(GEN) -ipc $< -ocoq > $@ || (rm -f $@; exit 1)
+	$(GEN) -ipc $< -ocoq-inst > $@ || (rm -f $@; exit 1)
 
 %exn.v: %exn.arm $(GEN)
-	$(GEN) -ipc $< -ocoq > $@ || (rm -f $@; exit 1)
+	$(GEN) -ipc $< -ocoq-inst > $@ || (rm -f $@; exit 1)
 
 %dec.v: %dec.dat $(GEN)
-	$(GEN) -idec $< -ocoq > $@ || (rm -f $@; exit 1)
+	$(GEN) -idec $< -ocoq-dec > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
 	time -p coqc -q -R ../coq SimSoCCert $<

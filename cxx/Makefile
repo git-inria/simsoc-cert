@@ -5,7 +5,7 @@ all: arm_iss.o diff
 arm_iss.o: arm_iss.cpp arm_iss_base.hpp
 
 arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm
-	../pseudocode/main -ocxx -ipc ../arm6/arm6inst.arm >$@.tmp
+	../pseudocode/main -ocxx -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat >$@.tmp
 	mv $@.tmp $@
 
 ../pseudocode/main: FORCE
