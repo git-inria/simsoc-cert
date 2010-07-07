@@ -62,7 +62,6 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 clean:
 	rm -f *~ *.glob *.vo $(FILES)
 
-
 usage-patch-inst:
 	echo update $(PROC)inst.txt to the desired contents, then make patch-inst
 
