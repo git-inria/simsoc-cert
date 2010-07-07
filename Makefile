@@ -14,9 +14,9 @@ TARGETS := arm6
 default: $(SUBDIRS)
 	@echo; echo "do make [$(TARGETS)] to generate the simulator"
 
-all: default $(TARGETS)
+all: default $(TARGETS) extract test
 
-$(SUBDIRS) $(TARGETS):
+$(SUBDIRS) $(TARGETS) extract test:
 	@$(MAKE) -C $@
 
 config:
