@@ -4,10 +4,10 @@ FILES := sum_iterative
 
 default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 
-%.cmi: %.mli
+%.cmi: %.mli ../extract/tmp/extract.cma
 	ocamlc -c -I ../extract/tmp extract.cma $<
 
-%.cmo: %.ml
+%.cmo: %.ml ../extract/tmp/extract.cma
 	ocamlc -c -g -I ../extract/tmp extract.cma $<
 
 %.ml %.mli: %.v
