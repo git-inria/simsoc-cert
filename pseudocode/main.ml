@@ -78,7 +78,7 @@ let rec options() =
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
   "-otest", Unit (fun () -> set_output_type DecTest),
-  " Output test for SimSoC decoder (only with -idec)";
+  " Output test for SimSoC decoder, in binary format (requires -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
@@ -186,7 +186,7 @@ let genr_output() =
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
-    | DecTest -> print Gendectest.gen_test (get_dec_input());;
+    | DecTest -> Gendectest.gen_test stdout (get_dec_input());;
 
 let main() =
   parse_args();

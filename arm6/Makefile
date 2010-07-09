@@ -47,7 +47,7 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 %dec.v: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocoq-dec > $@ || (rm -f $@; exit 1)
 
-%test.elf: %dec.dat $(GEN)
+%test.bin: %dec.dat $(GEN)
 	$(GEN) -idec $< -otest > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
