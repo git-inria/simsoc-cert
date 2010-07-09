@@ -1,12 +1,12 @@
-CPPFLAGS=-I../testgen # for elf.h and elf_loader.hpp
+CPPFLAGS=-I../elf # for elf.h and elf_loader.hpp
 CXXFLAGS=-Wall -Wextra
 CC = g++
 
 all: simlight
 
-simlight: simlight.o ../testgen/elf_loader.o arm_iss_base.o arm_iss.o
+simlight: simlight.o ../elf/elf_loader.o arm_iss_base.o arm_iss.o
 
-simlight.o: simlight.cpp arm_iss.hpp arm_iss_base.hpp ../testgen/elf_loader.hpp
+simlight.o: simlight.cpp arm_iss.hpp arm_iss_base.hpp ../elf/elf_loader.hpp
 
 arm_iss.o: arm_iss.cpp arm_iss.hpp arm_iss_base.hpp
 
@@ -22,8 +22,8 @@ arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp
 ../arm6/arm6inst.arm ../arm6/arm6dec.dat: FORCE
 	cd ../arm6 && $(MAKE) $@
 
-../testgen/elf_loader.o: FORCE
-	cd ../testgen && $(MAKE) $@
+../elf/elf_loader.hpp ../elf/elf_loader.o: FORCE
+	cd ../elf && $(MAKE) $@
 
 diff: arm_iss.cpp arm_iss-ref.cpp
 	diff -qw $^
