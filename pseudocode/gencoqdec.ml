@@ -335,15 +335,10 @@ let mode_tst (lh, ls) =
 let dec_inst b (lh, ls) =
   let dbits = pos_info (lh,ls) in
     let md = add_mode (name (lh,ls)) in
-    let id = id_inst (lh, ls) in
       match md with
 	| DecInst ->
-	    begin match id with
-	      | "MSR2" -> () (* remove pattern for MSR-immediate operation *)
-	      | _ ->
-		  bprintf b "    %a\n    | %t =>\n      %t\n"
-		    comment lh (gen_pattern dbits) (mode_tst (lh, ls))
-	    end
+	    bprintf b "    %a\n    | %t =>\n      %t\n"
+	      comment lh (gen_pattern dbits) (mode_tst (lh, ls))
 	| DecEncoding -> ()
 	| DecMode i ->
 	    (*FIXME*)
@@ -415,3 +410,4 @@ let decode b ps =
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_inst) ps));
   bprintf b "    | _ => DecUndefined inst\n  end."
 ;;
+
