@@ -4,22 +4,22 @@ CC = g++
 
 all: simlight
 
-simlight: simlight.o ../testgen/elf_loader.o arm_iss_base.o
+simlight: simlight.o ../testgen/elf_loader.o arm_iss_base.o arm_iss.o
 
-simlight.o: simlight.cpp arm_iss.cpp arm_iss_base.hpp ../testgen/elf_loader.hpp
+simlight.o: simlight.cpp arm_iss.hpp arm_iss_base.hpp ../testgen/elf_loader.hpp
 
-arm_iss.o: arm_iss.cpp arm_iss_base.hpp
+arm_iss.o: arm_iss.cpp arm_iss.hpp arm_iss_base.hpp
 
-arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm
-	../pseudocode/main -ocxx -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat >$@.tmp
-	mv $@.tmp $@
+arm_iss.hpp arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm ../arm6/arm6dec.dat
+	../pseudocode/main -ocxx arm_iss -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat
+arm_iss.hpp: arm_iss.cpp
 
 arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp
 
 ../pseudocode/main: FORCE
 	cd ../pseudocode && $(MAKE)
 
-../arm6/arm6inst.arm: FORCE
+../arm6/arm6inst.arm ../arm6/arm6dec.dat: FORCE
 	cd ../arm6 && $(MAKE) $@
 
 ../testgen/elf_loader.o: FORCE

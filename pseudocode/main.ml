@@ -47,6 +47,9 @@ let is_set_dec_input_file, get_dec_input_file, set_dec_input_file =
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
 
+let is_set_output_file, get_output_file, set_output_file =
+  is_set_get_set "output file" "";;
+
 (*****************************************************************************)
 (** command line parsing *)
 (*****************************************************************************)
@@ -68,7 +71,7 @@ let rec options() =
   " Normalize pseudocode (only with -ipc)";
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
-  "-ocxx", Unit (fun () -> set_norm(); set_output_type Cxx),
+  "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
   " Output C++ (implies -norm, requires -ipc and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output Coq instructions (implies -norm, requires -ipc)";
@@ -106,8 +109,11 @@ let parse_args() =
         if is_set_pc_input_file() then
           error "option -ocoq-dec incompatible with -ipc"
         else ignore (get_dec_input_file())
-    | DecTest -> ignore (get_dec_input_file())
- ;;
+    | DecTest ->
+        if is_set_pc_input_file() then
+          error "option -otest incompatible with -ipc"
+        else ignore (get_dec_input_file())
+;;
 
 (*****************************************************************************)
 (** parsing functions *)
@@ -177,7 +183,7 @@ let genr_output() =
   verbose "code generation...\n";
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
-    | Cxx -> print Gencxx.lib ((get_pc_input()), (get_dec_input()))
+    | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
     | DecTest -> print Gendectest.gen_test (get_dec_input());;

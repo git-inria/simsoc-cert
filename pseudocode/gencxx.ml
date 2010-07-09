@@ -293,7 +293,7 @@ let comment b p = bprintf b "// %a\n" Genpc.name p;;
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
 (* Defintion of the functions. This should be printed in a source file (.cpp) *)
-let prog gs ls b p =
+let prog b (p, gs, ls) =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
     match p.pkind with
@@ -318,7 +318,7 @@ let prog gs ls b p =
               (inst 2) p.pinst;;
 
 (* Declaration of the functions. This should be printed in a header file (.hpp) *)
-let decl gs ls b p =
+let decl b (p, gs, ls) =
   match p.pkind with
     | Inst  ->
 	bprintf b "  %a  void %a(%a);\n" comment p
@@ -401,22 +401,35 @@ let dec_inst b is =
     bprintf b "%a  std::cerr <<'\\n';\n}\n"
       (list "" inst) (List.rev is);;
 
-(* main function *)
-let lib b (pcs, decs) =
+(* main function
+ * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
+let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
+  (* create buffers for header file (bh) and source file (bc) *)
+  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
+    (* extract the decoding rules associtaed with instructions *)
   let (is, _, _) = dec_split decs in
-  let b2 = Buffer.create 10000 in
-  let decl_and_prog b p =
-    let p = lsm_hack p in
-    let gs, ls = V.vars p in
-      bprintf b "%a\n" (decl gs ls) p;
-      bprintf b2 "%a\n" (prog gs ls) p
-  in
-    bprintf b
-"#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a%a"
-    (list "" decl_and_prog) pcs Buffer.add_buffer b2 dec_inst is;;
+    (* compute the list of parameters (gs) and local variables (ls),
+     * and hack the LSM instructions. *)
+  let add_vars p =
+    let p' = lsm_hack p in
+    let gs, ls = V.vars p' in
+      (p', gs, ls) in
+  let pcgls = List.map add_vars pcs in
+    (* generate the header file *)
+    bprintf bh "#include \"arm_iss_base.hpp\"\n\n";
+    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a};\n" (list "\n" decl) pcgls;
+    bprintf bh "\nvoid decode(uint32_t bincode);\n";
+    (* generate the source file *)
+    bprintf bc "#include \"%s.hpp\"\n\n%a\n%a"
+      bn (list "\n" prog) pcgls dec_inst is;
+    (* write buffers to files *)
+    let outh = open_out (bn^".hpp") and outc = open_out (bn^".cpp") in
+      Buffer.output_buffer outh bh; close_out outh;
+      Buffer.output_buffer outc bc; close_out outc;;
 
 (* alternative main function used to compute some statistics *)
-let xlib b (pcs, decs) =
+let xlib bn pcs decs =
+  let b = Buffer.create 10000 in
   let (is, es, ms) = dec_split decs in
     bprintf b "%d instructions, %d encoding" (List.length is) (List.length es);
     Array.iteri (fun i l -> bprintf b ", %d mode %d" (List.length l) (i+1)) ms;
@@ -425,11 +438,11 @@ let xlib b (pcs, decs) =
     let stats = Array.create 32 0 in
     let poscontent (_, pcs) =
       let bit i pc = match pc with
-        | Codetype.Value _ -> stats.(i) <- stats.(i) + 1
-        | Codetype.Param1 _ -> stats.(i) <- stats.(i) + 1
-        | Codetype.Param1s _ -> stats.(i) <- stats.(i) + 1
+        | Codetype.Shouldbe _ -> stats.(i) <- stats.(i) + 1
         | _ -> ()
       in Array.iteri bit pcs
     in
       List.iter poscontent is;
-      Array.iteri (fun i n -> bprintf b "bit %d defined %d times.\n" i n) stats;;
+      Array.iteri (fun i n -> bprintf b "bit %d is a \"Souldbe\" %d times.\n" i n) stats;
+      let out = open_out (bn^".txt") in
+        Buffer.output_buffer out b; close_out out;;

@@ -1,4 +1,4 @@
-#include "arm_iss.cpp" // FIXME: generate seperated headers and implementation
+#include "arm_iss.hpp"
 #include <elf_loader.hpp>
 
 class MyElfFile : public ElfFile {
