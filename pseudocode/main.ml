@@ -36,7 +36,7 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
-type output_type = PCout | Cxx | CoqInst | CoqDec;;
+type output_type = PCout | Cxx | CoqInst | CoqDec | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -74,6 +74,8 @@ let rec options() =
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
+  "-otest", Unit (fun () -> set_output_type DecTest),
+  " Output test for SimSoC decoder (only with -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
@@ -103,7 +105,9 @@ let parse_args() =
     | CoqDec ->
         if is_set_pc_input_file() then
           error "option -ocoq-dec incompatible with -ipc"
-        else ignore (get_dec_input_file());;
+        else ignore (get_dec_input_file())
+    | DecTest -> ignore (get_dec_input_file())
+ ;;
 
 (*****************************************************************************)
 (** parsing functions *)
@@ -175,7 +179,8 @@ let genr_output() =
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> print Gencxx.lib ((get_pc_input()), (get_dec_input()))
     | CoqInst -> print Gencoq.lib (get_pc_input())
-    | CoqDec -> print Gencoqdec.decode (get_dec_input());;
+    | CoqDec -> print Gencoqdec.decode (get_dec_input())
+    | DecTest -> print Gendectest.gen_test (get_dec_input());;
 
 let main() =
   parse_args();

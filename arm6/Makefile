@@ -5,7 +5,7 @@ PROC := arm6
 
 FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
 	$(PROC)exn.arm $(PROC)exn.v \
-	$(PROC)dec.txt $(PROC)dec.dat $(PROC)dec.v
+	$(PROC)dec.txt $(PROC)dec.dat $(PROC)dec.v $(PROC)test.elf
 
 DIR := ../refARMparsing
 
@@ -46,6 +46,9 @@ default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 
 %dec.v: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocoq-dec > $@ || (rm -f $@; exit 1)
+
+%test.elf: %dec.dat $(GEN)
+	$(GEN) -idec $< -otest > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
 	time -p coqc -q -R ../coq SimSoCCert $<
