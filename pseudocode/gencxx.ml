@@ -292,6 +292,7 @@ let comment b p = bprintf b "// %a\n" Genpc.name p;;
 
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
+(* Defintion of the functions. This should be printed in a source file (.cpp) *)
 let prog gs ls b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
@@ -316,6 +317,7 @@ let prog gs ls b p =
               (list "" local_decl) ls'
               (inst 2) p.pinst;;
 
+(* Declaration of the functions. This should be printed in a header file (.hpp) *)
 let decl gs ls b p =
   match p.pkind with
     | Inst  ->
@@ -330,6 +332,8 @@ let decl gs ls b p =
             (arg_sep gs os)
             (list ",\n    " prog_out) os;;
 
+(* For some LSM instructions, the operand has side effects that must be executed
+ * after the instruction itself *)
 let lsm_hack p =
   let rec inst = function
     | Block is -> Block (List.map inst is)
@@ -351,6 +355,16 @@ let lsm_hack p =
           { p with pinst = inst p.pinst }
       | _ -> p;;
 
+(* function used to generate the C++ function name for an instruction*)
+let id_inst (ps: Codetype.maplist_element) =
+  let rec concatenate = function
+    | [] -> ""
+    | [s] -> s
+    | s :: ss -> s ^ concatenate ss
+  in
+    concatenate (name ps);;
+
+(* Split the list of decoding rules according to their kind *)
 let dec_split decs =
   let is = ref [] and es = ref [] and ms = Array.create 5 [] in
   let rec split l =
@@ -364,8 +378,32 @@ let dec_split decs =
       | [] -> (!is, !es, ms)
   in split decs;;
 
+(* generate the decoder *)
+let dec_inst b is =
+  let inst b (lh, pc) =
+    let mask_value pcs =
+      let f pc (m,v) =
+        let m' = Int32.shift_left m 1 and v' = Int32.shift_left v 1 in
+        match pc with
+        | Codetype.Value true -> (Int32.succ m', Int32.succ v')
+        | Codetype.Value false -> (Int32.succ m', v')
+        | _ -> (m', v')
+      in Array.fold_right f pcs (Int32.zero, Int32.zero)
+    in let (mask, value) = mask_value pc in
+    bprintf b "  if ((bincode&0x%08lx)==0x%08lx)\n    std::cerr <<\" %s\";\n"
+      mask value (id_inst (lh, pc))
+  in
+    bprintf b "void decode(uint32_t bincode) {\n";
+    bprintf b "  std::cerr <<\"decode: \" <<std::hex;\n";
+    bprintf b "  std::cerr.width(8);\n";
+    bprintf b "  std::cerr <<bincode <<\" ->\";\n";
+    bprintf b "  std::cerr.width(0);\n";
+    bprintf b "%a  std::cerr <<'\\n';\n}\n"
+      (list "" inst) (List.rev is);;
+
+(* main function *)
 let lib b (pcs, decs) =
-  ignore decs;
+  let (is, _, _) = dec_split decs in
   let b2 = Buffer.create 10000 in
   let decl_and_prog b p =
     let p = lsm_hack p in
@@ -374,5 +412,24 @@ let lib b (pcs, decs) =
       bprintf b2 "%a\n" (prog gs ls) p
   in
     bprintf b
-"#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a"
-    (list "" decl_and_prog) pcs Buffer.add_buffer b2;;
+"#include \"arm_iss_base.hpp\"\n\nstruct ARM_ISS: ARM_ISS_Base {\n\n%a};\n\n%a%a"
+    (list "" decl_and_prog) pcs Buffer.add_buffer b2 dec_inst is;;
+
+(* alternative main function used to compute some statistics *)
+let xlib b (pcs, decs) =
+  let (is, es, ms) = dec_split decs in
+    bprintf b "%d instructions, %d encoding" (List.length is) (List.length es);
+    Array.iteri (fun i l -> bprintf b ", %d mode %d" (List.length l) (i+1)) ms;
+    bprintf b "\n%d decoding rules\n%d instructions or addressing modes\n"
+      (List.length decs) (List.length pcs);
+    let stats = Array.create 32 0 in
+    let poscontent (_, pcs) =
+      let bit i pc = match pc with
+        | Codetype.Value _ -> stats.(i) <- stats.(i) + 1
+        | Codetype.Param1 _ -> stats.(i) <- stats.(i) + 1
+        | Codetype.Param1s _ -> stats.(i) <- stats.(i) + 1
+        | _ -> ()
+      in Array.iteri bit pcs
+    in
+      List.iter poscontent is;
+      Array.iteri (fun i n -> bprintf b "bit %d defined %d times.\n" i n) stats;;

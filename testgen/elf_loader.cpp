@@ -13,7 +13,7 @@ struct NullStream: std::ostream
 NullStream null_stream;
 
 ostream &debug() {return null_stream;}
-ostream &info() {return cout;}
+ostream &info() {return null_stream;}
 ostream &warning() {return cout;}
 ostream &error() {return cout;}
 #define HERE '[' <<__FILE__ <<':' <<std::dec <<__LINE__ <<"] "
@@ -173,10 +173,6 @@ ElfFile::ElfFile(const char *elf_file):
   assert(header.is_elf32() && "64-bits ELF not implemented");
   if (is_big_endian())
     header.unencode();
-  if (!header.is_exec()) {
-    error() <<file_name <<" is not an executable ELF file\n";
-    exit(1);
-  }
   header.load_sections(ifs);
 }
 
@@ -194,6 +190,10 @@ bool ElfFile::is_big_endian() const {
 }
 
 uint32_t ElfFile::get_start_address() const {
+  if (!header.is_exec()) {
+    error() <<file_name <<" is not an executable ELF file\n";
+    exit(1);
+  }
   return header.e_entry;
 }
 
@@ -205,9 +205,7 @@ uint32_t ElfFile::get_text_size() const {
   return header.text->size();
 }
 
-void ElfFile::load_sections(ostream &os) {
-  os <<dec <<"Definition initial_mem_aux (i : Z) : Z :=\n"
-     <<"  match i with\n";
+void ElfFile::load_sections() {
   for (size_t i = 0; i<header.sections.size(); ++i) {
     if (header.sections[i]->is_load()) {
       uint32_t mem_start = header.sections[i]->start();
@@ -223,13 +221,8 @@ void ElfFile::load_sections(ostream &os) {
       ifs.read(tmp, mem_size);
       if (!ifs)
         UNREACHABLE;
-      for (uint32_t j = 0; j<mem_size; j+=4)
-        os <<"    | " <<(mem_start+j)/4 <<" => "
-           <<reinterpret_cast<uint32_t*>(tmp)[j/4] <<'\n';
+      write_to_memory(tmp,mem_start,mem_size);
       delete[] tmp;
     }
   }
-  os <<"    | _ => 0\n"
-     <<"  end.\n"
-     <<"Definition initial_mem (a : address) : word := repr (initial_mem_aux a).\n";
 }

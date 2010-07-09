@@ -42,7 +42,9 @@ public:
 
   uint32_t get_text_size() const;
 
-  void load_sections(std::ostream &os);
+  void load_sections();
+
+  virtual void write_to_memory(const char *data, size_t start, size_t size) = 0;
 
 protected:
   std::ifstream ifs;

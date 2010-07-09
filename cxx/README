@@ -1,0 +1,8 @@
+Executing:
+> make
+... generates an executable "simlight".
+
+Currently, "simlight" does almost nothing.
+
+> ./simlight <arm_elf_file>
+... tries to decode the ELF file.
