@@ -1,5 +1,5 @@
 CPPFLAGS=-I../elf # for elf.h and elf_loader.hpp
-CXXFLAGS=-Wall -Wextra
+CXXFLAGS=-Wall -Wextra -Wno-unused
 CC = g++
 
 all: simlight
