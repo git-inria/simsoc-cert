@@ -116,6 +116,7 @@ struct ARM_Processor {
   uint32_t abt_regs[2];
   uint32_t und_regs[2];
   bool jump; // true if last instruction modified the pc; must be cleared after each step
+  uint32_t &pc;
 
   // constructor
   ARM_Processor(size_t id);
@@ -131,8 +132,8 @@ struct ARM_Processor {
   void set_pc(uint32_t new_pc); // may set thumb/arm32 mode
 
   void set_pc_raw(uint32_t new_pc) { // never set thumb/arm32 mode
-    assert(new_pc&(inst_size()-1) && "pc misaligned");
-    jump = true; reg(15) = new_pc;
+    assert(!(new_pc&(inst_size()-1)) && "pc misaligned");
+    jump = true; pc = new_pc+8;
   }
 
   bool current_mode_has_spsr() const {return cpsr.mode<sys;}

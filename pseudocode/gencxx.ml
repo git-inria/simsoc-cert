@@ -377,20 +377,21 @@ let lsm_hack p =
     | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
     | i -> i
   in
-    match p.pkind with
-      | Inst when p.pident.iname = "LDM" || p.pident.iname = "STM" ->
-	  (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-          let a = If(Var "W",Affect(Reg(Var"n",None),Var"new_Rn"),None) in
-          let i = match p.pinst with
-            | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
-            | Block ([x; If (c, Block ids, None)]) ->
-		Block ([x; If (c, Block (ids @ [a]), None)])
-            | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
-          in { p with pinst = i }
-      | Mode 4 ->
-	  (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
-          { p with pinst = inst p.pinst }
-      | _ -> p;;
+  let guard i = (i.iname = "LDM" || i.iname = "STM") && i.ivariant <> Some "2"
+  in match p.pkind with
+    | Inst when guard p.pident ->
+	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+        let a = If(Var "W",Affect(Reg(Var"n",None),Var"new_Rn"),None) in
+        let i = match p.pinst with
+          | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
+          | Block ([x; If (c, Block ids, None)]) ->
+	      Block ([x; If (c, Block (ids @ [a]), None)])
+          | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
+        in { p with pinst = i }
+    | Mode 4 ->
+	(* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+        { p with pinst = inst p.pinst }
+    | _ -> p;;
 
 (* Split the list of decoding rules according to their kind *)
 let split xs =
@@ -407,15 +408,20 @@ let split xs =
 
 (* get the list of parameters *)
 let parameters_of p =
-  let rename_regs s =
+  let rename s =
     if s.[0] = 'R'
     then String.sub s 1 (String.length s -1)
-    else s in
+    else match s with
+      | "8_bit_immediate" -> "immed_8" (* renamed in preproc_pseudo.sh *)
+      | "sh" -> "shift" (* work-around for specification erratum *)
+      | "ImmedL" -> "immedL" (* work-around for specification erratum *)
+      | _ -> s
+  in
   let aux (n, l) pc = match pc with
     | Codetype.Param1 c -> (n+1, (String.make 1 c, n, n) :: l)
-    | Codetype.Param1s s-> (n+1, (s, n, n) :: l)
+    | Codetype.Param1s s-> (n+1, (rename s, n, n) :: l)
     | Codetype.Range (s, size, _) ->
-        let s' = rename_regs s in
+        let s' = rename s in
         let e = s', n+size-1, n in
           (n+1, (
              match l with (* avoid duplicates *)
@@ -480,7 +486,7 @@ let dec_inst b is =
     let (mask, value) = mask_value p.xdec in
       bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(bincode)) {\n"
         mask value p.xid;
-      bprintf b "    std::cerr <<\" %s\";\n" p.xid;
+      bprintf b "    DEBUG(<<\"decoder choice: %s\\n\");\n" p.xid;
       bprintf b "    assert(!found); found = true;\n  }\n"
   in
     (* Phase B: extract parameters and check validity *)
@@ -499,7 +505,8 @@ let dec_inst b is =
              bprintf b "%a  if (!try_M%d(bincode,%a)) return false;\n"
                (list "" local_decl) os m (list "," print_first) os
        | None -> ());
-    (* TODO: execute the instruction *)
+    (* execute the instruction *)
+    bprintf b "  EXEC(%s(%a));\n" p.xid (list "," print_first) p.xgs;
     bprintf b "  return true;\n}\n"
   in
   let is' = List.rev is in
@@ -533,7 +540,9 @@ let dec_modes b ms =
     (match p.xvc with
        | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
        | None -> ());
-    (* TODO: execute the mode case *)
+    (* execute the mode case *)
+    bprintf b "  EXEC(%s(%a,%a));\n" p.xid
+      (list "," print_first) p.xgs (list "," print_first) os;
     bprintf b "  return true;\n}\n"
   in (* generate the decoder for mode i *)
   let sep = ",\n                     " in
@@ -552,7 +561,7 @@ let dec_modes b ms =
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map lsm_hack pcs in (* hack LSM instructions *)
   let decs' = (* remove encodings *)
-    let aux x = add_mode (name x) != DecEncoding in
+    let aux x = add_mode (name x) <> DecEncoding in
       List.filter aux decs
   in
   let xs = List.map2 xprog_of pcs' decs' in (* compute extended programs *)
@@ -565,7 +574,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     Array.iteri (decl_try bh) mode_outputs;
     bprintf bh "\n  bool decode_and_exec(uint32_t bincode);\n};\n";
     (* generate the source file *)
-    bprintf bc "#include \"%s.hpp\"\n\n%a\n%a%a"
+    bprintf bc "#include \"%s.hpp\"\n#include \"common.hpp\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;
     (* write buffers to files *)
     let outh = open_out (bn^".hpp") and outc = open_out (bn^".cpp") in

@@ -9,7 +9,10 @@
 // - ../pseudocode/bin/main -cxx
 
 #include "arm_iss_base.hpp"
+#include "common.hpp"
 #include <cstring>
+
+using namespace std;
 
 ARM_MMU::ARM_MMU():
   mem(new uint8_t[MEMSIZE])
@@ -20,56 +23,63 @@ ARM_MMU::ARM_MMU():
 
 uint8_t ARM_MMU::read_byte(uint32_t addr) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
+  DEBUG(<<"read byte " <<hex <<(uint32_t)mem[addr-MEMSTART]
+        <<" from " <<addr <<'\n');
   return mem[addr-MEMSTART];
 }
 
 uint16_t ARM_MMU::read_half(uint32_t addr) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
-  assert((addr&1)==0 && "aligned acces");
+  assert((addr&1)==0 && "misaligned acces");
   union {
     uint16_t half;
     uint8_t bytes[2];
   } tmp;
   memcpy(tmp.bytes,mem+(addr-MEMSTART),2);
+  DEBUG(<<"read half " <<hex <<tmp.half <<" from " <<addr <<'\n');
   return tmp.half;
 }
 
 uint32_t ARM_MMU::read_word(uint32_t addr) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
-  assert((addr&3)==0 && "aligned acces");
+  assert((addr&3)==0 && "misaligned acces");
   union {
     uint32_t word;
     uint8_t bytes[4];
   } tmp;
   memcpy(tmp.bytes,mem+(addr-MEMSTART),4);
+  DEBUG(<<"read " <<hex <<tmp.word <<" from " <<addr <<'\n');
   return tmp.word;
 }
 
 void ARM_MMU::write_byte(uint32_t addr, uint8_t data) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
   mem[addr-MEMSTART] = data;
+  DEBUG(<<"write byte " <<hex <<(uint32_t) data <<" to " <<addr <<'\n');
 }
 
 void ARM_MMU::write_half(uint32_t addr, uint16_t data) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
-  assert((addr&1)==0 && "aligned acces");
+  assert((addr&1)==0 && "misaligned acces");
   union {
     uint16_t half;
     uint8_t bytes[2];
   } tmp;
   tmp.half = data;
   memcpy(mem+(addr-MEMSTART),tmp.bytes,2);
+  DEBUG(<<"write half " <<hex <<tmp.half <<" to " <<addr <<'\n');
 }
 
 void ARM_MMU::write_word(uint32_t addr, uint32_t data) {
   assert(MEMSTART<=addr && addr<MEMEND && "out of memory access");
-  assert((addr&3)==0 && "aligned acces");
+  assert((addr&3)==0 && "misaligned acces");
   union {
     uint32_t word;
     uint8_t bytes[4];
   } tmp;
   tmp.word = data;
   memcpy(mem+(addr-MEMSTART),tmp.bytes,4);
+  DEBUG(<<"write " <<hex <<tmp.word <<" to " <<addr <<'\n');
 }
 
 ARM_Processor::StatusRegister::operator uint32_t () const {
@@ -128,7 +138,8 @@ ARM_Processor::ARM_Processor(size_t id_):
   cpsr(0x1df), // = 0b111011111 = A+I+F+System
   cp15(),
   id(id_),
-  jump(false)
+  jump(false),
+  pc(user_regs[PC])
 {
   // init registers to 0
   int i = 0;
@@ -244,9 +255,9 @@ bool ARM_ISS_Base::OverflowFrom_sub2(uint32_t a, uint32_t b) {
   return ((a^b)&(a^r))>>31;
 }
 
-bool ARM_ISS_Base::BorrowFrom_sub2(uint8_t a, uint8_t b) {return a>=b;}
-bool ARM_ISS_Base::BorrowFrom_sub2(uint16_t a, uint16_t b) {return a>=b;}
-bool ARM_ISS_Base::BorrowFrom_sub2(uint32_t a, uint32_t b) {return a>=b;}
+bool ARM_ISS_Base::BorrowFrom_sub2(uint8_t a, uint8_t b) {return a<b;}
+bool ARM_ISS_Base::BorrowFrom_sub2(uint16_t a, uint16_t b) {return a<b;}
+bool ARM_ISS_Base::BorrowFrom_sub2(uint32_t a, uint32_t b) {return a<b;}
 
 bool ARM_ISS_Base::BorrowFrom_sub3(uint32_t a, uint32_t b, bool c) {
   return BorrowFrom_sub2(a,b) || BorrowFrom_sub2(a-b,c);

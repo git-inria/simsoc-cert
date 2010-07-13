@@ -2,6 +2,8 @@
 #include "common.hpp"
 #include <elf_loader.hpp>
 
+using namespace std;
+
 class MyElfFile : public ElfFile {
   ARM_MMU *mmu;
 public:
@@ -13,6 +15,50 @@ public:
   }
 };
 
+void test_decode(ARM_ISS &iss, MyElfFile &elf) {
+  uint32_t a = elf.get_text_start();
+  const uint32_t ea = a + elf.get_text_size();
+  assert((a&3)==0 && (ea&3)==0 && "address misaligned");
+  for (; a!=ea; a+=4) {
+    const uint32_t bincode = iss.proc.mmu.read_word(a);
+    DEBUG(<<"decode: " <<hex);
+    DEBUG(.width(8));
+    DEBUG(<<bincode <<" ->");
+    bool found = iss.decode_and_exec(bincode);
+    if (!found)
+      DEBUG(<<" undefined or unpredictable");
+    DEBUG(<<endl);
+  }
+}
+
+// we stop the simulation when we recongnize this instruction
+const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); // = B #-2*4
+
+void simulate(ARM_ISS &iss, MyElfFile &elf) {
+  uint32_t inst_count = 0;
+  uint32_t bincode;
+  const uint32_t entry = elf.get_start_address();
+  INFO(<<"entry point: " <<hex <<entry <<'\n');
+  iss.proc.set_pc(entry);
+  iss.proc.jump = false;
+  do {
+    DEBUG(<<"---------------------\n");
+    bincode = iss.proc.mmu.read_word(iss.proc.pc-8);
+    bool found = iss.decode_and_exec(bincode);
+    if (!found)
+      TODO("Unpredictable or undefined instruction");
+    if (iss.proc.jump)
+      iss.proc.jump = false;
+    else
+      iss.proc.pc += 4;
+    ++inst_count;
+  } while (bincode!=infinite_loop);
+  DEBUG(<<"---------------------\n");
+  INFO(<<"Reached infinite loop after " <<dec <<inst_count
+       <<" instructions executed.\n");
+  INFO(<<"r0 = " <<dec <<iss.proc.reg(0) <<endl);
+}
+
 int main(int argc, const char *argv[]) {
   if (argc!=2)
     ERROR("ELF file missing or wrong number of arguments");
@@ -20,19 +66,6 @@ int main(int argc, const char *argv[]) {
   ARM_ISS iss;
   MyElfFile elf(filename, &iss.proc.mmu);
   elf.load_sections();
-  uint32_t a = elf.get_text_start();
-  const uint32_t ea = a + elf.get_text_size();
-  assert((a&3)==0 && (ea&3)==0 && "address misaligned");
-  for (; a!=ea; a+=4) {
-    const uint32_t bincode = iss.proc.mmu.read_word(a);
-    DEBUG(<<"decode: " <<std::hex);
-    DEBUG(.width(8));
-    DEBUG(<<bincode <<" ->");
-    DEBUG(.width(0));
-    bool found = iss.decode_and_exec(bincode);
-    if (!found)
-      DEBUG(<<" undefined or unpredicatable");
-    DEBUG(<<std::endl);
-  }
+  simulate(iss,elf);
   return 0;
 }
