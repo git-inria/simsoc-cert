@@ -16,15 +16,15 @@ int main(int argc, const char *argv[]) {
   if (argc!=2)
     ERROR("ELF file missing or wrong number of arguments");
   const char *filename = argv[1];
-  ARM_Processor proc(0);
-  MyElfFile elf(filename, &proc.mmu);
+  ARM_ISS iss;
+  MyElfFile elf(filename, &iss.proc.mmu);
   elf.load_sections();
   uint32_t a = elf.get_text_start();
   const uint32_t ea = a + elf.get_text_size();
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
   for (; a!=ea; a+=4) {
-    const uint32_t bincode = proc.mmu.read_word(a);
-    decode(bincode);
+    const uint32_t bincode = iss.proc.mmu.read_word(a);
+    iss.decode(bincode);
   }
   return 0;
 }

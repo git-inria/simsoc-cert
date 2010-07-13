@@ -118,16 +118,8 @@ ARM_Processor::StatusRegister &ARM_Processor::StatusRegister::operator = (uint32
   I_flag = x&(1<<7);
   F_flag = x&(1<<6);
   T_flag = x&(1<<5);
-  switch (x&0x1f) {
-  case 0x11: mode = fiq; break;
-  case 0x12: mode = irq; break;
-  case 0x13: mode = svc; break;
-  case 0x17: mode = abt; break;
-  case 0x1b: mode = und; break;
-  case 0x1f: mode = sys; break;
-  case 0x10: mode = usr; break;
-  default: ERROR("invalid mode");
-  }
+  bool ok = decode_mode(x,mode);
+  if (!ok) ERROR("invalid mode");
   return *this;
 }
 
@@ -211,6 +203,19 @@ bool ARM_Processor::condition_passed(Condition cond) const {
 void ARM_Processor::set_pc(uint32_t new_pc) {
   cpsr.T_flag = new_pc&1;
   set_pc_raw(new_pc);
+}
+
+bool ARM_Processor::decode_mode(uint32_t x, Mode &mode) {
+  switch (x&0x1f) {
+  case 0x11: mode = fiq; return true;
+  case 0x12: mode = irq; return true;
+  case 0x13: mode = svc; return true;
+  case 0x17: mode = abt; return true;
+  case 0x1b: mode = und; return true;
+  case 0x1f: mode = sys; return true;
+  case 0x10: mode = usr; return true;
+  default: return false;
+  }
 }
 
 uint32_t ARM_ISS_Base::bit_position_of_most_significant_1(uint32_t x) {

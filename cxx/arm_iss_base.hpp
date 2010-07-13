@@ -150,10 +150,16 @@ struct ARM_Processor {
   static uint32_t msr_StateMask()   {return 0xF80F0200;}
   static uint32_t msr_UserMask()    {return 0x000001DF;}
   static uint32_t msr_PrivMask()    {return 0x01000020;}
+
+  // return false on failure
+  static bool decode_mode(uint32_t x, Mode &m);
 };
 
 struct ARM_ISS_Base {
   ARM_Processor proc;
+
+  // default constructor
+  ARM_ISS_Base(): proc(0) {}
 
   bool ConditionPassed(ARM_Processor::Condition cond) const {
     return proc.condition_passed(cond);}
@@ -226,8 +232,15 @@ struct ARM_ISS_Base {
   static uint8_t get_byte_2(uint32_t x) {return x>>16;}
   static uint8_t get_byte_3(uint32_t x) {return x>>24;}
 
-  static uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
-    return (x>>b) & ((1<<(a-b))-1);}
+  static inline uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
+    assert(a>b);
+    return (x>>b) & ((1<<(a-b))-1);
+  }
+
+  static inline bool get_bit(uint32_t x, uint32_t n) { // return x[a]
+    return (x>>n)&1;
+  }
+
   static void set_bit(uint32_t &dst, uint32_t num, bool src) {
     if (src) dst |= (1<<num);
     else dst &=~ (1<<num);

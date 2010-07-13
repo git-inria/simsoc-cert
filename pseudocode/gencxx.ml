@@ -76,6 +76,11 @@ end;;
 
 module V = Ast.Make(G);;
 
+(* Hash table to access the parameter list of an instruction from the decoder
+ * generator *)
+let parameters: (string, (string * string) list) Hashtbl.t =
+  Hashtbl.create 148;;
+
 (** Generate the code corresponding to an expression *)
 
 let func = function
@@ -273,8 +278,6 @@ and affect k b dst src =
 
 (** Generate a function modeling an instruction of the processor *)
 
-let variant b k = bprintf b "_%s" k;;
-
 let prog_var b s = bprintf b "<%s>" s;;
 
 let prog_arg b (v,t) = bprintf b "const %s %s" t v;;
@@ -284,9 +287,15 @@ let prog_out b (v,t) = bprintf b "%s &%s" t v;;
 let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
 let inreg_load b s =
-  bprintf b "  const uint32_t old_R%s = proc.reg(%s); (void)old_R%s;\n" s s s;;
+  bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
-let ident b i = bprintf b "%s%a" i.iname (option "" variant) i.ivariant;;
+let ident b i =
+  bprintf b "%s%a%a" i.iname
+    (option "" string) i.ivariant
+    (list "" string) i.iparams;;
+
+let str_ident i =
+  let b = Buffer.create 16 in ident b i; Buffer.contents b;;
 
 let comment b p = bprintf b "// %a\n" Genpc.name p;;
 
@@ -299,7 +308,7 @@ let prog b (p, gs, ls) =
     match p.pkind with
       | Inst ->
           bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
-            (list "_" ident) (p.pident :: p.pidents)
+            ident p.pident
             (list ",\n    " prog_arg) gs
             (list "" inreg_load) inregs
             (list "" local_decl) ls
@@ -321,8 +330,9 @@ let prog b (p, gs, ls) =
 let decl b (p, gs, ls) =
   match p.pkind with
     | Inst  ->
-	bprintf b "  %a  void %a(%a);\n" comment p
-          (list "_" ident) (p.pident :: p.pidents) (list ",\n    " prog_arg) gs
+	bprintf b "  %a  void %a(%a);\n  bool decode_%a(uint32_t bincode);\n"
+          comment p ident p.pident
+          (list ",\n    " prog_arg) gs ident p.pident
     | Mode m ->
 	let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
           bprintf b "  %a  void M%d_%a(%a%s%a);\n" comment p
@@ -378,28 +388,103 @@ let dec_split decs =
       | [] -> (!is, !es, ms)
   in split decs;;
 
+(* get the list of parameters *)
+let parameters_of pc =
+  let rename_regs s =
+    if s.[0] = 'R'
+    then String.sub s 1 (String.length s -1)
+    else s in
+  let aux (n, l) pc = match pc with
+    | Codetype.Param1 c -> (n+1, (String.make 1 c, n, n) :: l)
+    | Codetype.Param1s s-> (n+1, (s, n, n) :: l)
+    | Codetype.Range (s, size, _) ->
+        let s' = rename_regs s in
+        let e = s', n+size-1, n in
+          (n+1, (
+             match l with (* avoid duplicates *)
+               | (x, _, _) :: _ -> if x = s' then l else e :: l
+               | [] -> [e]
+           ))
+    | _ -> (n+1, l)
+  in
+  let _, ps = Array.fold_left aux (0, []) pc in ps;;
+
+(* generate the code extracing the parameters from the instruction code *)
+let dec_param i buf (s, a, b) =
+  (* exclude "shifter_operand" *)
+  if (s, a, b) = ("shifter_operand", 11, 0) then ()
+  else
+    (* compute the list of used parameters *)
+    let gs = Hashtbl.find parameters i in
+    let gs = match Validity.to_exp i with
+      | Some e ->
+          let vs, _ = V.vars_exp (StrMap.empty, StrMap.empty) e in
+            List.merge compare (list_of_map vs) gs
+      | None -> gs
+    in try
+        let t = List.assoc s gs in
+          if (s, a, b) = ("cond", 31, 28) then (
+            (* special case for cond, because decoding of this field can fail *)
+            bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
+            bprintf buf "  if (cond_tmp>15) return false;\n";
+            bprintf buf "  const ARM_Processor::Condition cond =\n";
+            bprintf buf "    static_cast<ARM_Processor::Condition>(cond_tmp);\n"
+          ) else if (s, a, b) = ("mode", 4, 0) then (
+            (* special case for mode, because decoding of this field can fail *)
+            bprintf buf "  const uint32_t mode_tmp = get_bits(bincode,4,0);\n";
+            bprintf buf "  ARM_Processor::Mode mode;\n";
+            bprintf buf
+              "  if (!ARM_Processor::decode_mode(bincode,mode)) return false;\n"
+          ) else
+            if a = b then
+              bprintf buf "  const %s %s = get_bit(bincode,%d);\n" t s a
+            else
+              bprintf buf "  const %s %s = get_bits(bincode,%d,%d);\n" t s a b
+      with Not_found -> ();; (* do not extract unused parameters *)
+
 (* generate the decoder *)
 let dec_inst b is =
-  let inst b (lh, pc) =
+  (* Phase A: check bits fixed by the coding table *)
+  let instA b (lh, pc) =
     let mask_value pcs =
       let f pc (m,v) =
         let m' = Int32.shift_left m 1 and v' = Int32.shift_left v 1 in
-        match pc with
-        | Codetype.Value true -> (Int32.succ m', Int32.succ v')
-        | Codetype.Value false -> (Int32.succ m', v')
-        | _ -> (m', v')
+          match pc with
+              (* FIXME: we should distinguish between UNDEFINED and
+               * UNPREDICTABLE *)
+            | Codetype.Value true | Codetype.Shouldbe true ->
+                (Int32.succ m', Int32.succ v')
+            | Codetype.Value false | Codetype.Shouldbe false ->
+                (Int32.succ m', v')
+            | _ -> (m', v')
       in Array.fold_right f pcs (Int32.zero, Int32.zero)
-    in let (mask, value) = mask_value pc in
-    bprintf b "  if ((bincode&0x%08lx)==0x%08lx)\n    std::cerr <<\" %s\";\n"
-      mask value (id_inst (lh, pc))
+    in let (mask, value) = mask_value pc and id = (id_inst (lh, pc)) in
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && decode_%s(bincode)) {\n"
+        mask value id;
+      bprintf b "    std::cerr <<\" %s\";\n" id;
+      bprintf b "    /*assert(!found);*/ found = true;\n  }\n"
   in
-    bprintf b "void decode(uint32_t bincode) {\n";
+  (* Phase B: extract parameters and check validity *)
+  let instB b (lh, pc) =
+    let id = (id_inst (lh, pc)) in
+      bprintf b "bool ARM_ISS::decode_%s(uint32_t bincode) {\n" id;
+      bprintf b "%a" (list "" (dec_param id)) (parameters_of pc);
+      (match Validity.to_exp id with
+         | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
+         | None -> ());
+      bprintf b "  return true;\n}\n"
+  in
+  let is' = List.rev is in
+    bprintf b "void ARM_ISS::decode(uint32_t bincode) {\n";
+    bprintf b "  bool found = false;\n";
     bprintf b "  std::cerr <<\"decode: \" <<std::hex;\n";
     bprintf b "  std::cerr.width(8);\n";
     bprintf b "  std::cerr <<bincode <<\" ->\";\n";
     bprintf b "  std::cerr.width(0);\n";
-    bprintf b "%a  std::cerr <<'\\n';\n}\n"
-      (list "" inst) (List.rev is);;
+    bprintf b "%a" (list "" instA) is';
+    bprintf b "  if (!found)\n    std::cerr <<\"undefined or unpredicatable\";\n";
+    bprintf b "  std::cerr <<std::endl;\n}\n\n%a"
+      (list "\n" instB) is';;
 
 (* main function
  * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
@@ -413,12 +498,14 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let add_vars p =
     let p' = lsm_hack p in
     let gs, ls = V.vars p' in
-      (p', gs, ls) in
+      Hashtbl.add parameters (str_ident p'.pident) gs;
+      (p', gs, ls)
+  in
   let pcgls = List.map add_vars pcs in
     (* generate the header file *)
     bprintf bh "#include \"arm_iss_base.hpp\"\n\n";
-    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a};\n" (list "\n" decl) pcgls;
-    bprintf bh "\nvoid decode(uint32_t bincode);\n";
+    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a" (list "\n" decl) pcgls;
+    bprintf bh "\n  void decode(uint32_t bincode);\n};\n";
     (* generate the source file *)
     bprintf bc "#include \"%s.hpp\"\n\n%a\n%a"
       bn (list "\n" prog) pcgls dec_inst is;
