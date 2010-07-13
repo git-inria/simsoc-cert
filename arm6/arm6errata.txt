@@ -25,4 +25,9 @@ LDM (1): "pc" should be "PC"
 
 ZeroExtend: undefined
 
-SWP and SWPB: 'address' in pseudocode should be 'Rn' 
+SWP and SWPB: 'address' in pseudocode should be 'Rn'
+
+SSAT: "shift" in pseudo-code should be "sh".
+
+Miscellaneous Loads and Stores - Immediate post-indexed:
+  In the encoding, ImmedL should be immedL
