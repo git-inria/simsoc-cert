@@ -1,12 +1,11 @@
 /* Example for the Coq simulator */
-/* After 224 instructions executed, r0 should contain 1+2+...+42=903 */
+/* After 264 instructions executed, r0 should contain 1+2+...+42=903 */
 
 typedef unsigned int uint32_t;
 
 const uint32_t N = 42;
 
-const uint32_t SP = 0x3fff000;
-const uint32_t HALT = 0x10000020;
+const uint32_t SP = 0xff000; // intial stack pointer
 
 void _start() __attribute__ ((naked));
 void _start() {
@@ -20,7 +19,6 @@ void _start() {
   for (i = 1; i<=N; ++i)
     sum += i;
 
-  asm volatile ("mov r0, %0\n\t": "=r"(sum)); /* we store the result in r0 */
-  *((volatile uint32_t*) HALT) = 1; /* stop the "demo" simulator of SimSoC */
+  asm volatile ("mov r0, %0\n\t": :"r"(sum): "r0"); /* we store the result in r0 */
   while(1);
 }
