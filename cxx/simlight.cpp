@@ -24,7 +24,14 @@ int main(int argc, const char *argv[]) {
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
   for (; a!=ea; a+=4) {
     const uint32_t bincode = iss.proc.mmu.read_word(a);
-    iss.decode(bincode);
+    std::cerr <<"decode: " <<std::hex;
+    std::cerr.width(8);
+    std::cerr <<bincode <<" ->";
+    std::cerr.width(0);
+    bool found = iss.decode_and_exec(bincode);
+    if (!found)
+      std::cerr <<" undefined or unpredicatable";
+    std::cerr <<std::endl;
   }
   return 0;
 }

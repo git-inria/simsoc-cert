@@ -1,5 +1,5 @@
 CPPFLAGS=-I../elf # for elf.h and elf_loader.hpp
-CXXFLAGS=-Wall -Wextra -Wno-unused
+CXXFLAGS=-Wall -Wextra -Wno-unused -g
 CC = g++
 
 all: simlight
@@ -25,10 +25,7 @@ arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp
 ../elf/elf_loader.hpp ../elf/elf_loader.o: FORCE
 	cd ../elf && $(MAKE) $@
 
-diff: arm_iss.cpp arm_iss-ref.cpp
-	diff -qw $^
-
 clean:
-	rm -f arm_iss.o arm_iss.cpp arm_iss.cpp.tmp
+	rm -f arm_iss.o arm_iss.cpp arm_iss.hpp arm_iss_base.o simlight.o simlight
 
 FORCE:

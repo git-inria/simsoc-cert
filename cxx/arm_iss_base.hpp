@@ -234,7 +234,7 @@ struct ARM_ISS_Base {
 
   static inline uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
     assert(a>b);
-    return (x>>b) & ((1<<(a-b))-1);
+    return (x>>b) & ((1<<(a-b+1))-1);
   }
 
   static inline bool get_bit(uint32_t x, uint32_t n) { // return x[a]
@@ -276,6 +276,11 @@ struct ARM_ISS_Base {
   static uint32_t UnsignedSat(uint32_t a, uint8_t imm);
   static bool SignedDoesSat(uint32_t a, uint8_t imm);
   static bool UnsignedDoesSat(uint32_t a, uint8_t imm);
+
+  static bool not_cpy_instr(uint32_t bincode) {
+    // values come from arm_iss.cpp, decode_and_exec method, case CPY
+    return (bincode&0x0fff0ff0)!=0x01a00000;
+  }
 };
 
 #endif // ARM_ISS_BASE_HPP

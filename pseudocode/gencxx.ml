@@ -1,14 +1,14 @@
 (**
-SimSoC-Cert, a library on processor architectures for embedded systems.
-See the COPYRIGHTS and LICENSE files.
+   SimSoC-Cert, a library on processor architectures for embedded systems.
+   See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
+   Formalization of the ARM architecture version 6 following the:
 
-ARM Architecture Reference Manual, Issue I, July 2005.
+   ARM Architecture Reference Manual, Issue I, July 2005.
 
-Page numbers refer to ARMv6.pdf.
+   Page numbers refer to ARMv6.pdf.
 
-C++ code generator for simulation (see directory ../cxx)
+   C++ code generator for simulation (see directory ../cxx)
 *)
 
 open Ast;;
@@ -76,10 +76,38 @@ end;;
 
 module V = Ast.Make(G);;
 
-(* Hash table to access the parameter list of an instruction from the decoder
- * generator *)
-let parameters: (string, (string * string) list) Hashtbl.t =
-  Hashtbl.create 148;;
+(** extended program type allowing to store extra information *)
+
+type xprog = {
+  xprog: prog;
+  xid: string; (* the identifier used in the generated code *)
+  xgs: (string * string) list; (* "global" variables *)
+  xls: (string * string) list; (* local variables *)
+  xdec: Codetype.pos_contents array; (* coding table *)
+  xvc: exp option; (* validity contraints *)
+  xmode: int option; (* mode used by the instruction *)
+}
+
+let str_ident p =
+  let ident b p =
+    let i = p.pident in
+      match p.pkind with
+        | Inst ->
+            bprintf b "%s%a%a" i.iname
+              (option "" string) i.ivariant (list "" string) i.iparams
+        | Mode m ->
+            bprintf b "M%d_%s" m i.iname
+  in
+  let b = Buffer.create 16 in ident b p; Buffer.contents b;;
+
+(* merge pseudo-code information with decoding information *)
+let xprog_of p (_, pcs) =
+  let gs, ls = V.vars p and id = str_ident p in
+    {xprog = p; xid = id; xgs = gs; xls = ls; xdec = pcs;
+     xvc = Validity.to_exp id;
+     xmode = addr_mode_of_prog p gs};;
+
+let mode_outputs = Array.create 5 [];;
 
 (** Generate the code corresponding to an expression *)
 
@@ -250,8 +278,8 @@ and affect k b dst src =
   if src = Unpredictable_exp then string b "unpredictable()"
   else match dst with
     | Reg (Var "d", _) -> bprintf b
-"if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a"
-        indent (k+2) exp src indent k indent (k+2) exp src
+        "if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a"
+          indent (k+2) exp src indent k indent (k+2) exp src
     | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a)" exp src
     | Reg (e, None) -> bprintf b "proc.reg(%a) = %a" exp e exp src
     | Reg (e, Some m) ->
@@ -289,58 +317,57 @@ let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 let inreg_load b s =
   bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
 
-let ident b i =
-  bprintf b "%s%a%a" i.iname
-    (option "" string) i.ivariant
-    (list "" string) i.iparams;;
-
-let str_ident i =
-  let b = Buffer.create 16 in ident b i; Buffer.contents b;;
-
-let comment b p = bprintf b "// %a\n" Genpc.name p;;
+let comment b p = bprintf b "// %a\n" Genpc.name p.xprog;;
 
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
+let print_first b (s, _) = string b s;;
+
 (* Defintion of the functions. This should be printed in a source file (.cpp) *)
-let prog b (p, gs, ls) =
-  let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
+let prog b p =
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
-    match p.pkind with
+    match p.xprog.pkind with
       | Inst ->
-          bprintf b "%avoid ARM_ISS::%a(%a)\n{\n%a%a%a\n}\n" comment p
-            ident p.pident
-            (list ",\n    " prog_arg) gs
+          bprintf b "%avoid ARM_ISS::%s(%a)\n{\n%a%a%a\n}\n" comment p
+            p.xid
+            (list ",\n    " prog_arg) p.xgs
             (list "" inreg_load) inregs
-            (list "" local_decl) ls
-            (inst 2) p.pinst
+            (list "" local_decl) p.xls
+            (inst 2) p.xprog.pinst
       | Mode m ->
-          let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls
-          and ls' = List.filter (fun (x, _) -> List.mem x optemps) ls in
-            bprintf b "%avoid ARM_ISS::M%d_%a(%a%s%a)\n{\n%a%a%a\n}\n" comment p
-              m
-              string p.pident.iname
-              (list ",\n    " prog_arg) gs
-              (arg_sep gs os)
+          let os = mode_outputs.(m-1)
+          and ls' = List.filter (fun (x, _) -> List.mem x optemps) p.xls in
+            bprintf b "%avoid ARM_ISS::%s(%a%s%a)\n{\n%a%a%a\n}\n" comment p
+              p.xid
+              (list ",\n    " prog_arg) p.xgs
+              (arg_sep p.xgs os)
               (list ",\n    " prog_out) os
               (list "" inreg_load) inregs
               (list "" local_decl) ls'
-              (inst 2) p.pinst;;
+              (inst 2) p.xprog.pinst;;
 
 (* Declaration of the functions. This should be printed in a header file (.hpp) *)
-let decl b (p, gs, ls) =
-  match p.pkind with
+let decl b p =
+  match p.xprog.pkind with
     | Inst  ->
-	bprintf b "  %a  void %a(%a);\n  bool decode_%a(uint32_t bincode);\n"
-          comment p ident p.pident
-          (list ",\n    " prog_arg) gs ident p.pident
+	bprintf b "  %a  void %s(%a);\n  bool try_%s(uint32_t bincode);\n"
+          comment p p.xid
+          (list ",\n    " prog_arg) p.xgs p.xid
     | Mode m ->
-	let os = List.filter (fun (x, _) -> not (List.mem x optemps)) ls in
-          bprintf b "  %a  void M%d_%a(%a%s%a);\n" comment p
-            m
-            string p.pident.iname
-            (list ",\n    " prog_arg) gs
-            (arg_sep gs os)
-            (list ",\n    " prog_out) os;;
+	let os =
+          if mode_outputs.(m-1) = [] then (
+            let os' = List.filter (fun (x, _) -> not (List.mem x optemps)) p.xls in
+              mode_outputs.(m-1) <- os');
+          mode_outputs.(m-1)
+        in
+          bprintf b "  %a  void %s(%a%s%a);\n" comment p
+            p.xid
+            (list ",\n    " prog_arg) p.xgs
+            (arg_sep p.xgs os)
+            (list ",\n    " prog_out) os;
+          bprintf b "  bool try_%s(uint32_t bincode,\n    %a);\n"
+            p.xid (list ",\n    " prog_out) os;;
 
 (* For some LSM instructions, the operand has side effects that must be executed
  * after the instruction itself *)
@@ -365,31 +392,21 @@ let lsm_hack p =
           { p with pinst = inst p.pinst }
       | _ -> p;;
 
-(* function used to generate the C++ function name for an instruction*)
-let id_inst (ps: Codetype.maplist_element) =
-  let rec concatenate = function
-    | [] -> ""
-    | [s] -> s
-    | s :: ss -> s ^ concatenate ss
-  in
-    concatenate (name ps);;
-
 (* Split the list of decoding rules according to their kind *)
-let dec_split decs =
-  let is = ref [] and es = ref [] and ms = Array.create 5 [] in
-  let rec split l =
+let split xs =
+  let is = ref [] and ms = Array.create 5 [] in
+  let rec aux l =
     match l with
-      | e :: t -> (
-          match add_mode (name e) with
-            | DecMode i -> ms.(i-1) <- e::ms.(i-1)
-            | DecInst -> is := e::!is
-            | DecEncoding ->es := e::!es);
-          split t
-      | [] -> (!is, !es, ms)
-  in split decs;;
+      | x :: tl -> (
+          match x.xprog.pkind with
+            | Mode i -> ms.(i-1) <- x::ms.(i-1)
+            | Inst -> is := x::!is);
+          aux tl
+      | [] -> (!is, ms)
+  in aux xs;;
 
 (* get the list of parameters *)
-let parameters_of pc =
+let parameters_of p =
   let rename_regs s =
     if s.[0] = 'R'
     then String.sub s 1 (String.length s -1)
@@ -407,16 +424,16 @@ let parameters_of pc =
            ))
     | _ -> (n+1, l)
   in
-  let _, ps = Array.fold_left aux (0, []) pc in ps;;
+  let _, ps = Array.fold_left aux (0, []) p.xdec in ps;;
 
 (* generate the code extracing the parameters from the instruction code *)
-let dec_param i buf (s, a, b) =
+let dec_param p buf (s, a, b) =
   (* exclude "shifter_operand" *)
   if (s, a, b) = ("shifter_operand", 11, 0) then ()
   else
     (* compute the list of used parameters *)
-    let gs = Hashtbl.find parameters i in
-    let gs = match Validity.to_exp i with
+    let gs = p.xgs in
+    let gs = match p.xvc with
       | Some e ->
           let vs, _ = V.vars_exp (StrMap.empty, StrMap.empty) e in
             List.merge compare (list_of_map vs) gs
@@ -426,7 +443,7 @@ let dec_param i buf (s, a, b) =
           if (s, a, b) = ("cond", 31, 28) then (
             (* special case for cond, because decoding of this field can fail *)
             bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
-            bprintf buf "  if (cond_tmp>15) return false;\n";
+            bprintf buf "  if (cond_tmp>14) return false;\n";
             bprintf buf "  const ARM_Processor::Condition cond =\n";
             bprintf buf "    static_cast<ARM_Processor::Condition>(cond_tmp);\n"
           ) else if (s, a, b) = ("mode", 4, 0) then (
@@ -442,94 +459,136 @@ let dec_param i buf (s, a, b) =
               bprintf buf "  const %s %s = get_bits(bincode,%d,%d);\n" t s a b
       with Not_found -> ();; (* do not extract unused parameters *)
 
-(* generate the decoder *)
+(* compute the mask and the value corresponding to a coding table *)
+let mask_value pcs =
+  let f pc (m,v) =
+    let m' = Int32.shift_left m 1 and v' = Int32.shift_left v 1 in
+      match pc with
+          (* FIXME: we should distinguish between UNDEFINED and
+           * UNPREDICTABLE *)
+        | Codetype.Value true | Codetype.Shouldbe true ->
+            (Int32.succ m', Int32.succ v')
+        | Codetype.Value false | Codetype.Shouldbe false ->
+            (Int32.succ m', v')
+        | _ -> (m', v')
+  in Array.fold_right f pcs (Int32.zero, Int32.zero);;
+
+(* generate the decoder - instructions *)
 let dec_inst b is =
   (* Phase A: check bits fixed by the coding table *)
-  let instA b (lh, pc) =
-    let mask_value pcs =
-      let f pc (m,v) =
-        let m' = Int32.shift_left m 1 and v' = Int32.shift_left v 1 in
-          match pc with
-              (* FIXME: we should distinguish between UNDEFINED and
-               * UNPREDICTABLE *)
-            | Codetype.Value true | Codetype.Shouldbe true ->
-                (Int32.succ m', Int32.succ v')
-            | Codetype.Value false | Codetype.Shouldbe false ->
-                (Int32.succ m', v')
-            | _ -> (m', v')
-      in Array.fold_right f pcs (Int32.zero, Int32.zero)
-    in let (mask, value) = mask_value pc and id = (id_inst (lh, pc)) in
-      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && decode_%s(bincode)) {\n"
-        mask value id;
-      bprintf b "    std::cerr <<\" %s\";\n" id;
-      bprintf b "    /*assert(!found);*/ found = true;\n  }\n"
+  let instA b p =
+    let (mask, value) = mask_value p.xdec in
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(bincode)) {\n"
+        mask value p.xid;
+      bprintf b "    std::cerr <<\" %s\";\n" p.xid;
+      bprintf b "    assert(!found); found = true;\n  }\n"
   in
-  (* Phase B: extract parameters and check validity *)
-  let instB b (lh, pc) =
-    let id = (id_inst (lh, pc)) in
-      bprintf b "bool ARM_ISS::decode_%s(uint32_t bincode) {\n" id;
-      bprintf b "%a" (list "" (dec_param id)) (parameters_of pc);
-      (match Validity.to_exp id with
-         | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
-         | None -> ());
-      bprintf b "  return true;\n}\n"
+    (* Phase B: extract parameters and check validity *)
+  let instB b p =
+    bprintf b "bool ARM_ISS::try_%s(uint32_t bincode) {\n" p.xid;
+    (* extract parameters *)
+    bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
+    (* check validity *)
+    (match p.xvc with
+       | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
+       | None -> ());
+    (* decode the mode *)
+    (match p.xmode with
+       | Some m ->
+           let os = mode_outputs.(m-1) in
+             bprintf b "%a  if (!try_M%d(bincode,%a)) return false;\n"
+               (list "" local_decl) os m (list "," print_first) os
+       | None -> ());
+    (* TODO: execute the instruction *)
+    bprintf b "  return true;\n}\n"
   in
   let is' = List.rev is in
-    bprintf b "void ARM_ISS::decode(uint32_t bincode) {\n";
+    bprintf b "bool ARM_ISS::decode_and_exec(uint32_t bincode) {\n";
     bprintf b "  bool found = false;\n";
-    bprintf b "  std::cerr <<\"decode: \" <<std::hex;\n";
-    bprintf b "  std::cerr.width(8);\n";
-    bprintf b "  std::cerr <<bincode <<\" ->\";\n";
-    bprintf b "  std::cerr.width(0);\n";
     bprintf b "%a" (list "" instA) is';
-    bprintf b "  if (!found)\n    std::cerr <<\"undefined or unpredicatable\";\n";
-    bprintf b "  std::cerr <<std::endl;\n}\n\n%a"
+    bprintf b "  return found;\n}\n\n%a"
       (list "\n" instB) is';;
+
+(* declare the try_Mx methods *)
+let decl_try b m os =
+  let sep = ",\n              " in
+    bprintf b "\n  bool try_M%d(uint32_t bincode%s%a);\n"
+      (m+1) sep (list sep prog_out) os;;
+
+(* generate the decoder - modes *)
+let dec_modes b ms =
+  (* Phase A: check bits fixed by the coding table *)
+  let modeA os b p =
+    let (mask, value) = mask_value p.xdec in
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx &&\n      try_%s(bincode,%a)) {\n"
+        mask value p.xid (list "," print_first) os;
+      bprintf b "    assert(!found); found = true;\n  }\n"
+  in (* Phase B: extract parameters and check validity *)
+  let modeB os b p =
+    bprintf b "bool ARM_ISS::try_%s(uint32_t bincode,\n    %a) {\n"
+      p.xid (list ",\n    " prog_out) os;
+    (* extract parameters *)
+    bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
+    (* check validity *)
+    (match p.xvc with
+       | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
+       | None -> ());
+    (* TODO: execute the mode case *)
+    bprintf b "  return true;\n}\n"
+  in (* generate the decoder for mode i *)
+  let sep = ",\n                     " in
+  let dec_mode b i ms =
+    let ms' = List.rev ms in
+    let os = mode_outputs.(i) in
+      bprintf b "\nbool ARM_ISS::try_M%d(uint32_t bincode%s%a) {\n"
+        (i+1) sep (list sep prog_out) os;
+      bprintf b "  bool found = false;\n%a"
+        (list "" (modeA os)) ms';
+      bprintf b "  return found;\n}\n\n%a" (list "\n" (modeB os)) ms';
+  in Array.iteri (dec_mode b) ms;;
 
 (* main function
  * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
-  (* create buffers for header file (bh) and source file (bc) *)
-  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
-    (* extract the decoding rules associtaed with instructions *)
-  let (is, _, _) = dec_split decs in
-    (* compute the list of parameters (gs) and local variables (ls),
-     * and hack the LSM instructions. *)
-  let add_vars p =
-    let p' = lsm_hack p in
-    let gs, ls = V.vars p' in
-      Hashtbl.add parameters (str_ident p'.pident) gs;
-      (p', gs, ls)
+  let pcs' = List.map lsm_hack pcs in (* hack LSM instructions *)
+  let decs' = (* remove encodings *)
+    let aux x = add_mode (name x) != DecEncoding in
+      List.filter aux decs
   in
-  let pcgls = List.map add_vars pcs in
+  let xs = List.map2 xprog_of pcs' decs' in (* compute extended programs *)
+  let is, ms = split xs in (* group by kind *)
+    (* create buffers for header file (bh) and source file (bc) *)
+  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
     (* generate the header file *)
     bprintf bh "#include \"arm_iss_base.hpp\"\n\n";
-    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a" (list "\n" decl) pcgls;
-    bprintf bh "\n  void decode(uint32_t bincode);\n};\n";
+    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a" (list "\n" decl) xs;
+    Array.iteri (decl_try bh) mode_outputs;
+    bprintf bh "\n  bool decode_and_exec(uint32_t bincode);\n};\n";
     (* generate the source file *)
-    bprintf bc "#include \"%s.hpp\"\n\n%a\n%a"
-      bn (list "\n" prog) pcgls dec_inst is;
+    bprintf bc "#include \"%s.hpp\"\n\n%a\n%a%a"
+      bn (list "\n" prog) xs dec_inst is dec_modes ms;
     (* write buffers to files *)
     let outh = open_out (bn^".hpp") and outc = open_out (bn^".cpp") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;
 
-(* alternative main function used to compute some statistics *)
-let xlib bn pcs decs =
-  let b = Buffer.create 10000 in
-  let (is, es, ms) = dec_split decs in
-    bprintf b "%d instructions, %d encoding" (List.length is) (List.length es);
-    Array.iteri (fun i l -> bprintf b ", %d mode %d" (List.length l) (i+1)) ms;
-    bprintf b "\n%d decoding rules\n%d instructions or addressing modes\n"
-      (List.length decs) (List.length pcs);
-    let stats = Array.create 32 0 in
-    let poscontent (_, pcs) =
-      let bit i pc = match pc with
-        | Codetype.Shouldbe _ -> stats.(i) <- stats.(i) + 1
-        | _ -> ()
-      in Array.iteri bit pcs
-    in
-      List.iter poscontent is;
-      Array.iteri (fun i n -> bprintf b "bit %d is a \"Souldbe\" %d times.\n" i n) stats;
-      let out = open_out (bn^".txt") in
-        Buffer.output_buffer out b; close_out out;;
+(* REMOVE:
+ * alternative main function used to compute some statistics *)
+(* let xlib bn pcs decs = *)
+(*   let b = Buffer.create 10000 in *)
+(*   let (is, es, ms) = dec_split decs in *)
+(*     bprintf b "%d instructions, %d encoding" (List.length is) (List.length es); *)
+(*     Array.iteri (fun i l -> bprintf b ", %d mode %d" (List.length l) (i+1)) ms; *)
+(*     bprintf b "\n%d decoding rules\n%d instructions or addressing modes\n" *)
+(*       (List.length decs) (List.length pcs); *)
+(*     let stats = Array.create 32 0 in *)
+(*     let poscontent (_, pcs) = *)
+(*       let bit i pc = match pc with *)
+(*         | Codetype.Shouldbe _ -> stats.(i) <- stats.(i) + 1 *)
+(*         | _ -> () *)
+(*       in Array.iteri bit pcs *)
+(*     in *)
+(*       List.iter poscontent is; *)
+(*       Array.iteri (fun i n -> bprintf b "bit %d is a \"Souldbe\" %d times.\n" i n) stats; *)
+(*       let out = open_out (bn^".txt") in *)
+(*         Buffer.output_buffer out b; close_out out;; *)
