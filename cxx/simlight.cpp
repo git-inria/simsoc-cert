@@ -1,4 +1,5 @@
 #include "arm_iss.hpp"
+#include "common.hpp"
 #include <elf_loader.hpp>
 
 class MyElfFile : public ElfFile {
@@ -24,14 +25,14 @@ int main(int argc, const char *argv[]) {
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
   for (; a!=ea; a+=4) {
     const uint32_t bincode = iss.proc.mmu.read_word(a);
-    std::cerr <<"decode: " <<std::hex;
-    std::cerr.width(8);
-    std::cerr <<bincode <<" ->";
-    std::cerr.width(0);
+    DEBUG(<<"decode: " <<std::hex);
+    DEBUG(.width(8));
+    DEBUG(<<bincode <<" ->");
+    DEBUG(.width(0));
     bool found = iss.decode_and_exec(bincode);
     if (!found)
-      std::cerr <<" undefined or unpredicatable";
-    std::cerr <<std::endl;
+      DEBUG(<<" undefined or unpredicatable");
+    DEBUG(<<std::endl);
   }
   return 0;
 }
