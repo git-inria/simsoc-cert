@@ -22,7 +22,12 @@ default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 %.elf: %.c
 	arm-elf-gcc $< -nostdlib -o $@
 
+../testgen/elf2coq: FORCE
+	cd ../testgen/ && $(MAKE)
+
 clean:
 	rm -f $(FILES:%=%.vo) $(FILES:%=%.v) $(FILES:%=%.elf) \
 		$(FILES:%=%.ml) $(FILES:%=%.mli) \
 		$(FILES:%=%.cmo) $(FILES:%=%.cmi)
+
+FORCE:
