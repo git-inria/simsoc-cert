@@ -32,7 +32,7 @@ void test_decode(ARM_ISS &iss, MyElfFile &elf) {
   }
 }
 
-// we stop the simulation when we recongnize this instruction
+// we stop the simulation when we recognize this instruction
 const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); // = B #-2*4
 
 void simulate(ARM_ISS &iss, MyElfFile &elf) {
