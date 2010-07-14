@@ -24,11 +24,11 @@ void test_decode(ARM_ISS &iss, MyElfFile &elf) {
     const uint32_t bincode = iss.proc.mmu.read_word(a);
     sl_debug = true;
     DEBUG(<<"decode: " <<hex);
-    DEBUG(.width(8));
+    DEBUG(.width(10));
     DEBUG(<<bincode <<" -> ");
     bool found = iss.decode_and_exec(bincode);
     if (!found)
-      DEBUG(<<" undefined or unpredictable");
+      DEBUG(<<"undefined or unpredictable\n");
   }
 }
 
@@ -57,26 +57,38 @@ void simulate(ARM_ISS &iss, MyElfFile &elf) {
   DEBUG(<<"---------------------\n");
   INFO(<<"Reached infinite loop after " <<dec <<inst_count
        <<" instructions executed.\n");
-  INFO(<<"r0 = " <<dec <<iss.proc.reg(0) <<endl);
 }
 
 void usage(const char *pname) {
   cout <<"Simple ARMv6 simulator.\n"
-       <<"Usage: " <<pname <<" [-d] [-e] <elf_file>\n"
-       <<"\t-d   turn of debugging information\n"
-       <<"\t-i   turn of normal information\n"
-       <<"\t-dec decode the .text section (turn off simulation)\n";
+       <<"Usage: " <<pname <<" <options> <elf_file>\n"
+       <<"\t-d    turn of debugging information\n"
+       <<"\t-i    turn of normal information\n"
+       <<"\t-r0   display the content of r0 before exiting\n"
+       <<"\t-r0=N exit with an error status if r0!=N at the end of simulation\n"
+       <<"\t-dec  decode the .text section (turn off simulation)\n";
 }
 
 int main(int argc, const char *argv[]) {
+  cout <<showbase;
   const char *filename = NULL;
+  bool show_r0 = false;
+  bool check_r0 = false;
+  bool hexa_r0 = false;
+  uint32_t expected_r0 = 0;
   for (int i = 1; i<argc; ++i) {
     if (argv[i][0]=='-') {
       if (!strcmp(argv[i],"-d"))
         sl_debug = false;
       else if (!strcmp(argv[i],"-i"))
         sl_info = false;
-      else if (!strcmp(argv[i],"-dec"))
+      else if (!strcmp(argv[i],"-r0"))
+        show_r0 = true;
+      else if (!strncmp(argv[i],"-r0=",4)) {
+        check_r0 = true;
+        expected_r0 = strtoul(argv[i]+4,NULL,0);
+        hexa_r0 = !strncmp(argv[i]+4,"0x",2);
+      } else if (!strcmp(argv[i],"-dec"))
         sl_exec = false;
       else {
         cout <<"Error: unrecognized option: \"" <<argv[i] <<"\".\n\n";
@@ -109,5 +121,12 @@ int main(int argc, const char *argv[]) {
     simulate(iss,elf);
   else
     test_decode(iss,elf);
+  if (show_r0)
+    cout <<"r0 = " <<dec <<iss.proc.reg(0) <<endl;
+  if (check_r0 && iss.proc.reg(0)!=expected_r0) {
+    cout <<"Error: r0 contains " <<(hexa_r0? hex : dec) <<iss.proc.reg(0)
+         <<" instead of " <<expected_r0 <<".\n";
+    return 4;
+  }
   return 0;
 }

@@ -1,0 +1,14 @@
+#!/bin/bash
+SIMLIGHT="../cxx/simlight -d -i"
+set -e # exit on error
+set -x # verbose
+
+$SIMLIGHT sum_iterative.elf -r0=903
+
+$SIMLIGHT arm_blx2.elf -r0=0x3
+
+$SIMLIGHT arm_cflag.elf -r0=0xf
+
+$SIMLIGHT arm_dpi.elf -r0=0x7ffff
+
+$SIMLIGHT arm_edsp.elf -r0=0x7fffff
