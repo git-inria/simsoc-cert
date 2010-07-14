@@ -137,10 +137,16 @@ struct ARM_Processor {
   }
 
   bool current_mode_has_spsr() const {return cpsr.mode<sys;}
-  StatusRegister &spsr() {return spsr(cpsr.mode);}
-  StatusRegister &spsr(Mode) {
+
+  StatusRegister &spsr() {
     if (current_mode_has_spsr()) return spsrs[cpsr.mode];
-    else ERROR("Current mode does not have a SPSR"); }
+    else ERROR("Current mode does not have a SPSR");
+  }
+  StatusRegister &spsr(Mode m) {
+    if (m<sys) return spsrs[m];
+    else ERROR("This mode does not have a SPSR");
+  }
+
   ARM_Coprocessor *coproc(uint8_t cp_num) {
     if (cp_num==15) return &cp15; else return NULL;}
 

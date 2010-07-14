@@ -1,5 +1,8 @@
+/* Derived from SimSoC, Copyright © INRIA 2007, 2008, 2009, 2010
+ * LGPL license version 3 */
+
 /* test the EDSP instructions
- * After ? instructions executed, r0 should contain 0x7fffff = 8,388,607 */
+ * After 679 instructions executed, r0 should contain 0x7fffff = 8,388,607 */
 
 #include "common.h"
 

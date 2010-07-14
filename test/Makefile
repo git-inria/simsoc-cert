@@ -1,4 +1,5 @@
-FILES := sum_iterative arm_blx2 arm_cflag arm_dpi arm_edsp
+FILES := sum_iterative arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd \
+ arm_ldmstm arm_ldrstr arm_mrs arm_msr
 
 .PRECIOUS: $(FILES:%=%.elf) $(FILES:%=%.v) $(FILES:%=%.ml)
 

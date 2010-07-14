@@ -32,7 +32,7 @@ let hex_of_bin = function
 let type_of_var = function
 
   | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
-  | "shifter_carry_out" | "shift" | "opcode25" | "E" -> "bool"
+  | "shifter_carry_out" | "opcode25" | "E" -> "bool"
 
   | "signed_immed_24" | "H" | "shifter_operand" | "alu_out" | "target"
   | "data" | "value" | "diffofproducts" | "address" | "start_address"
@@ -43,7 +43,7 @@ let type_of_var = function
 
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
-  | "immedH" | "immedL" | "offset_8" -> "uint8_t"
+  | "immedH" | "immedL" | "offset_8" | "shift" -> "uint8_t"
 
   | "cond" -> "ARM_Processor::Condition"
   | "mode" -> "ARM_Processor::Mode"
@@ -259,7 +259,7 @@ and inst_aux k b = function
   | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
 
   | For (counter, min, max, i) ->
-      bprintf b "for (size_t %s = %a; %s<%a; ++%s) {\n%a\n}"
+      bprintf b "for (size_t %s = %a; %s<=%a; ++%s) {\n%a\n}"
         counter num min counter num max counter (inst (k+2)) i
 
   | Case (e, s) ->
@@ -407,7 +407,7 @@ let lsm_hack p =
         { p with pinst = inst p.pinst }
     | _ -> p;;
 
-(* Split the list of decoding rules according to their kind *)
+(* Split the list of programs according to their kind *)
 let split xs =
   let is = ref [] and ms = Array.create 5 [] in
   let rec aux l =
