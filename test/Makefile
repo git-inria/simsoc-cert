@@ -1,4 +1,4 @@
-FILES := sum_iterative
+FILES := sum_iterative arm_blx2
 
 .PRECIOUS: $(FILES:%=%.elf) $(FILES:%=%.v) $(FILES:%=%.ml)
 
@@ -19,7 +19,7 @@ default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 %.v: %.elf ../testgen/elf2coq
 	../testgen/elf2coq $< $@
 
-%.elf: %.c
+%.elf: %.c common.h
 	arm-elf-gcc $< -nostdlib -o $@
 
 ../testgen/elf2coq: FORCE
