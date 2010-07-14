@@ -1,4 +1,4 @@
-FILES := sum_iterative arm_blx2
+FILES := sum_iterative arm_blx2 arm_cflag arm_dpi arm_edsp
 
 .PRECIOUS: $(FILES:%=%.elf) $(FILES:%=%.v) $(FILES:%=%.ml)
 
@@ -7,10 +7,10 @@ default: $(FILES:%=%.vo) $(FILES:%=%.ml) $(FILES:%=%.cmi) $(FILES:%=%.cmo)
 %.cmi: %.mli ../extract/tmp/extract.cma
 	ocamlc -c -I ../extract/tmp extract.cma $<
 
-%.cmo: %.ml ../extract/tmp/extract.cma
+%.cmo: %.ml %.cmi ../extract/tmp/extract.cma
 	ocamlc -c -g -I ../extract/tmp extract.cma $<
 
-%.ml %.mli: %.v
+%.ml %.mli: %.v %.vo
 	./extract_file $<
 
 %.vo: %.v

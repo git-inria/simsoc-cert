@@ -14,7 +14,7 @@ common.o: common.cpp common.hpp
 
 arm_iss.hpp arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm ../arm6/arm6dec.dat
 	../pseudocode/main -ocxx arm_iss -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat
-arm_iss.hpp: arm_iss.cpp
+arm_iss.cpp: arm_iss.hpp
 
 arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp common.hpp
 

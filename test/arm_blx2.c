@@ -1,12 +1,15 @@
+/* Derived from SimSoC, Copyright © INRIA 2007, 2008, 2009, 2010
+ * LGPL license version 3 */
+
 /* test the BLX (2) instruction */
-/* After 26 instructions executed, r0 should contain 2 */
+/* After 26 instructions executed, r0 should contain 3 */
 
 #include "common.h"
 
 int count = 0;
 
 void hello() {
-  ++count;
+  count += 1;
 }
 
 int main(){
@@ -14,6 +17,6 @@ int main(){
                 :
                 :"r" ((uint32_t)hello)
                 :"lr");
-  ++count;
+  count += 2;
   return count;
 }

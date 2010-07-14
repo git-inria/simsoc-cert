@@ -104,7 +104,7 @@ int main(int argc, const char *argv[]) {
   { const bool tmp = sl_debug;
     sl_debug = false;
     elf.load_sections();
-    sl_debug = true;}
+    sl_debug = tmp;}
   if (sl_exec)
     simulate(iss,elf);
   else

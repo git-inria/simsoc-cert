@@ -10,3 +10,9 @@ void _start() {
   main();
   while(1);
 }
+
+int get_N_flag(uint32_t cpsr) {return (cpsr>>31)&1;}
+int get_Z_flag(uint32_t cpsr) {return (cpsr>>30)&1;}
+int get_C_flag(uint32_t cpsr) {return (cpsr>>29)&1;}
+int get_V_flag(uint32_t cpsr) {return (cpsr>>28)&1;}
+

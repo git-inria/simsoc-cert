@@ -148,9 +148,9 @@ struct ARM_Processor {
 
   // static methods
   static uint32_t msr_UnallocMask() {return 0x06F0FC00;}
-  static uint32_t msr_StateMask()   {return 0xF80F0200;}
-  static uint32_t msr_UserMask()    {return 0x000001DF;}
-  static uint32_t msr_PrivMask()    {return 0x01000020;}
+  static uint32_t msr_UserMask()    {return 0xF80F0200;}
+  static uint32_t msr_PrivMask()    {return 0x000001DF;}
+  static uint32_t msr_StateMask()   {return 0x01000020;}
 
   // return false on failure
   static bool decode_mode(uint32_t x, Mode &m);
@@ -165,7 +165,7 @@ struct ARM_ISS_Base {
   bool ConditionPassed(ARM_Processor::Condition cond) const {
     return proc.condition_passed(cond);}
   bool CurrentModeHasSPSR() const {return proc.current_mode_has_spsr();}
-  static void unpredictable() {exit(1);}
+  static void unpredictable();
   uint32_t address_of_next_instruction() const {return proc.reg(ARM_Processor::PC)-4;}
   uint32_t address_of_current_instruction() const {return proc.reg(ARM_Processor::PC)-8;}
 
@@ -234,8 +234,14 @@ struct ARM_ISS_Base {
   static uint8_t get_byte_3(uint32_t x) {return x>>24;}
 
   static inline uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
-    assert(a>b);
+    assert(32>a && a>b);
     return (x>>b) & ((1<<(a-b+1))-1);
+  }
+
+  static inline uint64_t get_bits64(uint64_t x, size_t a, size_t b) {
+    // return x[a:b]
+    assert(64>a && a>b);
+    return (x>>b) & ((1llu<<(a-b+1))-1);
   }
 
   static inline bool get_bit(uint32_t x, uint32_t n) { // return x[a]
@@ -256,32 +262,43 @@ struct ARM_ISS_Base {
   static void set_field(uint32_t &dst, uint32_t num1, uint32_t num, uint32_t src);
   static void set_field(uint8_t &dst, uint8_t num1, uint8_t num, uint8_t src);
 
-  static uint32_t SignedSat_add32(uint32_t a, uint32_t b);
-  static uint32_t SignedSat_sub32(uint32_t a, uint32_t b);
-  static uint32_t SignedSat_double32(uint32_t a);
-  static bool SignedDoesSat_add32(uint32_t a, uint32_t b);
-  static bool SignedDoesSat_sub32(uint32_t a, uint32_t b);
-  static bool SignedDoesSat_double32(uint32_t a);
+  static uint32_t SignedSat_add2(uint32_t a, uint32_t b);
+  static uint32_t SignedSat_sub2(uint32_t a, uint32_t b);
+  static uint32_t SignedSat_double(uint32_t a);
+  static bool SignedDoesSat_add2(uint32_t a, uint32_t b);
+  static bool SignedDoesSat_sub2(uint32_t a, uint32_t b);
+  static bool SignedDoesSat_double(uint32_t a);
 
-  static uint16_t SignedSat_add16(uint16_t a, uint16_t b);
-  static uint16_t SignedSat_sub16(uint16_t a, uint16_t b);
-  static uint16_t UnsignedSat_add16(uint16_t a, uint16_t b);
-  static uint16_t UnsignedSat_sub16(uint16_t a, uint16_t b);
+  static uint16_t SignedSat_add2(uint16_t a, uint16_t b);
+  static uint16_t SignedSat_sub2(uint16_t a, uint16_t b);
+  static uint16_t UnsignedSat_add2(uint16_t a, uint16_t b);
+  static uint16_t UnsignedSat_sub2(uint16_t a, uint16_t b);
 
-  static uint8_t SignedSat_add8(uint8_t a, uint8_t b);
-  static uint8_t SignedSat_sub8(uint8_t a, uint8_t b);
-  static uint8_t UnsignedSat_add8(uint8_t a, uint8_t b);
-  static uint8_t UnsignedSat_sub8(uint8_t a, uint8_t b);
+  static uint8_t SignedSat_add2(uint8_t a, uint8_t b);
+  static uint8_t SignedSat_sub2(uint8_t a, uint8_t b);
+  static uint8_t UnsignedSat_add2(uint8_t a, uint8_t b);
+  static uint8_t UnsignedSat_sub2(uint8_t a, uint8_t b);
 
-  static uint32_t SignedSat(uint32_t a, uint8_t imm);
-  static uint32_t UnsignedSat(uint32_t a, uint8_t imm);
-  static bool SignedDoesSat(uint32_t a, uint8_t imm);
-  static bool UnsignedDoesSat(uint32_t a, uint8_t imm);
+  static uint32_t SignedSat(int32_t n, uint32_t size);
+  static uint32_t SignedDoesSat(int32_t n, uint32_t size);
+  static uint32_t UnsignedSat(int32_t n, uint32_t size);
+  static uint32_t UnsignedDoesSat(int32_t n, uint32_t size);
 
   static bool not_cpy_instr(uint32_t bincode) {
     // values come from arm_iss.cpp, decode_and_exec method, case CPY
     return (bincode&0x0fff0ff0)!=0x01a00000;
   }
+
+  static uint64_t to_64(uint32_t x) {return static_cast<uint64_t>(x);}
+  static  int64_t to_64( int32_t x) {return static_cast< int64_t>(x);}
+  static uint64_t to_64(uint64_t x) {return x;}
+  static  int64_t to_64( int64_t x) {return x;}
+  static int16_t to_signed(uint16_t x) {return static_cast<int16_t>(x);}
+  static int32_t to_signed(uint32_t x) {return static_cast<int32_t>(x);}
+  static int64_t to_signed(uint64_t x) {return static_cast<int64_t>(x);}
+  static int16_t to_signed( int16_t x) {return x;}
+  static int32_t to_signed( int32_t x) {return x;}
+  static int64_t to_signed( int64_t x) {return x;}
 };
 
 #endif // ARM_ISS_BASE_HPP

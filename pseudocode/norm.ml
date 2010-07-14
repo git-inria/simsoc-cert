@@ -45,9 +45,13 @@ let rec exp = function
      and change the argument into a list of arguments,
      e.g. CarryFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
   | Fun (("OverflowFrom"|"BorrowFrom"|"CarryFrom"|"CarryFrom8"|"CarryFrom16"
-	      as f), (BinOp (_, op, _) as e) :: _) -> let es = args e in
-      Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
-	   List.map exp es)
+         |"SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f),
+         (BinOp (_, op, _) as e) :: _) -> (
+      match e with
+        | BinOp (e', "*", Num "2") -> Fun (sprintf "%s_double" f, [e'])
+        | _ -> let es = args e in
+            Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
+	         List.map exp es))
 
   (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
      are flattened so that there is at most one Unpredictable_exp in the

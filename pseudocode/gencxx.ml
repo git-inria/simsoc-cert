@@ -109,6 +109,15 @@ let xprog_of p (_, pcs) =
 
 let mode_outputs = Array.create 5 [];;
 
+(** Heuristic to chose between signed and unsigned; true means signed *)
+
+let get_signed, set_signed = get_set false;;
+
+(** Add a cast to a signed type *)
+let rec to_signed e = match e with
+  | Fun ("to_64", [e']) -> Fun ("to_64", [to_signed e'])
+  | e' -> Fun ("to_signed", [e']);;
+
 (** Generate the code corresponding to an expression *)
 
 let func = function
@@ -180,7 +189,7 @@ let access_type = function
 
 let optemps = ["index"; "offset_8"; "end_address"];;
 
-let input_registers = ["n"; "m"; "s"];;
+let input_registers = ["n"; "m"; "s"; "dLo"];;
 
 let rec exp b = function
   | Bin s -> string b (hex_of_bin s)
@@ -189,9 +198,12 @@ let rec exp b = function
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
       exp b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
-      bprintf b "(static_cast<uint64_t>(%a) << 32)" exp e
+      bprintf b "(to_64(%a) << 32)" exp e
   | BinOp (e, ("<"|">=" as op), Num "0") ->
-      bprintf b "(static_cast<int32_t>(%a) %s 0)" exp e op
+      bprintf b "(%a %s 0)" exp (to_signed e) op
+  | BinOp (e1, "*", e2) -> if get_signed ()
+    then bprintf b "(to_64(%a) * to_64(%a))" exp (to_signed e1) exp (to_signed e2)
+    else bprintf b "(to_64(%a) * to_64(%a))" exp e1 exp e2
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
   | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
   | CPSR -> string b "proc.cpsr"
@@ -216,6 +228,7 @@ let rec exp b = function
         | "15", "8" -> bprintf b "get_byte_1(%a)" exp e
         | "23", "16" -> bprintf b "get_byte_2(%a)" exp e
         | "31", "24" -> bprintf b "get_byte_3(%a)" exp e
+        | ("63"|"47"), _ -> bprintf b "get_bits64(%a,%s,%s)" exp e n1 n2
         | _ -> bprintf b "get_bits(%a,%s,%s)" exp e n1 n2
       end
   | Coproc_exp (e, f, es) ->
@@ -329,6 +342,7 @@ let prog b p =
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
     match p.xprog.pkind with
       | Inst ->
+          set_signed (p.xid.[0] = 'S');
           bprintf b "%avoid ARM_ISS::%s(%a)\n{\n%a%a%a\n}\n" comment p
             p.xid
             (list ",\n    " prog_arg) p.xgs
