@@ -1,8 +1,11 @@
 Executing:
 > make
-... generates an executable "simlight".
+... generates an executable "simlight", which is a simple simulator for ARMv6.
 
-Currently, "simlight" does almost nothing.
+The simulator "simlight" is untimed, mono-threaded, without any
+peripheral. There are no MMU nor Coprocessors. The memory starts at address 4
+and its size is 1 MB.
 
-> ./simlight <arm_elf_file>
-... tries to decode the ELF file.
+Executing:
+> ./simlight
+... displays the available options.

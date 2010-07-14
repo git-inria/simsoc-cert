@@ -20,14 +20,15 @@ void test_decode(ARM_ISS &iss, MyElfFile &elf) {
   const uint32_t ea = a + elf.get_text_size();
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
   for (; a!=ea; a+=4) {
+    sl_debug = false;
     const uint32_t bincode = iss.proc.mmu.read_word(a);
+    sl_debug = true;
     DEBUG(<<"decode: " <<hex);
     DEBUG(.width(8));
-    DEBUG(<<bincode <<" ->");
+    DEBUG(<<bincode <<" -> ");
     bool found = iss.decode_and_exec(bincode);
     if (!found)
       DEBUG(<<" undefined or unpredictable");
-    DEBUG(<<endl);
   }
 }
 
@@ -59,13 +60,54 @@ void simulate(ARM_ISS &iss, MyElfFile &elf) {
   INFO(<<"r0 = " <<dec <<iss.proc.reg(0) <<endl);
 }
 
+void usage(const char *pname) {
+  cout <<"Simple ARMv6 simulator.\n"
+       <<"Usage: " <<pname <<" [-d] [-e] <elf_file>\n"
+       <<"\t-d   turn of debugging information\n"
+       <<"\t-i   turn of normal information\n"
+       <<"\t-dec decode the .text section (turn off simulation)\n";
+}
+
 int main(int argc, const char *argv[]) {
-  if (argc!=2)
-    ERROR("ELF file missing or wrong number of arguments");
-  const char *filename = argv[1];
+  const char *filename = NULL;
+  for (int i = 1; i<argc; ++i) {
+    if (argv[i][0]=='-') {
+      if (!strcmp(argv[i],"-d"))
+        sl_debug = false;
+      else if (!strcmp(argv[i],"-i"))
+        sl_info = false;
+      else if (!strcmp(argv[i],"-dec"))
+        sl_exec = false;
+      else {
+        cout <<"Error: unrecognized option: \"" <<argv[i] <<"\".\n\n";
+        usage(argv[0]);
+        return 1;
+      }
+    } else {
+      if (filename) {
+        cout <<"Error: two elf files: \"" <<filename <<"\" and \""
+             <<argv[i] <<"\".\n\n";
+        usage(argv[0]);
+        return 1;
+      }
+      filename = argv[i];
+    }
+  }
+  if (!filename) {
+    if (argc>1)
+      cout <<"Error: no elf file.\n\n";
+    usage(argv[0]);
+    return (argc>1);
+  }
   ARM_ISS iss;
   MyElfFile elf(filename, &iss.proc.mmu);
-  elf.load_sections();
-  simulate(iss,elf);
+  { const bool tmp = sl_debug;
+    sl_debug = false;
+    elf.load_sections();
+    sl_debug = true;}
+  if (sl_exec)
+    simulate(iss,elf);
+  else
+    test_decode(iss,elf);
   return 0;
 }
