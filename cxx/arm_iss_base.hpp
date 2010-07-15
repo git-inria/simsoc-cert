@@ -244,10 +244,13 @@ struct ARM_ISS_Base {
     return (x>>b) & ((1<<(a-b+1))-1);
   }
 
-  static inline uint64_t get_bits64(uint64_t x, size_t a, size_t b) {
+  static inline uint64_t get_bits(uint64_t x, size_t a, size_t b) {
     // return x[a:b]
     assert(64>a && a>b);
     return (x>>b) & ((1llu<<(a-b+1))-1);
+  }
+  static inline uint64_t get_bits(int64_t x, size_t a, size_t b) {
+    return get_bits(static_cast<uint64_t>(x),a,b);
   }
 
   static inline bool get_bit(uint32_t x, uint32_t n) { // return x[a]
