@@ -11,7 +11,6 @@ int count = 0;
 #define CHECK(ID, RESULT, EXPECTED)             \
   if ((RESULT)==(EXPECTED)) count+=(ID);
 
-
 void test_offset_imm() {
   //[<Rn>, #+/- <offset_12>]!
   uint32_t x, y;
