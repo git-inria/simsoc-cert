@@ -582,10 +582,12 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* create buffers for header file (bh) and source file (bc) *)
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
     (* generate the header file *)
+    bprintf bh "#ifndef ARM_ISS_HPP\n#define ARM_ISS_HPP\n\n";
     bprintf bh "#include \"arm_iss_base.hpp\"\n\n";
     bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a" (list "\n" decl) xs;
     Array.iteri (decl_try bh) mode_outputs;
     bprintf bh "\n  bool decode_and_exec(uint32_t bincode);\n};\n";
+    bprintf bh "\n#endif // ARM_ISS_HPP\n";
     (* generate the source file *)
     bprintf bc "#include \"%s.hpp\"\n#include \"common.hpp\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;

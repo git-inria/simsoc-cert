@@ -30,4 +30,7 @@ arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp common.hpp
 clean:
 	rm -f arm_iss.o arm_iss.cpp arm_iss.hpp arm_iss_base.o simlight.o simlight
 
+simlight.opt:
+	g++ simlight.cpp --include common.cpp --include arm_iss.cpp --include arm_iss_base.cpp -g -DNDEBUG -O3 -I../elf ../elf/elf_loader.o -o $@
+
 FORCE:
