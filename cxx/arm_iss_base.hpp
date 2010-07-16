@@ -271,22 +271,22 @@ struct ARM_ISS_Base {
   static void set_field(uint32_t &dst, uint32_t num1, uint32_t num, uint32_t src);
   static void set_field(uint8_t &dst, uint8_t num1, uint8_t num, uint8_t src);
 
-  static uint32_t SignedSat_add2(uint32_t a, uint32_t b);
-  static uint32_t SignedSat_sub2(uint32_t a, uint32_t b);
-  static uint32_t SignedSat_double(uint32_t a);
-  static bool SignedDoesSat_add2(uint32_t a, uint32_t b);
-  static bool SignedDoesSat_sub2(uint32_t a, uint32_t b);
-  static bool SignedDoesSat_double(uint32_t a);
+  static uint32_t SignedSat_add(uint32_t a, uint32_t b, size_t n);
+  static uint32_t SignedSat_sub(uint32_t a, uint32_t b, size_t n);
+  static uint32_t SignedSat_double(uint32_t a, size_t n);
+  static bool SignedDoesSat_add(uint32_t a, uint32_t b, size_t n);
+  static bool SignedDoesSat_sub(uint32_t a, uint32_t b, size_t n);
+  static bool SignedDoesSat_double(uint32_t a, size_t n);
 
-  static uint16_t SignedSat_add2(uint16_t a, uint16_t b);
-  static uint16_t SignedSat_sub2(uint16_t a, uint16_t b);
-  static uint16_t UnsignedSat_add2(uint16_t a, uint16_t b);
-  static uint16_t UnsignedSat_sub2(uint16_t a, uint16_t b);
+  static uint16_t SignedSat_add(uint16_t a, uint16_t b, size_t n);
+  static uint16_t SignedSat_sub(uint16_t a, uint16_t b, size_t n);
+  static uint16_t UnsignedSat_add(uint16_t a, uint16_t b, size_t n);
+  static uint16_t UnsignedSat_sub(uint16_t a, uint16_t b, size_t n);
 
-  static uint8_t SignedSat_add2(uint8_t a, uint8_t b);
-  static uint8_t SignedSat_sub2(uint8_t a, uint8_t b);
-  static uint8_t UnsignedSat_add2(uint8_t a, uint8_t b);
-  static uint8_t UnsignedSat_sub2(uint8_t a, uint8_t b);
+  static uint8_t SignedSat_add(uint8_t a, uint8_t b, size_t n);
+  static uint8_t SignedSat_sub(uint8_t a, uint8_t b, size_t n);
+  static uint8_t UnsignedSat_add(uint8_t a, uint8_t b, size_t n);
+  static uint8_t UnsignedSat_sub(uint8_t a, uint8_t b, size_t n);
 
   static uint32_t SignedSat(int32_t n, uint32_t size);
   static uint32_t SignedDoesSat(int32_t n, uint32_t size);
