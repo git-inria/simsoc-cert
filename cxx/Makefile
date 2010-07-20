@@ -13,7 +13,8 @@ arm_iss.o: arm_iss.cpp arm_iss.hpp arm_iss_base.hpp common.hpp
 common.o: common.cpp common.hpp
 
 arm_iss.hpp arm_iss.cpp: ../pseudocode/main ../arm6/arm6inst.arm ../arm6/arm6dec.dat
-	../pseudocode/main -ocxx arm_iss -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat
+	../pseudocode/main -ocxx arm_iss -ipc ../arm6/arm6inst.arm \
+                           -idec ../arm6/arm6dec.dat
 arm_iss.cpp: arm_iss.hpp
 
 arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp common.hpp
@@ -28,9 +29,12 @@ arm_iss_base.o: arm_iss_base.cpp arm_iss_base.hpp common.hpp
 	cd ../elf && $(MAKE) $@
 
 clean:
-	rm -f arm_iss.o arm_iss.cpp arm_iss.hpp arm_iss_base.o simlight.o simlight
+	rm -f arm_iss.o arm_iss.cpp arm_iss.hpp arm_iss_base.o simlight.o common.o \
+              simlight simlight.opt *.gcda *.gcno
 
 simlight.opt: FORCE
-	g++ simlight.cpp --include common.cpp --include arm_iss.cpp --include arm_iss_base.cpp -g -DNDEBUG -O3 -I../elf ../elf/elf_loader.o -o $@
+	g++ simlight.cpp --include common.cpp --include arm_iss.cpp \
+            --include arm_iss_base.cpp -g -DNDEBUG -O3 \
+            -I../elf ../elf/elf_loader.o -o $@
 
 FORCE:
