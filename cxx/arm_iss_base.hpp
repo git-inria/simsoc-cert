@@ -176,10 +176,12 @@ struct ARM_ISS_Base {
   uint32_t address_of_current_instruction() const {return proc.reg(ARM_Processor::PC)-8;}
 
   bool InAPrivilegedMode() const {return proc.cpsr.mode!=ARM_Processor::usr;}
-  uint32_t TLB(uint32_t virtual_address) const {return virtual_address;}
-  bool Shared(uint32_t) const {return false;}
+  uint32_t TLB(uint32_t virtual_address) const {return virtual_address;} // No MMU
   bool high_vectors_configured() {return proc.cp15.get_reg1_Vbit();}
   size_t ExecutingProcessor() {return proc.id;}
+
+  // Shared memory is not implemented
+  bool Shared(uint32_t) const {return false;}
   void MarkExclusiveGlobal(uint32_t, size_t, uint32_t) {}
   void MarkExclusiveLocal(uint32_t, size_t, uint32_t) {}
   void ClearExclusiveByAddress(uint32_t, size_t, uint32_t) {}
@@ -187,6 +189,7 @@ struct ARM_ISS_Base {
   bool IsExclusiveLocal(uint32_t, size_t, uint32_t) const {return true;}
   bool IsExclusiveGlobal(uint32_t, size_t, uint32_t) const {return true;}
 
+  // Jazelle is not implemented
   bool not_overridden_by_debug_hardware() {return true;}
   bool JE_bit_of_Main_Configuration_register() {return false;}
   uint32_t jpc_SUB_ARCHITECTURE_DEFINED_value() {return 0;}
@@ -200,15 +203,13 @@ struct ARM_ISS_Base {
   static bool is_even(uint8_t x) {return !(x&1);}
   static uint32_t Number_Of_Set_Bits_In(uint16_t x);
 
-  static bool CarryFrom8_add2(uint8_t, uint8_t);
-  static bool CarryFrom16_add2(uint16_t, uint16_t);
+  static bool CarryFrom8_add2(uint32_t, uint32_t);
+  static bool CarryFrom16_add2(uint32_t, uint32_t);
   static bool CarryFrom_add2(uint32_t, uint32_t);
   static bool CarryFrom_add3(uint32_t, uint32_t, bool);
   static bool OverflowFrom_add2(uint32_t, uint32_t);
   static bool OverflowFrom_add3(uint32_t a, uint32_t b, bool) {
     return OverflowFrom_add2(a,b);}
-  static bool BorrowFrom_sub2(uint8_t, uint8_t);
-  static bool BorrowFrom_sub2(uint16_t, uint16_t);
   static bool BorrowFrom_sub2(uint32_t, uint32_t);
   static bool BorrowFrom_sub3(uint32_t, uint32_t, bool);
   static bool OverflowFrom_sub2(uint32_t, uint32_t);
@@ -217,11 +218,11 @@ struct ARM_ISS_Base {
 
   static uint32_t SignExtend_30(uint32_t x) {return x&(1<<23) ? 0x7f000000|x : x;}
 
-  static uint32_t SignExtend16(uint16_t x) {
-    return static_cast<uint32_t>(static_cast<int32_t>(static_cast<int16_t>(x)));}
+  static uint32_t SignExtend16(int16_t x) {
+    return static_cast<uint32_t>(static_cast<int32_t>(x));}
 
-  static uint32_t SignExtend8(uint8_t x) {
-    return static_cast<uint32_t>(static_cast<int32_t>(static_cast<int8_t>(x)));}
+  static uint32_t SignExtend8(int8_t x) {
+    return static_cast<uint32_t>(static_cast<int32_t>(x));}
 
   static uint32_t ZeroExtend(uint32_t x) {return x;}
   static uint32_t NOT(uint32_t x) {return ~x;}
@@ -232,25 +233,17 @@ struct ARM_ISS_Base {
   static uint32_t asr(uint32_t x, uint32_t n) { // FIXME: shift by 32
     return static_cast<uint32_t>(static_cast<int32_t>(x)>>n);}
 
-  static uint16_t get_half_0(uint32_t x) {return x;}
-  static uint16_t get_half_1(uint32_t x) {return x>>16;}
-  static uint8_t get_byte_0(uint32_t x) {return x;}
-  static uint8_t get_byte_1(uint32_t x) {return x>>8;}
-  static uint8_t get_byte_2(uint32_t x) {return x>>16;}
-  static uint8_t get_byte_3(uint32_t x) {return x>>24;}
+  static uint32_t get_half_0(uint32_t x) {return 0xffff&x;}
+  static uint32_t get_half_1(uint32_t x) {return 0xffff&(x>>16);}
+  static uint32_t get_byte_0(uint32_t x) {return 0xff&x;}
+  static uint32_t get_byte_1(uint32_t x) {return 0xff&(x>>8);}
+  static uint32_t get_byte_2(uint32_t x) {return 0xff&(x>>16);}
+  static uint32_t get_byte_3(uint32_t x) {return 0xff&(x>>24);}
 
-  static inline uint32_t get_bits(uint32_t x, uint32_t a, uint32_t b) { // return x[a:b]
-    assert(32>a && a>b);
-    return (x>>b) & ((1<<(a-b+1))-1);
-  }
-
-  static inline uint64_t get_bits(uint64_t x, size_t a, size_t b) {
+  static inline uint32_t get_bits(uint64_t x, size_t a, size_t b) {
     // return x[a:b]
     assert(64>a && a>b);
     return (x>>b) & ((1llu<<(a-b+1))-1);
-  }
-  static inline uint64_t get_bits(int64_t x, size_t a, size_t b) {
-    return get_bits(static_cast<uint64_t>(x),a,b);
   }
 
   static inline bool get_bit(uint32_t x, uint32_t n) { // return x[a]
@@ -262,36 +255,19 @@ struct ARM_ISS_Base {
     else dst &=~ (1<<num);
   }
 
-  static void set_bit(uint8_t &dst, uint8_t num, bool src) {
-    if (src) dst |= (1<<num);
-    else dst &=~ (1<<num);
-  }
-
-  static void set_field(uint64_t &dst, size_t num1, size_t num, uint64_t src);
   static void set_field(uint32_t &dst, uint32_t num1, uint32_t num, uint32_t src);
-  static void set_field(uint8_t &dst, uint8_t num1, uint8_t num, uint8_t src);
 
-  static uint32_t SignedSat_add(uint32_t a, uint32_t b, size_t n);
-  static uint32_t SignedSat_sub(uint32_t a, uint32_t b, size_t n);
-  static uint32_t SignedSat_double(uint32_t a, size_t n);
-  static bool SignedDoesSat_add(uint32_t a, uint32_t b, size_t n);
-  static bool SignedDoesSat_sub(uint32_t a, uint32_t b, size_t n);
-  static bool SignedDoesSat_double(uint32_t a, size_t n);
-
-  static uint16_t SignedSat_add(uint16_t a, uint16_t b, size_t n);
-  static uint16_t SignedSat_sub(uint16_t a, uint16_t b, size_t n);
-  static uint16_t UnsignedSat_add(uint16_t a, uint16_t b, size_t n);
-  static uint16_t UnsignedSat_sub(uint16_t a, uint16_t b, size_t n);
-
-  static uint8_t SignedSat_add(uint8_t a, uint8_t b, size_t n);
-  static uint8_t SignedSat_sub(uint8_t a, uint8_t b, size_t n);
-  static uint8_t UnsignedSat_add(uint8_t a, uint8_t b, size_t n);
-  static uint8_t UnsignedSat_sub(uint8_t a, uint8_t b, size_t n);
-
-  static uint32_t SignedSat(int32_t n, uint32_t size);
-  static uint32_t SignedDoesSat(int32_t n, uint32_t size);
-  static uint32_t UnsignedSat(int32_t n, uint32_t size);
-  static uint32_t UnsignedDoesSat(int32_t n, uint32_t size);
+  // UnsignedSat is never used with n = 32
+  static uint32_t SignedSat32_add(int32_t a, int32_t b);
+  static uint32_t SignedSat32_sub(int32_t a, int32_t b);
+  static uint32_t SignedSat32_double(int32_t a);
+  static bool SignedDoesSat32_add(int32_t a, int32_t b);
+  static bool SignedDoesSat32_sub(int32_t a, int32_t b);
+  static bool SignedDoesSat32_double(int32_t a);
+  static uint32_t SignedSat(int64_t n, uint32_t n);
+  static uint32_t SignedDoesSat(int64_t n, uint32_t n);
+  static uint32_t UnsignedSat(int32_t n, uint32_t n);
+  static uint32_t UnsignedDoesSat(int32_t n, uint32_t n);
 
   static bool not_cpy_instr(uint32_t bincode) {
     // values come from arm_iss.cpp, decode_and_exec method, case CPY

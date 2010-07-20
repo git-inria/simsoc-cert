@@ -32,14 +32,7 @@ let hex_of_bin = function
 let type_of_var = function
 
   | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
-  | "shifter_carry_out" | "opcode25" | "E" -> "bool"
-
-  | "signed_immed_24" | "H" | "shifter_operand" | "alu_out" | "target"
-  | "data" | "value" | "diffofproducts" | "address" | "start_address"
-  | "physical_address" | "operand" | "opcode" | "byte_mask" | "mask"
-  | "sum" | "diff" | "operand1" | "operand2" | "product1" | "product2"
-  | "temp" | "diff1" | "diff2" | "diff3" | "diff4" | "invalidhandler"
-  | "jpc" | "index" | "end_address" | "new_Rn" -> "uint32_t"
+  | "shifter_carry_out" | "E" -> "bool"
 
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
@@ -50,7 +43,7 @@ let type_of_var = function
   | "register_list" | "offset_12" -> "uint16_t"
   | "accvalue" | "result" -> "uint64_t"
   | "processor_id" -> "size_t"
-  | _ -> "TODO_type_of_var";;
+  | _ -> "uint32_t";;
 
 (** List the variables of a prog *)
 

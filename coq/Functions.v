@@ -51,7 +51,7 @@ Definition bit_position_of_most_significant_1 (w : word) : word :=
 (****************************************************************************)
 (** BorrowFrom (p. 1123)
 
-Returns 1 if the subtraction specified as its parameter caused a borrow 
+Returns 1 if the subtraction specified as its parameter caused a borrow
 (the true result is less than 0, where the operands are treated as unsigned
 integers), and returns 0 in all other cases. This delivers further
 information about a subtraction which occurred earlier in the pseudo-code.
@@ -83,7 +83,7 @@ Definition CarryFrom_add3 (x y z : word) : bool :=
 (****************************************************************************)
 (** CarryFrom16 (p. 1124)
 
-Returns 1 if the addition specified as its parameter caused a carry 
+Returns 1 if the addition specified as its parameter caused a carry
 (true result is bigger than 2^16−1, where the operands are treated as
 unsigned integers), and returns 0 in all other cases. This delivers further
 information about an addition which occurred earlier in the pseudo-code.
@@ -97,7 +97,7 @@ Definition CarryFrom16_add2 (x y : word) : bool :=
 (** CarryFrom8 (UADD8, p. 383)
 
 Not defined in the Glossary. We guess:
-Returns 1 if the addition specified as its parameter caused a carry 
+Returns 1 if the addition specified as its parameter caused a carry
 (true result is bigger than 2^8−1, where the operands are treated as
 unsigned integers), and returns 0 in all other cases. This delivers further
 information about an addition which occurred earlier in the pseudo-code.
@@ -161,7 +161,7 @@ Definition CurrentModeHasSPSR (m : proc_mode) : bool :=
 (****************************************************************************)
 (** InAPrivilegedMode() (p. 1128)
 
-Returns TRUE if the current processor mode is not User mode, 
+Returns TRUE if the current processor mode is not User mode,
 and returns FALSE if the current mode is User mode. *)
 (****************************************************************************)
 
@@ -184,7 +184,7 @@ Performs a left shift, inserting zeros in the vacated bit positions
 on the right. *)
 (****************************************************************************)
 
-Definition Logical_Shift_Left := shl. 
+Definition Logical_Shift_Left := shl.
 
 (****************************************************************************)
 (** Logical_Shift_Right (p. 1129)
@@ -193,7 +193,7 @@ Performs a right shift, inserting zeros in the vacated bit
 positions on the left. *)
 (****************************************************************************)
 
-Definition Logical_Shift_Right := shru. 
+Definition Logical_Shift_Right := shru.
 
 (****************************************************************************)
 (** Number_Of_Set_Bits_In (p. 1130)
@@ -255,15 +255,17 @@ Definition Rotate_Right := ror.
 
 Returns 0 if x lies inside the range of an n-bit signed integer (that is,
 if –2^(n–1) ≤ x ≤ 2^(n–1) – 1), and 1 otherwise.
-This operation delivers further information about a SignedSat(x, n) 
-operation which occurred earlier in the pseudo-code. 
+This operation delivers further information about a SignedSat(x, n)
+operation which occurred earlier in the pseudo-code.
 Any operations used to calculate x or n are not repeated. *)
 (****************************************************************************)
 
+Definition SignedDoesSatZ (x : Z) (n : nat) : bool :=
+  let k := two_power_nat (n-1) in
+    zle (-k) x && zle x (k-1).
+
 Definition SignedDoesSat (x : word) (n : nat) : bool :=
-  let x' := signed x in
-    let k := two_power_nat (n-1) in
-      zle (-k) x' && zle x' (k-1).
+  SignedDoesSatZ (signed x) n.
 
 (****************************************************************************)
 (** SignExtend(arg) (p. 1134)
@@ -271,8 +273,8 @@ Definition SignedDoesSat (x : word) (n : nat) : bool :=
 Sign-extends (propagates the sign bit) its argument to 32 bits. *)
 (****************************************************************************)
 
-Definition SignExtend8 (w : word) : word := sign_ext 8 w. 
-Definition SignExtend16 (w : word) : word := sign_ext 16 w. 
+Definition SignExtend8 (w : word) : word := sign_ext 8 w.
+Definition SignExtend16 (w : word) : word := sign_ext 16 w.
 
 (****************************************************************************)
 (** SignExtend_30 (B, BL p. 160)
@@ -293,19 +295,81 @@ x         if –2^(n–1) <= x <= 2^(n–1)–1
 2^(n–1)–1 if             x > 2^(n–1)–1 *)
 (****************************************************************************)
 
+Definition SignedSatZ (x : Z) (n : nat) : word :=
+  let k := two_power_nat (n-1) in
+    if zlt (-k) x then repr (-k)
+      else if zle x (k-1) then repr x
+        else repr (k-1).
+
 Definition SignedSat (x : word) (n : nat) : word :=
-  let x' := signed x in
-    let k := two_power_nat (n-1) in
-      if zlt (-k) x' then repr (-k)
-        else if zle x' (k-1) then x
-          else repr (k-1).
+  SignedSatZ (signed x) n.
+
+(****************************************************************************)
+(** SignedSat32_add(x,y)
+
+Compute SignedSat(x+y,32), but without truncating the result of x+y before
+calling SignedSat. *)
+(****************************************************************************)
+
+Definition SignedSat32_add (x y : word) : word :=
+  SignedSatZ (signed x + signed y) 32.
+
+(****************************************************************************)
+(** SignedDoesSat32_add(x,y)
+
+Compute SignedDoesSat(x+y,32), but without truncating the result of x+y before
+calling SignedDoesSat. *)
+(****************************************************************************)
+
+Definition SignedDoesSat32_add (x y : word) : bool :=
+  SignedDoesSatZ (signed x + signed y) 32.
+
+(****************************************************************************)
+(** SignedSat32_sub(x,y)
+
+Compute SignedSat(x-y,32), but without truncating the result of x-y before
+calling SignedSat. *)
+(****************************************************************************)
+
+Definition SignedSat32_sub (x y : word) : word :=
+  SignedSatZ (signed x - signed y) 32.
+
+(****************************************************************************)
+(** SignedDoesSat32_sub(x,y)
+
+Compute SignedDoesSat(x-y,32), but without truncating the result of x-y before
+calling SignedDoesSat. *)
+(****************************************************************************)
+
+Definition SignedDoesSat32_sub (x y : word) : bool :=
+  SignedDoesSatZ (signed x - signed y) 32.
+
+(****************************************************************************)
+(** SignedSat32_double(x)
+
+Compute SignedSat(x*2,32), but without truncating the result of x*2 before
+calling SignedSat. *)
+(****************************************************************************)
+
+Definition SignedSat32_double (x : word) : word :=
+  SignedSat32_add x x.
+
+(****************************************************************************)
+(** SignedDoesSat32_double(x)
+
+Compute SignedDoesSat(x*2,32), but without truncating the result of x*2 before
+calling SignedDoesSat. *)
+(****************************************************************************)
+
+Definition SignedDoesSat32_double (x : word) : bool :=
+  SignedDoesSat32_add x x.
 
 (****************************************************************************)
 (** UnSignedDoesSat(x,n) (p. 1136)
 
-Returns 0 if x lies within the range of an n-bit unsigned integer (that is, 
-if 0 ≤ x < 2^n) and 1 otherwise. This operation delivers further information 
-about an UnsignedSat(x,n) operation that occurred earlier in the pseudo-code. 
+Returns 0 if x lies within the range of an n-bit unsigned integer (that is,
+if 0 ≤ x < 2^n) and 1 otherwise. This operation delivers further information
+about an UnsignedSat(x,n) operation that occurred earlier in the pseudo-code.
 Any operations used to calculate x or n are not repeated. *)
 (****************************************************************************)
 
@@ -332,7 +396,7 @@ Definition UnsignedSat (x : word) (n : nat) : word :=
 (** ZeroExtend(arg) (LDRH p. 205, USAD8 p. 412, USADA8 p. 414, LDRH(1)
 p. 573, LDRH(2) p. 575)
 
-Not defined in the Glossary. We guess: 
+Not defined in the Glossary. We guess:
 Zero-extends (propagates the zero bit) its argument to 32 bits. *)
 (****************************************************************************)
 

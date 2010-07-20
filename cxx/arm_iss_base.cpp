@@ -242,8 +242,8 @@ uint32_t ARM_ISS_Base::bit_position_of_most_significant_1(uint32_t x) {
   return ~0;
 }
 
-bool ARM_ISS_Base::CarryFrom8_add2(uint8_t a, uint8_t b) {return (a+b)<a;}
-bool ARM_ISS_Base::CarryFrom16_add2(uint16_t a, uint16_t b) {return (a+b)<a;}
+bool ARM_ISS_Base::CarryFrom8_add2(uint32_t a, uint32_t b) {return a+b>0xff;}
+bool ARM_ISS_Base::CarryFrom16_add2(uint32_t a, uint32_t b) {return a+b>0xffff;}
 bool ARM_ISS_Base::CarryFrom_add2(uint32_t a, uint32_t b) {return (a+b)<a;}
 
 bool ARM_ISS_Base::CarryFrom_add3(uint32_t a, uint32_t b, bool c) {
@@ -260,8 +260,6 @@ bool ARM_ISS_Base::OverflowFrom_sub2(uint32_t a, uint32_t b) {
   return ((a^b)&(a^r))>>31;
 }
 
-bool ARM_ISS_Base::BorrowFrom_sub2(uint8_t a, uint8_t b) {return a<b;}
-bool ARM_ISS_Base::BorrowFrom_sub2(uint16_t a, uint16_t b) {return a<b;}
 bool ARM_ISS_Base::BorrowFrom_sub2(uint32_t a, uint32_t b) {return a<b;}
 
 bool ARM_ISS_Base::BorrowFrom_sub3(uint32_t a, uint32_t b, bool c) {
@@ -277,13 +275,6 @@ uint32_t ARM_ISS_Base::Number_Of_Set_Bits_In(uint16_t x) {
   return count;
 }
 
-void ARM_ISS_Base::set_field(uint64_t &dst, size_t a, size_t b, uint64_t src) {
-  assert(a>b);
-  const uint64_t mask = ((1llu<<(a-b))-1llu)<<b;
-  dst &= ~mask;
-  dst |= src<<b;
-}
-
 void ARM_ISS_Base::set_field(uint32_t &dst, uint32_t a, uint32_t b, uint32_t src) {
   assert(a>b);
   const uint32_t mask = ((1<<(a-b))-1)<<b;
@@ -291,161 +282,43 @@ void ARM_ISS_Base::set_field(uint32_t &dst, uint32_t a, uint32_t b, uint32_t src
   dst |= src<<b;
 }
 
-void ARM_ISS_Base::set_field(uint8_t &dst, uint8_t a, uint8_t b, uint8_t src) {
-  assert(a>b);
-  const uint8_t mask = ((1<<(a-b))-1)<<b;
-  dst &= ~mask;
-  dst |= src<<b;
+uint32_t ARM_ISS_Base::SignedSat32_add(int32_t a, int32_t b) {
+  return SignedSat((int64_t)a + (int64_t)b,32);
+}
+uint32_t ARM_ISS_Base::SignedSat32_sub(int32_t a, int32_t b) {
+  return SignedSat((int64_t)a - (int64_t)b,32);
+}
+uint32_t ARM_ISS_Base::SignedSat32_double(int32_t a) {
+  return SignedSat(2*(int64_t)a,32);
+}
+bool ARM_ISS_Base::SignedDoesSat32_add(int32_t a, int32_t b) {
+  return SignedDoesSat((int64_t)a + (int64_t)b,32);
+}
+bool ARM_ISS_Base::SignedDoesSat32_sub(int32_t a, int32_t b) {
+  return SignedDoesSat((int64_t)a - (int64_t)b,32);
+}
+bool ARM_ISS_Base::SignedDoesSat32_double(int32_t a) {
+  return SignedDoesSat(2*(int64_t)a,32);
 }
 
-static inline bool neg(uint32_t a) {return a&(1<<31);}
-static const uint32_t MIN_U32 = 0;
-static const uint32_t MAX_U32 = ~0;
-static const uint32_t MIN_S32 = 1<<31;
-static const uint32_t MAX_S32 = MIN_S32-1;
-static const uint16_t MIN_U16 = 0;
-static const uint16_t MAX_U16 = ~0;
-static const uint16_t MIN_S16 = 1<<15;
-static const uint16_t MAX_S16 = MIN_S16-1;
-static const uint8_t MIN_U8 = 0;
-static const uint8_t MAX_U8 = ~0;
-static const uint8_t MIN_S8 = 1<<7;
-static const uint8_t MAX_S8 = MIN_S8-1;
-
-uint32_t ARM_ISS_Base::SignedSat_add(uint32_t a, uint32_t b, size_t n) {
-  assert(n==32);
-  if (OverflowFrom_add2(a,b))
-    return neg(a) ? MIN_S32 : MAX_S32;
-  else return a+b;
+uint32_t ARM_ISS_Base::SignedSat(int64_t x, uint32_t n) {
+  if (x < -(1<<(n-1))) return -(1<<(n-1));
+  if (x > (1<<(n-1))-1) return (1<<(n-1))-1;
+  return x;
 }
 
-uint32_t ARM_ISS_Base::SignedSat_sub(uint32_t a, uint32_t b, size_t n) {
-  assert(n==32);
-  if (OverflowFrom_sub2(a,b))
-    return neg(a) ? MIN_S32 : MAX_S32;
-  else return a-b;
+uint32_t ARM_ISS_Base::SignedDoesSat(int64_t x, uint32_t n) {
+  return x < -(1<<(n-1)) || x > (1<<(n-1))-1;
 }
 
-uint32_t ARM_ISS_Base::SignedSat_double(uint32_t a, size_t n) {
-  assert(n==32);
-  return SignedSat_add(a,a,32); // FIXME: could be optimized
+uint32_t ARM_ISS_Base::UnsignedSat(int32_t x, uint32_t n) {
+  assert(n<32);
+  if (x < 0) return 0;
+  if (x > (1<<n)-1) return (1<<n)-1;
+  return x;
 }
 
-bool ARM_ISS_Base::SignedDoesSat_add(uint32_t a, uint32_t b, size_t n) {
-  assert(n==32);
-  return OverflowFrom_add2(a,b);
-}
-
-bool ARM_ISS_Base::SignedDoesSat_sub(uint32_t a, uint32_t b, size_t n) {
-  assert(n==32);
-  return OverflowFrom_sub2(a,b);
-}
-
-bool ARM_ISS_Base::SignedDoesSat_double(uint32_t a, size_t n) {
-  assert(n==32);
-  return OverflowFrom_add2(a,a); // FIXME: could be optimized
-}
-
-static const int32_t MIN_S16_S32 = -(1<<15);
-static const int32_t MAX_S16_S32 = static_cast<int16_t>(MAX_S16);
-static const int32_t MIN_S8_S32 = -(1<<7);
-static const int32_t MAX_S8_S32 = static_cast<int8_t>(MAX_S8);
-
-uint16_t ARM_ISS_Base::SignedSat_add(uint16_t a, uint16_t b, size_t n) {
-  assert(n==16);
-  int32_t la = static_cast<int16_t>(a), lb = static_cast<int16_t>(b);
-  int32_t sum = la+lb;
-  if (sum<MIN_S16_S32) return MIN_S16;
-  else if (sum>MAX_S16_S32) return MAX_S16;
-  else return sum;
-}
-
-uint16_t ARM_ISS_Base::SignedSat_sub(uint16_t a, uint16_t b, size_t n) {
-  assert(n==16);
-  int32_t la = static_cast<int16_t>(a), lb = static_cast<int16_t>(b);
-  int32_t diff = la-lb;
-  if (diff<MIN_S16_S32) return MIN_S16;
-  else if (diff>MAX_S16_S32) return MAX_S16;
-  else return diff;
-}
-
-uint16_t ARM_ISS_Base::UnsignedSat_add(uint16_t a, uint16_t b, size_t n) {
-  assert(n==16);
-  uint32_t la = a, lb = b;
-  uint32_t sum = la+lb;
-  if (sum>static_cast<uint32_t>(MAX_U16))
-    return MAX_U16;
-  else return sum;
-}
-
-uint16_t ARM_ISS_Base::UnsignedSat_sub(uint16_t a, uint16_t b, size_t n) {
-  assert(n==16);
-  if (b>a) return MIN_U16;
-  else return a-b;
-}
-
-uint8_t ARM_ISS_Base::SignedSat_add(uint8_t a, uint8_t b, size_t n) {
-  assert(n==8);
-  int32_t la = static_cast<int8_t>(a), lb = static_cast<int8_t>(b);
-  int32_t sum = la+lb;
-  if (sum<MIN_S8_S32) return MIN_S8;
-  else if (sum>MAX_S8_S32) return MAX_S8;
-  else return sum;
-}
-
-uint8_t ARM_ISS_Base::SignedSat_sub(uint8_t a, uint8_t b, size_t n) {
-  assert(n==8);
-  int32_t la = static_cast<int8_t>(a), lb = static_cast<int8_t>(b);
-  int32_t diff = la-lb;
-  if (diff<MIN_S8_S32) return MIN_S8;
-  else if (diff>MAX_S8_S32) return MAX_S8;
-  else return diff;
-}
-
-uint8_t ARM_ISS_Base::UnsignedSat_add(uint8_t a, uint8_t b, size_t n) {
-  assert(n==8);
-  uint32_t la = a, lb = b;
-  uint32_t sum = la+lb;
-  if (sum>static_cast<uint32_t>(MAX_U8))
-    return MAX_U8;
-  else return sum;
-}
-
-uint8_t ARM_ISS_Base::UnsignedSat_sub(uint8_t a, uint8_t b, size_t n) {
-  assert(n==8);
-  if (b>a) return MIN_U8;
-  else return a-b;
-}
-
-uint32_t ARM_ISS_Base::SignedSat(int32_t n, uint32_t size) {
-  assert(size<32);
-  const int32_t max = (1<<(size-1))-1;
-  const int32_t min = -(1<<(size-1));
-  if (n<min) return min;
-  if (max<n) return max;
-  return n;
-}
-
-uint32_t ARM_ISS_Base::SignedDoesSat(int32_t n, uint32_t size) {
-  assert(size<32);
-  const int32_t max = (1<<(size-1))-1;
-  const int32_t min = -(1<<(size-1));
-  return n<min || max<n;
-}
-
-uint32_t ARM_ISS_Base::UnsignedSat(int32_t n, uint32_t size) {
-  assert(size<32);
-  if (n<0) return 0;
-  const uint32_t u = static_cast<uint32_t>(n);
-  const uint32_t max = (1<<size)-1;
-  if (u>max) return max;
-  else return n;
-}
-
-uint32_t ARM_ISS_Base::UnsignedDoesSat(int32_t n, uint32_t size) {
-  assert(size<32);
-  if (n<0) return true;
-  const uint32_t u = static_cast<uint32_t>(n);
-  const uint32_t max = (1<<size)-1;
-  return u>max;
+uint32_t ARM_ISS_Base::UnsignedDoesSat(int32_t x, uint32_t n) {
+  assert(n<32);
+  return x < 0 || x > (1<<n)-1;
 }

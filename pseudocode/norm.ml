@@ -49,12 +49,12 @@ let rec exp = function
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
 	   List.map exp es)
 
-  | Fun (("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f),
-         (BinOp (_, op, _) as e) :: tl) -> (
+  | Fun (("SignedSat"|"SignedDoesSat" as f),
+         (BinOp (_, op, _) as e) :: [Num "32"]) -> (
       match e with
-        | BinOp (e', "*", Num "2") -> Fun (sprintf "%s_double" f, e'::tl)
-        | _ -> let es = args e @ tl in
-            Fun (sprintf "%s_%s" f (string_of_op op),
+        | BinOp (e', "*", Num "2") -> Fun (sprintf "%s32_double" f, [e'])
+        | _ -> let es = args e in
+            Fun (sprintf "%s32_%s" f (string_of_op op),
 	         List.map exp es))
 
   (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
