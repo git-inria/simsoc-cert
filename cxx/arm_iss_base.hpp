@@ -17,10 +17,10 @@
 #include <iostream>
 
 #define TODO(msg) do {                                                  \
-    std::cout <<std::dec <<"TODO: " <<msg <<"(" __FILE__ ":" <<__LINE__ <<")\n"; \
+    std::cout <<std::dec <<"TODO: " <<msg <<" (" __FILE__ ":" <<__LINE__ <<")\n"; \
     abort(); } while (0);
 #define ERROR(msg) do {                                                 \
-    std::cout <<std::dec <<"ERROR: " <<msg <<"(" __FILE__ ":" <<__LINE__ <<")\n"; \
+    std::cout <<std::dec <<"ERROR: " <<msg <<" (" __FILE__ ":" <<__LINE__ <<")\n"; \
     abort(); } while (0);
 
 struct ARM_MMU {
