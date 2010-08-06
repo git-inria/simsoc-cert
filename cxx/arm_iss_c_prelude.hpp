@@ -18,10 +18,6 @@ static const uint8_t PC = 15;
 static const uint8_t LR = 14;
 static const uint8_t SP = 13;
 
-// FIXME: not C
-static uint32_t NOT(uint32_t x) {return ~x;}
-static uint32_t NOT(bool x) {return !x;}
-
 static bool not_cpy_instr(uint32_t bincode) {
   // values come from arm_iss.cpp, decode_and_exec method, case CPY
   return (bincode&0x0fff0ff0)!=0x01a00000;

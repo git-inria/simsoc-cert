@@ -23,8 +23,8 @@ let hex_of_bin = function
   | "0b01" | "0b1" -> "1"
   | "0b10" -> "2"
   | "0b11" -> "3"
-  | "0b10111" -> "ARM_Processor::abt"
-  | "0b10011" -> "ARM_Processor::svc"
+  | "0b10111" -> "abt"
+  | "0b10011" -> "svc"
   | _ -> "TODO_hex_of_bin";;
 
 (** C++ types of usual variables *)
@@ -38,9 +38,8 @@ let type_of_var = function
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
   | "immedH" | "immedL" | "offset_8" | "shift" -> "uint8_t"
 
-  | "cond" -> "ARM_Processor::Condition"
-  | "mode" -> "ARM_Processor::Mode"
-  | "register_list" | "offset_12" -> "uint16_t"
+  | "cond" -> "Condition"
+  | "mode" -> "Mode"
   | "accvalue" | "result" -> "uint64_t"
   | "processor_id" -> "size_t"
   | _ -> "uint32_t";;
@@ -100,11 +99,9 @@ let xprog_of p (_, pcs) =
      xvc = Validity.to_exp id;
      xmode = addr_mode_of_prog p gs};;
 
-let mode_outputs = Array.create 5 [];;
+let mode_outputs: ((string * string) list) array = Array.create 5 [];;
 
 (** Heuristic to chose between signed and unsigned; true means signed *)
-
-let get_signed, set_signed = get_set false;;
 
 (** Add a cast to a signed type *)
 let rec to_signed e = match e with
@@ -114,17 +111,19 @@ let rec to_signed e = match e with
 (** Generate the code corresponding to an expression *)
 
 let func = function
-  | "CP15_reg1_EEbit" -> "proc.cp15.get_reg1_EEbit"
-  | "CP15_reg1_Ubit" -> "proc.cp15.get_reg1_Ubit"
-  | "PrivMask" -> "proc.msr_PrivMask"
-  | "UserMask" -> "proc.msr_UserMask"
-  | "StateMask" -> "proc.msr_StateMask"
-  | "UnallocMask" -> "proc.msr_UnallocMask"
-  | "GE" -> "proc.cpsr.GE"
-  | "v5_and_above" -> "proc.v5_and_above"
+  | "GE" -> "get_GE"
   | s -> s;;
 
-let mode m = "ARM_Processor::" ^ Genpc.string_of_mode m;;
+let implicit_arg = function
+  | "ConditionPassed" -> "&proc->cpsr,"
+  | "write_word" | "write_half" | "write_byte" -> "&proc->mmu,"
+  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "&proc->cp15"
+  | "set_bit" | "set_field" -> "addr_of_"
+  | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
+  | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
+  | _ -> "";;
+
+let mode m = Genpc.string_of_mode m;;
 
 let binop = function
   | "and" -> "&&"
@@ -132,7 +131,6 @@ let binop = function
   | "AND" -> "&"
   | "OR" -> "|"
   | "EOR" -> "^"
-  | "NOT" -> "~"
   | "Logical_Shift_Left" -> "<<"
   | "Logical_Shift_Right" -> ">>"
   | "==" -> "=="
@@ -148,9 +146,9 @@ let binop = function
   | _ -> "TODO_binop";;
 
 let reg_id = function
-  | "15" -> "ARM_Processor::PC"
-  | "14" -> "ARM_Processor::LR"
-  | "13" -> "ARM_Processor::SP"
+  | "15" -> "PC"
+  | "14" -> "LR"
+  | "13" -> "SP"
   | n -> n;;
 
 let cpsr_flag = function
@@ -184,145 +182,164 @@ let optemps = ["index"; "offset_8"; "end_address"];;
 
 let input_registers = ["n"; "m"; "s"; "dLo"];;
 
-let rec exp b = function
+let is_pointer p s = match p.xprog.pkind with
+  | Inst -> false
+  | Mode n -> List.mem s (List.map fst (mode_outputs.(n-1)));;
+
+let rec exp p b = function
   | Bin s -> string b (hex_of_bin s)
   | Hex s | Num s -> string b s
-  | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" exp e1 exp e2 exp e3
+  | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" (exp p) e1 (exp p) e2 (exp p) e3
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
-      exp b (Fun (binop op, [e1; e2]))
+      (exp p) b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
-      bprintf b "(to_64(%a) << 32)" exp e
+      bprintf b "(to_64(%a) << 32)" (exp p) e
   | BinOp (e, ("<"|">=" as op), Num "0") ->
-      bprintf b "(%a %s 0)" exp (to_signed e) op
-  | BinOp (e1, "*", e2) -> if get_signed ()
-    then bprintf b "(to_64(%a) * to_64(%a))" exp (to_signed e1) exp (to_signed e2)
-    else bprintf b "(to_64(%a) * to_64(%a))" exp e1 exp e2
-  | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" exp e1 (binop op) exp e2
-  | Fun (f, es) -> bprintf b "%s(%a)" (func f) (list ", " exp) es
-  | CPSR -> string b "proc.cpsr"
-  | SPSR None -> string b "proc.spsr()"
-  | SPSR (Some m) -> bprintf b "proc.spsr(%s)" (mode m)
+      bprintf b "(%a %s 0)" (exp p) (to_signed e) op
+  | BinOp (e1, "*", e2) -> if p.xid.[0] = 'S'
+    then bprintf b "(to_64(%a) * to_64(%a))" (exp p) (to_signed e1) (exp p) (to_signed e2)
+    else bprintf b "(to_64(%a) * to_64(%a))" (exp p) e1 (exp p) e2
+  | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" (exp p) e1 (binop op) (exp p) e2
+  | Fun ("NOT", [(Var s) as e]) ->
+      if List.assoc s (p.xgs@p.xls) = "uint32_t"
+      then bprintf b "~%s" s else bprintf b "NOT(%a)" (exp p) e
+  | Fun (f, es) -> bprintf b "%s(%s%a)"
+      (func f) (implicit_arg f) (list ", " (exp p)) es
+  | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
+  | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
+  | SPSR (Some m) -> bprintf b "StatusRegister_to_uint32(spsr_m(proc,%s))" (mode m)
   | Reg (Var s, None) ->
       if List.mem s input_registers
       then bprintf b "old_R%s" s
-      else bprintf b "proc.reg(%s)" s
-  | Reg (e, None) -> bprintf b "proc.reg(%a)" exp e
-  | Reg (e, Some m) -> bprintf b "proc.reg(%a,%s)" exp e (mode m)
-  | Var s -> string b s
-  | Memory (e, n) -> bprintf b "proc.mmu.read_%s(%a)" (access_type n) exp e
-  | Range (CPSR, Flag (s,_)) -> bprintf b "proc.cpsr.%s_flag" s
-  | Range (CPSR, Index (Num s)) -> bprintf b "proc.cpsr.%s" (cpsr_flag s)
-  | Range (e1, Index e2) -> bprintf b "((%a>>%a)&1)" exp e1 exp e2
+      else bprintf b "reg(proc,%s)" s
+  | Reg (e, None) -> bprintf b "reg(proc,%a)" (exp p) e
+  | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (mode m)
+  | Var s -> if is_pointer p s then bprintf b "*%s" s else string b s
+  | Memory (e, n) -> bprintf b "read_%s(&proc->mmu,%a)" (access_type n) (exp p) e
+  | Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
+  | Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (cpsr_flag s)
+  | Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Range (e, Bits (n1, n2)) ->
       begin match n1, n2 with
-        | "15", "0" -> bprintf b "get_half_0(%a)" exp e
-        | "31", "16" -> bprintf b "get_half_1(%a)" exp e
-        | "7", "0" -> bprintf b "get_byte_0(%a)" exp e
-        | "15", "8" -> bprintf b "get_byte_1(%a)" exp e
-        | "23", "16" -> bprintf b "get_byte_2(%a)" exp e
-        | "31", "24" -> bprintf b "get_byte_3(%a)" exp e
-        | _ -> bprintf b "get_bits(%a,%s,%s)" exp e n1 n2
+        | "15", "0" -> bprintf b "get_half_0(%a)" (exp p) e
+        | "31", "16" -> bprintf b "get_half_1(%a)" (exp p) e
+        | "7", "0" -> bprintf b "get_byte_0(%a)" (exp p) e
+        | "15", "8" -> bprintf b "get_byte_1(%a)" (exp p) e
+        | "23", "16" -> bprintf b "get_byte_2(%a)" (exp p) e
+        | "31", "24" -> bprintf b "get_byte_3(%a)" (exp p) e
+        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
       end
   | Coproc_exp (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
+      bprintf b "%s(proc,%a)" (func f) (list "," (exp p)) (e::es)
   | _ -> string b "TODO(\"exp\")";;
 
 (** Generate the body of an instruction function *)
 
-let rec inst k b = function
+let rec inst p k b = function
   | Block _ | For _ | While _ | If _ | Case _ as i ->
-      bprintf b "%a%a" indent k (inst_aux k) i
-  | i -> bprintf b "%a%a;" indent k (inst_aux k) i
+      bprintf b "%a%a" indent k (inst_aux p k) i
+  | i -> bprintf b "%a%a;" indent k (inst_aux p k) i
 
-and inst_aux k b = function
+and inst_aux p k b = function
   | Unpredictable -> string b "unpredictable()"
-  | Affect (dst, src) -> affect k b dst src
-  | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
-  | Assert e -> bprintf b "assert(%a)" exp e
+  | Affect (dst, src) -> affect p k b dst src
+  | Proc (f, es) -> bprintf b "%s(%s%a)" f (implicit_arg f) (list ", " (exp p)) es
+  | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
-      bprintf b "proc.coproc(%a)->%s(%a)" exp e (func f) (list ", " exp) es
+      bprintf b "%s(proc,%a)" (func f) (list "," (exp p)) (e::es)
 
   | Block [] -> ()
   | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
-      bprintf b "%a\n%a" (inst_aux k) i (list "\n" (inst k)) is
+      bprintf b "%a\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
   | Block (i :: is) ->
-      bprintf b "%a;\n%a" (inst_aux k) i (list "\n" (inst k)) is
+      bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
 
-  | While (e, i) -> bprintf b "while (%a)\n%a" exp e (inst (k+2)) i
+  | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
   | For (counter, min, max, i) ->
       bprintf b "for (size_t %s = %a; %s<=%a; ++%s) {\n%a\n}"
-        counter num min counter num max counter (inst (k+2)) i
+        counter num min counter num max counter (inst p (k+2)) i
 
   | Case (e, s) ->
       bprintf b "switch (%a) {\n%a%a}"
-        exp e (list "" (case_aux k)) s indent k
+        (exp p) e (list "" (case_aux p k)) s indent k
 
   | If (e, (Block _|If _ as i), None) ->
-      bprintf b "if (%a) {\n%a\n%a}" exp e (inst (k+2)) i indent k
-  | If (e, i, None) -> bprintf b "if (%a)\n%a" exp e (inst (k+2)) i
+      bprintf b "if (%a) {\n%a\n%a}" (exp p) e (inst p (k+2)) i indent k
+  | If (e, i, None) -> bprintf b "if (%a)\n%a" (exp p) e (inst p (k+2)) i
 
   | If (e, (Block _|If _ as i1), Some (Block _|If _ as i2)) ->
       bprintf b "if (%a) {\n%a\n%a} else {\n%a\n%a}"
-	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2 indent k
+	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, (Block _|If _ as i1), Some i2) ->
       bprintf b "if (%a) {\n%a\n%a} else\n%a"
-	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2
+	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
   | If (e, i1, Some (Block _|If _ as i2)) ->
       bprintf b "if (%a)\n%a\n%aelse {\n%a\n%a}"
-	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2 indent k
+	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
-	exp e (inst (k+2)) i1 indent k (inst (k+2)) i2
+	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
 
-and case_aux k b (n, i) =
+and case_aux p k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
-    indent k (hex_of_bin n) (inst (k+2)) i indent (k+2)
+    indent k (hex_of_bin n) (inst p (k+2)) i indent (k+2)
 
-and affect k b dst src =
+and affect p k b dst src =
   if src = Unpredictable_exp then string b "unpredictable()"
   else match dst with
     | Reg (Var "d", _) -> bprintf b
-        "if (d==ARM_Processor::PC)\n%aproc.set_pc_raw(%a);\n%aelse\n%aproc.reg(d) = %a"
-          indent (k+2) exp src indent k indent (k+2) exp src
-    | Reg (Num "15", None) -> bprintf b "proc.set_pc_raw(%a)" exp src
-    | Reg (e, None) -> bprintf b "proc.reg(%a) = %a" exp e exp src
+        "if (d==PC)\n%aset_pc_raw(proc,%a);\n%aelse\n%aset_reg(proc,d,%a)"
+          indent (k+2) (exp p) src indent k indent (k+2) (exp p) src
+    | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
+    | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
-	bprintf b "proc.reg(%a,%s) = %a" exp e (mode m) exp src
-    | CPSR -> bprintf b "proc.cpsr = %a" exp src
-    | SPSR _ as e -> bprintf b "%a = %a" exp e exp src
-    | Var v -> bprintf b "%a = %a" exp (Var v) exp src
+	bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
+    | CPSR -> (
+        match src with
+          | SPSR None -> bprintf b "proc->cpsr = *spsr(proc)"
+          | SPSR (Some m) -> bprintf b "proc->cpsr = *spsr_m(proc,%s)" (mode m)
+          | _ -> bprintf b "set_StatusRegister(&proc->cpsr,%a)" (exp p) src)
+    | SPSR None -> (
+        match src with
+          | CPSR -> bprintf b "*spsr(proc) = proc->cpsr"
+          | _ -> bprintf b "set_StatusRegister(spsr(proc),%a)" (exp p) src)
+    | SPSR (Some m) -> (
+        match src with
+          | CPSR -> bprintf b "*spsr_m(proc,%s) = proc->cpsr" (mode m)
+          | _ -> bprintf b "set_StatusRegister(spsr_m(proc,%s),%a)" (mode m) (exp p) src)
+    | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
     | Range (CPSR, Flag (s,_)) ->
-        bprintf b "proc.cpsr.%s_flag = %a" s exp src
+        bprintf b "proc->cpsr.%s_flag = %a" s (exp p) src
     | Range (CPSR, Index (Num n)) ->
-        bprintf b "proc.cpsr.%s = %a" (cpsr_flag n) exp src
+        bprintf b "proc->cpsr.%s = %a" (cpsr_flag n) (exp p) src
     | Range (CPSR, Bits ("19", "18")) ->
-        bprintf b "proc.cpsr.set_GE_32(%a)" exp src
+        bprintf b "set_GE_32(&proc->cpsr,%a)" (exp p) src
     | Range (CPSR, Bits ("17", "16")) ->
-        bprintf b "proc.cpsr.set_GE_10(%a)" exp src
+        bprintf b "set_GE_10(&proc->cpsr,%a)" (exp p) src
     | Range (CPSR, Bits (n1, n2)) ->
-        bprintf b "proc.cpsr.%s = %a" (cpsr_field (n1,n2)) exp src
+        bprintf b "proc->cpsr.%s = %a" (cpsr_field (n1,n2)) (exp p) src
     | Range (e1, Bits (n1, n2)) ->
-        inst_aux k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
+        inst_aux p k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
-        inst_aux k b (Proc ("proc.mmu.write_" ^ access_type n, [addr; src]))
-    | Range (e, Index n) -> inst_aux k b (Proc ("set_bit", [e; n; src]))
+        inst_aux p k b (Proc ("write_" ^ access_type n, [addr; src]))
+    | Range (e, Index n) -> inst_aux p k b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\")";;
 
 (** Generate a function modeling an instruction of the processor *)
 
 let prog_var b s = bprintf b "<%s>" s;;
 
-let prog_arg b (v,t) = bprintf b "const %s %s" t v;;
+let prog_arg b (v,t) = bprintf b ",\n    const %s %s" t v;;
 
-let prog_out b (v,t) = bprintf b "%s &%s" t v;;
+let prog_out b (v,t) = bprintf b ",\n    %s *%s" t v;;
 
 let local_decl b (v,t) = bprintf b "  %s %s;\n" t v;;
 
 let inreg_load b s =
-  bprintf b "  const uint32_t old_R%s = proc.reg(%s);\n" s s;;
+  bprintf b "  const uint32_t old_R%s = reg(proc,%s);\n" s s;;
 
-let comment b p = bprintf b "// %a\n" Genpc.name p.xprog;;
+let comment b p = bprintf b "/* %a */\n" Genpc.name p.xprog;;
 
 let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
@@ -334,32 +351,30 @@ let prog b p =
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
     match p.xprog.pkind with
       | Inst ->
-          set_signed (p.xid.[0] = 'S');
-          bprintf b "%avoid ARM_ISS::%s(%a)\n{\n%a%a%a\n}\n" comment p
+          bprintf b "%avoid %s(Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
             p.xid
-            (list ",\n    " prog_arg) p.xgs
+            (list "" prog_arg) p.xgs
             (list "" inreg_load) inregs
             (list "" local_decl) p.xls
-            (inst 2) p.xprog.pinst
+            (inst p 2) p.xprog.pinst
       | Mode m ->
           let os = mode_outputs.(m-1)
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) p.xls in
-            bprintf b "%avoid ARM_ISS::%s(%a%s%a)\n{\n%a%a%a\n}\n" comment p
+            bprintf b "%avoid %s(Processor *proc%a%a)\n{\n%a%a%a\n}\n" comment p
               p.xid
-              (list ",\n    " prog_arg) p.xgs
-              (arg_sep p.xgs os)
-              (list ",\n    " prog_out) os
+              (list "" prog_arg) p.xgs
+              (list "" prog_out) os
               (list "" inreg_load) inregs
               (list "" local_decl) ls'
-              (inst 2) p.xprog.pinst;;
+              (inst p 2) p.xprog.pinst;;
 
 (* Declaration of the functions. This should be printed in a header file (.hpp) *)
 let decl b p =
   match p.xprog.pkind with
     | Inst  ->
-	bprintf b "  %a  void %s(%a);\n  bool try_%s(uint32_t bincode);\n"
+	bprintf b "%aextern void %s(Processor*%a);\nextern bool try_%s(Processor*, uint32_t bincode);\n"
           comment p p.xid
-          (list ",\n    " prog_arg) p.xgs p.xid
+          (list "" prog_arg) p.xgs p.xid
     | Mode m ->
 	let os =
           if mode_outputs.(m-1) = [] then (
@@ -367,13 +382,12 @@ let decl b p =
               mode_outputs.(m-1) <- os');
           mode_outputs.(m-1)
         in
-          bprintf b "  %a  void %s(%a%s%a);\n" comment p
+          bprintf b "%aextern void %s(Processor*%a%a);\n" comment p
             p.xid
-            (list ",\n    " prog_arg) p.xgs
-            (arg_sep p.xgs os)
-            (list ",\n    " prog_out) os;
-          bprintf b "  bool try_%s(uint32_t bincode,\n    %a);\n"
-            p.xid (list ",\n    " prog_out) os;;
+            (list "" prog_arg) p.xgs
+            (list "" prog_out) os;
+          bprintf b "extern bool try_%s(Processor*, uint32_t bincode%a);\n"
+            p.xid (list "" prog_out) os;;
 
 (* For some LSM instructions, the operand has side effects that must be executed
  * after the instruction itself *)
@@ -456,14 +470,14 @@ let dec_param p buf (s, a, b) =
             (* special case for cond, because decoding of this field can fail *)
             bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
             bprintf buf "  if (cond_tmp>14) return false;\n";
-            bprintf buf "  const ARM_Processor::Condition cond =\n";
-            bprintf buf "    static_cast<ARM_Processor::Condition>(cond_tmp);\n"
+            bprintf buf "  const Condition cond =\n";
+            bprintf buf "    ((Condition) cond_tmp);\n"
           ) else if (s, a, b) = ("mode", 4, 0) then (
             (* special case for mode, because decoding of this field can fail *)
             bprintf buf "  const uint32_t mode_tmp = get_bits(bincode,4,0);\n";
-            bprintf buf "  ARM_Processor::Mode mode;\n";
+            bprintf buf "  Mode mode;\n";
             bprintf buf
-              "  if (!ARM_Processor::decode_mode(bincode,mode)) return false;\n"
+              "  if (!decode_mode(&mode,bincode)) return false;\n"
           ) else
             if a = b then
               bprintf buf "  const %s %s = get_bit(bincode,%d);\n" t s a
@@ -490,33 +504,35 @@ let dec_inst b is =
   (* Phase A: check bits fixed by the coding table *)
   let instA b p =
     let (mask, value) = mask_value p.xdec in
-      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(bincode)) {\n"
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(proc,bincode)) {\n"
         mask value p.xid;
       bprintf b "    DEBUG(<<\"decoder choice: %s\\n\");\n" p.xid;
       bprintf b "    assert(!found); found = true;\n  }\n"
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
-    bprintf b "bool ARM_ISS::try_%s(uint32_t bincode) {\n" p.xid;
+    bprintf b "bool try_%s(Processor *proc, uint32_t bincode) {\n" p.xid;
     (* extract parameters *)
     bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
     (* check validity *)
     (match p.xvc with
-       | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
+       | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
        | None -> ());
     (* decode the mode *)
     (match p.xmode with
        | Some m ->
            let os = mode_outputs.(m-1) in
-             bprintf b "%a  if (!try_M%d(bincode,%a)) return false;\n"
-               (list "" local_decl) os m (list "," print_first) os
+           let aux b (s,_) = bprintf b ",&%s" s in
+             bprintf b "%a  if (!try_M%d(proc,bincode%a)) return false;\n"
+               (list "" local_decl) os m (list "" aux) os
        | None -> ());
     (* execute the instruction *)
-    bprintf b "  EXEC(%s(%a));\n" p.xid (list "," print_first) p.xgs;
+    let aux b (s,_) = bprintf b ",%s" s in
+    bprintf b "  EXEC(%s(proc%a));\n" p.xid (list "" aux) p.xgs;
     bprintf b "  return true;\n}\n"
   in
   let is' = List.rev is in
-    bprintf b "bool ARM_ISS::decode_and_exec(uint32_t bincode) {\n";
+    bprintf b "bool decode_and_exec(Processor *proc, uint32_t bincode) {\n";
     bprintf b "  bool found = false;\n";
     bprintf b "%a" (list "" instA) is';
     bprintf b "  return found;\n}\n\n%a"
@@ -524,39 +540,37 @@ let dec_inst b is =
 
 (* declare the try_Mx methods *)
 let decl_try b m os =
-  let sep = ",\n              " in
-    bprintf b "\n  bool try_M%d(uint32_t bincode%s%a);\n"
-      (m+1) sep (list sep prog_out) os;;
+  bprintf b "\nextern bool try_M%d(Processor*, uint32_t bincode%a);\n"
+    (m+1) (list "" prog_out) os;;
 
 (* generate the decoder - modes *)
 let dec_modes b ms =
   (* Phase A: check bits fixed by the coding table *)
   let modeA os b p =
     let (mask, value) = mask_value p.xdec in
-      bprintf b "  if ((bincode&0x%08lx)==0x%08lx &&\n      try_%s(bincode,%a)) {\n"
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx &&\n      try_%s(proc,bincode,%a)) {\n"
         mask value p.xid (list "," print_first) os;
       bprintf b "    assert(!found); found = true;\n  }\n"
   in (* Phase B: extract parameters and check validity *)
   let modeB os b p =
-    bprintf b "bool ARM_ISS::try_%s(uint32_t bincode,\n    %a) {\n"
-      p.xid (list ",\n    " prog_out) os;
+    bprintf b "bool try_%s(Processor *proc, uint32_t bincode%a) {\n"
+      p.xid (list "" prog_out) os;
     (* extract parameters *)
     bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
     (* check validity *)
     (match p.xvc with
-       | Some e -> bprintf b "  if (!(%a)) return false;\n" exp e
+       | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
        | None -> ());
     (* execute the mode case *)
-    bprintf b "  EXEC(%s(%a,%a));\n" p.xid
+    bprintf b "  EXEC(%s(proc,%a,%a));\n" p.xid
       (list "," print_first) p.xgs (list "," print_first) os;
     bprintf b "  return true;\n}\n"
   in (* generate the decoder for mode i *)
-  let sep = ",\n                     " in
   let dec_mode b i ms =
     let ms' = List.rev ms in
     let os = mode_outputs.(i) in
-      bprintf b "\nbool ARM_ISS::try_M%d(uint32_t bincode%s%a) {\n"
-        (i+1) sep (list sep prog_out) os;
+      bprintf b "\nbool try_M%d(Processor *proc, uint32_t bincode%a) {\n"
+        (i+1) (list "" prog_out) os;
       bprintf b "  bool found = false;\n%a"
         (list "" (modeA os)) ms';
       bprintf b "  return found;\n}\n\n%a" (list "\n" (modeB os)) ms';
@@ -576,36 +590,15 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
     (* generate the header file *)
     bprintf bh "#ifndef ARM_ISS_HPP\n#define ARM_ISS_HPP\n\n";
-    bprintf bh "#include \"arm_iss_base.hpp\"\n\n";
-    bprintf bh "struct ARM_ISS: ARM_ISS_Base {\n\n%a" (list "\n" decl) xs;
+    bprintf bh "#include \"arm_iss_h_prelude.hpp\"\n\n";
+    bprintf bh "%a" (list "\n" decl) xs;
     Array.iteri (decl_try bh) mode_outputs;
-    bprintf bh "\n  bool decode_and_exec(uint32_t bincode);\n};\n";
+    bprintf bh "\nextern bool decode_and_exec(Processor*, uint32_t bincode);\n";
     bprintf bh "\n#endif // ARM_ISS_HPP\n";
     (* generate the source file *)
-    bprintf bc "#include \"%s.hpp\"\n#include \"common.hpp\"\n\n%a\n%a%a"
+    bprintf bc "#include \"%s.hpp\"\n#include \"arm_iss_c_prelude.hpp\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;
     (* write buffers to files *)
     let outh = open_out (bn^".hpp") and outc = open_out (bn^".cpp") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;
-
-(* REMOVE:
- * alternative main function used to compute some statistics *)
-(* let xlib bn pcs decs = *)
-(*   let b = Buffer.create 10000 in *)
-(*   let (is, es, ms) = dec_split decs in *)
-(*     bprintf b "%d instructions, %d encoding" (List.length is) (List.length es); *)
-(*     Array.iteri (fun i l -> bprintf b ", %d mode %d" (List.length l) (i+1)) ms; *)
-(*     bprintf b "\n%d decoding rules\n%d instructions or addressing modes\n" *)
-(*       (List.length decs) (List.length pcs); *)
-(*     let stats = Array.create 32 0 in *)
-(*     let poscontent (_, pcs) = *)
-(*       let bit i pc = match pc with *)
-(*         | Codetype.Shouldbe _ -> stats.(i) <- stats.(i) + 1 *)
-(*         | _ -> () *)
-(*       in Array.iteri bit pcs *)
-(*     in *)
-(*       List.iter poscontent is; *)
-(*       Array.iteri (fun i n -> bprintf b "bit %d is a \"Souldbe\" %d times.\n" i n) stats; *)
-(*       let out = open_out (bn^".txt") in *)
-(*         Buffer.output_buffer out b; close_out out;; *)

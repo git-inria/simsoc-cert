@@ -65,6 +65,8 @@ inline uint32_t asr(uint32_t x, uint32_t n) {
   return ((int32_t)x)>>n;
 }
 
+static uint32_t NOT(bool x) {return !x;}
+
 // from 24 to 30
 inline uint32_t SignExtend_30(uint32_t x) {return x&(1<<23) ? 0x7f000000|x : x;}
 
