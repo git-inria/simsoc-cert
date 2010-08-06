@@ -103,9 +103,9 @@ extern uint32_t SignedSat32_double(int32_t a);
 extern bool SignedDoesSat32_add(int32_t a, int32_t b);
 extern bool SignedDoesSat32_sub(int32_t a, int32_t b);
 extern bool SignedDoesSat32_double(int32_t a);
-extern uint32_t SignedSat(int64_t n, uint32_t n);
-extern uint32_t SignedDoesSat(int64_t n, uint32_t n);
-extern uint32_t UnsignedSat(int32_t n, uint32_t n);
-extern uint32_t UnsignedDoesSat(int32_t n, uint32_t n);
+extern uint32_t SignedSat(int64_t a, uint32_t b);
+extern uint32_t SignedDoesSat(int64_t a, uint32_t b);
+extern uint32_t UnsignedSat(int32_t a, uint32_t b);
+extern uint32_t UnsignedDoesSat(int32_t a, uint32_t b);
 
 #endif // ARM_MATH_H

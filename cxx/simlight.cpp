@@ -2,6 +2,7 @@
 #include "arm_processor.hpp"
 #include "common.hpp"
 #include <elf_loader.hpp>
+#include <string.h>
 
 using namespace std;
 
@@ -63,8 +64,8 @@ void simulate(Processor *proc, MyElfFile &elf) {
 void usage(const char *pname) {
   cout <<"Simple ARMv6 simulator.\n"
        <<"Usage: " <<pname <<" <options> <elf_file>\n"
-       <<"\t-d    turn of debugging information\n"
-       <<"\t-i    turn of normal information\n"
+       <<"\t-d    turn off debugging information\n"
+       <<"\t-i    turn off normal information\n"
        <<"\t-r0   display the content of r0 before exiting\n"
        <<"\t-r0=N exit with an error status if r0!=N at the end of simulation\n"
        <<"\t-dec  decode the .text section (turn off simulation)\n";

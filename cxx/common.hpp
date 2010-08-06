@@ -2,6 +2,8 @@
 #define COMMON_HPP
 
 #include <inttypes.h>
+#include <stdlib.h>
+
 #include <iostream> // FIXME: replace by stdio.h
 
 #define TODO(msg) do {                                                  \

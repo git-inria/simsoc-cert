@@ -27,8 +27,8 @@ type vconstraint =
   | NotLR of string    (* the string must contains the name of parameter *)
   | IsEven of string   (* parameter that should contain an even value *)
   | NotZero of string  (* parameter that should not be zero *)
-  | NoWritebackDest    (* write-back with Rd==Rn *)
-  | NotSame of string * string (* write-back with Rd==Rn *)
+  | NoWritebackDest    (* no write-back with Rd==Rn *)
+  | NotSame of string * string (* R<a> <> R<b> *)
   | NotLSL0            (* to distinguished between (equivalent?) mode cases *)
   | OtherVC of exp     (* Other validy constraints described by a boolean
                         * expression *)
