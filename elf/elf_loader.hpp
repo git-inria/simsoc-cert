@@ -36,7 +36,7 @@ public:
 
   bool is_elf32() const {return header.is_elf32();}
 
-  uint32_t get_start_address() const;
+  uint32_t get_initial_pc() const;
 
   uint32_t get_text_start() const;
 

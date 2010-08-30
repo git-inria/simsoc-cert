@@ -40,7 +40,7 @@ const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); // = B #-2*4
 void simulate(Processor *proc, MyElfFile &elf) {
   uint32_t inst_count = 0;
   uint32_t bincode;
-  const uint32_t entry = elf.get_start_address(); // FIXME: rename to get_initial_pc
+  const uint32_t entry = elf.get_initial_pc();
   INFO(<<"entry point: " <<hex <<entry <<'\n');
   set_pc(proc,entry);
   proc->jump = false;

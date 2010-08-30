@@ -52,6 +52,7 @@ struct Elf32_SectionHeader: public Elf32_Shdr {
   }
 
   const char *str_type(Elf32_Half machine) {
+    (void) machine; // hide warning
     switch (sh_type) {
     case SHT_NULL: return "NULL";
     case SHT_PROGBITS: return "PROGBITS";
@@ -189,7 +190,7 @@ bool ElfFile::is_big_endian() const {
   return header.is_big_endian();
 }
 
-uint32_t ElfFile::get_start_address() const {
+uint32_t ElfFile::get_initial_pc() const {
   if (!header.is_exec()) {
     error() <<file_name <<" is not an executable ELF file\n";
     exit(1);
