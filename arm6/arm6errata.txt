@@ -1,17 +1,18 @@
 
 BLX: "SignExtend" should be "SignExtend_30"
+To be consistent with B, BL
 
 BXJ: "AND" should be "and"
 
-CarryFrom8: undefined
+CarryFrom8: undefined (used in UADD8)
 
 CLZ: missing "if ConditionPassed(cond) then" ?
 
-LDR: "&" should be "AND"
+LDR (3) Thumb : "&" should be "AND"
 
 LDRD: "memory" should be "Memory"
 
-LDRB, LDRBT: missing ZeroExtend
+(LDRB, LDRBT: missing ZeroExtend)
 
 NumberOfSetBitsIn in Glossary: should be Number_Of_Set_Bits_In
 
@@ -23,7 +24,7 @@ SSAT16, USAT16: "OR" should be "or"
 
 LDM (1): "pc" should be "PC"
 
-ZeroExtend: undefined
+ZeroExtend: undefined (used in LDRH, USAD8, USADA8)
 
 SWP and SWPB: 'address' in pseudocode should be 'Rn'
 
