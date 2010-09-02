@@ -41,25 +41,32 @@ Record state : Type := mk_state {
 Definition CP15_reg1 (s : state) : word := reg s (mk_regnum 1).
 
 Definition high_vectors_configured (s : state) : bool :=
-  is_set Vbit (CP15_reg1 s). 
+  is_set Vbit (CP15_reg1 s).
 
-Definition read_bits (n : size) (w : word) :=
+(* FIXME: the code below simulates little endian memory *)
+Definition first_bit (a: word) :=
+  nat_of_Z (unsigned (mul (repr 8) (bits 1 0 a))).
+
+
+Definition read_bits (n : size) (a w : word) :=
   match n with
     | Word => w
-    | Half => set_bits 31 16 w0 w (*IMPROVE: use a shift instead*)
-    | Byte => set_bits 31 8 w0 w
+    | Half => let f := first_bit a in bits (f+15) f w
+    | Byte => let f := first_bit a in bits (f+7) f w
   end.
 
-Definition read (s : state) (a : address) (n : size) : word :=
-  read_bits n (mem s a).
+Definition read (s : state) (a : word) (n : size) : word :=
+  read_bits n a (mem s (address_of_word a)).
 
-Definition write_bits (n : size) (v w : word) :=
+(* a: address; v: new value; v: old value *)
+Definition write_bits (n : size) (a v w : word) :=
   match n with
     | Word => v
-    | Half => set_bits 15 0 v w
-    | Byte => set_bits 7 0 v w
+    | Half => let f := first_bit a in set_bits (f+15) f (shl v f) w
+    | Byte => let f := first_bit a in set_bits (f+7) f (shl v f) w
   end.
 
-Definition write (s : state) (a : address) (n : size) (v : word) : state :=
+Definition write (s : state) (a : word) (n : size) (v : word) : state :=
+  let aa := address_of_word a in
   mk_state (reg s)
-  (update_map Address.eq_dec (mem s) a (write_bits n v (mem s a))).
+  (update_map Address.eq_dec (mem s) aa (write_bits n a v (mem s aa))).

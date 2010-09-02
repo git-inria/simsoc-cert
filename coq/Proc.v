@@ -41,6 +41,9 @@ Definition set_cpsr (s : state) (w : word) : state :=
     | None => mk_state w (spsr s) (reg s) (exns s) (mode s) (*FIXME?*)
   end.
 
+Definition set_cpsr_bit (s : state) (n : nat) (w : word) : state :=
+  set_cpsr s (set_bit n w (cpsr s)).
+
 Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
   mk_state (cpsr s)
   (update_map opt_exn_mode_eqdec (spsr s) o w)

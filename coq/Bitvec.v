@@ -208,11 +208,11 @@ Module Address := Make(Wordsize_30).
 Notation address := Address.int.
 Notation mk_address := Address.repr.
 
-Coercion Address.intval : address >-> Z.
+(*REMOVE: Coercion Address.intval : address >-> Z. *)
 
 (*IMPROVE*)
-Definition word_of_address (x : address) : word := repr x.
-Coercion word_of_address : address >-> word.
+Definition word_of_address (x : address) : word := repr (Address.intval x).
+(*REMOVE: Coercion word_of_address : address >-> word. *)
 
 (*REMOVE:Definition address_eqdec := @bitvec_eqdec address_size.*)
 

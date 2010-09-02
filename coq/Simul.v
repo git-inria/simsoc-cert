@@ -93,7 +93,7 @@ Module Make (Import I : INST).
       | Some Jazelle => SimKo s JazelleInstructionSetNotImplemented
       | Some Thumb => SimKo s ThumbInstructionSetNotImplemented
       | Some ARM =>
-        let a := address_of_word (address_of_current_instruction s) in
+        let a := address_of_current_instruction s in
         let w := read s a Word in
           match decode w with
             | DecError m => SimKo s m

@@ -32,6 +32,9 @@ Definition cpsr (s : state) : word := cpsr (proc s).
 Definition set_cpsr (s : state) (w : word) : state :=
   mk_state (set_cpsr (proc s) w) (scc s).
 
+Definition set_cpsr_bit (s : state) (n : nat) (w : word) : state :=
+  mk_state (set_cpsr_bit (proc s) n w) (scc s).
+
 Definition spsr (s : state) (o : option exn_mode) : word := spsr (proc s) o.
 
 Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
@@ -78,10 +81,10 @@ Definition CP15_reg1 (s : state) : word := CP15_reg1 (scc s).
 Definition high_vectors_configured (s : state) : bool :=
   high_vectors_configured (scc s).
 
-Definition read (s : state) (a : address) (n : size) : word :=
+Definition read (s : state) (a : word) (n : size) : word :=
   read (scc s) a n.
 
-Definition write (s : state) (a : address) (n : size) (w : word) : state :=
+Definition write (s : state) (a : word) (n : size) (w : word) : state :=
   mk_state (proc s) (write (scc s) a n w).
 
 (****************************************************************************)

@@ -51,7 +51,7 @@ int main(int argc, const char *argv[]) {
   elf_file.load_sections();
   ofs <<"    | _ => 0\n"
       <<"  end.\n"
-      <<"Definition initial_mem (a : address) : word := repr (initial_mem_aux a).\n";
+      <<"Definition initial_mem (a : address) : word := repr (initial_mem_aux (Address.intval a)).\n";
 
   ofs <<
     "\n"

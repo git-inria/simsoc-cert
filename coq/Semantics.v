@@ -77,8 +77,11 @@ Definition loop (p q : nat) (f : nat -> semfun) (b0 : bool) (s0 : state)
 (** Semantic functions for the processor *)
 (****************************************************************************)
 
-Definition set_cpsr (v : word) (b : bool) (s: state) : result := 
+Definition set_cpsr (v : word) (b : bool) (s: state) : result :=
   Ok b (set_cpsr s v).
+
+Definition set_cpsr_bit (n : nat) (v : word) (b : bool) (s: state) : result :=
+  Ok b (set_cpsr_bit s n v).
 
 Definition set_spsr (m : option exn_mode) (v : word) (b : bool) (s : state) :
   result := Ok b (set_spsr s m v).
@@ -93,7 +96,7 @@ Definition set_reg_mode (m : proc_mode) (k : regnum) (v : word)
 (** Semantic functions for the SCC and the memory *)
 (****************************************************************************)
 
-Definition write (a : address) (n : size) (w : word) (b : bool) (s : state) :
+Definition write (a : word) (n : size) (w : word) (b : bool) (s : state) :
   result := Ok b (write s a n w).
 
 Definition MarkExclusiveGlobal (addr : word) (pid : nat) (size : nat)

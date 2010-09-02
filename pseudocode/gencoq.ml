@@ -213,7 +213,7 @@ and regnum_exp b = function
 
 (* convert an expression into an address using the Coq function
    mk_address *)
-and address b e = bprintf b "(mk_address %a)" pexp e
+(*REMOVE: and address b e = bprintf b "(mk_address %a)" pexp e *)
 
 (* convert an expression into a Coq natural number using the Coq
    function nat_of_Z *)
@@ -259,7 +259,7 @@ and exp b = function
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | CPSR -> string b "cpsr s0"
   | Range (e, r) -> bprintf b "%a[%a]" pexp e range r
-  | Memory (e, n) -> bprintf b "read s0 %a %a" address e size n
+  | Memory (e, n) -> bprintf b "read s0 %a %a" pexp e size n
 
   | SPSR None -> string b "spsr s0 None"
   | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" exn_mode m
@@ -364,7 +364,7 @@ and set b = function
   | CPSR -> bprintf b "set_cpsr"
   | SPSR None -> bprintf b "set_spsr None"
   | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
-  | Memory (e, n) -> bprintf b "write %a %a" address e size n
+  | Memory (e, n) -> bprintf b "write %a %a" pexp e size n
   | _ -> raise Not_found;;
 
 (*****************************************************************************)
