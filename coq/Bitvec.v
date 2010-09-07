@@ -52,6 +52,8 @@ Definition word_of_bool (b : bool) : word := if b then w1 else w0.
 
 Coercion word_of_bool : bool >-> word.
 
+Definition bool_of_word (w: word) : bool := zne w 0.
+
 (* mask made of the bits n to n+k *)
 Fixpoint masks_aux (n k : nat) : Z :=
   match k with

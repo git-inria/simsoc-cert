@@ -111,6 +111,8 @@ let rec to_signed e = match e with
 (** Generate the code corresponding to an expression *)
 
 let func = function
+  | "not" -> "!"
+  | "NOT" -> "~"
   | "GE" -> "get_GE"
   | s -> s;;
 
@@ -200,9 +202,6 @@ let rec exp p b = function
     then bprintf b "(to_64(%a) * to_64(%a))" (exp p) (to_signed e1) (exp p) (to_signed e2)
     else bprintf b "(to_64(%a) * to_64(%a))" (exp p) e1 (exp p) e2
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" (exp p) e1 (binop op) (exp p) e2
-  | Fun ("NOT", [(Var s) as e]) ->
-      if List.assoc s (p.xgs@p.xls) = "uint32_t"
-      then bprintf b "~%s" s else bprintf b "NOT(%a)" (exp p) e
   | Fun (f, es) -> bprintf b "%s(%s%a)"
       (func f) (implicit_arg f) (list ", " (exp p)) es
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"

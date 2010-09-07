@@ -234,6 +234,10 @@ and exp b = function
      need to be applied explicitly *)
   | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" exp e
 
+  (* Add a conversion from word to bool *)
+  | Fun ("not", [Range _ as e]) ->
+      bprintf b "%a %a" fun_name "not" pexp (Fun ("bool_of_word", [e]))
+
   (* system coprocessor register bits *)
   | Fun (f, _) when is_cp15_reg1 f ->
       bprintf b "(CP15_reg1 s0)[%s]" (String.sub f 10 (String.length f - 10))
