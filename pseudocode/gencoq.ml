@@ -494,9 +494,12 @@ let call bcall_inst bcall_mode p gs =
 	  | Some k ->
 	      bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
 	      bprintf b
-		"\n      match mode%d_step s0 m_ with (r%a) =>\n        "
+		"\n      match mode%d_step s0 m_ with (r%a) =>\n"
 		k (list "" mode_var) (mode_vars k);
-	      bprintf b " %a_step s0%a end\n" name p args gs
+              bprintf b "        match r with\n";
+              bprintf b "          | Ok _ s1 =>";
+	      bprintf b " %a_step s1%a\n" name p args gs;
+              bprintf b "          | _ => r\n        end\n      end\n"
 	end
     | Mode k -> let b = bcall_mode.(k-1) in
 	bprintf b "    | %a%a =>" name p args gs;
