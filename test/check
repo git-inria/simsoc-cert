@@ -4,6 +4,8 @@ set -e # exit on error
 set -x # verbose
 
 $SIMLIGHT sum_iterative.elf -r0=903
+$SIMLIGHT sum_recursive.elf -r0=903
+$SIMLIGHT sum_direct.elf -r0=903
 $SIMLIGHT arm_blx2.elf -r0=0x3
 $SIMLIGHT arm_cflag.elf -r0=0xf
 $SIMLIGHT arm_dpi.elf -r0=0x7ffff
@@ -20,4 +22,4 @@ $SIMLIGHT multiply.elf -r0=0xf
 $SIMLIGHT simsoc_new1.elf -r0=0xff
 $SIMLIGHT test_mem.elf -r0=0x3
 $SIMLIGHT sorting.elf -r0=0x3f
-$SIMLIGHT crypto_short.elf -r0=0x7f
+# $SIMLIGHT crypto_short.elf -r0=0x7f

@@ -1,6 +1,6 @@
-FILES := sum_iterative arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd \
- arm_ldmstm arm_ldrstr arm_mrs arm_msr arm_multiple arm_swi endian multiply \
- simsoc_new1 test_mem sorting crypto_short
+FILES := sum_iterative sum_recursive sum_direct arm_blx2 arm_cflag arm_dpi \
+ arm_edsp arm_ldrd_strd arm_ldmstm arm_ldrstr arm_mrs arm_msr arm_multiple \
+ arm_swi endian multiply simsoc_new1 test_mem sorting # crypto_short
 
 .PRECIOUS: $(FILES:%=%.elf) $(FILES:%=%.v) $(FILES:%=%.ml)
 
