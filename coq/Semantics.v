@@ -71,7 +71,7 @@ Fixpoint loop_aux (p k : nat) (f : nat -> semfun) (b0 : bool) (s0 : state)
   end.
 
 Definition loop (p q : nat) (f : nat -> semfun) (b0 : bool) (s0 : state)
-  : result := loop_aux p (q - p) f b0 s0.
+  : result := loop_aux p (q - p + 1) f b0 s0.
 
 (****************************************************************************)
 (** Semantic functions for the processor *)
