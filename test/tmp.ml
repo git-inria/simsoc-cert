@@ -43,6 +43,12 @@ let compute_state n =
       | SimOk s -> s
       | _ -> raise SimKO;;
 
+let next_state s =
+  let _, r = S.simul s (nat 1) in
+    match r with
+      | SimOk s' -> s'
+      | _ -> raise SimKO;;
+
 let rec positive_to_int = function
   | Coq_xH -> 1
   | Coq_xO p -> 2*(positive_to_int p)
@@ -65,3 +71,12 @@ let rec read_words s a n =
 (* current instruction *)
 let instr s =
   Arm6dec.decode (read s (address_of_current_instruction s) Word);;
+
+(* display the stack *)
+let stack s =
+  let stack_top = 0xff000 in (* value given in common.h*)
+  let sp = get_reg s 13 in
+    if (sp>stack_top) then raise SimKO
+    else read_words s sp ((stack_top-sp)/4);;
+
+let fp=11 and sp=13 and lr=14 and pc=15;;
