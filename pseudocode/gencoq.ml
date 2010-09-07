@@ -354,6 +354,8 @@ and affect b v = function
   (* an affectation of a variable is converted into a Coq "let" *)
   | Var s -> bprintf b "let %s := %a in" s exp v
   (* otherwise, we use some Coq update function *)
+  (* affectation of a CPSR bit requires a special case *)
+  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s pexp v
   | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp v pexp e
   | e -> bprintf b "%a %a" set e pexp v
 
