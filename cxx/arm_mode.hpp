@@ -6,7 +6,7 @@
 #ifndef ARM_MODE_H
 #define ARM_MODE_H
 
-#include "common.hpp"
+#include "common.h"
 
 typedef enum {fiq, irq, svc, abt, und, sys, usr} Mode;
 

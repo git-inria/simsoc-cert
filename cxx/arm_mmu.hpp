@@ -6,7 +6,7 @@
 #ifndef ARM_MMU_H
 #define ARM_MMU_H
 
-#include "common.hpp"
+#include "common.h"
 
 struct MMU {
   uint32_t begin;

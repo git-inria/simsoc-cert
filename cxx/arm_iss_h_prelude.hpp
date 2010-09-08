@@ -3,14 +3,14 @@
 
 // ISS for ARM processors implementing ARM architecture version 6.
 
-// This file is used by the generated file "arm_iss.hpp"
+// This file is used by the generated file "arm_iss.h"
 
 #ifndef ARM_ISS_H_PRELUDE_H
 #define ARM_ISS_H_PRELUDE_H
 
-#include "common.hpp"
-#include "arm_mode.hpp"
-#include "arm_condition.hpp"
+#include "common.h"
+#include "arm_mode.h"
+#include "arm_condition.h"
 
 struct Processor;
 

@@ -6,8 +6,8 @@
 #ifndef ARM_STATUS_REGISTER_H
 #define ARM_STATUS_REGISTER_H
 
-#include "arm_mode.hpp"
-#include "common.hpp"
+#include "arm_mode.h"
+#include "common.h"
 
 struct StatusRegister {
   bool N_flag; // bit 31

@@ -8,7 +8,7 @@
 
    Page numbers refer to ARMv6.pdf.
 
-   C++ code generator for simulation (see directory ../cxx)
+   C code generator for simulation (see directory ../cxx)
 *)
 
 open Ast;;
@@ -27,7 +27,7 @@ let hex_of_bin = function
   | "0b10011" -> "svc"
   | _ -> "TODO_hex_of_bin";;
 
-(** C++ types of usual variables *)
+(** C types of usual variables *)
 
 let type_of_var = function
 
@@ -105,7 +105,7 @@ let mode_outputs: ((string * string) list) array = Array.create 5 [];;
 
 (** Add a cast to a signed type *)
 let rec to_signed e = match e with
-  | Fun ("to_64", [e']) -> Fun ("to_64", [to_signed e'])
+  | Fun ("to_u64", [e']) -> Fun ("to_u64", [to_signed e'])
   | e' -> Fun ("to_signed", [e']);;
 
 (** Generate the code corresponding to an expression *)
@@ -188,6 +188,10 @@ let is_pointer p s = match p.xprog.pkind with
   | Inst -> false
   | Mode n -> List.mem s (List.map fst (mode_outputs.(n-1)));;
 
+let typeof x v =
+  try List.assoc v x.xgs
+  with Not_found -> List.assoc v x.xls;;
+
 let rec exp p b = function
   | Bin s -> string b (hex_of_bin s)
   | Hex s | Num s -> string b s
@@ -195,13 +199,19 @@ let rec exp p b = function
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
       (exp p) b (Fun (binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
-      bprintf b "(to_64(%a) << 32)" (exp p) e
+      bprintf b "(to_u64(%a) << 32)" (exp p) e
   | BinOp (e, ("<"|">=" as op), Num "0") ->
       bprintf b "(%a %s 0)" (exp p) (to_signed e) op
   | BinOp (e1, "*", e2) -> if p.xid.[0] = 'S'
-    then bprintf b "(to_64(%a) * to_64(%a))" (exp p) (to_signed e1) (exp p) (to_signed e2)
-    else bprintf b "(to_64(%a) * to_64(%a))" (exp p) e1 (exp p) e2
+    then bprintf b "(to_i64(%a) * to_i64(%a))" (exp p) e1 (exp p) e2
+    else bprintf b "(to_u64(%a) * to_u64(%a))" (exp p) e1 (exp p) e2
   | BinOp (e1, op, e2) -> bprintf b "(%a %s %a)" (exp p) e1 (binop op) (exp p) e2
+
+  (* try to find the right conversion operator *)
+  | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
+      bprintf b "to_int32(%s)" v
+  | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
+
   | Fun (f, es) -> bprintf b "%s(%s%a)"
       (func f) (implicit_arg f) (list ", " (exp p)) es
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
@@ -344,7 +354,7 @@ let arg_sep l l' = match l, l' with _::_, _::_ -> ",\n    " | _ -> "";;
 
 let print_first b (s, _) = string b s;;
 
-(* Defintion of the functions. This should be printed in a source file (.cpp) *)
+(* Defintion of the functions. This should be printed in a source file (.c) *)
 let prog b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
@@ -367,7 +377,7 @@ let prog b p =
               (list "" local_decl) ls'
               (inst p 2) p.xprog.pinst;;
 
-(* Declaration of the functions. This should be printed in a header file (.hpp) *)
+(* Declaration of the functions. This should be printed in a header file (.h) *)
 let decl b p =
   match p.xprog.pkind with
     | Inst  ->
@@ -588,16 +598,16 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* create buffers for header file (bh) and source file (bc) *)
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
     (* generate the header file *)
-    bprintf bh "#ifndef ARM_ISS_HPP\n#define ARM_ISS_HPP\n\n";
-    bprintf bh "#include \"arm_iss_h_prelude.hpp\"\n\n";
+    bprintf bh "#ifndef ARM_ISS_H\n#define ARM_ISS_H\n\n";
+    bprintf bh "#include \"arm_iss_h_prelude.h\"\n\n";
     bprintf bh "%a" (list "\n" decl) xs;
     Array.iteri (decl_try bh) mode_outputs;
     bprintf bh "\nextern bool decode_and_exec(Processor*, uint32_t bincode);\n";
-    bprintf bh "\n#endif // ARM_ISS_HPP\n";
+    bprintf bh "\n#endif // ARM_ISS_H\n";
     (* generate the source file *)
-    bprintf bc "#include \"%s.hpp\"\n#include \"arm_iss_c_prelude.hpp\"\n\n%a\n%a%a"
+    bprintf bc "#include \"%s.h\"\n#include \"arm_iss_c_prelude.h\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;
     (* write buffers to files *)
-    let outh = open_out (bn^".hpp") and outc = open_out (bn^".cpp") in
+    let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;

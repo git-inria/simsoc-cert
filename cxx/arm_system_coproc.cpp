@@ -3,7 +3,7 @@
 
 // The System Control Coprocessor (CP15)
 
-#include "arm_system_coproc.hpp"
+#include "arm_system_coproc.h"
 
 void init_CP15(SystemCoproc *cp15) {
   cp15->ee_bit = false;

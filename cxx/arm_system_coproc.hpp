@@ -6,7 +6,7 @@
 #ifndef ARM_SYSTEM_COPROC_H
 #define ARM_SYSTEM_COPROC_H
 
-#include "common.hpp"
+#include "common.h"
 
 struct SystemCoproc {
   bool ee_bit;

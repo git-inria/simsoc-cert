@@ -1,7 +1,7 @@
-#include "arm_iss.hpp"
-#include "arm_processor.hpp"
-#include "common.hpp"
-#include <elf_loader.hpp>
+#include "arm_iss.h"
+#include "arm_processor.h"
+#include "common.h"
+#include "elf_loader.h"
 #include <string.h>
 
 using namespace std;

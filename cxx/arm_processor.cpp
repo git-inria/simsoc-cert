@@ -3,7 +3,7 @@
 
 // The main class
 
-#include "arm_processor.hpp"
+#include "arm_processor.h"
 
 void init_Processor(Processor *proc) {
   init_MMU(&proc->mmu,4,0x100000);

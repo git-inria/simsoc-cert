@@ -3,7 +3,7 @@
 
 // Status registers (such as CPSR)
 
-#include "arm_status_register.hpp"
+#include "arm_status_register.h"
 
 uint32_t StatusRegister_to_uint32(StatusRegister *sr) {
   uint32_t x = sr->background & UnallocMask();

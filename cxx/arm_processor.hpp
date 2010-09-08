@@ -3,11 +3,11 @@
 
 // The main class
 
-#include "common.hpp"
-#include "arm_mmu.hpp"
-#include "arm_mode.hpp"
-#include "arm_status_register.hpp"
-#include "arm_system_coproc.hpp"
+#include "common.h"
+#include "arm_mmu.h"
+#include "arm_mode.h"
+#include "arm_status_register.h"
+#include "arm_system_coproc.h"
 #include <assert.h>
 
 struct Processor {

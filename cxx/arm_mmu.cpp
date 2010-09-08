@@ -3,7 +3,7 @@
 
 // Interface between the ISS and the memory(/MMU)
 
-#include "arm_mmu.hpp"
+#include "arm_mmu.h"
 #include <string.h>
 #include <assert.h>
 

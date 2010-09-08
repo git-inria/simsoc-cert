@@ -3,7 +3,7 @@
 
 // The modes of an ARM processor
 
-#include "arm_mode.hpp"
+#include "arm_mode.h"
 
 bool decode_mode(Mode *mode, uint32_t x) {
   switch (x&0x1f) {

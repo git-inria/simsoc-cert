@@ -6,7 +6,7 @@
 #ifndef ARM_CONDITION_H
 #define ARM_CONDITION_H
 
-#include "common.hpp"
+#include "common.h"
 
 typedef enum{EQ, NE, CS_HS, CC_LO, MI, PL, VS, VC,
              HI, LS, GE, LT, GT, LE, AL} Condition;

@@ -6,7 +6,7 @@
 #ifndef ARM_NOT_IMPLEMENTED_H
 #define ARM_NOT_IMPLEMENTED_H
 
-#include "common.hpp"
+#include "common.h"
 
 // no MMU
 inline uint32_t TLB(uint32_t virtual_address) {return virtual_address;}

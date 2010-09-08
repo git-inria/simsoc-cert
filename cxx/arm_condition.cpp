@@ -3,8 +3,8 @@
 
 // The condition field
 
-#include "arm_condition.hpp"
-#include "arm_status_register.hpp"
+#include "arm_condition.h"
+#include "arm_status_register.h"
 #include "assert.h"
 
 const char *condition2string(Condition cond) {
