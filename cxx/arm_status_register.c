@@ -1,11 +1,11 @@
-// SimSoC-Cert, a library on processor architectures for embedded systems.
-// See the COPYRIGHTS and LICENSE files.
+/* SimSoC-Cert, a library on processor architectures for embedded systems. */
+/* See the COPYRIGHTS and LICENSE files. */
 
-// Status registers (such as CPSR)
+/* Status registers (such as CPSR) */
 
 #include "arm_status_register.h"
 
-uint32_t StatusRegister_to_uint32(StatusRegister *sr) {
+uint32_t StatusRegister_to_uint32(struct StatusRegister *sr) {
   uint32_t x = sr->background & UnallocMask();
   if (sr->N_flag) x |= 1<<31;
   if (sr->Z_flag) x |= 1<<30;
@@ -26,7 +26,7 @@ uint32_t StatusRegister_to_uint32(StatusRegister *sr) {
   return x;
 }
 
-void set_StatusRegister(StatusRegister *sr, uint32_t x) {
+void set_StatusRegister(struct StatusRegister *sr, uint32_t x) {
   sr->background = x & UnallocMask();
   sr->N_flag = x&(1<<31);
   sr->Z_flag = x&(1<<30);

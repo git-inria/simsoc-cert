@@ -34,8 +34,8 @@ void test_decode(Processor *proc, MyElfFile &elf) {
   }
 }
 
-// we stop the simulation when we recognize this instruction
-const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); // = B #-2*4
+/* we stop the simulation when we recognize this instruction */
+const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); /* = B #-2*4 */
 
 void simulate(Processor *proc, MyElfFile &elf) {
   uint32_t inst_count = 0;

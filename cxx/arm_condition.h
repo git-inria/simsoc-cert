@@ -1,7 +1,7 @@
-// SimSoC-Cert, a library on processor architectures for embedded systems.
-// See the COPYRIGHTS and LICENSE files.
+/* SimSoC-Cert, a library on processor architectures for embedded systems. */
+/* See the COPYRIGHTS and LICENSE files. */
 
-// The condition field
+/* The condition field */
 
 #ifndef ARM_CONDITION_H
 #define ARM_CONDITION_H
@@ -14,6 +14,6 @@ typedef enum{EQ, NE, CS_HS, CC_LO, MI, PL, VS, VC,
 extern const char *condition2string(Condition);
 
 struct StatusRegister;
-extern bool ConditionPassed(StatusRegister*, Condition);
+extern bool ConditionPassed(struct StatusRegister*, Condition);
 
-#endif // ARM_CONDITION_H
+#endif /* ARM_CONDITION_H */

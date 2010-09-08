@@ -1,7 +1,7 @@
-// SimSoC-Cert, a library on processor architectures for embedded systems.
-// See the COPYRIGHTS and LICENSE files.
+/* SimSoC-Cert, a library on processor architectures for embedded systems. */
+/* See the COPYRIGHTS and LICENSE files. */
 
-// The modes of an ARM processor
+/* The modes of an ARM processor */
 
 #include "arm_mode.h"
 

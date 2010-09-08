@@ -52,7 +52,6 @@ struct Elf32_SectionHeader: public Elf32_Shdr {
   }
 
   const char *str_type(Elf32_Half machine) {
-    (void) machine; // hide warning
     switch (sh_type) {
     case SHT_NULL: return "NULL";
     case SHT_PROGBITS: return "PROGBITS";

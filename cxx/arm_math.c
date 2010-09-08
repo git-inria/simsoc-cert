@@ -1,13 +1,14 @@
-// SimSoC-Cert, a library on processor architectures for embedded systems.
-// See the COPYRIGHTS and LICENSE files.
+/* SimSoC-Cert, a library on processor architectures for embedded systems. */
+/* See the COPYRIGHTS and LICENSE files. */
 
-// Arithmetic and logic functions.
+/* Arithmetic and logic functions. */
 
 #include "arm_math.h"
 #include "assert.h"
 
 uint32_t bit_position_of_most_significant_1(uint32_t x) {
-  for (int32_t n=31; n>=0; --n)
+  int32_t n;
+  for (n = 31; n>=0; --n)
     if (x&(1<<n))
       return n;
   assert(false && "x is zero");

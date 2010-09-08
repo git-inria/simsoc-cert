@@ -1,7 +1,7 @@
-// SimSoC-Cert, a library on processor architectures for embedded systems.
-// See the COPYRIGHTS and LICENSE files.
+/* SimSoC-Cert, a library on processor architectures for embedded systems. */
+/* See the COPYRIGHTS and LICENSE files. */
 
-// The condition field
+/* The condition field */
 
 #include "arm_condition.h"
 #include "arm_status_register.h"
@@ -28,7 +28,7 @@ const char *condition2string(Condition cond) {
   abort();
 }
 
-bool ConditionPassed(StatusRegister *sr, Condition cond) {
+bool ConditionPassed(struct StatusRegister *sr, Condition cond) {
   switch (cond) {
   case EQ: return sr->Z_flag;
   case NE: return !sr->Z_flag;

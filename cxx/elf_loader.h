@@ -52,4 +52,4 @@ protected:
   Elf32_Header header;
 };
 
-#endif //ELF_LOADER_HPP
+#endif /* ELF_LOADER_HPP */

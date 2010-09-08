@@ -1,5 +1,5 @@
 CPPFLAGS=-I../elf # for elf.h
-CFLAGS=-Wall -Wextra -Wno-unused -g
+CFLAGS=-Wall -Wextra -Wno-unused -Werror -g
 CC = gcc
 
 SOURCES=arm_iss.c common.c arm_condition.c arm_math.c \
