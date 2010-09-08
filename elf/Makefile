@@ -10,4 +10,4 @@ bin2elf.o: bin2elf.cpp elf.h
 elf_loader.o: elf_loader.cpp elf_loader.hpp elf.h
 
 clean:
-	rm -f *.o
+	rm -f *.o bin2elf
