@@ -4,6 +4,7 @@
 /* Status registers (such as CPSR) */
 
 #include "arm_status_register.h"
+#include "arm_math.h"
 
 uint32_t StatusRegister_to_uint32(struct StatusRegister *sr) {
   uint32_t x = sr->background & UnallocMask();
@@ -28,21 +29,21 @@ uint32_t StatusRegister_to_uint32(struct StatusRegister *sr) {
 
 void set_StatusRegister(struct StatusRegister *sr, uint32_t x) {
   sr->background = x & UnallocMask();
-  sr->N_flag = x&(1<<31);
-  sr->Z_flag = x&(1<<30);
-  sr->C_flag = x&(1<<29);
-  sr->V_flag = x&(1<<28);
-  sr->Q_flag = x&(1<<27);
-  sr->J_flag = x&(1<<24);
-  sr->GE0 = x&(1<<16);
-  sr->GE1 = x&(1<<17);
-  sr->GE2 = x&(1<<18);
-  sr->GE3 = x&(1<<19);
-  sr->A_flag = x&(1<<9);
-  sr->E_flag = x&(1<<8);
-  sr->I_flag = x&(1<<7);
-  sr->F_flag = x&(1<<6);
-  sr->T_flag = x&(1<<5);
+  sr->N_flag = get_bit(x,31);
+  sr->Z_flag = get_bit(x,30);
+  sr->C_flag = get_bit(x,29);
+  sr->V_flag = get_bit(x,28);
+  sr->Q_flag = get_bit(x,27);
+  sr->J_flag = get_bit(x,24);
+  sr->GE0 = get_bit(x,16);
+  sr->GE1 = get_bit(x,17);
+  sr->GE2 = get_bit(x,18);
+  sr->GE3 = get_bit(x,19);
+  sr->A_flag = get_bit(x,9);
+  sr->E_flag = get_bit(x,8);
+  sr->I_flag = get_bit(x,7);
+  sr->F_flag = get_bit(x,6);
+  sr->T_flag = get_bit(x,5);
   bool ok = decode_mode(&sr->mode,x);
   if (!ok) ERROR("invalid mode");
 }

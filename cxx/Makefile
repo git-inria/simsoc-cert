@@ -7,7 +7,7 @@ SOURCES=arm_iss.c common.c arm_condition.c arm_math.c \
  arm_system_coproc.c elf_loader.c
 HEADERS=$(SOURCES:%.c=%.h) arm_iss_h_prelude.h arm_iss_c_prelude.h \
  arm_not_implemented.h
-OBJECTS=$(SOURCES:%.c=%.o) simlight.o ../elf/elf_loader.o
+OBJECTS=$(SOURCES:%.c=%.o) simlight.o
 
 all: simlight
 
@@ -34,6 +34,6 @@ clean:
 
 simlight.opt: FORCE
 	g++ simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 \
-            -I../elf ../elf/elf_loader.o -o $@
+            -I../elf -o $@
 
 FORCE:

@@ -32,12 +32,12 @@ struct StatusRegister {
 extern uint32_t StatusRegister_to_uint32(struct StatusRegister*);
 extern void set_StatusRegister(struct StatusRegister*, uint32_t);
 
-inline void set_GE_32(struct StatusRegister *sr, uint8_t n) {sr->GE2 = n&1; sr->GE3 = n>>1;}
-inline void set_GE_10(struct StatusRegister *sr, uint8_t n) {sr->GE0 = n&1; sr->GE1 = n>>1;}
+static inline void set_GE_32(struct StatusRegister *sr, uint8_t n) {sr->GE2 = n&1; sr->GE3 = n>>1;}
+static inline void set_GE_10(struct StatusRegister *sr, uint8_t n) {sr->GE0 = n&1; sr->GE1 = n>>1;}
 
-inline uint32_t UnallocMask() {return 0x06F0FC00;}
-inline uint32_t UserMask()    {return 0xF80F0200;}
-inline uint32_t PrivMask()    {return 0x000001DF;}
-inline uint32_t StateMask()   {return 0x01000020;}
+static inline uint32_t UnallocMask() {return 0x06F0FC00;}
+static inline uint32_t UserMask()    {return 0xF80F0200;}
+static inline uint32_t PrivMask()    {return 0x000001DF;}
+static inline uint32_t StateMask()   {return 0x01000020;}
 
 #endif /* ARM_STATUS_REGISTER_H */

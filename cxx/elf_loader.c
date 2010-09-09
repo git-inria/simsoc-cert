@@ -1,101 +1,92 @@
 #include "elf_loader.h"
-#include <iostream>
-#include <cassert>
-#include <cstring>
-#include <cstdlib>
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
 
-using namespace std;
-
-struct NullStream: std::ostream
-{
-  NullStream(): std::ios(0), std::ostream(0) {}
-};
-NullStream null_stream;
-
-ostream &debug() {return null_stream;}
-ostream &info() {return null_stream;}
-ostream &warning() {return cout;}
-ostream &error() {return cout;}
-#define HERE '[' <<__FILE__ <<':' <<std::dec <<__LINE__ <<"] "
 #define UNREACHABLE assert(false && "this line should be unreachable");
 
-struct Elf32_SectionHeader: public Elf32_Shdr {
-
+struct Elf32_SectionHeader {
+  Elf32_Shdr shdr;
   const char *name;
-
-  void unencode() {
-    assert(false && "big endian is not supported");
-#if 0
-    sh_name = bswap_32(sh_name);
-    sh_type = bswap_32(sh_type);
-    sh_flags = bswap_32(sh_flags);
-    sh_addr = bswap_32(sh_addr);
-    sh_offset = bswap_32(sh_offset);
-    sh_size = bswap_32(sh_size);
-    sh_link = bswap_32(sh_link);
-    sh_info = bswap_32(sh_info);
-    sh_addralign = bswap_32(sh_addralign);
-    sh_entsize = bswap_32(sh_entsize);
-#endif
-  }
-
-  size_t start() const {
-    return sh_addr;
-  }
-
-  size_t size() const {
-    return sh_size;
-  }
-
-  size_t file_offset() const {
-    return sh_offset;
-  }
-
-  const char *str_type(Elf32_Half machine) {
-    switch (sh_type) {
-    case SHT_NULL: return "NULL";
-    case SHT_PROGBITS: return "PROGBITS";
-    case SHT_SYMTAB: return "SYMTAB";
-    case SHT_STRTAB: return "STRTAB";
-    case SHT_NOBITS: return "NOBITS";
-    default:
-      debug() <<HERE <<"sh_type = " <<hex <<sh_type <<endl;
-      return "other";
-    }
-  }
-
-  bool is_load() const {
-    return (sh_flags&SHF_ALLOC) && sh_type==SHT_PROGBITS;
-  }
 };
 
-Elf32_Header::Elf32_Header():
-  sections(), strings(NULL), text(NULL) {}
-
-Elf32_Header::~Elf32_Header() {
-  for (size_t i = 0; i<sections.size(); ++i)
-    delete sections[i];
-  delete[] strings;
+static void esh_unencode(struct Elf32_SectionHeader *esh) {
+  assert(false && "big endian is not supported");
+#if 0
+  sh_name = bswap_32(sh_name);
+  sh_type = bswap_32(sh_type);
+  sh_flags = bswap_32(sh_flags);
+  sh_addr = bswap_32(sh_addr);
+  sh_offset = bswap_32(sh_offset);
+  sh_size = bswap_32(sh_size);
+  sh_link = bswap_32(sh_link);
+  sh_info = bswap_32(sh_info);
+  sh_addralign = bswap_32(sh_addralign);
+  sh_entsize = bswap_32(sh_entsize);
+#endif
 }
 
-bool Elf32_Header::is_elf() const {
+static size_t esh_start(const struct Elf32_SectionHeader *esh) {
+  return esh->shdr.sh_addr;
+}
+
+static size_t esh_size(const struct Elf32_SectionHeader *esh) {
+  return esh->shdr.sh_size;
+}
+
+static size_t esh_file_offset(const struct Elf32_SectionHeader *esh) {
+  return esh->shdr.sh_offset;
+}
+
+static const char *esh_str_type(const struct Elf32_SectionHeader *esh,
+                                Elf32_Half machine) {
+  switch (esh->shdr.sh_type) {
+  case SHT_NULL: return "NULL";
+  case SHT_PROGBITS: return "PROGBITS";
+  case SHT_SYMTAB: return "SYMTAB";
+  case SHT_STRTAB: return "STRTAB";
+  case SHT_NOBITS: return "NOBITS";
+  default:
+    return "other";
+  }
+}
+
+static bool esh_is_load(const struct Elf32_SectionHeader *esh) {
+  return (esh->shdr.sh_flags&SHF_ALLOC) && esh->shdr.sh_type==SHT_PROGBITS;
+}
+
+void eh_init_Elf32_Header(struct Elf32_Header *eh) {
+  eh->sections_size = 0;
+  eh->strings = NULL;
+  eh->text = NULL;
+}
+
+void eh_destruct_Elf32_Header(struct Elf32_Header *eh) {
+  int i;
+  for (i = 0; i<eh->sections_size; ++i) {
+    free(eh->sections[i]);
+  }
+  free(eh->strings);
+}
+
+bool eh_is_elf(const struct Elf32_Header *eh) {
   return
-    e_ident[EI_MAG0]==ELFMAG0 &&
-    e_ident[EI_MAG1]==ELFMAG1 &&
-    e_ident[EI_MAG2]==ELFMAG2 &&
-    e_ident[EI_MAG3]==ELFMAG3;
+    eh->ehdr.e_ident[EI_MAG0]==ELFMAG0 &&
+    eh->ehdr.e_ident[EI_MAG1]==ELFMAG1 &&
+    eh->ehdr.e_ident[EI_MAG2]==ELFMAG2 &&
+    eh->ehdr.e_ident[EI_MAG3]==ELFMAG3;
 }
 
-bool Elf32_Header::is_elf32() const {
-  return e_ident[EI_CLASS]==ELFCLASS32;
+bool eh_is_elf32(const struct Elf32_Header *eh) {
+  return eh->ehdr.e_ident[EI_CLASS]==ELFCLASS32;
 }
 
-bool Elf32_Header::is_big_endian() const {
-  return e_ident[EI_DATA]==ELFDATA2MSB;
+bool eh_is_big_endian(const struct Elf32_Header *eh) {
+  return eh->ehdr.e_ident[EI_DATA]==ELFDATA2MSB;
 }
 
-void Elf32_Header::unencode() {
-  if (!is_big_endian())
+void eh_unencode(struct Elf32_Header *eh) {
+  if (!eh_is_big_endian(eh))
     return;
   assert(false && "big endian is not supported");
 #if 0
@@ -115,114 +106,131 @@ void Elf32_Header::unencode() {
 #endif
 }
 
-bool Elf32_Header::is_exec() const {
-  return e_type==ET_EXEC;
+bool eh_is_exec(const struct Elf32_Header *eh) {
+  return eh->ehdr.e_type==ET_EXEC;
 }
 
-void Elf32_Header::load_sections(ifstream &ifs) {
-  if (e_shentsize!=sizeof(Elf32_Shdr))
+void eh_load_sections(struct Elf32_Header *eh, FILE *ifs) {
+  int error;
+  size_t i;
+  size_t count;
+  if (eh->ehdr.e_shentsize!=sizeof(Elf32_Shdr))
     UNREACHABLE;
-  ifs.seekg(e_shoff);
-  if (!ifs)
+  error = fseek(ifs,eh->ehdr.e_shoff,SEEK_SET);
+  if (error)
     UNREACHABLE;
-  for (size_t i = 0; i<e_shnum; ++i) {
-    sections.push_back(new Elf32_SectionHeader());
-    ifs.read((char*) sections[i], sizeof(Elf32_Shdr));
-    if (!ifs)
+  for (i = 0; i<eh->ehdr.e_shnum; ++i) {
+    assert(eh->sections_size<SECTIONS_MAX_SIZE &&
+           "please increase the constant given in the header file");
+    ++eh->sections_size;
+    eh->sections[i] =
+      (struct Elf32_SectionHeader*) malloc(sizeof(struct Elf32_SectionHeader));
+    count = fread((void*) &eh->sections[i]->shdr, 1, sizeof(Elf32_Shdr), ifs);
+    if (count!=sizeof(Elf32_Shdr))
       UNREACHABLE;
-    if (is_big_endian())
-      sections[i]->unencode();
+    if (eh_is_big_endian(eh))
+      esh_unencode(eh->sections[i]);
   }
-  if (e_shstrndx>=sections.size())
+  if (eh->ehdr.e_shstrndx>=eh->sections_size)
     UNREACHABLE;
-  strings = new char[sections[e_shstrndx]->size()];
-  ifs.seekg(sections[e_shstrndx]->file_offset());
-  if (!ifs)
+  eh->strings = (char*) calloc(esh_size(eh->sections[eh->ehdr.e_shstrndx]),1);
+  error = fseek(ifs,esh_file_offset(eh->sections[eh->ehdr.e_shstrndx]),SEEK_SET);
+  if (error)
     UNREACHABLE;
-  ifs.read(strings,sections[e_shstrndx]->size());
-  if (!ifs)
+  count = fread((void*) eh->strings, 1,
+                esh_size(eh->sections[eh->ehdr.e_shstrndx]),
+                ifs);
+  if (count!=esh_size(eh->sections[eh->ehdr.e_shstrndx]))
     UNREACHABLE;
-  for (size_t i = 0; i<e_shnum; ++i) {
-    sections[i]->name = strings+sections[i]->sh_name;
-    debug() <<HERE <<"section " <<dec <<i <<": " <<sections[i]->name
-           <<'\t' <<sections[i]->str_type(e_machine)
-           <<(sections[i]->is_load()? " (load)": "")
-           <<endl;
-    if (!strcmp(".text",sections[i]->name))
-      text = sections[i];
+  for (i = 0; i<eh->ehdr.e_shnum; ++i) {
+    eh->sections[i]->name = eh->strings+eh->sections[i]->shdr.sh_name;
+/*     debug() <<HERE <<"section " <<dec <<i <<": " <<sections[i]->name */
+/*            <<'\t' <<sections[i]->str_type(e_machine) */
+/*            <<(sections[i]->is_load()? " (load)": "") */
+/*            <<endl; */
+    if (!strcmp(".text",eh->sections[i]->name))
+      eh->text = eh->sections[i];
   }
-  assert(text && "no \"text\" section found");
+  assert(eh->text && "no \"text\" section found");
 }
 
 /******************************************************************************/
-ElfFile::ElfFile(const char *elf_file):
-  file_name(elf_file),
-  ifs(file_name,ios::in|ios::binary)
-{
-  if (!ifs) {
-    error() <<"failed to open file " <<file_name <<endl;
+void ef_init_ElfFile(struct ElfFile *ef, const char *elf_file) {
+  size_t count;
+  eh_init_Elf32_Header(&ef->header);
+  ef->file_name = elf_file;
+  ef->ifs = fopen(ef->file_name,"rb");
+  if (!ef->ifs) {
+    fprintf(stderr,"failed to open file \"%s\"\n",ef->file_name);
     exit(1);
   }
-  ifs.read((char*) &header, sizeof(Elf32_Ehdr));
-  if (!ifs)
+  count = fread((void*) &ef->header.ehdr, 1, sizeof(Elf32_Ehdr), ef->ifs);
+  if (count!=sizeof(Elf32_Ehdr))
     UNREACHABLE;
-  if (!header.is_elf()) {
-    error() <<file_name <<" is not an ELF file\n";
+  if (!eh_is_elf(&ef->header)) {
+    fprintf(stderr,"\"%s\" is not an ELF file\n",ef->file_name);
     exit(1);
   }
-  assert(header.is_elf32() && "64-bits ELF not implemented");
-  if (is_big_endian())
-    header.unencode();
-  header.load_sections(ifs);
+  assert(eh_is_elf32(&ef->header) && "64-bits ELF not implemented");
+  if (ef_is_big_endian(ef))
+    eh_unencode(&ef->header);
+  eh_load_sections(&ef->header,ef->ifs);
 }
 
-ElfFile::~ElfFile() {
-  ifs.close();
-  debug() <<"destructor called" <<endl;
+void ef_destruct_ElfFile(struct ElfFile *ef) {
+  fclose(ef->ifs);
 }
 
-bool ElfFile::is_ARM() const {
-  return header.e_machine==EM_ARM;
+bool ef_is_ARM(const struct ElfFile *ef) {
+  return ef->header.ehdr.e_machine==EM_ARM;
 }
 
-bool ElfFile::is_big_endian() const {
-  return header.is_big_endian();
+bool ef_is_big_endian(const struct ElfFile *ef) {
+  return eh_is_big_endian(&ef->header);
 }
 
-uint32_t ElfFile::get_initial_pc() const {
-  if (!header.is_exec()) {
-    error() <<file_name <<" is not an executable ELF file\n";
+bool ef_is_elf32(const struct ElfFile *ef) {
+  return eh_is_elf32(&ef->header);
+}
+
+uint32_t ef_get_initial_pc(const struct ElfFile *ef) {
+  if (!eh_is_exec(&ef->header)) {
+    fprintf(stderr,"\"%s\" is not an executable ELF file\n",ef->file_name);
     exit(1);
   }
-  return header.e_entry;
+  return ef->header.ehdr.e_entry;
 }
 
-uint32_t ElfFile::get_text_start() const {
-  return header.text->sh_addr;
+uint32_t ef_get_text_start(const struct ElfFile *ef) {
+  return ef->header.text->shdr.sh_addr;
 }
 
-uint32_t ElfFile::get_text_size() const {
-  return header.text->size();
+uint32_t ef_get_text_size(const struct ElfFile *ef) {
+  return esh_size(ef->header.text);
 }
 
-void ElfFile::load_sections() {
-  for (size_t i = 0; i<header.sections.size(); ++i) {
-    if (header.sections[i]->is_load()) {
-      uint32_t mem_start = header.sections[i]->start();
-      uint32_t mem_size = header.sections[i]->size();
+void ef_load_sections(struct ElfFile *ef) {
+  int error;
+  size_t count;
+  int i;
+  for (i = 0; i<ef->header.sections_size; ++i) {
+    if (esh_is_load(ef->header.sections[i])) {
+      uint32_t mem_start = esh_start(ef->header.sections[i]);
+      uint32_t mem_size = esh_size(ef->header.sections[i]);
       uint32_t mem_end = mem_start+mem_size;
-      assert((mem_start&3)==0 && (mem_size&3)==0 && "section not aligned on word boundaries");
-      ifs.seekg(header.sections[i]->file_offset());
-      if (!ifs)
+      assert((mem_start&3)==0 && (mem_size&3)==0 &&
+             "section not aligned on word boundaries");
+      error = fseek(ef->ifs,esh_file_offset(ef->header.sections[i]),SEEK_SET);
+      if (error)
         UNREACHABLE;
-      info() <<hex <<"write from " <<mem_start <<" to "
-             <<mem_end <<endl;
-      char * tmp = new char[mem_size];
-      ifs.read(tmp, mem_size);
-      if (!ifs)
+/*       info() <<hex <<"write from " <<mem_start <<" to " */
+/*              <<mem_end <<endl; */
+      char * tmp = (char*) calloc(mem_size,1);
+      count = fread((void*) tmp, 1, mem_size, ef->ifs);
+      if (count!=mem_size)
         UNREACHABLE;
-      write_to_memory(tmp,mem_start,mem_size);
-      delete[] tmp;
+      elf_write_to_memory(tmp,mem_start,mem_size);
+      free(tmp);
     }
   }
 }

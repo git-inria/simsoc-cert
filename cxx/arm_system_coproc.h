@@ -16,9 +16,9 @@ struct SystemCoproc {
 
 extern void init_CP15(struct SystemCoproc*);
 
-inline bool CP15_reg1_EEbit(struct SystemCoproc *cp15) {return cp15->ee_bit;}
-inline bool CP15_reg1_Ubit(struct SystemCoproc *cp15) {return cp15->u_bit;}
-inline bool CP15_reg1_Vbit(struct SystemCoproc *cp15) {return cp15->v_bit;}
+static inline bool CP15_reg1_EEbit(struct SystemCoproc *cp15) {return cp15->ee_bit;}
+static inline bool CP15_reg1_Ubit(struct SystemCoproc *cp15) {return cp15->u_bit;}
+static inline bool CP15_reg1_Vbit(struct SystemCoproc *cp15) {return cp15->v_bit;}
 
 extern void dependent_operation_CP15(struct SystemCoproc*);
 extern void load_CP15(struct SystemCoproc*, uint32_t);

@@ -34,38 +34,38 @@ extern void destruct_Processor(struct Processor*);
 
 extern uint32_t *addr_of_reg_m(struct Processor*, uint8_t reg_id, Mode);
 
-inline uint32_t reg_m(struct Processor *proc, uint8_t reg_id, Mode m) {
+static inline uint32_t reg_m(struct Processor *proc, uint8_t reg_id, Mode m) {
   return *addr_of_reg_m(proc,reg_id,m);
 }
 
-inline void set_reg_m(struct Processor *proc, uint8_t reg_id, Mode m, uint32_t data) {
+static inline void set_reg_m(struct Processor *proc, uint8_t reg_id, Mode m, uint32_t data) {
   *addr_of_reg_m(proc,reg_id,m) = data;
 }
 
-inline uint32_t *addr_of_reg(struct Processor *proc, uint8_t reg_id) {
+static inline uint32_t *addr_of_reg(struct Processor *proc, uint8_t reg_id) {
   return addr_of_reg_m(proc,reg_id,proc->cpsr.mode);
 }
 
-inline uint32_t reg(struct Processor *proc, uint8_t reg_id) {
+static inline uint32_t reg(struct Processor *proc, uint8_t reg_id) {
   return reg_m(proc,reg_id,proc->cpsr.mode);
 }
 
-inline void set_reg(struct Processor *proc, uint8_t reg_id, uint32_t data) {
+static inline void set_reg(struct Processor *proc, uint8_t reg_id, uint32_t data) {
   assert(reg_id!=15);
   return set_reg_m(proc,reg_id,proc->cpsr.mode,data);
 }
 
-inline uint32_t inst_size(struct Processor *proc) {
+static inline uint32_t inst_size(struct Processor *proc) {
   return proc->cpsr.T_flag ? 2 : 4;
 }
 
-inline void set_pc_raw(struct Processor *proc, uint32_t new_pc) {
+static inline void set_pc_raw(struct Processor *proc, uint32_t new_pc) {
   /* never set thumb/arm32 mode */
   assert(!(new_pc&(inst_size(proc)-1)) && "pc misaligned");
   proc->jump = true; *proc->pc = new_pc + 2*inst_size(proc);
 }
 
-inline void set_reg_or_pc(struct Processor *proc, uint8_t reg_id, uint32_t data) {
+static inline void set_reg_or_pc(struct Processor *proc, uint8_t reg_id, uint32_t data) {
   if (reg_id==15)
     set_pc_raw(proc,data);
   else
@@ -73,34 +73,34 @@ inline void set_reg_or_pc(struct Processor *proc, uint8_t reg_id, uint32_t data)
 }
 
 
-inline void set_pc(struct Processor *proc, uint32_t new_pc) {
+static inline void set_pc(struct Processor *proc, uint32_t new_pc) {
   /* may set thumb/arm32 mode */
   proc->cpsr.T_flag = new_pc&1;
   set_pc_raw(proc, new_pc&~1);
 }
 
-inline bool InAPrivilegedMode(struct Processor *proc) {return proc->cpsr.mode!=usr;}
-inline bool CurrentModeHasSPSR(struct Processor *proc) {return proc->cpsr.mode<sys;}
+static inline bool InAPrivilegedMode(struct Processor *proc) {return proc->cpsr.mode!=usr;}
+static inline bool CurrentModeHasSPSR(struct Processor *proc) {return proc->cpsr.mode<sys;}
 
-inline struct StatusRegister *spsr_m(struct Processor *proc, Mode m) {
+static inline struct StatusRegister *spsr_m(struct Processor *proc, Mode m) {
   if (m<sys) return &proc->spsrs[m];
   else ERROR("This mode does not have a SPSR");
 }
 
-inline struct StatusRegister *spsr(struct Processor *proc) {
+static inline struct StatusRegister *spsr(struct Processor *proc) {
   if (CurrentModeHasSPSR(proc)) return &proc->spsrs[proc->cpsr.mode];
   else ERROR("Current mode does not have a SPSR");
 }
 
-inline uint32_t address_of_next_instruction(struct Processor *proc) {
+static inline uint32_t address_of_next_instruction(struct Processor *proc) {
   return *proc->pc - inst_size(proc);
 }
 
-inline uint32_t address_of_current_instruction(struct Processor *proc) {
+static inline uint32_t address_of_current_instruction(struct Processor *proc) {
   return *proc->pc - 2*inst_size(proc);
 }
 
-inline bool high_vectors_configured(struct Processor *proc) {
+static inline bool high_vectors_configured(struct Processor *proc) {
   return CP15_reg1_Vbit(&proc->cp15);
 }
 
