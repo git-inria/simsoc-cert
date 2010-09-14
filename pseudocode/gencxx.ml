@@ -270,7 +270,7 @@ and inst_aux p k b = function
         counter counter num min counter num max counter (inst p (k+2)) i
 
   | Case (e, s) ->
-      bprintf b "switch (%a) {\n%a%a  default: abort();\n}"
+      bprintf b "switch (%a) {\n%a%a  default: abort();\n  }"
         (exp p) e (list "" (case_aux p k)) s indent k
 
   | If (e, (Block _|If _ as i), None) ->
