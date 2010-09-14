@@ -7,7 +7,6 @@
 #define ARM_MATH_H
 
 #include "common.h"
-#include "assert.h"
 
 extern uint32_t bit_position_of_most_significant_1(uint32_t x);
 extern uint32_t Number_Of_Set_Bits_In(uint32_t x);

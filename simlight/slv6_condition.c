@@ -3,11 +3,10 @@
 
 /* The condition field */
 
-#include "arm_condition.h"
-#include "arm_status_register.h"
-#include "assert.h"
+#include "slv6_condition.h"
+#include "slv6_status_register.h"
 
-const char *condition2string(Condition cond) {
+const char *condition2string(SLv6_Condition cond) {
   switch (cond) {
   case EQ: return "EQ";
   case NE: return "NE";
@@ -28,7 +27,7 @@ const char *condition2string(Condition cond) {
   abort();
 }
 
-bool ConditionPassed(struct StatusRegister *sr, Condition cond) {
+bool ConditionPassed(struct SLv6_StatusRegister *sr, SLv6_Condition cond) {
   switch (cond) {
   case EQ: return sr->Z_flag;
   case NE: return !sr->Z_flag;

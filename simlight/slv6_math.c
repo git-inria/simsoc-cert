@@ -3,8 +3,7 @@
 
 /* Arithmetic and logic functions. */
 
-#include "arm_math.h"
-#include "assert.h"
+#include "slv6_math.h"
 
 uint32_t bit_position_of_most_significant_1(uint32_t x) {
   int32_t n;

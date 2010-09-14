@@ -3,9 +3,9 @@
 
 /* The modes of an ARM processor */
 
-#include "arm_mode.h"
+#include "slv6_mode.h"
 
-bool decode_mode(Mode *mode, uint32_t x) {
+bool decode_mode(SLv6_Mode *mode, uint32_t x) {
   switch (x&0x1f) {
   case 0x11: *mode = fiq; return true;
   case 0x12: *mode = irq; return true;
@@ -18,7 +18,7 @@ bool decode_mode(Mode *mode, uint32_t x) {
   }
 }
 
-uint32_t encode_mode(Mode mode) {
+uint32_t encode_mode(SLv6_Mode mode) {
   switch (mode) {
   case fiq: return 0x11;
   case irq: return 0x12;
@@ -31,7 +31,7 @@ uint32_t encode_mode(Mode mode) {
   abort();
 }
 
-const char *mode2string(Mode mode) {
+const char *mode2string(SLv6_Mode mode) {
   switch (mode) {
   case fiq: return "fiq";
   case irq: return "irq";

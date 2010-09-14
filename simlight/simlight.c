@@ -1,11 +1,11 @@
-#include "arm_iss.h"
-#include "arm_processor.h"
+#include "slv6_iss.h"
+#include "slv6_processor.h"
 #include "common.h"
 #include "elf_loader.h"
 #include <string.h>
 
 /* function used by the ELF loader */
-static struct MMU *mmu = NULL;
+static struct SLv6_MMU *mmu = NULL;
 void elf_write_to_memory(const char *data, size_t start, size_t size) {
   assert(mmu);
   uint32_t j;
@@ -13,7 +13,7 @@ void elf_write_to_memory(const char *data, size_t start, size_t size) {
     write_byte(mmu,start+j,data[j]);
 }
 
-void test_decode(struct Processor *proc, struct ElfFile *elf) {
+void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
   uint32_t a = ef_get_text_start(elf);
   const uint32_t ea = a + ef_get_text_size(elf);
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
@@ -31,7 +31,7 @@ void test_decode(struct Processor *proc, struct ElfFile *elf) {
 /* we stop the simulation when we recognize this instruction */
 const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); /* = B #-2*4 */
 
-void simulate(struct Processor *proc, struct ElfFile *elf) {
+void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
   uint32_t inst_count = 0;
   uint32_t bincode;
   const uint32_t entry = ef_get_initial_pc(elf);
@@ -105,7 +105,7 @@ int main(int argc, const char *argv[]) {
     usage(argv[0]);
     return (argc>1);
   }
-  struct Processor proc;
+  struct SLv6_Processor proc;
   init_Processor(&proc);
   mmu = &proc.mmu;
   struct ElfFile elf;

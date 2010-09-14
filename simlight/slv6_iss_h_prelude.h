@@ -5,13 +5,13 @@
 
 /* This file is used by the generated file "arm_iss.h" */
 
-#ifndef ARM_ISS_H_PRELUDE_H
-#define ARM_ISS_H_PRELUDE_H
+#ifndef SLV6_ISS_H_PRELUDE_H
+#define SLV6_ISS_H_PRELUDE_H
 
 #include "common.h"
-#include "arm_mode.h"
-#include "arm_condition.h"
+#include "slv6_mode.h"
+#include "slv6_condition.h"
 
-struct Processor;
+struct SLv6_Processor;
 
-#endif /* ARM_ISS_H_PRELUDE_H */
+#endif /* SLV6_ISS_H_PRELUDE_H */

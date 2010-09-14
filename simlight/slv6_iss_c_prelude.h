@@ -8,10 +8,9 @@
 #ifndef ARM_ISS_C_PRELUDE_H
 #define ARM_ISS_C_PRELUDE_H
 
-#include "arm_processor.h"
-#include "arm_math.h"
+#include "slv6_processor.h"
+#include "slv6_math.h"
 #include "arm_not_implemented.h"
-#include <assert.h>
 
 /* constants */
 static const uint8_t PC = 15;

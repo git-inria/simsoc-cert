@@ -1,5 +1,5 @@
 #!/bin/bash
-SIMLIGHT="../cxx/simlight -d -i"
+SIMLIGHT="../simlight/simlight -d -i"
 set -e # exit on error
 set -x # verbose
 

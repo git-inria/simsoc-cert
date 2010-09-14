@@ -3,12 +3,12 @@
 
 /* The main class */
 
-#include "arm_processor.h"
+#include "slv6_processor.h"
 
-void init_Processor(struct Processor *proc) {
+void init_Processor(struct SLv6_Processor *proc) {
   init_MMU(&proc->mmu,4,0x100000);
   set_StatusRegister(&proc->cpsr,0x1df); /* = 0b111011111 = A+I+F+System */
-  struct StatusRegister *sr = proc->spsrs, *sr_end = proc->spsrs+5;
+  struct SLv6_StatusRegister *sr = proc->spsrs, *sr_end = proc->spsrs+5;
   for (; sr!=sr_end; ++sr)
     set_StatusRegister(sr,0x1f);
   init_CP15(&proc->cp15);
@@ -25,11 +25,11 @@ void init_Processor(struct Processor *proc) {
   proc->jump = false;
 }
 
-void destruct_Processor(struct Processor *proc) {
+void destruct_Processor(struct SLv6_Processor *proc) {
   destruct_MMU(&proc->mmu);
 }
 
-uint32_t *addr_of_reg_m(struct Processor *proc, uint8_t reg_id, Mode m) {
+uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m) {
   switch (m) {
   case fiq:
     return (8<=reg_id && reg_id<=14) ?
@@ -51,39 +51,4 @@ uint32_t *addr_of_reg_m(struct Processor *proc, uint8_t reg_id, Mode m) {
     return &proc->user_regs[reg_id];
   }
   abort();
-}
-
-void dependent_operation(struct Processor *proc, uint8_t n) {
-  if (n==15) dependent_operation_CP15(&proc->cp15);
-  else TODO("undefined instruction");
-}
-
-void load(struct Processor *proc, uint8_t n, uint32_t x) {
-  if (n==15) load_CP15(&proc->cp15,x);
-  else TODO("undefined instruction");
-}
-
-void send(struct Processor *proc, uint8_t n, uint32_t x) {
-  if (n==15) send_CP15(&proc->cp15,x);
-  else TODO("undefined instruction");
-}
-
-bool NotFinished(struct Processor *proc, uint8_t n) {
-  if (n==15) return NotFinished_CP15(&proc->cp15);
-  else TODO("undefined instruction");
-}
-
-uint32_t first_value(struct Processor *proc, uint8_t n) {
-  if (n==15) return first_value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
-}
-
-uint32_t second_value(struct Processor *proc, uint8_t n) {
-  if (n==15) return second_value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
-}
-
-uint32_t value(struct Processor *proc, uint8_t n) {
-  if (n==15) return value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
 }

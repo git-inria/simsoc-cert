@@ -1,9 +1,10 @@
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#ifndef COMMON_H
+#define COMMON_H
 
 #include <inttypes.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #define TODO(msg) do {                                                  \
     printf("TODO: " msg " (" __FILE__ ":%d)\n",__LINE__);               \
@@ -31,4 +32,4 @@ extern bool sl_exec;
 #define INFO(X) if (sl_info) {X;}
 #define EXEC(X) if (sl_exec) {X;}
 
-#endif /* COMMON_HPP */
+#endif /* COMMON_H */

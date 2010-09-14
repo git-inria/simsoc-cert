@@ -7,6 +7,7 @@
 #define ARM_NOT_IMPLEMENTED_H
 
 #include "common.h"
+#include "slv6_processor.h"
 
 /* no MMU */
 static inline uint32_t TLB(uint32_t virtual_address) {return virtual_address;}
@@ -32,5 +33,14 @@ static inline bool IMPLEMENTATION_DEFINED_CONDITION() {return false;}
 
 /* for BKPT */
 static inline bool not_overridden_by_debug_hardware() {return true;}
+
+/* for coprocessors */
+extern void dependent_operation(struct SLv6_Processor *proc, uint8_t n);
+extern void load(struct SLv6_Processor *proc, uint8_t n, uint32_t x);
+extern void send(struct SLv6_Processor *proc, uint8_t n, uint32_t x);
+extern bool NotFinished(struct SLv6_Processor *proc, uint8_t n);
+extern uint32_t first_value(struct SLv6_Processor *proc, uint8_t n);
+extern uint32_t second_value(struct SLv6_Processor *proc, uint8_t n);
+extern uint32_t value(struct SLv6_Processor *proc, uint8_t n);
 
 #endif /* ARM_NOT_IMPLEMENTED_H */

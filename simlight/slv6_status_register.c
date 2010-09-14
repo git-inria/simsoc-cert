@@ -3,10 +3,10 @@
 
 /* Status registers (such as CPSR) */
 
-#include "arm_status_register.h"
-#include "arm_math.h"
+#include "slv6_status_register.h"
+#include "slv6_math.h"
 
-uint32_t StatusRegister_to_uint32(struct StatusRegister *sr) {
+uint32_t StatusRegister_to_uint32(struct SLv6_StatusRegister *sr) {
   uint32_t x = sr->background & UnallocMask();
   if (sr->N_flag) x |= 1<<31;
   if (sr->Z_flag) x |= 1<<30;
@@ -27,7 +27,7 @@ uint32_t StatusRegister_to_uint32(struct StatusRegister *sr) {
   return x;
 }
 
-void set_StatusRegister(struct StatusRegister *sr, uint32_t x) {
+void set_StatusRegister(struct SLv6_StatusRegister *sr, uint32_t x) {
   sr->background = x & UnallocMask();
   sr->N_flag = get_bit(x,31);
   sr->Z_flag = get_bit(x,30);

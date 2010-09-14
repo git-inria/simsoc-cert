@@ -38,8 +38,8 @@ let type_of_var = function
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
   | "immedH" | "immedL" | "offset_8" | "shift" -> "uint8_t"
 
-  | "cond" -> "Condition"
-  | "mode" -> "Mode"
+  | "cond" -> "SLv6_Condition"
+  | "mode" -> "SLv6_Mode"
   | "accvalue" | "result" -> "uint64_t"
   | "processor_id" -> "size_t"
   | _ -> "uint32_t";;
@@ -359,7 +359,7 @@ let prog b p =
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
     match p.xprog.pkind with
       | Inst ->
-          bprintf b "%avoid %s(struct Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
+          bprintf b "%avoid %s(struct SLv6_Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
             p.xid
             (list "" prog_arg) p.xgs
             (list "" inreg_load) inregs
@@ -368,7 +368,7 @@ let prog b p =
       | Mode m ->
           let os = mode_outputs.(m-1)
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) p.xls in
-            bprintf b "%avoid %s(struct Processor *proc%a%a)\n{\n%a%a%a\n}\n" comment p
+            bprintf b "%avoid %s(struct SLv6_Processor *proc%a%a)\n{\n%a%a%a\n}\n" comment p
               p.xid
               (list "" prog_arg) p.xgs
               (list "" prog_out) os
@@ -380,7 +380,7 @@ let prog b p =
 let decl b p =
   match p.xprog.pkind with
     | Inst  ->
-	bprintf b "%aextern void %s(struct Processor*%a);\nextern bool try_%s(struct Processor*, uint32_t bincode);\n"
+	bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
           comment p p.xid
           (list "" prog_arg) p.xgs p.xid
     | Mode m ->
@@ -390,11 +390,11 @@ let decl b p =
               mode_outputs.(m-1) <- os');
           mode_outputs.(m-1)
         in
-          bprintf b "%aextern void %s(struct Processor*%a%a);\n" comment p
+          bprintf b "%aextern void %s(struct SLv6_Processor*%a%a);\n" comment p
             p.xid
             (list "" prog_arg) p.xgs
             (list "" prog_out) os;
-          bprintf b "extern bool try_%s(struct Processor*, uint32_t bincode%a);\n"
+          bprintf b "extern bool try_%s(struct SLv6_Processor*, uint32_t bincode%a);\n"
             p.xid (list "" prog_out) os;;
 
 (* For some LSM instructions, the operand has side effects that must be executed
@@ -478,12 +478,12 @@ let dec_param p buf (s, a, b) =
             (* special case for cond, because decoding of this field can fail *)
             bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
             bprintf buf "  if (cond_tmp>14) return false;\n";
-            bprintf buf "  const Condition cond =\n";
-            bprintf buf "    ((Condition) cond_tmp);\n"
+            bprintf buf "  const SLv6_Condition cond =\n";
+            bprintf buf "    ((SLv6_Condition) cond_tmp);\n"
           ) else if (s, a, b) = ("mode", 4, 0) then (
             (* special case for mode, because decoding of this field can fail *)
             bprintf buf "  const uint32_t mode_tmp = get_bits(bincode,4,0);\n";
-            bprintf buf "  Mode mode;\n";
+            bprintf buf "  SLv6_Mode mode;\n";
             bprintf buf
               "  if (!decode_mode(&mode,bincode)) return false;\n"
           ) else
@@ -519,7 +519,7 @@ let dec_inst b is =
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
-    bprintf b "bool try_%s(struct Processor *proc, uint32_t bincode) {\n" p.xid;
+    bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n" p.xid;
     (* extract parameters *)
     bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
     (* check validity *)
@@ -540,7 +540,7 @@ let dec_inst b is =
     bprintf b "  return true;\n}\n"
   in
   let is' = List.rev is in
-    bprintf b "bool decode_and_exec(struct Processor *proc, uint32_t bincode) {\n";
+    bprintf b "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode) {\n";
     bprintf b "  bool found = false;\n";
     bprintf b "%a" (list "" instA) is';
     bprintf b "  return found;\n}\n\n%a"
@@ -548,7 +548,7 @@ let dec_inst b is =
 
 (* declare the try_Mx methods *)
 let decl_try b m os =
-  bprintf b "\nextern bool try_M%d(struct Processor*, uint32_t bincode%a);\n"
+  bprintf b "\nextern bool try_M%d(struct SLv6_Processor*, uint32_t bincode%a);\n"
     (m+1) (list "" prog_out) os;;
 
 (* generate the decoder - modes *)
@@ -561,7 +561,7 @@ let dec_modes b ms =
       bprintf b "    assert(!found); found = true;\n  }\n"
   in (* Phase B: extract parameters and check validity *)
   let modeB os b p =
-    bprintf b "bool try_%s(struct Processor *proc, uint32_t bincode%a) {\n"
+    bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode%a) {\n"
       p.xid (list "" prog_out) os;
     (* extract parameters *)
     bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
@@ -577,7 +577,7 @@ let dec_modes b ms =
   let dec_mode b i ms =
     let ms' = List.rev ms in
     let os = mode_outputs.(i) in
-      bprintf b "\nbool try_M%d(struct Processor *proc, uint32_t bincode%a) {\n"
+      bprintf b "\nbool try_M%d(struct SLv6_Processor *proc, uint32_t bincode%a) {\n"
         (i+1) (list "" prog_out) os;
       bprintf b "  bool found = false;\n%a"
         (list "" (modeA os)) ms';
@@ -598,13 +598,13 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
     (* generate the header file *)
     bprintf bh "#ifndef ARM_ISS_H\n#define ARM_ISS_H\n\n";
-    bprintf bh "#include \"arm_iss_h_prelude.h\"\n\n";
+    bprintf bh "#include \"slv6_iss_h_prelude.h\"\n\n";
     bprintf bh "%a" (list "\n" decl) xs;
     Array.iteri (decl_try bh) mode_outputs;
-    bprintf bh "\nextern bool decode_and_exec(struct Processor*, uint32_t bincode);\n";
+    bprintf bh "\nextern bool decode_and_exec(struct SLv6_Processor*, uint32_t bincode);\n";
     bprintf bh "\n#endif /* ARM_ISS_H */\n";
     (* generate the source file *)
-    bprintf bc "#include \"%s.h\"\n#include \"arm_iss_c_prelude.h\"\n\n%a\n%a%a"
+    bprintf bc "#include \"%s.h\"\n#include \"slv6_iss_c_prelude.h\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;
     (* write buffers to files *)
     let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
