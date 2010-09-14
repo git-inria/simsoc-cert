@@ -8,6 +8,8 @@
 
 #include "common.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 extern uint32_t bit_position_of_most_significant_1(uint32_t x);
 extern uint32_t Number_Of_Set_Bits_In(uint32_t x);
 
@@ -106,5 +108,7 @@ extern uint32_t SignedSat(int64_t a, uint32_t b);
 extern uint32_t SignedDoesSat(int64_t a, uint32_t b);
 extern uint32_t UnsignedSat(int32_t a, uint32_t b);
 extern uint32_t UnsignedDoesSat(int32_t a, uint32_t b);
+
+END_SIMSOC_NAMESPACE
 
 #endif /* ARM_MATH_H */

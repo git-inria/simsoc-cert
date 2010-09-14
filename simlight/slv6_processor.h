@@ -12,8 +12,10 @@
 #include "slv6_status_register.h"
 #include "arm_system_coproc.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 struct SLv6_Processor {
-  struct SLv6_MMU mmu;
+  struct SLv6_MMU *mmu_ptr;
   struct SLv6_StatusRegister cpsr;
   struct SLv6_StatusRegister spsrs[5];
   struct SLv6_SystemCoproc cp15;
@@ -30,7 +32,7 @@ struct SLv6_Processor {
   bool jump;
 };
 
-extern void init_Processor(struct SLv6_Processor*);
+extern void init_Processor(struct SLv6_Processor*, struct SLv6_MMU*);
 
 extern void destruct_Processor(struct SLv6_Processor*);
 
@@ -87,11 +89,13 @@ static inline bool CurrentModeHasSPSR(struct SLv6_Processor *proc) {return proc-
 static inline struct SLv6_StatusRegister *spsr_m(struct SLv6_Processor *proc, SLv6_Mode m) {
   if (m<sys) return &proc->spsrs[m];
   else ERROR("This mode does not have a SPSR");
+  abort(); // unreachable
 }
 
 static inline struct SLv6_StatusRegister *spsr(struct SLv6_Processor *proc) {
   if (CurrentModeHasSPSR(proc)) return &proc->spsrs[proc->cpsr.mode];
   else ERROR("Current mode does not have a SPSR");
+  abort(); // unreachable
 }
 
 static inline uint32_t address_of_next_instruction(struct SLv6_Processor *proc) {
@@ -105,5 +109,7 @@ static inline uint32_t address_of_current_instruction(struct SLv6_Processor *pro
 static inline bool high_vectors_configured(struct SLv6_Processor *proc) {
   return CP15_reg1_Vbit(&proc->cp15);
 }
+
+END_SIMSOC_NAMESPACE
 
 #endif /* SLV6_PROCESSOR_H */

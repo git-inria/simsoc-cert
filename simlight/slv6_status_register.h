@@ -9,6 +9,8 @@
 #include "slv6_mode.h"
 #include "common.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 struct SLv6_StatusRegister {
   bool N_flag; /* bit 31 */
   bool Z_flag;
@@ -39,5 +41,7 @@ static inline uint32_t UnallocMask() {return 0x06F0FC00;}
 static inline uint32_t UserMask()    {return 0xF80F0200;}
 static inline uint32_t PrivMask()    {return 0x000001DF;}
 static inline uint32_t StateMask()   {return 0x01000020;}
+
+END_SIMSOC_NAMESPACE
 
 #endif /* SLV6_STATUS_REGISTER_H */

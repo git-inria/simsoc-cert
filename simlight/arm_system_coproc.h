@@ -3,8 +3,8 @@
 
 /* The System Control Coprocessor (CP15) */
 
-#ifndef SLV6_SYSTEM_COPROC_H
-#define SLV6_SYSTEM_COPROC_H
+#ifndef ARM_SYSTEM_COPROC_H
+#define ARM_SYSTEM_COPROC_H
 
 #include "common.h"
 
@@ -28,4 +28,4 @@ extern uint32_t first_value_CP15(struct SLv6_SystemCoproc*);
 extern uint32_t second_value_CP15(struct SLv6_SystemCoproc*);
 extern uint32_t value_CP15(struct SLv6_SystemCoproc*);
 
-#endif /* SLV6_SYSTEM_COPROC_H */
+#endif /* ARM_SYSTEM_COPROC_H */

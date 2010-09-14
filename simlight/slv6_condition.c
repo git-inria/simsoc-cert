@@ -6,6 +6,8 @@
 #include "slv6_condition.h"
 #include "slv6_status_register.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 const char *condition2string(SLv6_Condition cond) {
   switch (cond) {
   case EQ: return "EQ";
@@ -47,3 +49,5 @@ bool ConditionPassed(struct SLv6_StatusRegister *sr, SLv6_Condition cond) {
   }
   assert(false && "invalid cond"); abort();
 }
+
+END_SIMSOC_NAMESPACE

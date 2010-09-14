@@ -5,8 +5,10 @@
 
 #include "slv6_processor.h"
 
-void init_Processor(struct SLv6_Processor *proc) {
-  init_MMU(&proc->mmu,4,0x100000);
+BEGIN_SIMSOC_NAMESPACE
+
+void init_Processor(struct SLv6_Processor *proc, struct SLv6_MMU *m) {
+  proc->mmu_ptr = m;
   set_StatusRegister(&proc->cpsr,0x1df); /* = 0b111011111 = A+I+F+System */
   struct SLv6_StatusRegister *sr = proc->spsrs, *sr_end = proc->spsrs+5;
   for (; sr!=sr_end; ++sr)
@@ -26,7 +28,7 @@ void init_Processor(struct SLv6_Processor *proc) {
 }
 
 void destruct_Processor(struct SLv6_Processor *proc) {
-  destruct_MMU(&proc->mmu);
+  destruct_MMU(proc->mmu_ptr);
 }
 
 uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m) {
@@ -52,3 +54,5 @@ uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m
   }
   abort();
 }
+
+END_SIMSOC_NAMESPACE

@@ -8,6 +8,8 @@
 
 #include "common.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 typedef enum {fiq, irq, svc, abt, und, sys, usr} SLv6_Mode;
 
 extern bool decode_mode(SLv6_Mode*, uint32_t);
@@ -16,5 +18,7 @@ extern bool decode_mode(SLv6_Mode*, uint32_t);
 extern uint32_t encode_mode(SLv6_Mode);
 
 extern const char *mode2string(SLv6_Mode);
+
+END_SIMSOC_NAMESPACE
 
 #endif /* SLV6_MODE_H */

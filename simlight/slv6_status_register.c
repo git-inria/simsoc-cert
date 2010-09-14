@@ -6,6 +6,8 @@
 #include "slv6_status_register.h"
 #include "slv6_math.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 uint32_t StatusRegister_to_uint32(struct SLv6_StatusRegister *sr) {
   uint32_t x = sr->background & UnallocMask();
   if (sr->N_flag) x |= 1<<31;
@@ -47,3 +49,5 @@ void set_StatusRegister(struct SLv6_StatusRegister *sr, uint32_t x) {
   bool ok = decode_mode(&sr->mode,x);
   if (!ok) ERROR("invalid mode");
 }
+
+END_SIMSOC_NAMESPACE

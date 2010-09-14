@@ -5,6 +5,8 @@
 
 #include "slv6_mode.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 bool decode_mode(SLv6_Mode *mode, uint32_t x) {
   switch (x&0x1f) {
   case 0x11: *mode = fiq; return true;
@@ -43,3 +45,5 @@ const char *mode2string(SLv6_Mode mode) {
   }
   abort();
 }
+
+END_SIMSOC_NAMESPACE

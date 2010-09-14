@@ -118,7 +118,7 @@ let func = function
 
 let implicit_arg = function
   | "ConditionPassed" -> "&proc->cpsr,"
-  | "write_word" | "write_half" | "write_byte" -> "&proc->mmu,"
+  | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr,"
   | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "&proc->cp15"
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
@@ -224,7 +224,7 @@ let rec exp p b = function
   | Reg (e, None) -> bprintf b "reg(proc,%a)" (exp p) e
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (mode m)
   | Var s -> if is_pointer p s then bprintf b "*%s" s else string b s
-  | Memory (e, n) -> bprintf b "read_%s(&proc->mmu,%a)" (access_type n) (exp p) e
+  | Memory (e, n) -> bprintf b "read_%s(proc->mmu_ptr,%a)" (access_type n) (exp p) e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
   | Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (cpsr_flag s)
   | Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
@@ -270,7 +270,7 @@ and inst_aux p k b = function
         counter counter num min counter num max counter (inst p (k+2)) i
 
   | Case (e, s) ->
-      bprintf b "switch (%a) {\n%a%a}"
+      bprintf b "switch (%a) {\n%a%a  default: abort();\n}"
         (exp p) e (list "" (case_aux p k)) s indent k
 
   | If (e, (Block _|If _ as i), None) ->
@@ -602,10 +602,12 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "%a" (list "\n" decl) xs;
     Array.iteri (decl_try bh) mode_outputs;
     bprintf bh "\nextern bool decode_and_exec(struct SLv6_Processor*, uint32_t bincode);\n";
+    bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
     bprintf bh "\n#endif /* ARM_ISS_H */\n";
     (* generate the source file *)
     bprintf bc "#include \"%s.h\"\n#include \"slv6_iss_c_prelude.h\"\n\n%a\n%a%a"
       bn (list "\n" prog) xs dec_inst is dec_modes ms;
+    bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
     (* write buffers to files *)
     let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
       Buffer.output_buffer outh bh; close_out outh;

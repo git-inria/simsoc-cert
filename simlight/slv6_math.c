@@ -5,6 +5,8 @@
 
 #include "slv6_math.h"
 
+BEGIN_SIMSOC_NAMESPACE
+
 uint32_t bit_position_of_most_significant_1(uint32_t x) {
   int32_t n;
   for (n = 31; n>=0; --n)
@@ -75,3 +77,5 @@ uint32_t UnsignedDoesSat(int32_t x, uint32_t n) {
   assert(n<32);
   return x < 0 || x > (1<<n)-1;
 }
+
+END_SIMSOC_NAMESPACE

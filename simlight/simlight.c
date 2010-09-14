@@ -5,12 +5,12 @@
 #include <string.h>
 
 /* function used by the ELF loader */
-static struct SLv6_MMU *mmu = NULL;
+static struct SLv6_MMU *mmu_ptr = NULL;
 void elf_write_to_memory(const char *data, size_t start, size_t size) {
-  assert(mmu);
+  assert(mmu_ptr);
   uint32_t j;
   for (j = 0; j<size; ++j)
-    write_byte(mmu,start+j,data[j]);
+    write_byte(mmu_ptr,start+j,data[j]);
 }
 
 void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
@@ -19,7 +19,7 @@ void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
   for (; a!=ea; a+=4) {
     sl_debug = false;
-    const uint32_t bincode = read_word(&proc->mmu,a);
+    const uint32_t bincode = read_word(proc->mmu_ptr,a);
     sl_debug = true;
     printf("decode %x -> ", bincode);
     bool found = decode_and_exec(proc,bincode);
@@ -40,7 +40,7 @@ void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
   proc->jump = false;
   do {
     DEBUG(puts("---------------------"));
-    bincode = read_word(&proc->mmu,address_of_current_instruction(proc));
+    bincode = read_word(proc->mmu_ptr,address_of_current_instruction(proc));
     bool found = decode_and_exec(proc,bincode);
     if (!found)
       TODO("Unpredictable or undefined instruction");
@@ -70,6 +70,7 @@ int main(int argc, const char *argv[]) {
   bool check_r0 = false;
   bool hexa_r0 = false;
   uint32_t expected_r0 = 0;
+  /* commmand line parsing */
   int i;
   for (i = 1; i<argc; ++i) {
     if (argv[i][0]=='-') {
@@ -105,19 +106,25 @@ int main(int argc, const char *argv[]) {
     usage(argv[0]);
     return (argc>1);
   }
+  /* create the processor and the MMU */
   struct SLv6_Processor proc;
-  init_Processor(&proc);
-  mmu = &proc.mmu;
+  struct SLv6_MMU mmu;
+  init_MMU(&mmu, 4 /* memory start */, 0x100000 /* memory size */);
+  mmu_ptr = &mmu;
+  init_Processor(&proc,&mmu);
+  /* load the ELF file */
   struct ElfFile elf;
   ef_init_ElfFile(&elf,filename);
   { const bool tmp = sl_debug;
     sl_debug = false;
     ef_load_sections(&elf);
     sl_debug = tmp;}
+  /* main task */
   if (sl_exec)
     simulate(&proc,&elf);
   else
     test_decode(&proc,&elf);
+  /* check result */
   if (show_r0)
     printf("r0 = %d\n",reg(&proc,0));
   if (check_r0 && reg(&proc,0)!=expected_r0) {

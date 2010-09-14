@@ -5,13 +5,10 @@
 
 /* This file is used by the generated file "arm_iss.h" */
 
-#ifndef SLV6_ISS_H_PRELUDE_H
-#define SLV6_ISS_H_PRELUDE_H
-
 #include "common.h"
 #include "slv6_mode.h"
 #include "slv6_condition.h"
 
-struct SLv6_Processor;
+BEGIN_SIMSOC_NAMESPACE
 
-#endif /* SLV6_ISS_H_PRELUDE_H */
+struct SLv6_Processor;

@@ -5,12 +5,11 @@
 
 /* This file is used by the generated file "arm_iss.c" */
 
-#ifndef ARM_ISS_C_PRELUDE_H
-#define ARM_ISS_C_PRELUDE_H
-
 #include "slv6_processor.h"
 #include "slv6_math.h"
 #include "arm_not_implemented.h"
+
+BEGIN_SIMSOC_NAMESPACE
 
 /* constants */
 static const uint8_t PC = 15;
@@ -26,5 +25,3 @@ static int32_t to_int32(uint32_t x) {return (int32_t)x;}
 static int64_t to_int64(uint64_t x) {return (int64_t)x;}
 static int64_t to_i64(uint32_t x) {return (int64_t)(int32_t)x;}
 static uint64_t to_u64(uint32_t x) {return (uint64_t)x;}
-
-#endif /* ARM_ISS_C_PRELUDE_H */
