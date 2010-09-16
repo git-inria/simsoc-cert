@@ -72,13 +72,13 @@ let rec options() =
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
-  " Output C++ (implies -norm, requires -ipc and -idec)";
+  " Output C (implies -norm, requires -ipc and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
   "-otest", Unit (fun () -> set_output_type DecTest),
-  " Output test for SimSoC decoder, in binary format (requires -idec)";
+  " Output test for Coq and Simlight decoders, in binary format (requires -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
