@@ -33,7 +33,7 @@ OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
 PARSERS := parser lexer
-FILES := util ast dec validity $(PARSERS) genpc norm gencxx gencoq gencoqdec gendectest
+FILES := util ast dec validity $(PARSERS) flatten genpc norm gencxx gencoq gencoqdec gendectest
 
 
 CMOFILES = $(FILES:%=%.cmo)
@@ -67,7 +67,7 @@ default: $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES := ast genpc norm gencxx gencoq
+FRAGILE_FILES := ast flatten genpc norm gencxx gencoq
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 
