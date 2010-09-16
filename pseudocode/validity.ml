@@ -23,10 +23,10 @@ satisfy in order to be predictable.
 open Ast;;
 
 type vconstraint =
-  | NotPC of string    (* the string must contains the name of parameter *)
-  | NotLR of string    (* the string must contains the name of parameter *)
-  | IsEven of string   (* parameter that should contain an even value *)
-  | NotZero of string  (* parameter that should not be zero *)
+  | NotPC of string    (* the string must contains the name of the parameter *)
+  | NotLR of string    (* the string must contains the name of the parameter *)
+  | IsEven of string   (* a parameter that should contain an even value *)
+  | NotZero of string  (* a parameter that should not be zero *)
   | NoWritebackDest    (* no write-back with Rd==Rn *)
   | NotSame of string * string (* R<a> <> R<b> *)
   | NotLSL0            (* to distinguished between (equivalent?) mode cases *)
