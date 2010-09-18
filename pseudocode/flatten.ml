@@ -162,7 +162,8 @@ let rec merge_plist a b =
   in match l with
     | hd :: tl -> hd :: (uniq hd tl) 
     | [] -> [];;
-(* FIXME: this code could be optimized *)
+(* FIXME: there are 2 defintions for the register_list parameter of LDM(3)
+ * currently, we keep only the definition from the addressing mode *)
 
 (* Main function *)
 let flatten (pcs: prog list) (decs: maplist) : fprog list =
