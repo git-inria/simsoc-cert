@@ -26,6 +26,24 @@ let firsts f =
   in aux [];;
 
 (*****************************************************************************)
+(** functions on arrays *)
+(*****************************************************************************)
+
+(* Like List.map2, but for arrays *)
+(* Code based on the OCaml implementation of Array.map *)
+let array_map2 f a b =
+  let l = Array.length a in
+    assert (l = Array.length b);
+    if l = 0 then [||] else
+      begin
+        let r = Array.create l (f (Array.unsafe_get a 0) (Array.unsafe_get b 0)) in
+          for i = 1 to l - 1 do
+            Array.unsafe_set r i (f (Array.unsafe_get a i) (Array.unsafe_get b i))
+          done;
+          r
+      end;;
+
+(*****************************************************************************)
 (** functions on strings *)
 (*****************************************************************************)
 
