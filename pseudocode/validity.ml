@@ -227,7 +227,7 @@ let get_constraints i =
 
 (* generate an expression that check the constraints *)
 exception Empty_list;;
-let to_exp i =
+let vcs_to_exp vcs =
   let aux vc = match vc with
     | NotPC s -> BinOp (Var s, "!=", Num "15")
     | NotLR s -> BinOp (Var s, "!=", Num "14")
@@ -249,6 +249,7 @@ let to_exp i =
     | [vc] -> aux vc
     | vc :: vcs -> BinOp (aux vc, "and", auxl vcs)
   in
-  let vcs = get_constraints i in
     try Some (auxl vcs)
     with Empty_list -> None;;
+
+let to_exp i = vcs_to_exp (get_constraints i);;

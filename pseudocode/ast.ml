@@ -225,8 +225,8 @@ module Make (G : Var) = struct
     List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
 
   (* sort variables by their names *)
-  let vars p =
-    let gs, ls = vars_inst (StrMap.empty, StrMap.empty) p.pinst in
+  let vars (i: inst) =
+    let gs, ls = vars_inst (StrMap.empty, StrMap.empty) i in
       list_of_map gs, list_of_map ls;;
 
 end;;

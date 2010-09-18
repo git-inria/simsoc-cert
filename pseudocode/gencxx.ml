@@ -80,21 +80,9 @@ type xprog = {
   xmode: int option; (* mode used by the instruction *)
 }
 
-let str_ident p =
-  let ident b p =
-    let i = p.pident in
-      match p.pkind with
-        | Inst ->
-            bprintf b "%s%a%a" i.iname
-              (option "" string) i.ivariant (list "" string) i.iparams
-        | Mode m ->
-            bprintf b "M%d_%s" m i.iname
-  in
-  let b = Buffer.create 16 in ident b p; Buffer.contents b;;
-
 (* merge pseudo-code information with decoding information *)
 let xprog_of p (_, pcs) =
-  let gs, ls = V.vars p and id = str_ident p in
+  let gs, ls = V.vars p.pinst and id = Flatten.str_ident p in
     {xprog = p; xid = id; xgs = gs; xls = ls; xdec = pcs;
      xvc = Validity.to_exp id;
      xmode = addr_mode_of_prog p gs};;
@@ -117,12 +105,13 @@ let func = function
   | s -> s;;
 
 let implicit_arg = function
-  | "ConditionPassed" -> "&proc->cpsr,"
-  | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr,"
+  | "ConditionPassed" -> "&proc->cpsr, "
+  | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr, "
   | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "&proc->cp15"
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
   | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
+  | "reg_m" -> "proc, " (* used by gencxx4dt.ml *)
   | _ -> "";;
 
 let mode m = Genpc.string_of_mode m;;
@@ -435,7 +424,7 @@ let split xs =
   in aux xs;;
 
 (* get the list of parameters *)
-let parameters_of p =
+let parameters_of pca : (string * int * int) list =
   let rename s =
     if s.[0] = 'R'
     then String.sub s 1 (String.length s -1)
@@ -458,22 +447,21 @@ let parameters_of p =
            ))
     | _ -> (n+1, l)
   in
-  let _, ps = Array.fold_left aux (0, []) p.xdec in ps;;
+  let _, ps = Array.fold_left aux (0, []) pca in ps;;
 
 (* generate the code extracing the parameters from the instruction code *)
-let dec_param p buf (s, a, b) =
+let dec_param gs vc buf (s, a, b) =
   (* exclude "shifter_operand" *)
   if (s, a, b) = ("shifter_operand", 11, 0) then ()
   else
     (* compute the list of used parameters *)
-    let gs = p.xgs in
-    let gs = match p.xvc with
+    let gs' = match vc with
       | Some e ->
           let vs, _ = V.vars_exp (StrMap.empty, StrMap.empty) e in
-            List.merge compare (list_of_map vs) gs
+            list_of_map vs @ gs
       | None -> gs
     in try
-        let t = List.assoc s gs in
+        let t = List.assoc s gs' in
           if (s, a, b) = ("cond", 31, 28) then (
             (* special case for cond, because decoding of this field can fail *)
             bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
@@ -521,7 +509,7 @@ let dec_inst b is =
   let instB b p =
     bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n" p.xid;
     (* extract parameters *)
-    bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
+    bprintf b "%a" (list "" (dec_param p.xgs p.xvc)) (parameters_of p.xdec);
     (* check validity *)
     (match p.xvc with
        | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
@@ -564,7 +552,7 @@ let dec_modes b ms =
     bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode%a) {\n"
       p.xid (list "" prog_out) os;
     (* extract parameters *)
-    bprintf b "%a" (list "" (dec_param p)) (parameters_of p);
+    bprintf b "%a" (list "" (dec_param p.xgs p.xvc)) (parameters_of p.xdec);
     (* check validity *)
     (match p.xvc with
        | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e

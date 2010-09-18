@@ -520,7 +520,7 @@ let lib b ps =
   and bcall_mode = Array.init 5 (fun _ -> Buffer.create 1000)
   and bsem = Buffer.create 100000 in
   let prog p =
-    let gs, _ = V.vars p in
+    let gs, _ = V.vars p.pinst in
       semfun bsem p gs;
       constr bcons_inst bcons_mode p gs;
       call bcall_inst bcall_mode p gs
