@@ -155,7 +155,7 @@ let parameters_of pca : (string * int * int) list =
 (* merge two lists of parameter, and remove duplicates *)
 let rec merge_plist a b =
   let cmp ((a:string),_,_) ((b:string),_,_) = compare a b in
-  let l = List.merge cmp (List.sort cmp a) (List.sort cmp b) in
+  let l = List.merge cmp (List.sort cmp b) (List.sort cmp a) in
   let rec uniq ((a:string),_,_) = function
     | (b,_,_) as hd :: tl -> if a = b then uniq hd tl else hd :: (uniq hd tl)
     | [] -> []
