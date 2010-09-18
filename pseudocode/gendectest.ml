@@ -42,11 +42,11 @@ let push_bit (b: bool) (w: int32) =
 ;;
 *)
 
-let push_bits x y =
+let push_bits (x: bool array) (y: int32) =
   let lst = Array.to_list x in
     List.fold_right push_bit lst y;; 
 
-let push_pc x = 
+let push_pc (x: int32) = 
   push_bit false (push_bit true (push_bit true (push_bit true x)));;  
 
 type vconstraint =
@@ -68,7 +68,7 @@ type vconstraint =
   | General
 ;;
 
-let insert_bit b p w =
+let insert_bit (b: int32) (p: int) (w: int32) =
   let i = Int32.shift_left b p in
     Int32.logor i w;;
 

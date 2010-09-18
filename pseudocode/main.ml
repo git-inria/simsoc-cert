@@ -36,7 +36,7 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
-type output_type = PCout | Cxx | CoqInst | CoqDec | DecTest;;
+type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -73,6 +73,8 @@ let rec options() =
   " Output pseudocode";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
   " Output C (implies -norm, requires -ipc and -idec)";
+  "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
+  " Output C/C++ for dynamic translation (implies -norm, requires -ipc and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
@@ -100,7 +102,7 @@ let parse_args() =
         if is_set_dec_input_file() then
           error "option -opc incompatible with -idec"
         else ignore(get_pc_input_file());
-    | Cxx -> ignore(get_pc_input_file());  ignore(get_dec_input_file())
+    | Cxx | C4dt -> ignore(get_pc_input_file());  ignore(get_dec_input_file())
     | CoqInst ->
         if is_set_dec_input_file() then
           error "option -ocoq-inst incompatible with -idec"
@@ -184,6 +186,7 @@ let genr_output() =
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+    | C4dt -> Gencxx4dt.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
     | DecTest -> Gendectest.gen_test stdout (get_dec_input());;

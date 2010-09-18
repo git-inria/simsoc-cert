@@ -8,7 +8,7 @@
 
    Page numbers refer to ARMv6.pdf.
 
-   C code generator for simulation (see directory ../cxx)
+   C code generator for simulation (see directory ../simlight)
 *)
 
 open Ast;;
