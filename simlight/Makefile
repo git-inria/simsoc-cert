@@ -30,7 +30,7 @@ slv6_iss.c: slv6_iss.h
 
 clean:
 	rm -f $(OBJECTS) slv6_iss.c slv6_iss.h \
-              simlight simlight.opt *.gcda *.gcno
+              simlight simlight.opt simlight.opt.dSYM *.gcda *.gcno
 
 simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 \
