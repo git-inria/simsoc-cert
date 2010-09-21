@@ -32,8 +32,9 @@ slv6_iss_expanded.c slv6_iss_grouped.h slv6_iss_expanded.c slv6_iss_grouped.h sl
 	cd ../arm6 && $(MAKE) $@
 
 clean:
-	rm -f $(OBJECTS) slv6_iss.c slv6_iss.h \
+	rm -f $(OBJECTS) $(GEN_FILES) \
               simlight simlight.opt *.gcda *.gcno
+	rm -rf  simlight.opt.dSYM
 
 simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 \
