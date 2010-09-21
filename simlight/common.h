@@ -32,7 +32,7 @@ extern bool sl_exec;
 #define INFO(X) if (sl_info) {X;}
 #define EXEC(X) if (sl_exec) {X;}
 
-#define BEGIN_SIMSOC_NAMESPACE ;
-#define END_SIMSOC_NAMESPACE ;
+#define BEGIN_SIMSOC_NAMESPACE
+#define END_SIMSOC_NAMESPACE
 
 #endif /* COMMON_H */
