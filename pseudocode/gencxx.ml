@@ -111,7 +111,7 @@ let implicit_arg = function
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
   | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
-  | "reg_m" -> "proc, " (* used by gencxx4dt.ml *)
+  | "reg_m" | "set_reg_m" -> "proc, " (* used by gencxx4dt.ml *)
   | _ -> "";;
 
 let mode m = Genpc.string_of_mode m;;
@@ -394,15 +394,32 @@ let lsm_hack p =
     | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
     | i -> i
   in
-  let guard i = (i.iname = "LDM" || i.iname = "STM") && i.ivariant <> Some "2"
+  let guard_ldm_stm i = (i.iname = "LDM" || i.iname = "STM") && i.ivariant <> Some "2"
+  in let a = If (Var "W",
+                 Affect (Reg (Var "n", None), Var "new_Rn"),
+                 None)
   in match p.pkind with
-    | Inst when guard p.pident ->
+    | Inst when guard_ldm_stm p.pident ->
 	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
-        let a = If(Var "W",Affect(Reg(Var"n",None),Var"new_Rn"),None) in
         let i = match p.pinst with
           | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
           | Block ([x; If (c, Block ids, None)]) ->
 	      Block ([x; If (c, Block (ids @ [a]), None)])
+          | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
+        in { p with pinst = i }
+    | Inst when p.pident.iname = "RFE" ->
+	(* add 'if (W) then Rn = new_Rn' at the end of the main block *)
+        let i = match p.pinst with
+          | Block (l) -> Block (l @ [a])
+          | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
+        in { p with pinst = i }
+    | Inst when p.pident.iname = "SRS" ->
+	(* add 'if (W) then R13_mode = new_Rn' at the end of the main block *)
+        let a' = If (Var "W",
+                     Proc("set_reg_m", [Num "13"; Var "new_Rn"; Var "mode"]),
+                     None) in
+        let i = match p.pinst with
+          | Block (l) -> Block (l @ [a'])
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | Mode 4 ->

@@ -183,25 +183,59 @@ and affect p k b dst src =
     | Ast.Range (e, Index n) -> inst_aux p k b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\")";;
 
-
+(* display a comment with the reference and the full instruction name *)
 let comment b p = bprintf b "/* %s\n * %s */\n" p.xprog.fref p.xprog.fname;;
 
 (* Defintion of the functions. This should be printed in a source file (.c) *)
-let prog b (p: xprog) =
+(* Version 1: The list of arguemetns is expanded *)
+let prog_expanded b (p: xprog) =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
-    bprintf b "%avoid %s(struct SLv6_Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
+    bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
       p.xprog.fid
       (list "" Gencxx.prog_arg) p.xgs
       (list "" Gencxx.inreg_load) inregs
       (list "" Gencxx.local_decl) p.xls
       (inst p 2) p.xprog.finst;;
 
-(* Declaration of the functions. This should be printed in a header file (.h) *)
-let decl b (p: xprog) =
-  bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
-    comment p p.xprog.fid
-    (list "" Gencxx.prog_arg) p.xgs p.xprog.fid;;
+(* Version 2: The arguments are passed in a struct *)
+let prog_grouped b (p: xprog) =
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
+  let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
+    bprintf b
+      "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
+      comment p p.xprog.fid;
+    let expand b (n, t) =
+      bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xprog.fid n
+    in
+      bprintf b "%a%a%a%a\n}\n"
+      (list "" expand) p.xgs
+      (list "" Gencxx.inreg_load) inregs
+      (list "" Gencxx.local_decl) p.xls
+      (inst p 2) p.xprog.finst;;
+
+(* Declaration of the functions. This may be printed in a header file (.h) *)
+(* Version 1: The list of arguemetns is expanded *)
+let decl_expanded b (p: xprog) =
+  bprintf b "%aextern void slv6_X_%s(struct SLv6_Processor*%a);\n"
+    comment p p.xprog.fid (list "" Gencxx.prog_arg) p.xgs;;
+
+(* Version 2: The arguments are passed in a struct *)
+let decl_grouped b (p: xprog) =
+  bprintf b "%aextern void slv6_G_%s(struct SLv6_Processor*, struct SLv6_Instruction*);\n"
+    comment p p.xprog.fid;;
+
+(** Generation of the instruction type *)
+(* Generate a type that can store an instruction 'p' *)
+let inst_type b (p: xprog) =
+  let field b (v, t) = bprintf b "%s %s;" t v
+  in bprintf b "%astruct SLv6_%s {\n  %a\n};\n"
+       comment p p.xprog.fid
+       (list "\n  " field) p.xgs;;
+
+(* Generate a member of the big union type *)
+let union_field b (p: xprog) =
+  bprintf b "    struct SLv6_%s %s;\n" p.xprog.fid p.xprog.fid;;
 
 (** Generation of the decoder *)
 let dec_inst b (is: xprog list) =
@@ -215,8 +249,8 @@ let dec_inst b (is: xprog list) =
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
-    bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n"
-      p.xprog.fid;
+    bprintf b "%astatic bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n"
+      comment p p.xprog.fid;
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs in
       bprintf b "%a"
@@ -227,36 +261,94 @@ let dec_inst b (is: xprog list) =
          | None -> ());
       (* execute the instruction *)
       let aux b (s,_) = bprintf b ",%s" s in
-        bprintf b "  EXEC(%s(proc%a));\n" p.xprog.fid (list "" aux) p.xgs;
+        bprintf b "  slv6_X_%s(proc%a);\n" p.xprog.fid (list "" aux) p.xgs;
         bprintf b "  return true;\n}\n"
   in
-  let is' = List.rev is in
+    bprintf b "%a\n" (list "\n" instB) is;
+    bprintf b "/* the main function, used by the ISS loop */\n";
     bprintf b "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode) {\n";
     bprintf b "  bool found = false;\n";
-    bprintf b "%a" (list "" instA) is';
-    bprintf b "  return found;\n}\n\n%a"
-      (list "\n" instB) is';;
+    bprintf b "%a" (list "" instA) is;
+    bprintf b "  return found;\n}\n";;
 
-(* main function
- * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
+(** Generation of tables, all indexed by an instruction id *)
+let gen_tables b (xs: xprog list) =
+  let name b x = bprintf b "\n  \"%s\"" x.xprog.fname in
+  bprintf b "const char *slv6_instruction_names[SLV6_INSTRUCTION_COUNT] = {";
+  bprintf b "%a};\n\n" (list "," name) xs;
+  let reference b x = bprintf b "\n  \"%s\"" x.xprog.fref in
+  bprintf b "const char *slv6_instruction_references[SLV6_INSTRUCTION_COUNT] = {";
+  bprintf b "%a};\n\n" (list "," reference) xs;
+  let fct b x = bprintf b "\n  slv6_G_%s" x.xprog.fid in
+  bprintf b "SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT] = {";
+  bprintf b "%a};\n" (list "," fct) xs;;
+
+(* Generation of all the semantics functions
+ * - bn: file basename
+ * - xs: the instructions
+ * - v: a string, either "grouped" or "expanded"
+ * - decl: a function, either decl_grouped or decl_expanded
+ * - prog: a function, either prog_grouped or prog_expanded
+ *)
+let semantics_functions bn xs v decl prog =
+  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
+    (* header file *)
+    bprintf bh "#ifndef SLV6_ISS_%s_H\n#define SLV6_ISS_%s_H\n\n" v v;
+    bprintf bh "#include \"common.h\"\n";
+    bprintf bh "#include \"slv6_mode.h\"\n";
+    bprintf bh "#include \"slv6_condition.h\"\n";
+    bprintf bh "\nBEGIN_SIMSOC_NAMESPACE\n";
+    bprintf bh "\nstruct SLv6_Processor;\n";
+    bprintf bh "struct SLv6_Instruction;\n";
+    bprintf bh "\n%a" (list "\n" decl) xs;
+    bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
+    bprintf bh "\n#endif /* SLV6_ISS_%s_H */\n" v;
+    (* source file *)
+    bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
+    bprintf bc "\nBEGIN_SIMSOC_NAMESPACE\n";
+    bprintf bc "\n%a" (list "\n" prog) xs;
+    bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
+    let outh = open_out (bn^"_"^v^".h")
+    and outc = open_out (bn^"_"^v^".c") in
+      Buffer.output_buffer outh bh; close_out outh;
+      Buffer.output_buffer outc bc; close_out outc;;
+
+(** main function *)
+(* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
   let fs: fprog list = flatten pcs' decs in
-  let xs: xprog list = List.map xprog_of fs in
+  let xs: xprog list = List.rev (List.map xprog_of fs) in
     (* create buffers for header file (bh) and source file (bc) *)
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
-    (* generate the header file *)
-    bprintf bh "#ifndef ARM_ISS_H\n#define ARM_ISS_H\n\n";
-    bprintf bh "#include \"slv6_iss_h_prelude.h\"\n\n";
-    bprintf bh "%a" (list "\n" decl) xs;
-    bprintf bh "\nextern bool decode_and_exec(struct SLv6_Processor*, uint32_t bincode);\n";
+
+    (* generate the main header file *)
+    bprintf bh "#ifndef SLV6_ISS_H\n#define SLV6_ISS_H\n\n";
+    bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
+    bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n\n" (List.length xs);
+    bprintf bh "extern const char *slv6_instruction_names[SLV6_INSTRUCTION_COUNT];\n";
+    bprintf bh "extern const char *slv6_instruction_references[SLV6_INSTRUCTION_COUNT];\n";
+    bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT];\n";
+    (* generate the instruction type *)
+    bprintf bh "\n%a" (list "\n" inst_type) xs;
+    bprintf bh "\nstruct SLv6_Instruction {\n";
+    bprintf bh "  size_t id;\n  union {\n%a  } args;\n};\n" (list "" union_field) xs;
+    (* close the namespace (opened in ..._h_prelude.h *)
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
-    bprintf bh "\n#endif /* ARM_ISS_H */\n";
-    (* generate the source file *)
-    bprintf bc "#include \"%s.h\"\n#include \"slv6_iss_c_prelude.h\"\n\n%a\n%a"
-      bn (list "\n" prog) xs dec_inst xs;
+    bprintf bh "\n#endif /* SLV6_ISS_H */\n";
+
+    (* start generating the source file *)
+    bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
+    (* generate the decoder (decode_and_exec) *)
+    bprintf bc "\n%a" dec_inst xs;
+    (* now the tables ... *)
+    bprintf bc "\n%a" gen_tables xs;
+    (* close the namespace (opened in ..._c_prelude.h *)
     bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
     (* write buffers to files *)
     let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
       Buffer.output_buffer outh bh; close_out outh;
-      Buffer.output_buffer outc bc; close_out outc;;
+      Buffer.output_buffer outc bc; close_out outc;      
+      (* Now, we generate the semantics functions. *)
+      semantics_functions bn xs "expanded" decl_expanded prog_expanded;
+      semantics_functions bn xs "grouped" decl_grouped prog_grouped;;
