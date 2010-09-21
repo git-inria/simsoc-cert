@@ -3,7 +3,7 @@
 
 /* ISS for ARM processors implementing ARM architecture version 6. */
 
-/* This file is used by the generated file "arm_iss.h" */
+/* This file is used by the generated file "slv6_iss.h" */
 
 #include "common.h"
 #include "slv6_mode.h"
