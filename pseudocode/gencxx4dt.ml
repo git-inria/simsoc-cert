@@ -269,7 +269,7 @@ let dec_store_f b (x: xprog) =
   let store b (n, _) = 
     bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
   in
-    bprintf b "%a" (list "" store) x.xgs;;
+    bprintf b "  instr->id = SLV6_%s_ID;\n%a" x.xprog.fid (list "" store) x.xgs;;
 
 (* the decoder generator itself *)
 let decoder pf pf' c f b (is: xprog list) =
@@ -314,6 +314,11 @@ let gen_tables b (xs: xprog list) =
   let fct b x = bprintf b "\n  slv6_G_%s" x.xprog.fid in
   bprintf b "SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT] = {";
   bprintf b "%a};\n" (list "," fct) xs;;
+
+(* generate the numerical instruction identifier *)
+let gen_ids b xs =
+  let aux i x = bprintf b "static const size_t SLV6_%s_ID = %d;\n" x.xprog.fid i in
+  list_iteri aux xs;;
 
 (* Generation of all the semantics functions
  * - bn: file basename
@@ -378,6 +383,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "extern const char *slv6_instruction_names[SLV6_INSTRUCTION_COUNT];\n";
     bprintf bh "extern const char *slv6_instruction_references[SLV6_INSTRUCTION_COUNT];\n";
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT];\n";
+    bprintf bh "\n%a" gen_ids xs;
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";

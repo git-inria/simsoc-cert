@@ -17,14 +17,21 @@ void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
   uint32_t a = ef_get_text_start(elf);
   const uint32_t ea = a + ef_get_text_size(elf);
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
+  sl_debug = false;
+  struct SLv6_Instruction instr;
   for (; a!=ea; a+=4) {
-    sl_debug = false;
     const uint32_t bincode = read_word(proc->mmu_ptr,a);
-    sl_debug = true;
     printf("decode %x -> ", bincode);
-    bool found = decode_and_exec(proc,bincode);
+    instr.id = ~0;
+    bool found = decode_and_store(&instr,bincode);
     if (!found)
       puts("undefined or unpredictable");
+    else {
+      assert(instr.id<SLV6_INSTRUCTION_COUNT);
+      printf("%s: %s\n",
+             slv6_instruction_references[instr.id],
+             slv6_instruction_names[instr.id]);
+    }
   }
 }
 

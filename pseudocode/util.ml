@@ -25,6 +25,13 @@ let firsts f =
     | x :: xs as l -> if f x then aux (x :: acc) xs else List.rev acc, l
   in aux [];;
 
+(* Similar to Array.iteri *)
+let list_iteri f l =
+  let rec aux n f = function
+    | hd :: tl -> f n hd; aux (n+1) f tl
+    | [] -> ()
+  in aux 0 f l;;
+
 (*****************************************************************************)
 (** functions on arrays *)
 (*****************************************************************************)
