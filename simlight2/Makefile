@@ -8,9 +8,11 @@ SOURCES=slv6_iss.c common.c slv6_condition.c slv6_math.c \
  slv6_iss_expanded.c slv6_iss_grouped.c
 HEADERS=$(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
  arm_not_implemented.h
+SOURCES+=slv6_iss-decode_exec.c slv6_iss-decode_store.c
 OBJECTS=$(SOURCES:%.c=%.o) simlight.o
 
-GENFILES=slv6_iss_expanded.c slv6_iss_grouped.c slv6_iss_expanded.h slv6_iss_grouped.h slv6_iss.h slv6_iss.c
+GENFILES_MO=slv6_iss_expanded.c slv6_iss_grouped.c slv6_iss_expanded.h slv6_iss_grouped.h slv6_iss.h slv6_iss-decode_exec.c slv6_iss-decode_store.c
+GENFILES=$(GENFILES_MO) slv6_iss.c
 
 all: simlight
 
@@ -23,7 +25,7 @@ simlight: $(OBJECTS)
 $(GENFILES): ../pseudocode/main ../arm6/arm6inst.arm ../arm6/arm6dec.dat
 	../pseudocode/main -oc4dt slv6_iss -ipc ../arm6/arm6inst.arm \
                            -idec ../arm6/arm6dec.dat
-slv6_iss_expanded.c slv6_iss_grouped.h slv6_iss_expanded.c slv6_iss_grouped.h slv6_iss.c: slv6_iss.h
+$(GENFILES_MO): slv6_iss.c
 
 ../pseudocode/main: FORCE
 	cd ../pseudocode && $(MAKE)
@@ -32,7 +34,7 @@ slv6_iss_expanded.c slv6_iss_grouped.h slv6_iss_expanded.c slv6_iss_grouped.h sl
 	cd ../arm6 && $(MAKE) $@
 
 clean:
-	rm -f $(OBJECTS) $(GEN_FILES) \
+	rm -f $(OBJECTS) $(GENFILES) \
               simlight simlight.opt *.gcda *.gcno
 	rm -rf  simlight.opt.dSYM
 

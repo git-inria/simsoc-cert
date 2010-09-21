@@ -238,19 +238,52 @@ let union_field b (p: xprog) =
   bprintf b "    struct SLv6_%s %s;\n" p.xprog.fid p.xprog.fid;;
 
 (** Generation of the decoder *)
-let dec_inst b (is: xprog list) =
+
+(* functions for decode_and_exec *)
+
+let dec_exec_pf =
+  "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode)";;
+
+(* id: instruction identifier *)
+let dec_exec_pf' b id =
+  bprintf b "bool try_exec_%s(struct SLv6_Processor *proc, uint32_t bincode)" id;;
+
+let dec_exec_c b id = bprintf b "try_exec_%s(proc,bincode)" id;;
+
+let dec_exec_f b (x: xprog) =
+  let aux b (s,_) = bprintf b ",%s" s in
+  bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xgs;;
+
+(* functions for decode_and_store *)
+
+let dec_store_pf =
+  "bool decode_and_store(struct SLv6_Instruction *instr, uint32_t bincode)";;
+
+(* id: instruction identifier *)
+let dec_store_pf' b id =
+  bprintf b "bool try_store_%s(struct SLv6_Instruction *instr, uint32_t bincode)" id;;
+
+let dec_store_c b id = bprintf b "try_store_%s(instr,bincode)" id;;
+
+let dec_store_f b (x: xprog) =
+  let store b (n, _) = 
+    bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
+  in
+    bprintf b "%a" (list "" store) x.xgs;;
+
+(* the decoder generator itself *)
+let decoder pf pf' c f b (is: xprog list) =
   (* Phase A: check bits fixed by the coding table *)
   let instA b p =
     let (mask, value) = Gencxx.mask_value p.xprog.fdec in
-      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(proc,bincode)) {\n"
-        mask value p.xprog.fid;
-      bprintf b "    DEBUG(puts(\"decoder choice: %s\"));\n" p.xprog.fid;
+      bprintf b "  if ((bincode&0x%08lx)==0x%08lx && %a) {\n"
+        mask value c p.xprog.fid;
       bprintf b "    assert(!found); found = true;\n  }\n"
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
-    bprintf b "%astatic bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n"
-      comment p p.xprog.fid;
+    bprintf b "%astatic %a {\n"
+      comment p pf' p.xprog.fid;
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs in
       bprintf b "%a"
@@ -260,13 +293,12 @@ let dec_inst b (is: xprog list) =
          | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
          | None -> ());
       (* execute the instruction *)
-      let aux b (s,_) = bprintf b ",%s" s in
-        bprintf b "  slv6_X_%s(proc%a);\n" p.xprog.fid (list "" aux) p.xgs;
-        bprintf b "  return true;\n}\n"
+      bprintf b "%a" f p;
+      bprintf b "  return true;\n}\n"
   in
     bprintf b "%a\n" (list "\n" instB) is;
     bprintf b "/* the main function, used by the ISS loop */\n";
-    bprintf b "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode) {\n";
+    bprintf b "%s {\n" pf;
     bprintf b "  bool found = false;\n";
     bprintf b "%a" (list "" instA) is;
     bprintf b "  return found;\n}\n";;
@@ -313,6 +345,23 @@ let semantics_functions bn xs v decl prog =
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;
 
+(* Generation of a decoder in a separated .c file
+ * - bn: file basename
+ * - v: a string, such as "decode_exec" or "decode_store"
+ * - pf: the profile of the decoder function
+ * - pf': the profile of the "try" function
+ * - c: how to call a "try" function
+ * - f: what we do once the instruction is decoded
+ * - xs: the instructions
+ *)
+let gen_decoder bn v pf pf' c f xs =
+  let bc = Buffer.create 10000 in
+    bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
+    bprintf bc "\n%a" (decoder pf pf' c f) xs;
+    bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
+    let outc = open_out (bn^"-"^v^".c") in
+      Buffer.output_buffer outc bc; close_out outc;;
+
 (** main function *)
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
@@ -339,9 +388,10 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
 
     (* start generating the source file *)
     bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
-    (* generate the decoder (decode_and_exec) *)
-    bprintf bc "\n%a" dec_inst xs;
-    (* now the tables ... *)
+    (* generate the decoders *)
+    gen_decoder bn "decode_exec" dec_exec_pf dec_exec_pf' dec_exec_c dec_exec_f xs;
+    gen_decoder bn "decode_store" dec_store_pf dec_store_pf' dec_store_c dec_store_f xs;
+    (* generate the tables *)
     bprintf bc "\n%a" gen_tables xs;
     (* close the namespace (opened in ..._c_prelude.h *)
     bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
