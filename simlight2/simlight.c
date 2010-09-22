@@ -23,15 +23,11 @@ void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
     const uint32_t bincode = read_word(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
     instr.id = ~0;
-    bool found = decode_and_store(&instr,bincode);
-    if (!found)
-      puts("undefined or unpredictable");
-    else {
-      assert(instr.id<SLV6_INSTRUCTION_COUNT);
-      printf("%s: %s\n",
-             slv6_instruction_references[instr.id],
-             slv6_instruction_names[instr.id]);
-    }
+    decode_and_store(&instr,bincode);
+    assert(instr.id<=SLV6_INSTRUCTION_COUNT);
+    printf("%s: %s\n",
+           slv6_instruction_references[instr.id],
+           slv6_instruction_names[instr.id]);
   }
 }
 

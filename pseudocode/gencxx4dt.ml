@@ -239,51 +239,37 @@ let union_field b (p: xprog) =
 
 (** Generation of the decoder *)
 
-(* functions for decode_and_exec *)
+module type DecoderConfig = sig
+  (* the version, such as "decode_exec" or "decode_store" *)
+  val version: string;;
+  (* the profile of the main decoder function *)
+  val main_prof: string;;
+  (* the profile of the specific instruction decoder functions *)
+  val instr_prof: Buffer.t -> string -> unit;;
+  (* how to call an instruction decoder function *)
+  val instr_call: Buffer.t -> string -> unit;;
+  (* what we do once the instruction is decoded *)
+  val action: Buffer.t -> xprog ->unit;;
+  (* what we do when we return from the decoder *)
+  val return_action: string;;
+end;;
 
-let dec_exec_pf =
-  "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode)";;
-
-(* id: instruction identifier *)
-let dec_exec_pf' b id =
-  bprintf b "bool try_exec_%s(struct SLv6_Processor *proc, uint32_t bincode)" id;;
-
-let dec_exec_c b id = bprintf b "try_exec_%s(proc,bincode)" id;;
-
-let dec_exec_f b (x: xprog) =
-  let aux b (s,_) = bprintf b ",%s" s in
-  bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xgs;;
-
-(* functions for decode_and_store *)
-
-let dec_store_pf =
-  "bool decode_and_store(struct SLv6_Instruction *instr, uint32_t bincode)";;
-
-(* id: instruction identifier *)
-let dec_store_pf' b id =
-  bprintf b "bool try_store_%s(struct SLv6_Instruction *instr, uint32_t bincode)" id;;
-
-let dec_store_c b id = bprintf b "try_store_%s(instr,bincode)" id;;
-
-let dec_store_f b (x: xprog) =
-  let store b (n, _) = 
-    bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
-  in
-    bprintf b "  instr->id = SLV6_%s_ID;\n%a" x.xprog.fid (list "" store) x.xgs;;
-
-(* the decoder generator itself *)
-let decoder pf pf' c f b (is: xprog list) =
-  (* Phase A: check bits fixed by the coding table *)
-  let instA b p =
-    let (mask, value) = Gencxx.mask_value p.xprog.fdec in
+module DecoderGenerator (DC: DecoderConfig) = struct
+  (* Generation of a decoder in a separated .c file *)
+  (*  * - bn: file basename *)
+  (*  * - is: the instructions *)
+  let decoder bn (is: xprog list) =
+    (* Phase A: check bits fixed by the coding table *)
+    let instA b p =
+      let (mask, value) = Gencxx.mask_value p.xprog.fdec in
       bprintf b "  if ((bincode&0x%08lx)==0x%08lx && %a) {\n"
-        mask value c p.xprog.fid;
+        mask value DC.instr_call p.xprog.fid;
       bprintf b "    assert(!found); found = true;\n  }\n"
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
     bprintf b "%astatic %a {\n"
-      comment p pf' p.xprog.fid;
+      comment p DC.instr_prof p.xprog.fid;
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs in
       bprintf b "%a"
@@ -293,32 +279,72 @@ let decoder pf pf' c f b (is: xprog list) =
          | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
          | None -> ());
       (* execute the instruction *)
-      bprintf b "%a" f p;
+      bprintf b "%a" DC.action p;
       bprintf b "  return true;\n}\n"
   in
+  let b = Buffer.create 10000 in
+    bprintf b "#include \"%s_c_prelude.h\"\n\n" bn;
     bprintf b "%a\n" (list "\n" instB) is;
     bprintf b "/* the main function, used by the ISS loop */\n";
-    bprintf b "%s {\n" pf;
+    bprintf b "%s {\n" DC.main_prof;
     bprintf b "  bool found = false;\n";
     bprintf b "%a" (list "" instA) is;
-    bprintf b "  return found;\n}\n";;
+    bprintf b "  %s}\n" DC.return_action;
+    bprintf b "\nEND_SIMSOC_NAMESPACE\n";
+    let outc = open_out (bn^"-"^DC.version^".c") in
+      Buffer.output_buffer outc b; close_out outc;;
+end;;
+
+module DecExecConfig = struct
+  let version = "decode_exec";;
+  let main_prof =
+    "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode)";;
+  let instr_prof b id =
+    bprintf b "bool try_exec_%s(struct SLv6_Processor *proc, uint32_t bincode)" id;;
+  let instr_call b id = bprintf b "try_exec_%s(proc,bincode)" id;;
+  let action b (x: xprog) =
+    let aux b (s,_) = bprintf b ",%s" s in
+      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xgs;;
+  let return_action = "return found;"
+end;;
+module DecExec = DecoderGenerator(DecExecConfig);;
+
+module DecStoreConfig = struct
+  let version = "decode_store";;
+  let main_prof =
+    "void decode_and_store(struct SLv6_Instruction *instr, uint32_t bincode)";;
+  let instr_prof b id =
+    bprintf b "bool try_store_%s(struct SLv6_Instruction *instr, uint32_t bincode)" id;;
+  let instr_call b id = bprintf b "try_store_%s(instr,bincode)" id;;
+  let action b (x: xprog) =
+    let store b (n, _) = 
+      bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
+    in
+      bprintf b "  instr->id = SLV6_%s_ID;\n%a" x.xprog.fid (list "" store) x.xgs;;
+  let return_action = "if (!found) instr->id = SLV6_UNPRED_OR_UNDEF_ID;"
+end;;
+module DecStore = DecoderGenerator(DecStoreConfig);;
 
 (** Generation of tables, all indexed by an instruction id *)
 let gen_tables b (xs: xprog list) =
   let name b x = bprintf b "\n  \"%s\"" x.xprog.fname in
-  bprintf b "const char *slv6_instruction_names[SLV6_INSTRUCTION_COUNT] = {";
-  bprintf b "%a};\n\n" (list "," name) xs;
+  let undef_name = "\n  \"Unpredictable or undefined instruction\"" in
+  bprintf b "const char *slv6_instruction_names[SLV6_TABLE_SIZE] = {";
+  bprintf b "%a,%s};\n\n" (list "," name) xs undef_name;
   let reference b x = bprintf b "\n  \"%s\"" x.xprog.fref in
-  bprintf b "const char *slv6_instruction_references[SLV6_INSTRUCTION_COUNT] = {";
-  bprintf b "%a};\n\n" (list "," reference) xs;
+  let undef_reference = "\n  \"no ref.\"" in
+  bprintf b "const char *slv6_instruction_references[SLV6_TABLE_SIZE] = {";
+  bprintf b "%a,%s};\n\n" (list "," reference) xs undef_reference;
   let fct b x = bprintf b "\n  slv6_G_%s" x.xprog.fid in
-  bprintf b "SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT] = {";
-  bprintf b "%a};\n" (list "," fct) xs;;
+  let undef_fct = "\n  NULL" in
+  bprintf b "SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE] = {";
+  bprintf b "%a,%s};\n" (list "," fct) xs undef_fct;;
 
 (* generate the numerical instruction identifier *)
 let gen_ids b xs =
   let aux i x = bprintf b "static const size_t SLV6_%s_ID = %d;\n" x.xprog.fid i in
-  list_iteri aux xs;;
+  list_iteri aux xs;
+  bprintf b "static const size_t SLV6_UNPRED_OR_UNDEF_ID = SLV6_INSTRUCTION_COUNT;\n";;
 
 (* Generation of all the semantics functions
  * - bn: file basename
@@ -342,29 +368,11 @@ let semantics_functions bn xs v decl prog =
     bprintf bh "\n#endif /* SLV6_ISS_%s_H */\n" v;
     (* source file *)
     bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
-    bprintf bc "\nBEGIN_SIMSOC_NAMESPACE\n";
     bprintf bc "\n%a" (list "\n" prog) xs;
     bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
     let outh = open_out (bn^"_"^v^".h")
     and outc = open_out (bn^"_"^v^".c") in
       Buffer.output_buffer outh bh; close_out outh;
-      Buffer.output_buffer outc bc; close_out outc;;
-
-(* Generation of a decoder in a separated .c file
- * - bn: file basename
- * - v: a string, such as "decode_exec" or "decode_store"
- * - pf: the profile of the decoder function
- * - pf': the profile of the "try" function
- * - c: how to call a "try" function
- * - f: what we do once the instruction is decoded
- * - xs: the instructions
- *)
-let gen_decoder bn v pf pf' c f xs =
-  let bc = Buffer.create 10000 in
-    bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
-    bprintf bc "\n%a" (decoder pf pf' c f) xs;
-    bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
-    let outc = open_out (bn^"-"^v^".c") in
       Buffer.output_buffer outc bc; close_out outc;;
 
 (** main function *)
@@ -379,10 +387,11 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the main header file *)
     bprintf bh "#ifndef SLV6_ISS_H\n#define SLV6_ISS_H\n\n";
     bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
-    bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n\n" (List.length xs);
-    bprintf bh "extern const char *slv6_instruction_names[SLV6_INSTRUCTION_COUNT];\n";
-    bprintf bh "extern const char *slv6_instruction_references[SLV6_INSTRUCTION_COUNT];\n";
-    bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_INSTRUCTION_COUNT];\n";
+    bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" (List.length xs);
+    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+4)\n\n";
+    bprintf bh "extern const char *slv6_instruction_names[SLV6_TABLE_SIZE];\n";
+    bprintf bh "extern const char *slv6_instruction_references[SLV6_TABLE_SIZE];\n";
+    bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
     bprintf bh "\n%a" gen_ids xs;
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
@@ -395,8 +404,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* start generating the source file *)
     bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
     (* generate the decoders *)
-    gen_decoder bn "decode_exec" dec_exec_pf dec_exec_pf' dec_exec_c dec_exec_f xs;
-    gen_decoder bn "decode_store" dec_store_pf dec_store_pf' dec_store_c dec_store_f xs;
+    DecExec.decoder bn xs;
+    DecStore.decoder bn xs;
     (* generate the tables *)
     bprintf bc "\n%a" gen_tables xs;
     (* close the namespace (opened in ..._c_prelude.h *)

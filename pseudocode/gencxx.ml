@@ -416,7 +416,7 @@ let lsm_hack p =
     | Inst when p.pident.iname = "SRS" ->
 	(* add 'if (W) then R13_mode = new_Rn' at the end of the main block *)
         let a' = If (Var "W",
-                     Proc("set_reg_m", [Num "13"; Var "new_Rn"; Var "mode"]),
+                     Proc("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"]),
                      None) in
         let i = match p.pinst with
           | Block (l) -> Block (l @ [a'])
