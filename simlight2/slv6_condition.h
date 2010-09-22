@@ -10,8 +10,10 @@
 
 BEGIN_SIMSOC_NAMESPACE
 
-typedef enum{EQ, NE, CS_HS, CC_LO, MI, PL, VS, VC,
-             HI, LS, GE, LT, GT, LE, AL} SLv6_Condition;
+typedef enum{SLV6_EQ, SLV6_NE, SLV6_CS_HS, SLV6_CC_LO,
+             SLV6_MI, SLV6_PL, SLV6_VS,    SLV6_VC,
+             SLV6_HI, SLV6_LS, SLV6_GE,    SLV6_LT,
+             SLV6_GT, SLV6_LE, SLV6_AL} SLv6_Condition;
 
 extern const char *condition2string(SLv6_Condition);
 
