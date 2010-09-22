@@ -93,7 +93,7 @@ let constraints =
                              NotPC "s"; NotSame ("dHi", "dLo")];
     Hashtbl.add cs "SMLAWy" [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
     Hashtbl.add cs "SMLSD" [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
-    Hashtbl.add cs "SMLLSD" [NotPC "dHi"; NotPC "dLo"; NotPC "m"; NotPC "s";
+    Hashtbl.add cs "SMLSLD" [NotPC "dHi"; NotPC "dLo"; NotPC "m"; NotPC "s";
                              NotSame ("dHi", "dLo")];
     Hashtbl.add cs "SMMLA" [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
     Hashtbl.add cs "SMMLS" [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
