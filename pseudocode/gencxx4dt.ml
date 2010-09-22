@@ -379,37 +379,51 @@ let semantics_functions bn xs v decl prog =
 
 (** Generation of the "may branch" function *)
 (* we need to find under which condition the instruction may set the PC *)
+
 let may_branch_prog b (x: xprog) =
-  let default = (false, []) in
-  let rec union l l' =
-    match l with
-      | hd :: tl when List.mem hd l' -> union tl l' 
-      | hd :: tl -> hd :: (union tl l')
-      | [] -> l' in
-  let combine (b,l) (b',l') = ((b||b'), union l l') in
-  let rec inst acc = function
-    | Block is -> List.fold_left inst acc is
-    | Affect (dst, _) -> combine acc (exp dst)
-    | If (_, i1, Some i2) -> inst (inst acc i1) i2
-    | If (_, i, None) -> inst acc i
-    | While (_, i) -> inst acc i
-    | For (_, _, _, i) -> inst acc i
-    | Case (_, sis) -> List.fold_left inst acc (List.map (fun (_, i) -> i) sis)
-    | _ -> acc
-  and exp = function
-    | Reg (Var s, None) when s<>"i" && not (List.mem (Validity.NotPC s) x.xprog.fvcs) ->
-        (false, [s])
-    | Reg (Num "15", None) -> (true,[])
-    | _ -> default in
-  let tf,l = inst default x.xprog.finst in
-    if tf
-    then bprintf b "  case SLV6_%s_ID: return true;\n" x.xprog.fid
-    else match l with
-      | [] -> bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid
-      | _ ->
-          let aux b s = bprintf b "instr->args.%s.%s!=15" x.xprog.fid s in
-            bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
-              x.xprog.fid (list " || " aux) l;;
+  let is_ldm_1 x =
+    String.length x.xprog.fid >= 5 &&
+      String.sub x.xprog.fid 0 5 = "LDM1_" in
+  if is_ldm_1 x (* special case for LDM (1): check bit 15 of register_list *)
+  then bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
+    x.xprog.fid x.xprog.fid
+  else
+    let default = (false, []) in
+    let rec union l l' =
+      match l with
+        | hd :: tl when List.mem hd l' -> union tl l' 
+        | hd :: tl -> hd :: (union tl l')
+        | [] -> l' in
+    let combine (b,l) (b',l') = ((b||b'), union l l') in
+    let rec inst acc = function
+        (* TODO: LDM(1) can be improved *)
+      | Block is -> List.fold_left inst acc is
+      | Affect (dst, _) -> combine acc (exp dst)
+      | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) -> (* case used by LDR *)
+          let b,l = inst default i1 in
+          let acc' = combine acc (if b then false, ["d"] else b,l) in
+            inst acc' i2
+      | If (_, i1, Some i2) -> inst (inst acc i1) i2
+      | If (_, i, None) -> inst acc i
+      | While (_, i) -> inst acc i
+      | For (_, _, _, i) -> inst acc i
+      | Case (_, sis) -> List.fold_left inst acc (List.map (fun (_, i) -> i) sis)
+      | _ -> acc
+    and exp = function
+      | Reg (Var s, None)
+          when s<>"i" && not (List.mem (Validity.NotPC s) x.xprog.fvcs) ->
+          (false, [s])
+      | Reg (Num "15", None) -> (true,[])
+      | _ -> default in
+    let tf,l = inst default x.xprog.finst in
+      if tf
+      then bprintf b "  case SLV6_%s_ID: return true;\n" x.xprog.fid
+      else match l with
+        | [] -> bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid
+        | _ ->
+            let aux b s = bprintf b "instr->args.%s.%s==15" x.xprog.fid s in
+              bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
+                x.xprog.fid (list " || " aux) l;;
 
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
@@ -437,7 +451,10 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";
-    bprintf bh "  size_t id;\n  union {\n%a  } args;\n};\n" (list "" union_field) xs;
+    bprintf bh "  size_t id;\n  union {\n%a" (list "" union_field) xs;
+    bprintf bh "    struct ARMv6_BasicBlock *basic_block;\n";
+    bprintf bh "    struct ARMv6_OptimizedBasicBlock *opt_basic_block;\n";
+    bprintf bh "  } args;\n};\n";
     (* close the namespace (opened in ..._h_prelude.h *)
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
     bprintf bh "\n#endif /* SLV6_ISS_H */\n";

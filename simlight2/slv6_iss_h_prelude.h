@@ -13,6 +13,8 @@ BEGIN_SIMSOC_NAMESPACE
 
 struct SLv6_Processor;
 struct SLv6_Instruction;
+struct ARMv6_BasicBlock;
+struct ARMv6_OptimizedBasicBlock;
 
 typedef void (*SemanticsFunction)(struct SLv6_Processor *,
                                   struct SLv6_Instruction *);
