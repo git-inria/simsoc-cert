@@ -344,9 +344,9 @@ let gen_tables b (xs: xprog list) =
 
 (* generate the numerical instruction identifier *)
 let gen_ids b xs =
-  let aux i x = bprintf b "static const size_t SLV6_%s_ID = %d;\n" x.xprog.fid i in
+  let aux i x = bprintf b "#define SLV6_%s_ID %d\n" x.xprog.fid i in
   list_iteri aux xs;
-  bprintf b "static const size_t SLV6_UNPRED_OR_UNDEF_ID = SLV6_INSTRUCTION_COUNT;\n";;
+  bprintf b "#define SLV6_UNPRED_OR_UNDEF_ID SLV6_INSTRUCTION_COUNT\n";;
 
 (* Generation of all the semantics functions
  * - bn: file basename
@@ -376,6 +376,45 @@ let semantics_functions bn xs v decl prog =
     and outc = open_out (bn^"_"^v^".c") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;
+
+(** Generation of the "may branch" function *)
+(* we need to find under which condition the instruction may set the PC *)
+let may_branch_prog b (x: xprog) =
+  let default = (false, []) in
+  let rec union l l' =
+    match l with
+      | hd :: tl when List.mem hd l' -> union tl l' 
+      | hd :: tl -> hd :: (union tl l')
+      | [] -> l' in
+  let combine (b,l) (b',l') = ((b||b'), union l l') in
+  let rec inst acc = function
+    | Block is -> List.fold_left inst acc is
+    | Affect (dst, _) -> combine acc (exp dst)
+    | If (_, i1, Some i2) -> inst (inst acc i1) i2
+    | If (_, i, None) -> inst acc i
+    | While (_, i) -> inst acc i
+    | For (_, _, _, i) -> inst acc i
+    | Case (_, sis) -> List.fold_left inst acc (List.map (fun (_, i) -> i) sis)
+    | _ -> acc
+  and exp = function
+    | Reg (Var s, None) when s<>"i" && not (List.mem (Validity.NotPC s) x.xprog.fvcs) ->
+        (false, [s])
+    | Reg (Num "15", None) -> (true,[])
+    | _ -> default in
+  let tf,l = inst default x.xprog.finst in
+    if tf
+    then bprintf b "  case SLV6_%s_ID: return true;\n" x.xprog.fid
+    else match l with
+      | [] -> bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid
+      | _ ->
+          let aux b s = bprintf b "instr->args.%s.%s!=15" x.xprog.fid s in
+            bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
+              x.xprog.fid (list " || " aux) l;;
+
+let may_branch b xs =
+  bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
+  bprintf b "  switch (instr->id) {\n%a" (list "" may_branch_prog) xs;
+  bprintf b "  default: abort();\n  }\n}\n";;
 
 (** main function *)
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
@@ -410,6 +449,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     DecStore.decoder bn xs;
     (* generate the tables *)
     bprintf bc "\n%a" gen_tables xs;
+    (* generate the may_branch function *)
+    bprintf bc "\n%a" may_branch xs;
     (* close the namespace (opened in ..._c_prelude.h *)
     bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
     (* write buffers to files *)

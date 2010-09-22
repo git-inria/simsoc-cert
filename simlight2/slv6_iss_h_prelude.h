@@ -19,3 +19,5 @@ typedef void (*SemanticsFunction)(struct SLv6_Processor *,
 
 extern bool decode_and_exec(struct SLv6_Processor*, uint32_t bincode);
 extern void decode_and_store(struct SLv6_Instruction*, uint32_t bincode);
+
+extern bool may_branch(const struct SLv6_Instruction*);
