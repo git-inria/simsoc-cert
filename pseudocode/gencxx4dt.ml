@@ -141,11 +141,13 @@ and case_aux p k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
     indent k (Gencxx.hex_of_bin n) (inst p (k+2)) i indent (k+2)
 
-and affect p k b dst src =
+and affect (p: xprog) k b dst src =
   if src = Unpredictable_exp then string b "unpredictable()"
   else match dst with
-    | Reg (Var "d", _) -> bprintf b
-        "set_reg_or_pc(proc,d,%a)" (exp p) src
+    | Reg (Var s, None) when s<>"i" ->
+        if List.mem (Validity.NotPC s) p.xprog.fvcs
+        then bprintf b "set_reg(proc,%s,%a)" s (exp p) src
+        else bprintf b "set_reg_or_pc(proc,%s,%a)" s (exp p) src
     | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
