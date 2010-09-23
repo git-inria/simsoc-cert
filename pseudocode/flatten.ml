@@ -31,6 +31,23 @@ type fprog = {
 
 (* Compute an instruction identifier that can be used in Coq or C code *)
 let str_ident p =
+  let compact s =
+    let rec split c s =
+      try let l = String.index s c in
+        if l = 0 then split c (String.sub s 1 (String.length s - 1))
+        else String.sub s 0 l :: split c (String.sub s l (String.length s - l))
+      with Not_found -> [s] in
+    let abbrev s = match s with
+      | "Immediate" | "immediate" -> "Imm"
+      | "Register" | "register" -> "Reg"
+      | "indexed" -> "Ind"
+      | "offset" -> "Off"
+      | "Scaled" -> "Sc"
+      | "pre" | "post" -> "_"^s
+      | "by" | "with" -> ""
+      | _ -> String.make 1 (Char.uppercase s.[0]) in
+    let ss = split '_' s in
+      List.fold_left (fun a b -> a^abbrev b) "" ss in
   let ident b p =
     let i = p.pident in
       match p.pkind with
@@ -38,7 +55,7 @@ let str_ident p =
             bprintf b "%s%a%a" i.iname
               (option "" string) i.ivariant (list "" string) i.iparams
         | Mode m ->
-            bprintf b "M%d_%s" m i.iname
+            bprintf b "M%d_%s" m (compact i.iname)
   in
   let b = Buffer.create 16 in ident b p; Buffer.contents b;;
 
