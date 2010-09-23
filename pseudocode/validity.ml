@@ -44,7 +44,7 @@ let constraints =
     Hashtbl.add cs "LDR" [NoWritebackDest];
     Hashtbl.add cs "LDRB" [NotPC "d"; NoWritebackDest];
     Hashtbl.add cs "LDRBT" [NotPC "d"; NotSame ("d", "n")];
-    Hashtbl.add cs "LDRD" [NotLR "d"; IsEven "d"]; (* FIXME: UNDEFINED if "d" is odd *)
+    Hashtbl.add cs "LDRD" [NotPC "d"; NotLR "d"; IsEven "d"]; (* FIXME: UNDEFINED if "d" is odd *)
     Hashtbl.add cs "LDREX" [NotPC "d"; NotPC "n"];
     Hashtbl.add cs "LDRH" [NotPC "d"; NoWritebackDest];
     Hashtbl.add cs "LDRSB" [NotPC "d"; NoWritebackDest];
@@ -164,40 +164,40 @@ let constraints =
     Hashtbl.add cs "UXTB16" [NotPC "d"; NotPC "m"];
     Hashtbl.add cs "UXTH" [NotPC "d"; NotPC "m"];
     (* 117 instructions in this table / 148 *)
-    Hashtbl.add cs "M1_Logical_shift_left_by_immediate"
+    Hashtbl.add cs "M1_LSLImm"
       [NotZero "shift_imm"]; (* to distinguish from (equivalent?) M1_Register *)
-    Hashtbl.add cs "M1_Logical_shift_left_by_register"
+    Hashtbl.add cs "M1_LSLReg"
       [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
-    Hashtbl.add cs "M1_Logical_right_left_by_register"
+    Hashtbl.add cs "M1_LSRReg"
       [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
-    Hashtbl.add cs "M1_Arithmetic_shift_right_by_register"
+    Hashtbl.add cs "M1_ASRReg"
       [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
-    Hashtbl.add cs "M1_Rotate_right_by_immediate"
+    Hashtbl.add cs "M1_RRImm"
       [NotZero "shift_imm"];
-    Hashtbl.add cs "M1_Rotate_right_by_register"
+    Hashtbl.add cs "M1_RRReg"
       [NotPC "d"; NotPC "m"; NotPC "s"; NotPC "n"];
     (* 6 mode 1 cases in this table / 11 *)
-    Hashtbl.add cs "M2_Register_offset" [NotPC "m"];
-    Hashtbl.add cs "M2_Scaled_register_offset" [NotPC "m"; NotLSL0];
-    Hashtbl.add cs "M2_Immediate_pre_indexed" [NotPC "n"];
-    Hashtbl.add cs "M2_Register_pre_indexed" [NotPC "n"; NotPC "m"];
-    Hashtbl.add cs "M2_Scaled_register_pre_indexed"
+    Hashtbl.add cs "M2_RegOff" [NotPC "m"];
+    Hashtbl.add cs "M2_ScRegOff" [NotPC "m"; NotLSL0];
+    Hashtbl.add cs "M2_Imm_preInd" [NotPC "n"];
+    Hashtbl.add cs "M2_Reg_preInd" [NotPC "n"; NotPC "m"];
+    Hashtbl.add cs "M2_ScReg_preInd"
       [NotPC "n"; NotPC "m"; NotLSL0];
-    Hashtbl.add cs "M2_Immediate_post_indexed" [NotPC "n"];
-    Hashtbl.add cs "M2_Register_post_indexed" [NotPC "n"; NotPC "m"];
-    Hashtbl.add cs "M2_Scaled_register_post_indexed"
+    Hashtbl.add cs "M2_Imm_postInd" [NotPC "n"];
+    Hashtbl.add cs "M2_Reg_postInd" [NotPC "n"; NotPC "m"];
+    Hashtbl.add cs "M2_ScReg_postInd"
       [NotPC "n"; NotPC "m"; NotLSL0];
     (* 8 mode 2 cases in this table / 9 *)
-    Hashtbl.add cs "M3_Register_offset" [NotPC "m"];
-    Hashtbl.add cs "M3_Immediate_pre_indexed" [NotPC "n"];
-    Hashtbl.add cs "M3_Register_pre_indexed" [NotPC "n"; NotPC "m"];
-    Hashtbl.add cs "M3_Immediate_post_indexed" [NotPC "n"];
-    Hashtbl.add cs "M3_Register_post_indexed" [NotPC "n"; NotPC "m"];
+    Hashtbl.add cs "M3_RegOff" [NotPC "m"];
+    Hashtbl.add cs "M3_Imm_preInd" [NotPC "n"];
+    Hashtbl.add cs "M3_Reg_preInd" [NotPC "n"; NotPC "m"];
+    Hashtbl.add cs "M3_Imm_preInd" [NotPC "n"];
+    Hashtbl.add cs "M3_Reg_preInd" [NotPC "n"; NotPC "m"];
     (* 5 mode 3 cases in this table / 6 *)
     (* no constraints for mode 4 *)
-    Hashtbl.add cs "M5_Immediate_pre_indexed" [NotPC "n"];
-    Hashtbl.add cs "M5_Immediate_post_indexed" [NotPC "n"];
-    Hashtbl.add cs "M5_Unindexed" [NotZero "U"];
+    Hashtbl.add cs "M5_Imm_preInd" [NotPC "n"];
+    Hashtbl.add cs "M5_Imm_postInd" [NotPC "n"];
+    Hashtbl.add cs "M5_U" [NotZero "U"];
     (* 3 mode 5 cases in this table / 4 *)
     cs;;
 
