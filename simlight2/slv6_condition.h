@@ -20,8 +20,6 @@ extern const char *condition2string(SLv6_Condition);
 
 struct SLv6_StatusRegister;
 
-/* extern bool ConditionPassed(struct SLv6_StatusRegister*, SLv6_Condition); */
-
 static inline bool ConditionPassed(struct SLv6_StatusRegister *sr, SLv6_Condition cond) {
   switch (cond) {
   case SLV6_EQ: return sr->Z_flag;

@@ -134,7 +134,7 @@ and inst_aux p k b = function
       bprintf b "switch (%a) {\n%a%a  default: abort();\n  }"
         (exp p) e (list "" (case_aux p k)) s indent k
 
-  (* the condition has already been checked *)
+  (* the condition has already been checked, or has been removed *)
   | If (Fun ("ConditionPassed", [Var "cond"]), i, None) -> inst p k b i
 
   | If (e, (Block _|If _ as i), None) ->
@@ -450,7 +450,7 @@ let may_branch_prog b (x: xprog) =
       if tf
       then bprintf b "  case SLV6_%s_ID: return true;\n" x.xprog.fid
       else match l with
-        | [] -> bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid
+        | [] -> () (* bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid *)
         | _ ->
             let aux b s = bprintf b "instr->args.%s.%s==15" x.xbaseid s in
               bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
@@ -459,7 +459,7 @@ let may_branch_prog b (x: xprog) =
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
   bprintf b "  switch (instr->id) {\n%a" (list "" may_branch_prog) xs;
-  bprintf b "  default: abort();\n  }\n}\n";;
+  bprintf b "  default: return false;\n  }\n}\n";;
 
 (** main function *)
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
@@ -477,7 +477,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "#ifndef SLV6_ISS_H\n#define SLV6_ISS_H\n\n";
     bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
     bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" instr_count;
-    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+4)\n\n";
+    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+6)\n\n";
     bprintf bh "extern const char *slv6_instruction_names[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern const char *slv6_instruction_references[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
@@ -488,6 +488,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "  size_t id;\n  union {\n%a" (list "" union_field) xs;
     bprintf bh "    struct ARMv6_BasicBlock *basic_block;\n";
     bprintf bh "    struct ARMv6_OptimizedBasicBlock *opt_basic_block;\n";
+    bprintf bh "    struct ARMv6_SetReg set_reg;\n";
     bprintf bh "  } args;\n};\n";
     (* close the namespace (opened in ..._h_prelude.h *)
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
