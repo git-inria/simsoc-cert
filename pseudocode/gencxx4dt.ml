@@ -29,6 +29,8 @@ let xprog_of p =
   let gs, ls = Gencxx.V.vars p.finst in
     {xprog = p; xgs = gs; xls = ls};;
 
+let is_conditional p = List.mem_assoc "cond" p.xgs;;
+
 (** Generate the code corresponding to an expression *)
 
 let typeof x v =
@@ -120,6 +122,9 @@ and inst_aux p k b = function
       bprintf b "switch (%a) {\n%a%a  default: abort();\n  }"
         (exp p) e (list "" (case_aux p k)) s indent k
 
+  (* the condition has already been checked *)
+  | If (Fun ("ConditionPassed", [Var "cond"]), i, None) -> inst p k b i
+
   | If (e, (Block _|If _ as i), None) ->
       bprintf b "if (%a) {\n%a\n%a}" (exp p) e (inst p (k+2)) i indent k
   | If (e, i, None) -> bprintf b "if (%a)\n%a" (exp p) e (inst p (k+2)) i
@@ -189,14 +194,21 @@ and affect (p: xprog) k b dst src =
 (* display a comment with the reference and the full instruction name *)
 let comment b p = bprintf b "/* %s\n * %s */\n" p.xprog.fref p.xprog.fname;;
 
+(* check the instruction condition *)
+let check_cond b p =
+  if is_conditional p
+  then bprintf b "  if (!ConditionPassed(&proc->cpsr, cond)) return;\n";;
+
 (* Defintion of the functions. This should be printed in a source file (.c) *)
 (* Version 1: The list of arguemetns is expanded *)
 let prog_expanded b (p: xprog) =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
-    bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
+    bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a%a\n}\n"
+      comment p
       p.xprog.fid
       (list "" Gencxx.prog_arg) p.xgs
+      check_cond p
       (list "" Gencxx.inreg_load) inregs
       (list "" Gencxx.local_decl) p.xls
       (inst p 2) p.xprog.finst;;
@@ -211,11 +223,12 @@ let prog_grouped b (p: xprog) =
     let expand b (n, t) =
       bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xprog.fid n
     in
-      bprintf b "%a%a%a%a\n}\n"
-      (list "" expand) p.xgs
-      (list "" Gencxx.inreg_load) inregs
-      (list "" Gencxx.local_decl) p.xls
-      (inst p 2) p.xprog.finst;;
+      bprintf b "%a%a%a%a%a\n}\n"
+        (list "" expand) p.xgs
+        check_cond p
+        (list "" Gencxx.inreg_load) inregs
+        (list "" Gencxx.local_decl) p.xls
+        (inst p 2) p.xprog.finst;;
 
 (* Declaration of the functions. This may be printed in a header file (.h) *)
 (* Version 1: The list of arguemetns is expanded *)
