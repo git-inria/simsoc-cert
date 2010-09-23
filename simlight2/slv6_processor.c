@@ -14,16 +14,15 @@ void init_Processor(struct SLv6_Processor *proc, struct SLv6_MMU *m) {
   for (; sr!=sr_end; ++sr)
     set_StatusRegister(sr,0x1f);
   init_CP15(&proc->cp15);
-  /* init registers to 0 */
+  /* init all registers to 0 */
   int i = 0;
   for (;i<2;++i)
     proc->user_regs[i] = proc->fiq_regs[i] = proc->irq_regs[i] = proc->svc_regs[i] =
-      proc->abt_regs[i] = proc->und_regs[i] = 0;
+      proc->abt_regs[i] = proc->und_regs[i] = proc->regs[i] = 0;
   for (;i<7;++i)
-    proc->user_regs[i] = proc->fiq_regs[i] = 0;
+    proc->user_regs[i] = proc->fiq_regs[i] = proc->regs[i] = 0;
   for (;i<16;++i)
-    proc->user_regs[i] = 0;
-  proc->pc = &proc->user_regs[15];
+    proc->regs[i] = 0;
   proc->jump = false;
 }
 
@@ -31,26 +30,87 @@ void destruct_Processor(struct SLv6_Processor *proc) {
   destruct_MMU(proc->mmu_ptr);
 }
 
-uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m) {
-  switch (m) {
+void set_cpsr_mode(struct SLv6_Processor *proc, SLv6_Mode im) {
+  int i;
+  SLv6_Mode om = proc->cpsr.mode; /* "out" mode */
+  if (om==im) return; /* nothing to do */
+  proc->cpsr.mode = im; /* "in" mode */
+  if ((om==usr&&im==sys) || (om==sys&&im==usr)) return; /* nothing more to do */
+  if (om==fiq)  /* leave fiq mode */
+    for (i = 8; i<13; ++i) {
+      proc->fiq_regs[i-8] = proc->regs[i];
+      proc->regs[i] = proc->user_regs[i-8];
+    }
+  if (im==fiq)  /* enter fiq mode */
+    for (i = 8; i<13; ++i) {
+      proc->user_regs[i-8] = proc->regs[i];
+      proc->regs[i] = proc->fiq_regs[i-8];
+    }
+  switch (om) {
   case fiq:
-    return (8<=reg_id && reg_id<=14) ?
-      &proc->fiq_regs[reg_id-8] : &proc->user_regs[reg_id];
+    proc->fiq_regs[13-8]  = proc->regs[13];
+    proc->fiq_regs[14-8]  = proc->regs[14]; break;
   case irq:
-    return (13<=reg_id && reg_id<=14) ?
-      &proc->irq_regs[reg_id-13] : &proc->user_regs[reg_id];
+    proc->irq_regs[13-13] = proc->regs[13];
+    proc->irq_regs[14-13] = proc->regs[14]; break;
   case svc:
-    return (13<=reg_id && reg_id<=14) ?
-      &proc->svc_regs[reg_id-13] : &proc->user_regs[reg_id];
+    proc->svc_regs[13-13] = proc->regs[13];
+    proc->svc_regs[14-13] = proc->regs[14]; break;
   case abt:
-    return (13<=reg_id && reg_id<=14) ?
-      &proc->abt_regs[reg_id-13] : &proc->user_regs[reg_id];
+    proc->abt_regs[13-13] = proc->regs[13];
+    proc->abt_regs[14-13] = proc->regs[14]; break;
   case und:
-    return (13<=reg_id && reg_id<=14) ?
-      &proc->und_regs[reg_id-13] : &proc->user_regs[reg_id];
+    proc->und_regs[13-13] = proc->regs[13];
+    proc->und_regs[14-13] = proc->regs[14]; break;
   case sys: /* no break; */
   case usr:
-    return &proc->user_regs[reg_id];
+    proc->user_regs[13-8] = proc->regs[13];
+    proc->user_regs[14-8] = proc->regs[14]; break;
+  }
+  switch (im) {
+  case fiq:
+    proc->regs[13] = proc->fiq_regs[13-8];
+    proc->regs[14] = proc->fiq_regs[14-8];  break;
+  case irq:
+    proc->regs[13] = proc->irq_regs[13-13];
+    proc->regs[14] = proc->irq_regs[14-13]; break;
+  case svc:
+    proc->regs[13] = proc->svc_regs[13-13];
+    proc->regs[14] = proc->svc_regs[14-13]; break;
+  case abt:
+    proc->regs[13] = proc->abt_regs[13-13];
+    proc->regs[14] = proc->abt_regs[14-13]; break;
+  case und:
+    proc->regs[13] = proc->und_regs[13-13];
+    proc->regs[14] = proc->und_regs[14-13]; break;
+  case sys: /* no break; */
+  case usr:
+    proc->regs[13] = proc->user_regs[13-8];
+    proc->regs[14] = proc->user_regs[14-8]; break;
+  }
+}
+
+uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m) {
+  if (reg_id==15 || reg_id<8 || m==proc->cpsr.mode)
+    return &proc->regs[reg_id];
+  if (reg_id<13) {
+    if (m==fiq) return &proc->fiq_regs[reg_id-8];
+    if (proc->cpsr.mode==fiq) return &proc->user_regs[reg_id-8];
+    return &proc->regs[reg_id];
+  }
+  assert((reg_id==13 || reg_id==14) && m!=proc->cpsr.mode);
+  switch (m) {
+  case fiq: return &proc->fiq_regs[reg_id-8];
+  case irq: return &proc->irq_regs[reg_id-13];
+  case svc: return &proc->svc_regs[reg_id-13];
+  case abt: return &proc->abt_regs[reg_id-13];
+  case und: return &proc->und_regs[reg_id-13];
+  case sys:
+    if (proc->cpsr.mode==usr) return &proc->regs[reg_id];
+    else return &proc->user_regs[reg_id-8];
+  case usr:
+    if (proc->cpsr.mode==sys) return &proc->regs[reg_id];
+    else return &proc->user_regs[reg_id-8];
   }
   abort();
 }

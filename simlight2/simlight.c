@@ -50,7 +50,7 @@ void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
     if (proc->jump)
       proc->jump = false;
     else
-      *proc->pc += 4;
+      increment_pc(proc);
     ++inst_count;
   } while (bincode!=infinite_loop);
   DEBUG(puts("---------------------"));

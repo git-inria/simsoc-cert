@@ -154,9 +154,10 @@ and affect (p: xprog) k b dst src =
 	bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (Gencxx.mode m) (exp p) src
     | CPSR -> (
         match src with
-          | SPSR None -> bprintf b "proc->cpsr = *spsr(proc)"
-          | SPSR (Some m) -> bprintf b "proc->cpsr = *spsr_m(proc,%s)" (Gencxx.mode m)
-          | _ -> bprintf b "set_StatusRegister(&proc->cpsr,%a)" (exp p) src)
+          | SPSR None -> bprintf b "set_cpsr_sr(proc, *spsr(proc))"
+          | SPSR (Some m) ->
+              bprintf b "set_cpsr_sr(proc, *spsr_m(proc,%s))" (Gencxx.mode m)
+          | _ -> bprintf b "set_cpsr_bin(proc, %a)" (exp p) src)
     | SPSR None -> (
         match src with
           | CPSR -> bprintf b "*spsr(proc) = proc->cpsr"
@@ -176,8 +177,8 @@ and affect (p: xprog) k b dst src =
         bprintf b "set_GE_32(&proc->cpsr,%a)" (exp p) src
     | Ast.Range (CPSR, Bits ("17", "16")) ->
         bprintf b "set_GE_10(&proc->cpsr,%a)" (exp p) src
-    | Ast.Range (CPSR, Bits (n1, n2)) ->
-        bprintf b "proc->cpsr.%s = %a" (Gencxx.cpsr_field (n1,n2)) (exp p) src
+    | Ast.Range (CPSR, Bits ("4", "0")) ->
+        bprintf b "set_cpsr_mode(proc, %a)" (exp p) src
     | Ast.Range (e1, Bits (n1, n2)) ->
         inst_aux p k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
