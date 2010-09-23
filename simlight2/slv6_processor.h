@@ -169,7 +169,7 @@ static inline void decrement_pc_arm16(struct SLv6_Processor *proc) {
   proc->regs[15] -= 2;
 }
 
-static inline uint32_t get_pc(struct SLv6_Processor *proc) {
+static inline uint32_t get_pc(const struct SLv6_Processor *proc) {
   return proc->regs[15];
 }
 
