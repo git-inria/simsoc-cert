@@ -23,13 +23,25 @@ type xprog = {
   xprog: fprog;
   xgs: (string * string) list; (* "global" variables *)
   xls: (string * string) list; (* local variables *)
+  xbaseid: string; (* id without "_NC" *)
 }
 
 let xprog_of p =
   let gs, ls = Gencxx.V.vars p.finst in
-    {xprog = p; xgs = gs; xls = ls};;
+    {xprog = p; xgs = gs; xls = ls; xbaseid = p.fid};;
+
+(** specialization according to the condition field *)
 
 let is_conditional p = List.mem_assoc "cond" p.xgs;;
+
+let no_cond_variant x =
+  let p = x.xprog in
+  let p' =
+    {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
+  in {x with xprog = p'; xgs = List.remove_assoc "cond" x.xgs};;
+
+let no_cond_variants xs =
+  List.map no_cond_variant (List.filter is_conditional xs);;
 
 (** Generate the code corresponding to an expression *)
 
@@ -221,7 +233,7 @@ let prog_grouped b (p: xprog) =
       "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
       comment p p.xprog.fid;
     let expand b (n, t) =
-      bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xprog.fid n
+      bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xbaseid n
     in
       bprintf b "%a%a%a%a%a\n}\n"
         (list "" expand) p.xgs
@@ -336,7 +348,12 @@ module DecStoreConfig = struct
     let store b (n, _) = 
       bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
     in
-      bprintf b "  instr->id = SLV6_%s_ID;\n%a" x.xprog.fid (list "" store) x.xgs;;
+      if is_conditional x then (
+        bprintf b "  if (cond==SLV6_AL)\n";
+        bprintf b "    instr->id = SLV6_%s_NC_ID;\n" x.xprog.fid;
+        bprintf b "  else\n  ");
+      bprintf b "  instr->id = SLV6_%s_ID;\n" x.xprog.fid;
+      bprintf b "%a" (list "" store) x.xgs;;
   let return_action = "if (!found) instr->id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;
@@ -400,7 +417,7 @@ let may_branch_prog b (x: xprog) =
       String.sub x.xprog.fid 0 5 = "LDM1_" in
   if is_ldm_1 x (* special case for LDM (1): check bit 15 of register_list *)
   then bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
-    x.xprog.fid x.xprog.fid
+    x.xprog.fid x.xbaseid
   else
     let default = (false, []) in
     let rec union l l' =
@@ -435,7 +452,7 @@ let may_branch_prog b (x: xprog) =
       else match l with
         | [] -> bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid
         | _ ->
-            let aux b s = bprintf b "instr->args.%s.%s==15" x.xprog.fid s in
+            let aux b s = bprintf b "instr->args.%s.%s==15" x.xbaseid s in
               bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
                 x.xprog.fid (list " || " aux) l;;
 
@@ -450,18 +467,21 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
   let fs: fprog list = flatten pcs' decs in
   let xs: xprog list = List.rev (List.map xprog_of fs) in
+  let nocond_xs: xprog list = no_cond_variants xs in
+  let all_xs: xprog list = xs@nocond_xs in
+  let instr_count = List.length all_xs in
     (* create buffers for header file (bh) and source file (bc) *)
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
 
     (* generate the main header file *)
     bprintf bh "#ifndef SLV6_ISS_H\n#define SLV6_ISS_H\n\n";
     bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
-    bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" (List.length xs);
+    bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" instr_count;
     bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+4)\n\n";
     bprintf bh "extern const char *slv6_instruction_names[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern const char *slv6_instruction_references[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
-    bprintf bh "\n%a" gen_ids xs;
+    bprintf bh "\n%a" gen_ids all_xs;
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";
@@ -475,19 +495,19 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
 
     (* start generating the source file *)
     bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
-    (* generate the decoders *)
-    DecExec.decoder bn xs;
-    DecStore.decoder bn xs;
     (* generate the tables *)
-    bprintf bc "\n%a" gen_tables xs;
+    bprintf bc "\n%a" gen_tables all_xs;
     (* generate the may_branch function *)
-    bprintf bc "\n%a" may_branch xs;
+    bprintf bc "\n%a" may_branch all_xs;
     (* close the namespace (opened in ..._c_prelude.h *)
     bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
     (* write buffers to files *)
     let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;      
-      (* Now, we generate the semantics functions. *)
-      semantics_functions bn xs "expanded" decl_expanded prog_expanded;
-      semantics_functions bn xs "grouped" decl_grouped prog_grouped;;
+    (* generate the decoders *)
+    DecExec.decoder bn xs;
+    DecStore.decoder bn xs;
+    (* Now, we generate the semantics functions. *)
+    semantics_functions bn xs "expanded" decl_expanded prog_expanded;
+    semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;
