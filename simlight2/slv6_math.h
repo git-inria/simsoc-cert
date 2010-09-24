@@ -11,7 +11,14 @@
 BEGIN_SIMSOC_NAMESPACE
 
 extern uint32_t bit_position_of_most_significant_1(uint32_t x);
-extern uint32_t Number_Of_Set_Bits_In(uint32_t x);
+
+static inline uint32_t Number_Of_Set_Bits_In(uint32_t x) {
+  /* source:
+   * http://stackoverflow.com/questions/109023/best-algorithm-to-count-the-number-of-set-bits-in-a-32-bit-integer */
+  x = x - ((x >> 1) & 0x55555555);
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+  return (((x + (x >> 4)) & 0xF0F0F0F) * 0x1010101) >> 24;
+}
 
 static inline uint32_t get_half_0(uint32_t x) {return 0xffff&x;}
 static inline uint32_t get_half_1(uint32_t x) {return 0xffff&(x>>16);}

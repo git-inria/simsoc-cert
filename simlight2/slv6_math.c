@@ -16,6 +16,7 @@ uint32_t bit_position_of_most_significant_1(uint32_t x) {
   return ~0;
 }
 
+#if 0 /* the old slow implementation */
 uint32_t Number_Of_Set_Bits_In(uint32_t x) {
   uint32_t count = 0;
   while (x) {
@@ -24,6 +25,7 @@ uint32_t Number_Of_Set_Bits_In(uint32_t x) {
   }
   return count;
 }
+#endif
 
 void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src) {
   assert(a>b);
