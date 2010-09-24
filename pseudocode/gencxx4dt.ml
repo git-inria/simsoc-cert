@@ -587,6 +587,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";
+    bprintf bh "  SemanticsFunction sem_fct;\n";
     bprintf bh "  size_t id;\n";
     bprintf bh "  union {\n%a" (list "" union_field) xs;
     bprintf bh "    struct ARMv6_BasicBlock *basic_block;\n";
