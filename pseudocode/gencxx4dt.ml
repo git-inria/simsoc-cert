@@ -254,12 +254,21 @@ let decl_grouped b (p: xprog) =
     comment p p.xprog.fid;;
 
 (** Generation of the instruction type *)
-(* Generate a type that can store an instruction 'p' *)
+
+let sizeof t = match t with
+  | "uint8_t" | "bool" -> 1
+  | "uint16_t" -> 2
+  | "uint64_t" -> 8
+  | _ -> 4;;
+
+(* Generate a type that can store an instruction 'p'
+ * fields are sorted according to their size *)
 let inst_type b (p: xprog) =
   let field b (v, t) = bprintf b "%s %s;" t v
+  and cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
   in bprintf b "%astruct SLv6_%s {\n  %a\n};\n"
        comment p p.xprog.fid
-       (list "\n  " field) p.xgs;;
+       (list "\n  " field) (List.stable_sort cmp p.xgs);;
 
 (* Generate a member of the big union type *)
 let union_field b (p: xprog) =
@@ -412,12 +421,10 @@ let semantics_functions bn xs v decl prog =
 (* we need to find under which condition the instruction may set the PC *)
 
 let may_branch_prog b (x: xprog) =
-  let is_ldm_1 x =
-    String.length x.xprog.fid >= 5 &&
-      String.sub x.xprog.fid 0 5 = "LDM1_" in
-  if is_ldm_1 x (* special case for LDM (1): check bit 15 of register_list *)
-  then bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
-    x.xprog.fid x.xbaseid
+  (* special case for LDM (1): check bit 15 of register_list *)
+  if x.xprog.finstr = "LDM1" then
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
+      x.xprog.fid x.xbaseid
   else
     let default = (false, []) in
     let rec union l l' =
@@ -461,7 +468,24 @@ let may_branch b xs =
   bprintf b "  switch (instr->id) {\n%a" (list "" may_branch_prog) xs;
   bprintf b "  default: return false;\n  }\n}\n";;
 
+(** print sizeof(T) for each instruction type T *)
+
+let dump_sizeof bn xs =
+  let b = Buffer.create 10000 in
+  let aux b x =
+    let s = x.xprog.fid in
+      bprintf b "  printf(\"%%2ld %s\\n\", sizeof(struct SLv6_%s));\n" s s
+  in
+    bprintf b "#include \"%s.h\"\n" bn;
+    bprintf b "#include <stdio.h>\n\n";
+    bprintf b "int main(int argc, char *argv[]) {\n";
+    bprintf b "%a" (list "" aux) xs;
+    bprintf b "  return 0;\n}\n";
+    let out = open_out ("print_sizes.c") in
+      Buffer.output_buffer out b; close_out out;;
+
 (** main function *)
+
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
@@ -509,6 +533,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the decoders *)
     DecExec.decoder bn xs;
     DecStore.decoder bn xs;
+    (* generate a small program to verify the sizes of the instruciton types *)
+    dump_sizeof bn xs;
     (* Now, we generate the semantics functions. *)
     semantics_functions bn xs "expanded" decl_expanded prog_expanded;
     semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;

@@ -41,7 +41,6 @@ let type_of_var = function
   | "cond" -> "SLv6_Condition"
   | "mode" -> "SLv6_Mode"
   | "accvalue" | "result" -> "uint64_t"
-  | "processor_id" -> "size_t"
   | _ -> "uint32_t";;
 
 (** List the variables of a prog *)

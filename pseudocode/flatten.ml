@@ -22,6 +22,8 @@ open Validity;;
 (* type for "flat" programs *)
 type fprog = {
   fid: string; (* the identifier used in the generated code *)
+  finstr: string; (* the identifier of the base instruction *)
+  fmode: string option; (* the identifier of the inlined mode, if any *)
   fref: string; (* chapter(s) in the ARM documentation (e.g. A4.1.20--A5.2.3) *)
   fname: string; (* whole name *)
   finst: inst; (* the pseudo-code *)
@@ -204,7 +206,7 @@ let flatten (pcs: prog list) (decs: maplist) : fprog list =
       let dec = merge_dec d d' in
       let params = merge_plist (parameters_of d) (parameters_of d') in
       let vcs = get_constraints idi @ get_constraints idm in
-      {fid = id; fref = ref'; fname = name;
+      {fid = id; finstr = idi; fmode = Some idm; fref = ref'; fname = name;
        finst = inst; fdec = dec; fparams = params; fvcs = vcs}
     in
     let is_inst p = match p.pkind with Inst -> true | Mode _ -> false in
@@ -258,6 +260,7 @@ let flatten (pcs: prog list) (decs: maplist) : fprog list =
         (* other instrucitons *)
         | _ ->
             let id = str_ident i in
-              [{fid = id; fref = i.pref; fname = str_name i; finst = i.pinst;
+              [{fid = id; finstr = id; fmode = None; fref = i.pref;
+                fname = str_name i; finst = i.pinst;
                 fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
   in List.flatten (List.map flatten_one is);;
