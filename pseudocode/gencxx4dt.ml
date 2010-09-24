@@ -18,27 +18,98 @@ open Dec;;
 open Codetype;;
 open Flatten;;
 
+
+(** Optimize the sub-expressions that can computed at decode-store time. *)
+
+let computed_params (p: fprog) (ps: (string*string) list) =
+  if List.mem_assoc "register_list" ps then
+    (* we compute "Number_Of_Set_Bits_In(register_list) * 4" *)
+    let o = BinOp (Fun ("Number_Of_Set_Bits_In", [Var "register_list"]),
+                   "*", Num "4")
+    and n = Var "nb_reg_x4" in
+    let p' = {p with finst = Norm.replace_exp o n p.finst} in
+      p', ps, [("nb_reg_x4", "uint8_t")]
+  else if List.mem_assoc "signed_immed_24" ps then
+    let se_lsl_2 = BinOp (Fun ("SignExtend_30", [Var "signed_immed_24"]),
+                          "<<", Num "2") in
+      if List.mem_assoc "H" ps then
+        (* we compute "(SignExtend_30(signed_immed_24) << 2) + (H << 1)" *)
+        let pc = Reg (Num "15", None) in
+        let tmp = BinOp (pc, "+", se_lsl_2) in
+        let o = BinOp (tmp, "+", BinOp (Var "H", "<<", Num "1"))
+        and n = BinOp (pc, "+", Var "pc_offset_h") 
+        and remove (s,_) = s <> "H" && s <> "signed_immed_24" in
+        let p' = {p with finst = Norm.replace_exp o n p.finst} in
+          p', List.filter remove ps, [("pc_offset_h", "uint32_t")]
+      else
+        (* we compute "(SignExtend_30(signed_immed_24) << 2)" *)
+        let n = Var "pc_offset"
+        and remove (s,_) = s <> "signed_immed_24" in
+        let p' = {p with finst = Norm.replace_exp se_lsl_2 n p.finst} in
+          p', List.filter remove ps, [("pc_offset", "uint32_t")]
+  else if List.mem_assoc "rotate_imm" ps then (
+    (* we compute immed_8 Rotate_Right (rotate_imm * 2) *)
+    assert (List.mem_assoc "immed_8" ps);
+    let tmp = BinOp (Var "rotate_imm", "*", Num "2") in
+    let o = BinOp (Var "immed_8", "Rotate_Right", tmp)
+    and n = Var "immed_rotated"
+    and remove (s,_) =  s <> "immed_8" in
+    let p' = {p with finst = Norm.replace_exp o n p.finst} in
+      p', List.filter remove ps, [("immed_rotated", "uint32_t")])
+  else if List.mem_assoc "offset_12" ps then (
+    (* we pre-compute the sign, which is given by the U bit*)
+    assert (List.mem_assoc "U" ps);
+    let remove (s,_) = s <> "U" && s <> "offset_12" in
+      (* there are two cases. The result is stored either in Rn or in address *)
+      (* Case 1: we search a conditional expression *)
+    let u = BinOp (Var "U", "==", Num "1")
+    and rn = Reg (Var "n", None) in
+    let plus = BinOp (rn, "+", Var "offset_12")
+    and minus = BinOp (rn, "-", Var "offset_12") in
+    let o = If_exp (u, plus, minus)
+    and n = BinOp (rn, "+", Var "signed_offset_12") in
+    let inst = Norm.replace_exp o n p.finst in
+      (* Case 2: we search a conditional instruction *)
+    let o' = If (u, Affect (rn, plus), Some (Affect (rn, minus)))
+    and n' = Affect (rn, n) in
+    let inst' = Norm.replace_inst o' n' inst in
+    let p' = {p with finst = inst'} in
+      p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
+  else p, ps, [];;
+
+let compute_param = function
+  | "nb_reg_x4" -> "Number_Of_Set_Bits_In(register_list) * 4"
+  | "pc_offset_h" -> "(SignExtend_30(signed_immed_24) << 2) + (H << 1)"
+  | "pc_offset" -> "SignExtend_30(signed_immed_24) << 2"
+  | "immed_rotated" -> "rotate_right(immed_8,rotate_imm*2)"
+  | "signed_offset_12" -> "(U ? offset_12 : -offset_12)"
+  | _ -> raise (Invalid_argument "compute_param");;
+
 (** extended program type allowing to store extra information *)
 type xprog = {
   xprog: fprog;
-  xgs: (string * string) list; (* "global" variables *)
+  xps: (string * string) list; (* parameters *)
   xls: (string * string) list; (* local variables *)
+  xcs: (string * string) list; (* computed parameters *)
+  xkps: (string * string) list; (* parameters without the ones replaced
+                                 * by computed prameters *)
   xbaseid: string; (* id without "_NC" *)
 }
 
 let xprog_of p =
-  let gs, ls = Gencxx.V.vars p.finst in
-    {xprog = p; xgs = gs; xls = ls; xbaseid = p.fid};;
+  let ps, ls = Gencxx.V.vars p.finst in
+  let p', kps, cs = computed_params p ps in
+    {xprog = p'; xps = ps; xls = ls; xcs = cs; xkps = kps; xbaseid = p.fid};;
 
 (** specialization according to the condition field *)
 
-let is_conditional p = List.mem_assoc "cond" p.xgs;;
+let is_conditional p = List.mem_assoc "cond" p.xps;;
 
 let no_cond_variant x =
   let p = x.xprog in
   let p' =
     {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
-  in {x with xprog = p'; xgs = List.remove_assoc "cond" x.xgs};;
+  in {x with xprog = p'; xps = List.remove_assoc "cond" x.xps};;
 
 let no_cond_variants xs =
   List.map no_cond_variant (List.filter is_conditional xs);;
@@ -46,8 +117,10 @@ let no_cond_variants xs =
 (** Generate the code corresponding to an expression *)
 
 let typeof x v =
-  try List.assoc v x.xgs
-  with Not_found -> List.assoc v x.xls;;
+  try List.assoc v x.xps
+  with Not_found ->
+    try List.assoc v x.xls
+  with Not_found -> List.assoc v x.xcs;;
 
 let rec exp (p: xprog) b = function
   | Bin s -> string b (Gencxx.hex_of_bin s)
@@ -212,14 +285,14 @@ let check_cond b p =
   then bprintf b "  if (!ConditionPassed(&proc->cpsr, cond)) return;\n";;
 
 (* Defintion of the functions. This should be printed in a source file (.c) *)
-(* Version 1: The list of arguemetns is expanded *)
+(* Version 1: The list of arguments is expanded *)
 let prog_expanded b (p: xprog) =
-  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xps in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a%a\n}\n"
       comment p
       p.xprog.fid
-      (list "" Gencxx.prog_arg) p.xgs
+      (list "" Gencxx.prog_arg) (p.xkps @ p.xcs)
       check_cond p
       (list "" Gencxx.inreg_load) inregs
       (list "" Gencxx.local_decl) p.xls
@@ -227,7 +300,7 @@ let prog_expanded b (p: xprog) =
 
 (* Version 2: The arguments are passed in a struct *)
 let prog_grouped b (p: xprog) =
-  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xps in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b
       "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
@@ -236,7 +309,7 @@ let prog_grouped b (p: xprog) =
       bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xbaseid n
     in
       bprintf b "%a%a%a%a%a\n}\n"
-        (list "" expand) p.xgs
+        (list "" expand) (p.xkps @ p.xcs)
         check_cond p
         (list "" Gencxx.inreg_load) inregs
         (list "" Gencxx.local_decl) p.xls
@@ -246,11 +319,12 @@ let prog_grouped b (p: xprog) =
 (* Version 1: The list of arguemetns is expanded *)
 let decl_expanded b (p: xprog) =
   bprintf b "%aextern void slv6_X_%s(struct SLv6_Processor*%a);\n"
-    comment p p.xprog.fid (list "" Gencxx.prog_arg) p.xgs;;
+    comment p p.xprog.fid (list "" Gencxx.prog_arg) (p.xkps @ p.xcs);;
 
 (* Version 2: The arguments are passed in a struct *)
 let decl_grouped b (p: xprog) =
-  bprintf b "%aextern void slv6_G_%s(struct SLv6_Processor*, struct SLv6_Instruction*);\n"
+  bprintf b
+    "%aextern void slv6_G_%s(struct SLv6_Processor*, struct SLv6_Instruction*);\n"
     comment p p.xprog.fid;;
 
 (** Generation of the instruction type *)
@@ -262,13 +336,13 @@ let sizeof t = match t with
   | _ -> 4;;
 
 (* Generate a type that can store an instruction 'p'
- * fields are sorted according to their size *)
+ * fields are sorted according to their size, in order to minimize padding bytes *)
 let inst_type b (p: xprog) =
   let field b (v, t) = bprintf b "%s %s;" t v
   and cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
   in bprintf b "%astruct SLv6_%s {\n  %a\n};\n"
        comment p p.xprog.fid
-       (list "\n  " field) (List.stable_sort cmp p.xgs);;
+       (list "\n  " field) (List.stable_sort cmp (p.xkps @ p.xcs));;
 
 (* Generate a member of the big union type *)
 let union_field b (p: xprog) =
@@ -310,11 +384,15 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs in
       bprintf b "%a"
-        (list "" (Gencxx.dec_param p.xgs vc)) p.xprog.fparams;
+        (list "" (Gencxx.dec_param p.xps vc)) p.xprog.fparams;
       (* check validity *)
       (match vc with
          | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
          | None -> ());
+      (* compute the "computed" parameters *)
+      let aux (b: Buffer.t) ((n, t): (string * string)) : unit =
+        bprintf b "  const %s %s = %s;\n" t n (compute_param n)
+      in bprintf b "%a" (list "" aux) p.xcs;
       (* execute the instruction *)
       bprintf b "%a" DC.action p;
       bprintf b "  return true;\n}\n"
@@ -341,7 +419,7 @@ module DecExecConfig = struct
   let instr_call b id = bprintf b "try_exec_%s(proc,bincode)" id;;
   let action b (x: xprog) =
     let aux b (s,_) = bprintf b ",%s" s in
-      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xgs;;
+      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) (x.xkps @ x.xcs);;
   let return_action = "return found;"
 end;;
 module DecExec = DecoderGenerator(DecExecConfig);;
@@ -362,7 +440,7 @@ module DecStoreConfig = struct
         bprintf b "    instr->id = SLV6_%s_NC_ID;\n" x.xprog.fid;
         bprintf b "  else\n  ");
       bprintf b "  instr->id = SLV6_%s_ID;\n" x.xprog.fid;
-      bprintf b "%a" (list "" store) x.xgs;;
+      bprintf b "%a" (list "" store) (x.xkps @ x.xcs);;
   let return_action = "if (!found) instr->id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;
@@ -509,7 +587,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the instruction type *)
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";
-    bprintf bh "  size_t id;\n  union {\n%a" (list "" union_field) xs;
+    bprintf bh "  size_t id;\n";
+    bprintf bh "  union {\n%a" (list "" union_field) xs;
     bprintf bh "    struct ARMv6_BasicBlock *basic_block;\n";
     bprintf bh "    struct ARMv6_OptimizedBasicBlock *opt_basic_block;\n";
     bprintf bh "    struct ARMv6_SetReg set_reg;\n";

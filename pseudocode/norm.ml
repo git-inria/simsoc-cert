@@ -306,6 +306,20 @@ let replace_exp (o: exp) (n: exp) (i: inst) =
     | x -> x
   in inst i;;
 
+(* replace instruction 'o' by instruction 'n' in instruction 'i' *)
+let replace_inst (o: inst) (n: inst) (i: inst) =
+  let rec inst i =
+    if i = o then n else match i with
+    | Block is -> Block (List.map inst is)
+    | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
+    | If (e, i, None) -> If (e, inst i, None)
+    | While (e, i) -> While (e, inst i)
+    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+    | Case (e, sis) ->
+        Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
+    | x -> x
+  in inst i;;
+
 let rec split_msr ps =
   match ps with
     | p :: ps' ->
