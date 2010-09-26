@@ -318,7 +318,7 @@ let prog_grouped b (p: xprog) =
 (* Declaration of the functions. This may be printed in a header file (.h) *)
 (* Version 1: The list of arguemetns is expanded *)
 let decl_expanded b (p: xprog) =
-  bprintf b "%aextern void slv6_X_%s(struct SLv6_Processor*%a);\n"
+  bprintf b "%aEXTERN_C void slv6_X_%s(struct SLv6_Processor*%a);\n"
     comment p p.xprog.fid (list "" Gencxx.prog_arg) (p.xkps @ p.xcs);;
 
 (* Version 2: The arguments are passed in a struct *)
@@ -562,6 +562,51 @@ let dump_sizeof bn xs =
     let out = open_out ("print_sizes.c") in
       Buffer.output_buffer out b; close_out out;;
 
+(** Generation of the LLVM generator *)
+
+(* We generate only the function "generate_one_instruction",
+ * which is included in the file "arm_v6_llvm_generator.cpp".
+ * The generated file cannot be compiled outside SimSoC. *)
+
+let llvm_generator bn xs =
+  let case b (x: xprog) = 
+    bprintf b "  case SLV6_%s_ID: {\n" x.xprog.fid;
+    bprintf b "    Function *fct = module->getFunction(\"slv6_X_%s\"); assert(fct);\n"
+      x.xprog.fid;
+    let args = x.xkps @ x.xcs in
+    let size = 1 + List.length args in
+    let name b (n,_) = bprintf b "%s" n in
+    let value b (n,t) =
+      let llvm_type = function
+        | "uint8_t" | "bool" -> "i8"
+        | "uint16_t" -> "i16"
+        | "uint32_t" | "SLv6_Condition" | "SLv6_Mode" -> "i32"
+        | s -> raise (Invalid_argument ("llvm_type: "^s))
+      in
+        bprintf b "    Value *%s = ConstantInt::get(%s,instr.args.%s.%s);\n"
+          n (llvm_type t) x.xbaseid n
+    in
+      if size = 1 then bprintf b "    IRB.CreateCall(fct,proc);\n"
+      else (
+        bprintf b "%a" (list "" value) args;
+        if size<=4 then 
+          bprintf b "    IRB.CreateCall%d(fct,proc,%a);\n"
+            size (list "," name) args
+        else (
+          bprintf b "    Value *args[%d] = {proc,%a};\n"
+            size (list "," name) args;
+          bprintf b "    IRB.CreateCall<Value**>(fct,args,args+%d);\n" size)
+      );
+    bprintf b "  } break;\n";
+  in let b = Buffer.create 10000 in
+    bprintf b "void ARMv6_LLVM_Generator::generate_one_instruction";
+    bprintf b "(SLv6_Instruction &instr) {\n";
+    bprintf b "  switch (instr.id) {\n%a  default: abort();\n  }\n}\n"
+      (list "" case) xs;
+  let out = open_out (bn^"-llvm_generator.hpp") in
+    Buffer.output_buffer out b; close_out out;;
+
+
 (** main function *)
 
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
@@ -579,7 +624,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "#ifndef SLV6_ISS_H\n#define SLV6_ISS_H\n\n";
     bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
     bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" instr_count;
-    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+6)\n\n";
+    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+9)\n\n";
     bprintf bh "extern const char *slv6_instruction_names[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern const char *slv6_instruction_references[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
@@ -615,6 +660,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     DecStore.decoder bn xs;
     (* generate a small program to verify the sizes of the instruciton types *)
     dump_sizeof bn xs;
+    (* generate the LLVM generator (mode DT3) *)
+    llvm_generator bn all_xs;
     (* Now, we generate the semantics functions. *)
     semantics_functions bn xs "expanded" decl_expanded prog_expanded;
     semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;
