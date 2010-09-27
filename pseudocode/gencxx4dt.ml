@@ -663,5 +663,5 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     (* generate the LLVM generator (mode DT3) *)
     llvm_generator bn all_xs;
     (* Now, we generate the semantics functions. *)
-    semantics_functions bn xs "expanded" decl_expanded prog_expanded;
+    semantics_functions bn all_xs "expanded" decl_expanded prog_expanded;
     semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;

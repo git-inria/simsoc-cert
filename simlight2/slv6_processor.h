@@ -173,6 +173,8 @@ static inline uint32_t get_pc(const struct SLv6_Processor *proc) {
   return proc->regs[15];
 }
 
+static inline void slv6_hook(struct SLv6_Processor *proc) {}
+
 END_SIMSOC_NAMESPACE
 
 #endif /* SLV6_PROCESSOR_H */

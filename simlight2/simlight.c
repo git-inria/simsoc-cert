@@ -51,6 +51,7 @@ void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
       proc->jump = false;
     else
       increment_pc(proc);
+    slv6_hook(proc);
     ++inst_count;
   } while (bincode!=infinite_loop);
   DEBUG(puts("---------------------"));

@@ -46,8 +46,7 @@ type fprog = {
       shifter_operand = Rm;
       shifter_carry_out = C Flag;
       if ConditionPassed(cond) then
-        ...
-      end
+        begin ... end
     end
  * fdec = pos_contents array of
     |31..28|27...21|20|19..16|15..12|11.....4|3..0|
