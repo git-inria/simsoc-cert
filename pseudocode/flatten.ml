@@ -28,8 +28,34 @@ type fprog = {
   fname: string; (* whole name *)
   finst: inst; (* the pseudo-code *)
   fdec: pos_contents array; (* coding table *)
-  fparams: (string * int * int) list; (* the parameters defined in the coding tables *)
+  fparams: (string * int * int) list; (* the parameters defined in the original 
+                                       * coding tables *)
   fvcs: vconstraint list};; (* the validity constraints, from validity.ml *)
+
+(* NB: in general, fparams <> parameters_of fdec, because some parameters disappear
+ * when we merge the 2 coding tables *)
+
+(* Example: for "ADCS r0, r1, r2", we have:
+ * fid = ADC_M1_Reg
+ * finstr = ADC
+ * fmode = Some M1_Reg
+ * fref = A4.1.2--A5.1.4
+ * fname = ADC -- Data processing operands - Register
+ * finst =
+    begin
+      shifter_operand = Rm;
+      shifter_carry_out = C Flag;
+      if ConditionPassed(cond) then
+        ...
+      end
+    end
+ * fdec = pos_contents array of
+    |31..28|27...21|20|19..16|15..12|11.....4|3..0|
+    | cond |0000101|S |  Rn  |  Rd  |00000000| Rm |
+ * fparams = [(cond, 31, 28); (I, 25, 25); (S, 20, 20); (Rn, 19, 16);
+              (Rd, 15, 12); (Rm, 3, 0); (shifter_operand, 12, 0)]
+ * fvcs = []
+ *)
 
 (* Compute an instruction identifier that can be used in Coq or C code *)
 let str_ident p =
@@ -61,7 +87,7 @@ let str_ident p =
   in
   let b = Buffer.create 16 in ident b p; Buffer.contents b;;
 
-(* Get the name of a program as a string *)
+(* Get the name of a program as a string *) 
 let str_name p =
   let b = Buffer.create 16 in Genpc.name b p; Buffer.contents b;;
 
@@ -146,7 +172,7 @@ let patch_SRS (p: prog) =
   in {p with pinst = i};;
 
 (* get the list of parameters *)
-let parameters_of pca : (string * int * int) list =
+let parameters_of (pca: pos_contents array) : (string * int * int) list =
   let rename s =
     if s.[0] = 'R'
     then String.sub s 1 (String.length s -1)
