@@ -79,7 +79,7 @@ let rec options() =
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
-  "-otest", Unit (fun () -> set_output_type DecTest),
+  "-otest", Unit (fun () -> set_norm(); set_output_type DecTest),
   " Output test for Coq and Simlight decoders, in binary format (requires -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
@@ -112,9 +112,9 @@ let parse_args() =
           error "option -ocoq-dec incompatible with -ipc"
         else ignore (get_dec_input_file())
     | DecTest ->
-        if is_set_pc_input_file() then
+        (*if is_set_pc_input_file() then
           error "option -otest incompatible with -ipc"
-        else ignore (get_dec_input_file())
+        else*)ignore(get_pc_input_file()); ignore (get_dec_input_file())
 ;;
 
 (*****************************************************************************)
@@ -189,7 +189,7 @@ let genr_output() =
     | C4dt -> Gencxx4dt.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
-    | DecTest -> Gendectest.gen_test stdout (get_dec_input());;
+    | DecTest -> Gendectest.gen_test stdout (get_pc_input()) (get_dec_input());;   
 
 let main() =
   parse_args();
