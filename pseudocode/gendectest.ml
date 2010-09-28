@@ -112,7 +112,7 @@ let gen_tests ps =
   in match ps.finstr with
     | "ADC"  -> 
 	Int32.logor (Array.fold_right proc (Array.map aux1 (pos ps.fdec)) Int32.zero)
-	  (List.fold_right proc (List.map aux2 (ps.fparams)) Int32.zero)
+	  (List.fold_right proc (List.map aux2 (parameters_of ps.fdec)) Int32.zero)
     | _ -> Int32.zero
 ;;
 
