@@ -2,7 +2,7 @@ C_FILES := sum_iterative sum_recursive sum_direct endian multiply simsoc_new1 \
            test_mem sorting
 ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
              arm_ldrstr arm_mrs arm_msr arm_multiple arm_swi $(C_FILES)
-THUMB_FILES := $(C_FILES)
+THUMB_FILES := thumb_test $(C_FILES)
 
 .PRECIOUS: $(ARM_FILES:%=%_a.elf) $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.ml) \
      $(THUMB_FILES:%=%_t.elf) $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.ml)
