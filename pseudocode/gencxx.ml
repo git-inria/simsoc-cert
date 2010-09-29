@@ -482,9 +482,9 @@ let dec_param gs vc buf (s, a, b) =
       | None -> gs
     in try
         let t = List.assoc s gs' in
-          if (s, a, b) = ("cond", 31, 28) then (
+          if s = "cond" then (
             (* special case for cond, because decoding of this field can fail *)
-            bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,31,28);\n";
+            bprintf buf "  const uint32_t cond_tmp = get_bits(bincode,%d,%d);\n" a b;
             bprintf buf "  if (cond_tmp>14) return false;\n";
             bprintf buf "  const SLv6_Condition cond =\n";
             bprintf buf "    ((SLv6_Condition) cond_tmp);\n"
