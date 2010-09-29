@@ -1,6 +1,0 @@
-Library used by the crypto test.
-
-Compile with:
-> make
-
-Compilation requires a gnu arm-elf cross-compiler.
