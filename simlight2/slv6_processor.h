@@ -11,6 +11,7 @@
 #include "slv6_mode.h"
 #include "slv6_status_register.h"
 #include "arm_system_coproc.h"
+#include "arm_not_implemented.h"
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -47,6 +48,7 @@ static inline void set_cpsr_sr(struct SLv6_Processor *proc,
                                struct SLv6_StatusRegister sr) {
   set_cpsr_mode(proc,sr.mode);
   proc->cpsr = sr;
+  update_pending_flags(proc);
 }
 
 static inline void set_cpsr_bin(struct SLv6_Processor *proc,
@@ -55,6 +57,17 @@ static inline void set_cpsr_bin(struct SLv6_Processor *proc,
   set_StatusRegister(&sr, bin);
   set_cpsr_mode(proc, sr.mode);
   proc->cpsr = sr;
+  update_pending_flags(proc);
+}
+
+static inline void set_cpsr_F_flag(struct SLv6_Processor *proc, bool f) {
+  proc->cpsr.F_flag = f;
+  update_pending_flags(proc);
+}
+
+static inline void set_cpsr_I_flag(struct SLv6_Processor *proc, bool i) {
+  proc->cpsr.I_flag = i;
+  update_pending_flags(proc);
 }
 
 extern uint32_t *addr_of_reg_m(struct SLv6_Processor*, uint8_t reg_id, SLv6_Mode);

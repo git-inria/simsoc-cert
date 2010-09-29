@@ -10,7 +10,7 @@
 #include "slv6_processor.h"
 
 /* no MMU */
-static inline uint32_t TLB(uint32_t virtual_address) {return virtual_address;}
+static inline uint32_t slv6_TLB(uint32_t virtual_address) {return virtual_address;}
 
 /* Shared memory is not implemented */
 static inline size_t ExecutingProcessor() {return 0;}

@@ -99,10 +99,14 @@ and seqwhint = parser
   | [< ''0'..'9'as c; s  >] -> seqwhint1 c s
   | [< >] -> []
 
-(* Special case for fields tagged SBO and SBZ: 1 or several bits -> no simple algo *)
-(* -> for 1 but replaced with !SBZ and !SBO *)
+(* Special case for fields tagged SBO and SBZ: 1 or several bits -> no simple algo
+ * -> for 1 but replaced with !SBZ and !SBO *)
+(* Special case for fields tagged H: these fields are 1 bit in ARM but 2 bits in
+ * Thumb. They are stored as ARM1Thumb2. Conversely, "imod" fields are stored as
+ * ARM2Thumb1. *)
 type code_contents = 
-  B0 | B1 | Onebit of string | Several of string
+  B0 | B1 | Onebit of string | Several of string |
+      ARM1Thumb2 of string | ARM2Thumb1 of string
 
 let rec code_contents = parser
   | [< '' ' ; s >] -> code_contents s
@@ -111,8 +115,9 @@ let rec code_contents = parser
 	match id with
 	  | "0" -> B0
 	  | "1" -> B1
-	  | "mmod" -> Onebit (id)
-	  | "sh" -> Onebit (id)
+	  | "mmod" | "sh" | "H1" | "H2" -> Onebit (id)
+          | "H" -> ARM1Thumb2 (id)
+          | "imod" -> ARM2Thumb1 (id)
 	  | _ -> if String.length id = 1 then Onebit (id) else Several (id)
 	    
 let rec seq_contents = parser
@@ -149,11 +154,12 @@ type map = CT.pos_contents array
 exception Inconsistent of int * int list * code_contents list * map
 
 (* Checks
-  - the position list should decrease from 31 to 0 without hole
+  - the position list should decrease from 31 or 15 to 0 without hole
   - the consistency of the position list with code_contents list
 *)
 let build_map lint lcont =
-  let map = Array.make 32 (CT.Nothing) in
+  let start = List.hd lint in
+  let map = Array.make (start+1) (CT.Nothing) in
   let rec loop exp lint lcont =
     (match lint with 
       | x :: _ when x <> exp -> raise (Inconsistent (exp, lint, lcont, map))
@@ -183,11 +189,22 @@ let build_map lint lcont =
 	  loop (x-1) lint lcont
       | [],  [] -> ()
       | _, _ -> raise (Inconsistent (exp, lint, lcont, map))
-  in 
-  loop 31 lint lcont;
-  map
+  in
+  let arm = function
+    | ARM2Thumb1 id -> Several id
+    | ARM1Thumb2 id -> Onebit id
+    | x -> x
+  and thumb = function
+    | ARM2Thumb1 id -> Onebit id
+    | ARM1Thumb2 id -> Several id
+    | x -> x
+  in
+    if start = 31 then loop start lint (List.map arm lcont)
+    else if start = 15 then loop start lint (List.map thumb lcont)
+    else raise (Inconsistent (start, lint, lcont, map));
+    map
 
-let light = function Header (_, _, l, s) -> (CT.LH (l, s))
+let light = function Header (_, n, l, s) -> (CT.LH (n::l, s))
 
 let print_err_header (Header (c, n, l, s)) =
   Printf.fprintf stderr "Inconsistent %c%i" c n;

@@ -27,9 +27,12 @@ type vconstraint =
   | NotLR of string    (* the string must contains the name of the parameter *)
   | IsEven of string   (* a parameter that should contain an even value *)
   | NotZero of string  (* a parameter that should not be zero *)
+  | NotZero2 of string * string  (* two parameters that should not be zero together *)
   | NoWritebackDest    (* no write-back with Rd==Rn *)
   | NotSame of string * string (* R<a> <> R<b> *)
   | NotLSL0            (* to distinguished between (equivalent?) mode cases *)
+  | Not2lowRegs        (* not (H1 == 0 && H2 == 0), for thumb isntructions *)
+  | BLXbit0            (* special constraint for the thumb BLX (1) instruction *)
   | OtherVC of exp     (* Other validy constraints described by a boolean
                         * expression *)
 
@@ -199,6 +202,18 @@ let constraints =
     Hashtbl.add cs "M5_Imm_postInd" [NotPC "n"];
     Hashtbl.add cs "M5_U" [NotZero "U"];
     (* 3 mode 5 cases in this table / 4 *)
+    Hashtbl.add cs "Tb_ADD1" [NotZero "immed_3"]; (* MOV (2) otherwise *)
+    Hashtbl.add cs "Tb_ADD4" [Not2lowRegs];
+    Hashtbl.add cs "Tb_B1" [OtherVC (Fun ("not_AL_cond", [Var "cond"]))];
+                                                (* undefined otherwise *)
+    Hashtbl.add cs "Tb_BL" [NotZero "H"; BLXbit0];
+    Hashtbl.add cs "Tb_BLX2" [NotPC "m"];
+    Hashtbl.add cs "Tb_CMP3" [NotPC "n"; Not2lowRegs];
+    Hashtbl.add cs "Tb_LDMIA" [NotZero "register_list"];
+    Hashtbl.add cs "Tb_MOV3" [Not2lowRegs];
+    Hashtbl.add cs "Tb_POP" [NotZero2 ("R", "register_list")];
+    Hashtbl.add cs "Tb_PUSH" [NotZero2 ("R", "register_list")];
+    (* 9 Thumb instructions in this table / 73 *)
     cs;;
 
 (* REMARK: constraints that cannot be checked statically are not managed in this file *)
@@ -209,8 +224,7 @@ let constraints =
                (imod == 0b01 && mmod == 1) )
  * LDM1, LDM3: not (W && n in register_list)
  * LDRD, STRD: NoWritebackDest(Rd and Rd+1), Rm!=Rd, Rm!=Rd+1
- * STM1: not (Rn in register_list && W && not (lowest-numbered Rn))
- * MOV: not a CPY?
+ * STM1, STMIA: not (Rn in register_list && W && not (lowest-numbered Rn))
  *
  * BKPT: cond must be AL (already 0b1110 in the coding table)
  * LDM2, STM2: not bit[21] (already 0 in their coding tables)
@@ -233,6 +247,10 @@ let vcs_to_exp vcs =
     | NotLR s -> BinOp (Var s, "!=", Num "14")
     | IsEven s -> Fun ("is_even", [Var s])
     | NotZero s -> BinOp (Var s, "!=", Num "0")
+    | NotZero2 (s1, s2) ->
+        let a = BinOp (Var s1, "!=", Num "0")
+        and b = BinOp (Var s2, "!=", Num "0")
+        in BinOp (a, "or", b)
     | NoWritebackDest ->
         let w = BinOp (Var "W", "==", Num "0") in
         let r = BinOp (Var "n", "!=", Var "d") in
@@ -242,6 +260,14 @@ let vcs_to_exp vcs =
         let a = BinOp (Var "shift", "!=", Num "0") in
         let b = BinOp (Var "shift_imm", "!=", Num "0") in
           BinOp (a, "or", b)
+    | Not2lowRegs -> 
+        let e1 = BinOp (Var "H1", "!=", Num "0") in
+        let e2 = BinOp (Var "H2", "!=", Num "0") in
+          BinOp (e1, "or", e2)
+    | BLXbit0 ->
+        let h = BinOp (Var "H", "!=", Bin "0b01") in
+        let o1 = BinOp (Var "offset_11", "AND", Num "1") in
+          BinOp (h, "or", BinOp (o1, "==", Num "0"))
     | OtherVC e -> e
   in
   let rec auxl vcs = match vcs with

@@ -133,7 +133,7 @@ let addr_mode b m = string b (string_of_addr_mode m);;
 
 let name b p =
   match p.pkind with
-    | Inst -> bprintf b "%a" (list ", " ident) (p.pident :: p.pidents)
+    | InstARM | InstThumb -> bprintf b "%a" (list ", " ident) (p.pident :: p.pidents)
     | Mode m ->
 	bprintf b "%a - %s" addr_mode m (remove_underscores p.pident.iname);;
 

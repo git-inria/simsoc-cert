@@ -385,7 +385,8 @@ let ident b i =
 
 let name b p =
   match p.pkind with
-    | Inst -> ident b p.pident
+    | InstARM -> ident b p.pident
+    | InstThumb -> bprintf b "Thumb_%a" ident p.pident
     | Mode m -> bprintf b "%a_%a" addr_mode m ident p.pident;;
 
 (* result type of a program *)
@@ -396,7 +397,7 @@ let mode_var_typ b = function
 
 let result b p =
   match p.pkind with
-    | Inst -> ()
+    | InstARM | InstThumb -> ()
     | Mode k -> list "" mode_var_typ b (mode_vars k);;
 
 (* split an instruction block into two blocks:
@@ -428,7 +429,8 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | Inst -> bprintf b "%a true s0" (inst 2) p.pinst
+    | InstARM -> bprintf b "%a true s0" (inst 2) p.pinst
+    | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
 	  if StrSet.mem p.pref problems then
@@ -448,9 +450,12 @@ let pinst b p =
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
 let semfun b p gs =
-  bprintf b
-    "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
-    p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p;;
+  match p.pkind with
+    | InstARM | Mode _ ->
+        bprintf b
+          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
+          p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p
+    | InstThumb -> ();; (* TODO: Thumb mode *)
 
 (*****************************************************************************)
 (** constructor declaration corresponding to a program *)
@@ -458,7 +463,7 @@ let semfun b p gs =
 
 let constr bcons_inst bcons_mode p gs =
   match p.pkind with
-    | Inst -> let b = bcons_inst in
+    | InstARM -> let b = bcons_inst in
 	begin match addr_mode_of_prog p gs with
 	  | Some k ->
 	      bprintf b "\n| %a (m_ : mode%d)%a"
@@ -467,6 +472,7 @@ let constr bcons_inst bcons_mode p gs =
 		   they are computed from the mode argument *)
 	  | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
 	end
+    | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcons_mode.(k-1) in
 	bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
 
@@ -486,7 +492,7 @@ let args = list "" arg;;
 
 let call bcall_inst bcall_mode p gs =
   match p.pkind with
-    | Inst -> let b = bcall_inst in
+    | InstARM -> let b = bcall_inst in
 	begin match addr_mode_of_prog p gs with
 	  | None ->
 	      bprintf b "    | %a%a =>" name p args gs;
@@ -501,6 +507,7 @@ let call bcall_inst bcall_mode p gs =
 	      bprintf b " %a_step s1%a\n" name p args gs;
               bprintf b "          | _ => r\n        end\n      end\n"
 	end
+    | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
 	bprintf b "    | %a%a =>" name p args gs;
 	bprintf b " %a_step s0%a\n" name p args gs;;

@@ -27,7 +27,8 @@ List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   (* registers *)
   "Flag", FLAG "Flag"; "flag", FLAG "flag"; "bit", FLAG "bit";
   "Bit", FLAG "Bit"; "CPSR", Parser.CPSR; "SPSR", Parser.SPSR;
-  "LR", REGNUM "14"; "PC", REGNUM "15"; "R", REG; "GE", GE;
+  "SP", REGNUM "13"; "LR", REGNUM "14"; "PC", REGNUM "15";
+  "R", REG; "GE", GE;
   "Rd", REGVAR "d"; "RdHi", REGVAR "dHi"; "RdLo", REGVAR "dLo";
   "Rs", REGVAR "s"; "Rm", REGVAR "m"; "Rn", REGVAR "n"; "Ri", REGVAR "i";
   (* modes *)
@@ -68,7 +69,7 @@ let char_sep = char | sep
 
 let ident = "R" | 'R' letter | 'R' letter char char_sep*
   | (letter # ['R' 'S']) char_sep*
-  | "S" | "SPSR" | 'S' (letter # 'P') char_sep*
+  | "S" | "SP" | "SPSR" | 'S' (letter # 'P') char_sep*
   | '_' char_sep*
 
 let num = digit+
@@ -93,6 +94,7 @@ rule token = parse
   | '-' { MINUS "-" }
   | '<' { LT "<" }
   | '>' { GT ">" }
+  | '|' { BOR "|" }
   | "==" as s { EQEQ s}
   | "<<" as s { LTLT s }
   | ">=" as s { GTEQ s }

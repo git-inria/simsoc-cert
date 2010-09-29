@@ -34,23 +34,30 @@ let str_to_lst s =
 (*organise the input data with different types*)
 type kind =
   | DecMode of int
-  | DecInst
+  | DecInstARM
+  | DecInstThumb
   | DecEncoding;;
 
-(* the string list 'ss' must have been preprocessed by 'name' *)
-let add_mode ss =
-  match ss with
-    | "M1" :: _ -> DecMode 1
-    | "M2" :: _ -> DecMode 2
-    | "M3" :: _ -> DecMode 3
-    | "M4" :: _ -> DecMode 4
-    | "M5" :: _ -> DecMode 5
-    | "Encoding" :: _ -> DecEncoding
-    | _ -> DecInst;;
+let lightheader_to_string lh =
+  let decimal b n = Printf.bprintf b "%d" n in
+    match lh with
+      | LH (is, s) ->
+          let b = Buffer.create 80 in
+            Printf.bprintf b "A%a %s" (Util.list "." decimal) is s;
+            Buffer.contents b;;
+
+(* the kind of an element *)
+let add_mode (lh: lightheader) =
+  match lh with
+    | LH ((4 :: _ :: _ :: _), _) -> DecInstARM
+    | LH ((5 :: _ :: 1 :: _), _) -> DecEncoding
+    | LH ([5; n; _], _) -> DecMode n
+    | LH ([7; _; _], _) -> DecInstThumb
+    | LH _ -> raise (Invalid_argument ("add_mode: "^lightheader_to_string lh));;
 
 (*catch the number of an instruction or of an addressing mode case*)
 let num (lh, _) =
-  match lh with LH (is, _) -> List.nth is 1;;
+  match lh with LH (is, _) -> List.nth is 2;;
 
 (* This function is used by the "params" function *)
 (* rename addressing modes*)

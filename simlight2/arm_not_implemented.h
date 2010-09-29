@@ -7,17 +7,22 @@
 #define ARM_NOT_IMPLEMENTED_H
 
 #include "common.h"
-#include "slv6_processor.h"
+
+struct SLv6_Processor;
+
+/* no IRQ or FIQ */
+static inline void update_pending_flags(struct SLv6_Processor *proc) {}
 
 /* no MMU */
-static inline uint32_t TLB(uint32_t virtual_address) {return virtual_address;}
+static inline uint32_t slv6_TLB(uint32_t virtual_address) {return virtual_address;}
 
 /* Shared memory is not implemented */
 static inline size_t ExecutingProcessor() {return 0;}
 static inline bool Shared(uint32_t a) {return false;}
 static inline void MarkExclusiveGlobal(uint32_t a, size_t b, uint32_t c) {}
 static inline void MarkExclusiveLocal(uint32_t a, size_t b, uint32_t c) {}
-static inline void ClearExclusiveByAddress(uint32_t a, size_t b, uint32_t c) {}
+static inline void ClearExclusiveByAddress3(uint32_t a, size_t b, uint32_t c) {}
+static inline void ClearExclusiveByAddress2(uint32_t a, uint32_t c) {}
 static inline void ClearExclusiveLocal(size_t a) {}
 static inline bool IsExclusiveLocal(uint32_t a, size_t b, uint32_t c) {return true;}
 static inline bool IsExclusiveGlobal(uint32_t a, size_t b, uint32_t c) {return true;}

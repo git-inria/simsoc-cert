@@ -101,6 +101,7 @@ let func = function
   | "not" -> "!"
   | "NOT" -> "~"
   | "GE" -> "get_GE"
+  | "TLB" -> "slv6_TLB"
   | s -> s;;
 
 let implicit_arg = function
@@ -119,7 +120,7 @@ let binop = function
   | "and" -> "&&"
   | "or" -> "||"
   | "AND" -> "&"
-  | "OR" -> "|"
+  | "OR" | "|" -> "|"
   | "EOR" -> "^"
   | "Logical_Shift_Left" -> "<<"
   | "Logical_Shift_Right" -> ">>"
@@ -173,7 +174,7 @@ let optemps = ["index"; "offset_8"; "end_address"];;
 let input_registers = ["n"; "m"; "s"; "dLo"];;
 
 let is_pointer p s = match p.xprog.pkind with
-  | Inst -> false
+  | InstARM | InstThumb -> false
   | Mode n -> List.mem s (List.map fst (mode_outputs.(n-1)));;
 
 let typeof x v =
@@ -346,13 +347,14 @@ let prog b p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xgs in
   let inregs = List.filter (fun x -> List.mem x input_registers) ss in
     match p.xprog.pkind with
-      | Inst ->
+      | InstARM ->
           bprintf b "%avoid %s(struct SLv6_Processor *proc%a)\n{\n%a%a%a\n}\n" comment p
             p.xid
             (list "" prog_arg) p.xgs
             (list "" inreg_load) inregs
             (list "" local_decl) p.xls
             (inst p 2) p.xprog.pinst
+      | InstThumb -> () (* TODO: thumb mode *)
       | Mode m ->
           let os = mode_outputs.(m-1)
           and ls' = List.filter (fun (x, _) -> List.mem x optemps) p.xls in
@@ -367,10 +369,11 @@ let prog b p =
 (* Declaration of the functions. This should be printed in a header file (.h) *)
 let decl b p =
   match p.xprog.pkind with
-    | Inst  ->
+    | InstARM  ->
 	bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
           comment p p.xid
           (list "" prog_arg) p.xgs p.xid
+    | InstThumb -> () (* TODO: thumb mode *)
     | Mode m ->
 	let os =
           if mode_outputs.(m-1) = [] then (
@@ -398,7 +401,7 @@ let lsm_hack p =
                  Affect (Reg (Var "n", None), Var "new_Rn"),
                  None)
   in match p.pkind with
-    | Inst when guard_ldm_stm p.pident ->
+    | InstARM when guard_ldm_stm p.pident ->
 	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
         let i = match p.pinst with
           | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
@@ -406,13 +409,13 @@ let lsm_hack p =
 	      Block ([x; If (c, Block (ids @ [a]), None)])
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
-    | Inst when p.pident.iname = "RFE" ->
+    | InstARM when p.pident.iname = "RFE" ->
 	(* add 'if (W) then Rn = new_Rn' at the end of the main block *)
         let i = match p.pinst with
           | Block (l) -> Block (l @ [a])
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
-    | Inst when p.pident.iname = "SRS" ->
+    | InstARM when p.pident.iname = "SRS" ->
 	(* add 'if (W) then R13_mode = new_Rn' at the end of the main block *)
         let a' = If (Var "W",
                      Proc("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"]),
@@ -434,7 +437,8 @@ let split xs =
       | x :: tl -> (
           match x.xprog.pkind with
             | Mode i -> ms.(i-1) <- x::ms.(i-1)
-            | Inst -> is := x::!is);
+            | InstARM  -> is := x::!is
+            | InstThumb -> ()); (* TODO: Thumb mode *)
           aux tl
       | [] -> (!is, ms)
   in aux xs;;
@@ -471,7 +475,7 @@ let dec_param gs vc buf (s, a, b) =
   if (s, a, b) = ("shifter_operand", 11, 0) then ()
   else
     (* compute the list of used parameters *)
-    let gs' = match vc with
+    let gs' = ["H1", "uint8_t"; "H2", "uint8_t"] @ match vc with
       | Some e ->
           let vs, _ = V.vars_exp (StrMap.empty, StrMap.empty) e in
             list_of_map vs @ gs
@@ -492,9 +496,9 @@ let dec_param gs vc buf (s, a, b) =
               "  if (!decode_mode(&mode,bincode)) return false;\n"
           ) else
             if a = b then
-              bprintf buf "  const %s %s = get_bit(bincode,%d);\n" t s a
+              bprintf buf "  %s %s = get_bit(bincode,%d);\n" t s a
             else
-              bprintf buf "  const %s %s = get_bits(bincode,%d,%d);\n" t s a b
+              bprintf buf "  %s %s = get_bits(bincode,%d,%d);\n" t s a b
       with Not_found -> ();; (* do not extract unused parameters *)
 
 (* compute the mask and the value corresponding to a coding table *)
@@ -593,7 +597,7 @@ let dec_modes b ms =
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map lsm_hack pcs in (* hack LSM instructions *)
   let decs' = (* remove encodings *)
-    let aux x = add_mode (name x) <> DecEncoding in
+    let aux (lh, _) = add_mode lh <> DecEncoding in
       List.filter aux decs
   in
   let xs = List.map2 xprog_of pcs' decs' in (* compute extended programs *)

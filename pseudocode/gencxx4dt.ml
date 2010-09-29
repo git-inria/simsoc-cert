@@ -18,10 +18,26 @@ open Dec;;
 open Codetype;;
 open Flatten;;
 
+(** patches *)
+
+(* address_of_next_instruction() cannot be ued because it reads the
+ * current value of the PC instead of the original one.
+ * See for example BL, BLX (1) in thumb instruction set *)
+let patch_addr_of_next_instr (p: fprog) =
+  let o = Fun ("address_of_next_instruction", [])
+  and n = Var "addr_of_next_instr" in
+    try 
+      let i = Norm.replace_exp o n p.finst in
+      let size = if p.fkind = ARM then "4" else "2" in
+      let a = Affect (Var "addr_of_next_instr",
+                      BinOp (Reg (Num "15", None), "-", Num size))
+      in {p with finst = merge_inst i a} (* REMARK: merge_inst permutes its arguments *)
+    with Not_found -> p;;
 
 (** Optimize the sub-expressions that can computed at decode-store time. *)
 
 let computed_params (p: fprog) (ps: (string*string) list) =
+  try
   if List.mem_assoc "register_list" ps then
     (* we compute "Number_Of_Set_Bits_In(register_list) * 4" *)
     let o = BinOp (Fun ("Number_Of_Set_Bits_In", [Var "register_list"]),
@@ -75,7 +91,8 @@ let computed_params (p: fprog) (ps: (string*string) list) =
     let inst' = Norm.replace_inst o' n' inst in
     let p' = {p with finst = inst'} in
       p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
-  else p, ps, [];;
+  else p, ps, []
+  with Not_found -> p, ps, [];;
 
 let compute_param = function
   | "nb_reg_x4" -> "Number_Of_Set_Bits_In(register_list) * 4"
@@ -185,6 +202,9 @@ let rec inst p k b = function
 and inst_aux p k b = function
   | Unpredictable -> string b "unpredictable()"
   | Affect (dst, src) -> affect p k b dst src
+  | Proc ("ClearExclusiveByAddress" as f, es) ->
+      bprintf b "%s%d(%s%a)"
+        f (List.length es) (Gencxx.implicit_arg f) (list ", " (exp p)) es
   | Proc (f, es) ->
       bprintf b "%s(%s%a)" f (Gencxx.implicit_arg f) (list ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
@@ -259,6 +279,8 @@ and affect (p: xprog) k b dst src =
               bprintf b "set_StatusRegister(spsr_m(proc,%s),%a)"
                 (Gencxx.mode m) (exp p) src)
     | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
+    | Ast.Range (CPSR, Flag (("F"|"I" as s),_)) ->
+        bprintf b "set_cpsr_%s_flag(proc,%a)" s (exp p) src
     | Ast.Range (CPSR, Flag (s,_)) ->
         bprintf b "proc->cpsr.%s_flag = %a" s (exp p) src
     | Ast.Range (CPSR, Index (Num n)) ->
@@ -353,10 +375,10 @@ let union_field b (p: xprog) =
 module type DecoderConfig = sig
   (* the version, such as "decode_exec" or "decode_store" *)
   val version: string;;
-  (* the profile of the main decoder function *)
-  val main_prof: string;;
+  (* the profile of the main decoder functions *)
+  val main_prof: Buffer.t -> fkind -> unit;;
   (* the profile of the specific instruction decoder functions *)
-  val instr_prof: Buffer.t -> string -> unit;;
+  val instr_prof: Buffer.t -> (fkind * string) -> unit;;
   (* how to call an instruction decoder function *)
   val instr_call: Buffer.t -> string -> unit;;
   (* what we do once the instruction is decoded *)
@@ -369,7 +391,7 @@ module DecoderGenerator (DC: DecoderConfig) = struct
   (* Generation of a decoder in a separated .c file *)
   (*  * - bn: file basename *)
   (*  * - is: the instructions *)
-  let decoder bn (is: xprog list) =
+  let decoder bn (k: fkind) (is: xprog list) =
     (* Phase A: check bits fixed by the coding table *)
     let instA b p =
       let (mask, value) = Gencxx.mask_value p.xprog.fdec in
@@ -380,11 +402,20 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     (* Phase B: extract parameters and check validity *)
   let instB b p =
     bprintf b "%astatic %a {\n"
-      comment p DC.instr_prof p.xprog.fid;
+      comment p DC.instr_prof (k, p.xprog.fid);
     (* extract parameters *)
-    let vc = Validity.vcs_to_exp p.xprog.fvcs in
+    let vc = Validity.vcs_to_exp p.xprog.fvcs 
+    and params = p.xprog.fparams in
       bprintf b "%a"
-        (list "" (Gencxx.dec_param p.xps vc)) p.xprog.fparams;
+        (list "" (Gencxx.dec_param p.xps vc)) params;
+      (* integrate H1 and H2 (see for example thumb ADD (4)) *)
+      if List.exists (fun (n,_,_) -> n = "H1") params then (
+        let r = if List.exists (fun (n,_,_) -> n = "d") params then "d" else "n"
+        in bprintf b "  %s |= H1 << 3;\n" r
+      );
+      if List.exists (fun (n,_,_) -> n = "H2") params then (
+        bprintf b "  m |= H2 << 3;\n"
+      );
       (* check validity *)
       (match vc with
          | Some e -> bprintf b "  if (!(%a)) return false;\n" (exp p) e
@@ -401,21 +432,26 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     bprintf b "#include \"%s_c_prelude.h\"\n\n" bn;
     bprintf b "%a\n" (list "\n" instB) is;
     bprintf b "/* the main function, used by the ISS loop */\n";
-    bprintf b "%s {\n" DC.main_prof;
+    bprintf b "%a {\n" DC.main_prof k;
     bprintf b "  bool found = false;\n";
     bprintf b "%a" (list "" instA) is;
-    bprintf b "  %s}\n" DC.return_action;
+    bprintf b "  %s\n}\n" DC.return_action;
     bprintf b "\nEND_SIMSOC_NAMESPACE\n";
-    let outc = open_out (bn^"-"^DC.version^".c") in
+    let s = if k = ARM then "arm" else "thumb" in
+    let outc = open_out (bn^"_"^s^"_"^DC.version^".c") in
       Buffer.output_buffer outc b; close_out outc;;
 end;;
 
 module DecExecConfig = struct
   let version = "decode_exec";;
-  let main_prof =
-    "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode)";;
-  let instr_prof b id =
-    bprintf b "bool try_exec_%s(struct SLv6_Processor *proc, uint32_t bincode)" id;;
+  let main_prof b (k: fkind) =
+    let s, n = if k = ARM then "arm", 32 else "thumb", 16 in
+      bprintf b
+        "bool %s_decode_and_exec(struct SLv6_Processor *proc, uint%d_t bincode)"
+        s n;;
+  let instr_prof b ((k: fkind), id) =
+    bprintf b "bool try_exec_%s(struct SLv6_Processor *proc, uint%d_t bincode)"
+      id (if k = ARM then 32 else 16);;
   let instr_call b id = bprintf b "try_exec_%s(proc,bincode)" id;;
   let action b (x: xprog) =
     let aux b (s,_) = bprintf b ",%s" s in
@@ -426,10 +462,14 @@ module DecExec = DecoderGenerator(DecExecConfig);;
 
 module DecStoreConfig = struct
   let version = "decode_store";;
-  let main_prof =
-    "void decode_and_store(struct SLv6_Instruction *instr, uint32_t bincode)";;
-  let instr_prof b id =
-    bprintf b "bool try_store_%s(struct SLv6_Instruction *instr, uint32_t bincode)" id;;
+  let main_prof b (k: fkind) =
+    let s, n = if k = ARM then "arm", 32 else "thumb", 16 in
+      bprintf b
+        "void %s_decode_and_store(struct SLv6_Instruction *instr, uint%d_t bincode)"
+        s n;;
+  let instr_prof b ((k: fkind), id) =
+    bprintf b "bool try_store_%s(struct SLv6_Instruction *instr, uint%d_t bincode)"
+      id (if k = ARM then 32 else 16);;
   let instr_call b id = bprintf b "try_store_%s(instr,bincode)" id;;
   let action b (x: xprog) =
     let store b (n, _) = 
@@ -503,6 +543,15 @@ let may_branch_prog b (x: xprog) =
   if x.xprog.finstr = "LDM1" then
     bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
       x.xprog.fid x.xbaseid
+  (* special case for CPS: clearing bit F or I may raise an interrupt *)
+  else if x.xprog.finstr = "CPS" then (
+    bprintf b "  case SLV6_CPS_ID:\n";
+    bprintf b "    return (instr->args.CPS.F || instr->args.CPS.I) && instr->args.CPS.imod==2;\n")
+  (* special case for MSR*: modifying bit F or I may raise an interrupt *)
+  else if x.xprog.finstr = "MSRimm" then
+    bprintf b "  case SLV6_%s_ID: return instr->args.MSRimm.field_mask&1;\n" x.xprog.fid
+  else if x.xprog.finstr = "MSRreg" then
+    bprintf b "  case SLV6_%s_ID: return instr->args.MSRreg.field_mask&1;\n" x.xprog.fid
   else
     let default = (false, []) in
     let rec union l l' =
@@ -612,8 +661,11 @@ let llvm_generator bn xs =
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
-  let fs: fprog list = flatten pcs' decs in
-  let xs: xprog list = List.rev (List.map xprog_of fs) in
+  let fs': fprog list = flatten pcs' decs in
+  let fs: fprog list = List.map patch_addr_of_next_instr fs' in
+  let xs': xprog list = List.rev (List.map xprog_of fs) in
+    (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
+  let xs: xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs' in
   let nocond_xs: xprog list = no_cond_variants xs in
   let all_xs: xprog list = xs@nocond_xs in
   let instr_count = List.length all_xs in
@@ -656,8 +708,11 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;      
     (* generate the decoders *)
-    DecExec.decoder bn xs;
-    DecStore.decoder bn xs;
+    let arm_xs, thumb_xs = List.partition (fun x -> is_arm x.xprog) xs in
+      DecExec.decoder bn ARM arm_xs;
+      DecStore.decoder bn ARM arm_xs;
+      DecExec.decoder bn Thumb thumb_xs;
+      DecStore.decoder bn Thumb thumb_xs;
     (* generate a small program to verify the sizes of the instruciton types *)
     dump_sizeof bn xs;
     (* generate the LLVM generator (mode DT3) *)

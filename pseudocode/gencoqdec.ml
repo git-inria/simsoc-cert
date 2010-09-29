@@ -120,14 +120,13 @@ let mode_of_inst (m: string list) (lst: (string*int*int) list) =
 
 (* add address mode variable in the parameter list*)
 (* 'n' is the name of an instruction, represented by a string list *)
-let add_mode_param n lst =
-  let md = add_mode n in
+let add_mode_param (md: kind) (n: string list) lst =
   match md with
-    | DecInst ->
+    | DecInstARM ->
 	if (mode_of_inst n lst != 0) then
 	  List.append [("add_mode", 0, 0)] lst
 	else lst
-    | DecMode _ | DecEncoding -> lst;;
+    | DecInstThumb | DecMode _ | DecEncoding -> lst;;
 
 (*****************************************************************************)
 (** remove unused parameters from instructions and addressing mode cases *)
@@ -166,18 +165,18 @@ let is_not_param_inst i =
 (* 'n' is the instruction or addressing mode case name *)
 (* 'lst' is the list of parameters *)
 (* This function returns a new parameter list without unused parameters *)
-let remove_params n lst =
+let remove_params (md: kind) n lst =
   (* We do that in two steps *)
   let remove_params_step1 lst =
-    let md = add_mode n in
-      List.map (fun s -> if (
-		  match md with
-		    | DecMode i -> is_not_param_add_mode i s
-		    | DecInst ->
-			let im = mode_of_inst n lst in
-			  is_not_param_inst im s
-		    | DecEncoding -> false) then
-		  ("",0,0) else s) lst
+    List.map (fun s -> if (
+		match md with
+		  | DecMode i -> is_not_param_add_mode i s
+		  | DecInstARM ->
+		      let im = mode_of_inst n lst in
+			is_not_param_inst im s
+                  | DecInstThumb -> false (* TODO: Thumb mode *)
+		  | DecEncoding -> false) then
+		("",0,0) else s) lst
   in
     (*remove variable in other cases*)
   let remove_params_step2 lst =
@@ -258,13 +257,14 @@ let param_m (_, ls) =
 
 (*get the final well typed parameters list*)
 let params f (lh, ls) =
-  let dname = name (lh,ls) in
+  let dname = name (lh,ls) 
+  and md = add_mode lh in
   let aux b =
     let lst =
       (List.filter ((<>) "")
 	 (List.map inst_param
-	    (remove_params dname
-	       (add_mode_param dname
+	    (remove_params md dname
+	       (add_mode_param md dname
 		  (List.sort (fun (s1, _, _) (s2, _, _) ->
 				Pervasives.compare s1 s2)
 		     (Array.to_list (param_m (lh,ls))))))))
@@ -334,11 +334,12 @@ let mode_tst (lh, ls) =
 
 let dec_inst b (lh, ls) =
   let dbits = pos_info (lh,ls) in
-    let md = add_mode (name (lh,ls)) in
+    let md = add_mode lh in
       match md with
-	| DecInst ->
+	| DecInstARM ->
 	    bprintf b "    %a\n    | %t =>\n      %t\n"
 	      comment lh (gen_pattern dbits) (mode_tst (lh, ls))
+        | DecInstThumb -> () (* TODO: Thumb mode *)
 	| DecEncoding -> ()
 	| DecMode i ->
 	    (*FIXME*)
@@ -384,11 +385,11 @@ let order_inst p =
     | _ -> 0;;
 
 (*separate the instruction and address mode data*)
-let is_inst l =
-  if ((add_mode (name l)) = DecInst) then true else false;;
+let is_inst (lh, _) = match add_mode lh with
+  | DecInstARM | DecInstThumb -> true
+  | DecEncoding | DecMode _ -> false;;
 
-let is_addr_mode i l =
-  if ((add_mode (name l)) = DecMode i) then true else false;;
+let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 (*****************************************************************************)
 (** main decoder functions: addressing mode decoder and instruction decoder *)

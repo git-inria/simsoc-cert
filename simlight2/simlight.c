@@ -13,7 +13,7 @@ void elf_write_to_memory(const char *data, size_t start, size_t size) {
     write_byte(mmu_ptr,start+j,data[j]);
 }
 
-void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
+void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
   uint32_t a = ef_get_text_start(elf);
   const uint32_t ea = a + ef_get_text_size(elf);
   assert((a&3)==0 && (ea&3)==0 && "address misaligned");
@@ -23,7 +23,7 @@ void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
     const uint32_t bincode = read_word(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
     instr.id = ~0;
-    decode_and_store(&instr,bincode);
+    arm_decode_and_store(&instr,bincode);
     assert(instr.id<=SLV6_INSTRUCTION_COUNT);
     printf("%s: %s\n",
            slv6_instruction_references[instr.id],
@@ -31,20 +31,61 @@ void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
   }
 }
 
+void test_decode_thumb(struct SLv6_Processor *proc, struct ElfFile *elf) {
+  uint32_t a = ef_get_text_start(elf);
+  const uint32_t ea = a + ef_get_text_size(elf);
+  assert((a&1)==0 && (ea&1)==0 && "address misaligned");
+  sl_debug = false;
+  struct SLv6_Instruction instr;
+  for (; a!=ea; a+=2) {
+    const uint16_t bincode = read_half(proc->mmu_ptr,a);
+    printf("decode %x -> ", bincode);
+    instr.id = ~0;
+    thumb_decode_and_store(&instr,bincode);
+    assert(instr.id<=SLV6_INSTRUCTION_COUNT);
+    printf("%s: %s\n",
+           slv6_instruction_references[instr.id],
+           slv6_instruction_names[instr.id]);
+  }
+}
+
+void test_decode(struct SLv6_Processor *proc, struct ElfFile *elf) {
+  const uint32_t entry = ef_get_initial_pc(elf);
+  if (entry&1)
+    test_decode_thumb(proc,elf);
+  else
+    test_decode_arm(proc,elf);
+}
+
 /* we stop the simulation when we recognize this instruction */
-const uint32_t infinite_loop = 0xea000000 | (-2 & 0x00ffffff); /* = B #-2*4 */
+const uint32_t arm_infinite_loop = 0xea000000 | (-2 & 0x00ffffff); /* = B #-2*4 */
+const uint32_t thumb_infinite_loop = 0xe000 | (-2 & 0x07ff); /* = B #-2*2 */
+
+bool done(bool T, uint32_t arm, uint16_t thumb) {
+  if (T)
+    return thumb==thumb_infinite_loop;
+  else
+    return arm==arm_infinite_loop;
+}
 
 void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
   uint32_t inst_count = 0;
-  uint32_t bincode;
+  uint32_t arm_bincode;
+  uint16_t thumb_bincode;
+  bool found;
   const uint32_t entry = ef_get_initial_pc(elf);
   INFO(printf("entry point: %x\n", entry));
   set_pc(proc,entry);
   proc->jump = false;
   do {
     DEBUG(puts("---------------------"));
-    bincode = read_word(proc->mmu_ptr,address_of_current_instruction(proc));
-    bool found = decode_and_exec(proc,bincode);
+    if (proc->cpsr.T_flag) {
+      thumb_bincode = read_half(proc->mmu_ptr,address_of_current_instruction(proc));
+      found = thumb_decode_and_exec(proc,thumb_bincode);
+    } else {
+      arm_bincode = read_word(proc->mmu_ptr,address_of_current_instruction(proc));
+      found = arm_decode_and_exec(proc,arm_bincode);
+    }
     if (!found)
       TODO("Unpredictable or undefined instruction");
     if (proc->jump)
@@ -53,7 +94,7 @@ void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
       increment_pc(proc);
     slv6_hook(proc);
     ++inst_count;
-  } while (bincode!=infinite_loop);
+  } while (!done(proc->cpsr.T_flag,arm_bincode,thumb_bincode));
   DEBUG(puts("---------------------"));
   INFO(printf("Reached infinite loop after %d instructions executed.\n", inst_count));
 }

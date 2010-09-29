@@ -72,6 +72,9 @@ static uint32_t NOT(bool x) {return !x;}
 /* from 24 to 30 */
 static inline uint32_t SignExtend_30(uint32_t x) {return x&(1<<23) ? 0x7f000000|x : x;}
 
+/* from 11 to 32 */
+static inline uint32_t SignExtend11(uint32_t x) {return x&(1<<10) ? 0xfffff800|x : x;}
+
 /* from 16 to 32 */
 static inline uint32_t SignExtend16(uint32_t x) {return x&(1<<15) ? 0xffff0000|x : x;}
 

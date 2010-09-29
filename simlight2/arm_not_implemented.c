@@ -4,36 +4,29 @@
 #include "arm_not_implemented.h"
 
 void dependent_operation(struct SLv6_Processor *proc, uint8_t n) {
-  if (n==15) dependent_operation_CP15(&proc->cp15);
-  else TODO("undefined instruction");
+  TODO("coprocessor dependent_operation");
 }
 
 void load(struct SLv6_Processor *proc, uint8_t n, uint32_t x) {
-  if (n==15) load_CP15(&proc->cp15,x);
-  else TODO("undefined instruction");
+  TODO("coprocessor load");
 }
 
 void send(struct SLv6_Processor *proc, uint8_t n, uint32_t x) {
-  if (n==15) send_CP15(&proc->cp15,x);
-  else TODO("undefined instruction");
+  TODO("coprocessor send");
 }
 
 bool NotFinished(struct SLv6_Processor *proc, uint8_t n) {
-  if (n==15) return NotFinished_CP15(&proc->cp15);
-  else TODO("undefined instruction");
+  TODO("coprocessor NotFinished");
 }
 
 uint32_t first_value(struct SLv6_Processor *proc, uint8_t n) {
-  if (n==15) return first_value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
+  TODO("coprocessor first_value");
 }
 
 uint32_t second_value(struct SLv6_Processor *proc, uint8_t n) {
-  if (n==15) return second_value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
+  TODO("coprocessor second_value");
 }
 
 uint32_t value(struct SLv6_Processor *proc, uint8_t n) {
-  if (n==15) return value_CP15(&proc->cp15);
-  else TODO("undefined instruction");
+  TODO("coprocessor value");
 }

@@ -1,5 +1,5 @@
---- arm6.txt	2010-05-28 15:05:32.000000000 +0800
-+++ arm6inst.txt	2010-06-25 17:51:09.000000000 +0800
+--- arm6.txt	2010-07-12 21:04:49.000000000 +0800
++++ arm6inst.txt	2010-09-29 15:52:24.000000000 +0800
 @@ -7687,7 +7687,7 @@
             Operation
             LR = address of the instruction after the BLX instruction
@@ -134,6 +134,47 @@
                     Q Flag = 1
  
  
+@@ -23649,7 +23648,7 @@
+              C Flag = Rm[31]
+              if Rm[31] == 0 then
+                  Rd = 0
+-             else /* Rm[31] == 1 */]
++             else /* Rm[31] == 1 */
+                  Rd = 0xFFFFFFFF
+          else /* immed_5 > 0 */
+              C Flag = Rm[immed_5 - 1]
+@@ -24137,14 +24136,14 @@
+ 
+ 
+          Operation
+-         if H == 10 then
++         if H == 0b10 then
+              LR = PC + (SignExtend(offset_11) << 12)
+ 
+-         else if H == 11 then
++         else if H == 0b11 then
+              PC = LR + (offset_11 << 1)
+              LR = (address of next instruction) | 1
+ 
+-         else if H == 01 then
++         else if H == 0b01 then
+              PC = (LR + (offset_11 << 1)) AND 0xFFFFFFFC
+              LR = (address of next instruction) | 1
+              CPSR T bit = 0
+@@ -24901,12 +24900,12 @@
+          start_address = Rn
+          end_address = Rn + (Number_Of_Set_Bits_In(register_list) * 4) - 4
+          address = start_address
++         Rn = Rn + (Number_Of_Set_Bits_In(register_list) * 4)
+          for i = 0 to 7
+              if register_list[i] == 1
+                  Ri = Memory[address,4]
+                  address = address + 4
+          assert end_address == address - 4
+-         Rn = Rn + (Number_Of_Set_Bits_In(register_list) * 4)
+ 
+ 
+          Usage
 @@ -25166,7 +25165,7 @@
  
           Operation
@@ -143,10 +184,111 @@
           Rd = Memory[address, 4]
  
  
-@@ -49653,4 +49652,4 @@
+@@ -26511,7 +26510,7 @@
+                  T Bit = value[0]
+              address = address + 4
+ 
+-         assert end_address = address
++         assert end_address == address
+          SP = end_address
+ 
+ 
+@@ -26638,10 +26637,11 @@
+                address = address + 4
+            assert end_address == address - 4
+            SP = SP - 4*(R + Number_Of_Set_Bits_In(register_list))
+-           if (CP15_reg1_Ubit == 1)        /* ARMv6 */
+-               if Shared(address then     /* from ARMv6 */
+-                   physical_address = TLB(address
+-                   ClearExclusiveByAddress(physical_address, size)
++           if (CP15_reg1_Ubit == 1) then        /* ARMv6 */
++               if Shared(address) then     /* from ARMv6 */
++                   physical_address = TLB(address)
++                   ClearExclusiveByAddress(physical_address, 4)
++
+ 
+            For details on shared memory and synchronization primitives, see Synchronization primitives on
+            page A2-44.
+@@ -27109,15 +27109,16 @@
+          end_address = Rn + (Number_Of_Set_Bits_In(register_list) * 4) - 4
+          address = start_address
+          for i = 0 to 7
+-             if register_list[i] == 1
++             if register_list[i] == 1 then
+                  Memory[address,4] = Ri
+-                 if Shared(address then /* from ARMv6 */
+-                     physical_address = TLB(address
++                 if Shared(address) then /* from ARMv6 */
++                     physical_address = TLB(address)
+                      ClearExclusiveByAddress(physical_address,4)
+                  address = address + 4
+          assert end_address == address - 4
+          Rn = Rn + (Number_Of_Set_Bits_In(register_list) * 4)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27234,6 +27235,7 @@
+                 physical_address = TLB(address)
+                ClearExclusiveByAddress(physical_address, 4)
+ 
++
+            For details on shared memory and synchronization primitives, see Synchronization primitives on
+            page A2-44.
+ 
+@@ -27315,6 +27317,7 @@
+               physical_address = TLB(address)
+               ClearExclusiveByAddress(physical_address, 4)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27404,6 +27407,7 @@
+               physical_address = TLB(address)
+               ClearExclusiveByAddress(physical_address, 4)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27488,6 +27492,7 @@
+              physical_address = TLB(address)
+              ClearExclusiveByAddress(physical_address, 1)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27558,6 +27563,7 @@
+              physical_address = TLB(address)
+              ClearExclusiveByAddress(physical_address, 1)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27636,6 +27642,7 @@
+               physical_address = TLB(address)
+               ClearExclusiveByAddress(physical_address, 2)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -27725,6 +27732,7 @@
+               physical_address = TLB(address)
+               ClearExclusiveByAddress(physical_address, 2)
+ 
++
+          For details on shared memory and synchronization primitives, see Synchronization primitives on
+          page A2-44.
+ 
+@@ -49659,4 +49667,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
 -
-\ Pas de fin de ligne à la fin du fichier.
+\ No newline at end of file
 +

@@ -52,8 +52,8 @@ progs:
 ;
 prog:
 | IDENT idents block
-    { { pref = $1; pkind = Inst; pident = List.hd $2;
-	pidents = List.tl $2; pinst = $3 } }
+    { { pref = $1; pkind = if is_thumb $1 then InstThumb else InstARM;
+        pident = List.hd $2; pidents = List.tl $2; pinst = $3 } }
 | IDENT items MINUS items block
     { { pref = $1; pkind = Mode (addr_mode $2); pident = ident $4;
 	pidents = []; pinst = $5 } }

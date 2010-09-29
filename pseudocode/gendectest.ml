@@ -194,5 +194,5 @@ let bin_insts out fs =
 
 let gen_test out pcs decs =
   set_binary_mode_out out true;
-  let fs: fprog list = flatten pcs decs in
+  let fs: fprog list = List.filter is_arm (flatten pcs decs) in
     List.iter (bin_insts out) fs;;

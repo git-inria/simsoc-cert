@@ -117,6 +117,7 @@ let rec to_given_header f = parser
 
 (* Strings used for locating the beginning of interesting parts *)
 let alpha = "Alphabetical list of ARM instructions"
+let alphathumb = "Alphabetical list of Thumb instructions"
 let genotes = "General notes"
 let addrmodes = "Addressing Mode "
 let beforeopdescr = "Shifted register operand value"
@@ -193,6 +194,9 @@ let main = parser
        () = loop_instrs;
        () = loop_instrs;
        () = loop_instrs;
+       () = loop_instrs;
+       _ = to_given_header (filtitle alphathumb);
+       _ = to_given_header (filtitle genotes);
        () = loop_instrs;
     >]
   -> ()

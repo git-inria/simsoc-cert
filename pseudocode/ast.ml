@@ -100,7 +100,8 @@ let ident ss = { iname = underscore ss; iparams = []; ivariant = None };;
 (*****************************************************************************)
 
 type kind =
-  | Inst (* instruction *)
+  | InstARM (* instruction on 32 bits *)
+  | InstThumb (* instruction on 16 bits *)
   | Mode of int (* addressing mode *);;
 
 type prog = {
@@ -109,6 +110,9 @@ type prog = {
   pident : ident;
   pidents : ident list; (* alternative idents *)
   pinst : inst };;
+
+(* s should be the reference of the program *)
+let is_thumb s = s.[1] = '7';;
 
 (*****************************************************************************)
 (** addressing modes *)

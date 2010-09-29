@@ -41,8 +41,11 @@ type op = Char of char | String of string | Nop
    We assume that there are no trailing blanks
 *)
 let take_eol =
-  let bu = Buffer.create 80 in 
-  let rec deb op = parser
+  let bu = Buffer.create 80 in
+  let rec header = parser (* header shall not be modified *)
+    | [< ''\n' >] -> Nop, Buffer.contents bu
+    | [< 'c; s >] -> Buffer.add_char bu c; header s
+  and deb op = parser
     | [< ''\n' >] -> op, Buffer.contents bu
     | [< '' '; s >] -> Buffer.add_char bu ' '; deb op s
     | [< ''+' | '-' as c; s >] -> Buffer.clear bu; fin (Char c) s 
@@ -69,7 +72,9 @@ let take_eol =
     | [< '' '; s >] -> eat_blanks op s
     | [< 'c; s >] -> Buffer.add_char bu c; fin op s
   in
-  let take_eol c s = Buffer.clear bu; Buffer.add_char bu c; deb Nop s in
+  let take_eol c s =
+    Buffer.clear bu; Buffer.add_char bu c;
+    if c = 'A' then header s else deb Nop s in
   take_eol
 
 let rec loop = parser 

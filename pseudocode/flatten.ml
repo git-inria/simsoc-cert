@@ -20,17 +20,23 @@ open Codetype;;
 open Validity;;
 
 (* type for "flat" programs *)
+type fkind = ARM | Thumb;;
+
 type fprog = {
   fid: string; (* the identifier used in the generated code *)
   finstr: string; (* the identifier of the base instruction *)
   fmode: string option; (* the identifier of the inlined mode, if any *)
   fref: string; (* chapter(s) in the ARM documentation (e.g. A4.1.20--A5.2.3) *)
+  fkind: fkind; (* ARM or Thumb *)
   fname: string; (* whole name *)
   finst: inst; (* the pseudo-code *)
   fdec: pos_contents array; (* coding table *)
   fparams: (string * int * int) list; (* the parameters defined in the original 
                                        * coding tables *)
   fvcs: vconstraint list};; (* the validity constraints, from validity.ml *)
+
+let is_arm f = f.fkind = ARM;;
+let is_thumb f = f.fkind = Thumb;;
 
 (* NB: in general, fparams <> parameters_of fdec, because some parameters disappear
  * when we merge the 2 coding tables *)
@@ -40,6 +46,7 @@ type fprog = {
  * finstr = ADC
  * fmode = Some M1_Reg
  * fref = A4.1.2--A5.1.4
+ * fkind = ARM
  * fname = ADC -- Data processing operands - Register
  * finst =
     begin
@@ -78,8 +85,11 @@ let str_ident p =
   let ident b p =
     let i = p.pident in
       match p.pkind with
-        | Inst ->
+        | InstARM ->
             bprintf b "%s%a%a" i.iname
+              (option "" string) i.ivariant (list "" string) i.iparams
+        | InstThumb ->
+            bprintf b "Tb_%s%a%a" i.iname
               (option "" string) i.ivariant (list "" string) i.iparams
         | Mode m ->
             bprintf b "M%d_%s" m (compact i.iname)
@@ -133,7 +143,7 @@ let classify pds =
     | (p, d) :: tail -> (
         match p.pkind with
           | Mode i -> ms.(i-1) <- (p,d) :: ms.(i-1)
-          | Inst -> is := (p,d) :: !is);
+          | InstARM | InstThumb -> is := (p,d) :: !is);
         aux tail
     | [] -> (!is, ms)
   in aux pds;;
@@ -212,7 +222,7 @@ let rec merge_plist a b =
 (* Main function *)
 let flatten (pcs: prog list) (decs: maplist) : fprog list =
   let decs' = (* remove encodings *)
-    let aux x = add_mode (name x) <> DecEncoding in
+    let aux x = add_mode (fst x) <> DecEncoding in
       List.filter aux decs
   in
   (* IMPORTANT: normalization of pcs must be done before calling flatten,
@@ -231,61 +241,67 @@ let flatten (pcs: prog list) (decs: maplist) : fprog list =
       let dec = merge_dec d d' in
       let params = merge_plist (parameters_of d) (parameters_of d') in
       let vcs = get_constraints idi @ get_constraints idm in
-      {fid = id; finstr = idi; fmode = Some idm; fref = ref'; fname = name;
+      {fid = id; finstr = idi; fmode = Some idm; fref = ref';
+       fkind = ARM; fname = name;
        finst = inst; fdec = dec; fparams = params; fvcs = vcs}
     in
-    let is_inst p = match p.pkind with Inst -> true | Mode _ -> false in
-      assert (is_inst i);
-      match i.pident.iname with
-        (* Mode 1: list given in section A3.4 *)
-        | "ADC" | "ADD" | "AND" | "BIC" | "EOR" | "ORR" | "MOV" | "MVN"
-        | "SUB" | "SBC" | "RSB" | "RSC" | "TST" | "TEQ" | "CMP" | "CMN" ->
-            List.map (merge_progs (i,d)) ms.(0)
-              
-        (* Verbatim from section A5.2:
-         * All nine of the following options are available for LDR, LDRB,
-         * STR and STRB. For LDRBT, LDRT, STRBT and STRBT, only the
-         * post-indexed options (the last three in the list) are available.
-         * For the PLD instruction described in PLD on page A4-90, only the
-         * offset options (the first three in the list) are available.
-         *)
-        | "LDR" | "LDRB" | "STR" | "STRB" ->
-            List.map (merge_progs (i,d)) ms.(1)
-        | "LDRT" | "LDRBT" | "STRT" | "STRBT" ->
-            let aux (m,_) = match m.pref with
-              | "A5.2.8" | "A5.2.9" | "A5.2.10" -> true
-              | _ -> false
-            in let ms = List.filter aux ms.(1)
-            in let ms' = List.map patch_W ms
-            in List.map (merge_progs (i,d)) ms'
-        | "PLD" ->
-            let aux (m,_) = match m.pref with
-              | "A5.2.2" | "A5.2.3" | "A5.2.4" -> true
-              | _ -> false
-            in List.map (merge_progs (i,d)) (List.filter aux ms.(1))
-
-        (* Mode 3: cf section A5.3 *)
-        | "LDRH" | "LDRSH" | "STRH" | "LDRSB" | "LDRD" | "STRD" ->
-            List.map (merge_progs (i,d)) ms.(2)
-
-        (* Mode 4: cf section A5.4 *)
-        | "LDM" | "STM" ->
-            List.map (merge_progs (i,d)) ms.(3)
-        | "RFE" ->
-            let aux (i, d) = patch_SRS_RFE i, d in
-            List.map (merge_progs (i, d)) (List.map aux ms.(3))
-        | "SRS" ->
-            let aux (i, d) = patch_SRS (patch_SRS_RFE i), d in
-            List.map (merge_progs (i, d)) (List.map aux ms.(3))
-
-        (* Mode 5: cf section A5.5 *)
-        | "LDC" | "STC" ->
-            List.map (merge_progs (i,d)) ms.(4)
-              
-        (* other instrucitons *)
-        | _ ->
-            let id = str_ident i in
-              [{fid = id; finstr = id; fmode = None; fref = i.pref;
-                fname = str_name i; finst = i.pinst;
-                fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
+      if i.pkind = InstARM then
+        match i.pident.iname with
+            (* Mode 1: list given in section A3.4 *)
+          | "ADC" | "ADD" | "AND" | "BIC" | "EOR" | "ORR" | "MOV" | "MVN"
+          | "SUB" | "SBC" | "RSB" | "RSC" | "TST" | "TEQ" | "CMP" | "CMN" ->
+              List.map (merge_progs (i,d)) ms.(0)
+                
+          (* Verbatim from section A5.2:
+           * All nine of the following options are available for LDR, LDRB,
+           * STR and STRB. For LDRBT, LDRT, STRBT and STRBT, only the
+           * post-indexed options (the last three in the list) are available.
+           * For the PLD instruction described in PLD on page A4-90, only the
+           * offset options (the first three in the list) are available.
+           *)
+          | "LDR" | "LDRB" | "STR" | "STRB" ->
+              List.map (merge_progs (i,d)) ms.(1)
+          | "LDRT" | "LDRBT" | "STRT" | "STRBT" ->
+              let aux (m,_) = match m.pref with
+                | "A5.2.8" | "A5.2.9" | "A5.2.10" -> true
+                | _ -> false
+              in let ms = List.filter aux ms.(1)
+              in let ms' = List.map patch_W ms
+              in List.map (merge_progs (i,d)) ms'
+          | "PLD" ->
+              let aux (m,_) = match m.pref with
+                | "A5.2.2" | "A5.2.3" | "A5.2.4" -> true
+                | _ -> false
+              in List.map (merge_progs (i,d)) (List.filter aux ms.(1))
+                   
+          (* Mode 3: cf section A5.3 *)
+          | "LDRH" | "LDRSH" | "STRH" | "LDRSB" | "LDRD" | "STRD" ->
+              List.map (merge_progs (i,d)) ms.(2)
+                
+          (* Mode 4: cf section A5.4 *)
+          | "LDM" | "STM" ->
+              List.map (merge_progs (i,d)) ms.(3)
+          | "RFE" ->
+              let aux (i, d) = patch_SRS_RFE i, d in
+                List.map (merge_progs (i, d)) (List.map aux ms.(3))
+          | "SRS" ->
+              let aux (i, d) = patch_SRS (patch_SRS_RFE i), d in
+                List.map (merge_progs (i, d)) (List.map aux ms.(3))
+                  
+          (* Mode 5: cf section A5.5 *)
+          | "LDC" | "STC" ->
+              List.map (merge_progs (i,d)) ms.(4)
+                
+          (* other instrucitons *)
+          | _ ->
+              let id = str_ident i in
+                [{fid = id; finstr = id; fmode = None; fref = i.pref;
+                  fkind = ARM; fname = str_name i; finst = i.pinst;
+                  fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
+      else
+        let id = str_ident i in
+          [{fid = id; finstr = id; fmode = None; fref = i.pref;
+            fkind = Thumb; fname = str_name i; finst = i.pinst;
+            fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
+            
   in List.flatten (List.map flatten_one is);;

@@ -27,6 +27,7 @@ let string_of_op = function
 
 let size = function
   | Range (_, Bits (("15"|"31"), _)) -> "16"
+  | Var "signed_immed_11" -> "11"
   | _ -> "8";;
 
 let rec exp = function
@@ -57,12 +58,12 @@ let rec exp = function
             Fun (sprintf "%s32_%s" f (string_of_op op),
 	         List.map exp es))
 
-  (* The reference manual does not distinguish between noolean "not"
+  (* The reference manual does not distinguish between boolean "not"
      and bitwise "NOT". Indeed, the operator is always written "NOT".*)
 
   | Fun ("NOT", [e]) -> (
       match e with
-        | Var "mask" | Var "shifter_operand" -> Fun ("NOT", [e])
+        | Var "mask" | Var "shifter_operand" | Reg _ -> Fun ("NOT", [e])
         | _ -> Fun ("not", [exp e]))
 
   (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
@@ -278,8 +279,9 @@ and affects = function
 
 (* replace expression 'o' by expresssion 'n' in instruction 'i' *)
 let replace_exp (o: exp) (n: exp) (i: inst) =
+  let count = ref 0 in
   let rec exp e =
-    if e = o then n else match e with
+    if e = o then (count := !count + 1; n) else match e with
       | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
       | Fun (s, es) -> Fun (s, List.map exp es)
       | BinOp (e1, s, e2) -> BinOp (exp e1, s, exp e2)
@@ -304,12 +306,15 @@ let replace_exp (o: exp) (n: exp) (i: inst) =
     | Case (e, sis) ->
         Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
     | x -> x
-  in inst i;;
+  in let i' = inst i in
+    if !count = 0 then raise Not_found else i';;
+
 
 (* replace instruction 'o' by instruction 'n' in instruction 'i' *)
 let replace_inst (o: inst) (n: inst) (i: inst) =
+  let count = ref 0 in
   let rec inst i =
-    if i = o then n else match i with
+    if i = o then (count := !count + 1; n) else match i with
     | Block is -> Block (List.map inst is)
     | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
     | If (e, i, None) -> If (e, inst i, None)
@@ -318,7 +323,8 @@ let replace_inst (o: inst) (n: inst) (i: inst) =
     | Case (e, sis) ->
         Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
     | x -> x
-  in inst i;;
+  in let i' = inst i in
+    if !count = 0 then raise Not_found else i';;
 
 let rec split_msr ps =
   match ps with

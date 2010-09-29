@@ -24,6 +24,10 @@ static bool not_cpy_instr(uint32_t bincode) {
   return (bincode&0x0fff0ff0)!=0x01a00000;
 }
 
+static bool not_AL_cond(SLv6_Condition cond) {
+  return cond!=SLV6_AL;
+}
+
 static int32_t to_int32(uint32_t x) {return (int32_t)x;}
 static int64_t to_int64(uint64_t x) {return (int64_t)x;}
 static int64_t to_i64(uint32_t x) {return (int64_t)(int32_t)x;}

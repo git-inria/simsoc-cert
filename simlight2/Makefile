@@ -8,10 +8,14 @@ SOURCES=slv6_iss.c common.c slv6_condition.c slv6_math.c \
  slv6_iss_expanded.c slv6_iss_grouped.c
 HEADERS=$(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
  arm_not_implemented.h
-SOURCES+=slv6_iss-decode_exec.c slv6_iss-decode_store.c
+SOURCES+=slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
+         slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c
 OBJECTS=$(SOURCES:%.c=%.o) simlight.o
 
-GENFILES_MO=slv6_iss_expanded.c slv6_iss_grouped.c slv6_iss_expanded.h slv6_iss_grouped.h slv6_iss.h slv6_iss-decode_exec.c slv6_iss-decode_store.c
+GENFILES_MO=slv6_iss_expanded.c slv6_iss_grouped.c slv6_iss_expanded.h \
+            slv6_iss_grouped.h slv6_iss.h \
+            slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
+            slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c
 GENFILES=$(GENFILES_MO) slv6_iss.c
 
 all: simlight

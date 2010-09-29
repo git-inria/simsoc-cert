@@ -71,6 +71,8 @@ sed \
     -e 's|address of next instruction after the Undefined instruction|address_of_next_instruction()|' \
     -e 's|address of the aborted instruction|address_of_current_instruction()|' \
     -e 's|address of next instruction to be executed|address_of_next_instruction()|' \
+    -e 's|address of next instruction|address_of_next_instruction()|' \
+    -e 's|address of the instruction after this BLX|address_of_next_instruction()|' \
     -e 's|CPSR = CPSR with specified E bit modification|CPSR[9] = E|' \
     -e 's|VE==0|CP15_reg1_VEbit() == 0|' \
     -e 's|(not overridden by debug hardware)|not_overridden_by_debug_hardware()|' \
