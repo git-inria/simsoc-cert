@@ -111,7 +111,6 @@ let implicit_arg = function
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
   | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
-  | "reg_m" | "set_reg_m" -> "proc, " (* used by gencxx4dt.ml *)
   | _ -> "";;
 
 let mode m = Genpc.string_of_mode m;;

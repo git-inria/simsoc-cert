@@ -18,11 +18,11 @@ BEGIN_SIMSOC_NAMESPACE
 struct ARMv6_Processor; /* used only in SimSoC */
 
 struct SLv6_Processor {
-  struct SLv6_MMU *mmu_ptr;
+  SLv6_MMU *mmu_ptr;
   struct ARMv6_Processor *proc_ptr; /* used only in SimSoC */
   struct SLv6_StatusRegister cpsr;
   struct SLv6_StatusRegister spsrs[5];
-  struct SLv6_SystemCoproc cp15;
+  struct SLv6_SystemCoproc *cp15_ptr;
   size_t id;
   uint32_t regs[16];
 
@@ -38,7 +38,9 @@ struct SLv6_Processor {
   bool jump;
 };
 
-extern void init_Processor(struct SLv6_Processor*, struct SLv6_MMU*);
+extern void init_Processor(struct SLv6_Processor*,
+                           SLv6_MMU*,
+                           struct SLv6_SystemCoproc*);
 
 extern void destruct_Processor(struct SLv6_Processor*);
 
@@ -156,7 +158,7 @@ static inline uint32_t address_of_current_instruction(struct SLv6_Processor *pro
 }
 
 static inline bool high_vectors_configured(const struct SLv6_Processor *proc) {
-  return CP15_reg1_Vbit(&proc->cp15);
+  return CP15_reg1_Vbit(proc->cp15_ptr);
 }
 
 static inline void increment_pc(struct SLv6_Processor *proc) {
@@ -189,10 +191,6 @@ static inline void decrement_pc_arm16(struct SLv6_Processor *proc) {
 
 static inline uint32_t get_pc(const struct SLv6_Processor *proc) {
   return proc->regs[15];
-}
-
-static inline uint32_t vector_start(const struct SLv6_Processor *proc) {
-  return high_vectors_configured(proc) ? 0xffff0000 : 0;
 }
 
 static inline void slv6_hook(struct SLv6_Processor *proc) {}

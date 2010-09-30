@@ -13,9 +13,10 @@ SOURCES+=slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
 OBJECTS=$(SOURCES:%.c=%.o) simlight.o
 
 GENFILES_MO=slv6_iss_expanded.c slv6_iss_grouped.c slv6_iss_expanded.h \
-            slv6_iss_grouped.h slv6_iss.h \
+            slv6_iss_grouped.h slv6_iss.h print_sizes.c \
             slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
-            slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c
+            slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c \
+            slv6_iss-llvm_generator.hpp
 GENFILES=$(GENFILES_MO) slv6_iss.c
 
 all: simlight

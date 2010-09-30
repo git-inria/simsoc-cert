@@ -7,13 +7,15 @@
 
 BEGIN_SIMSOC_NAMESPACE
 
-void init_Processor(struct SLv6_Processor *proc, struct SLv6_MMU *m) {
+void init_Processor(struct SLv6_Processor *proc,
+                    SLv6_MMU *m,
+                    struct SLv6_SystemCoproc *sc) {
   proc->mmu_ptr = m;
+  proc->cp15_ptr = sc;
   set_StatusRegister(&proc->cpsr,0x1df); /* = 0b111011111 = A+I+F+System */
   struct SLv6_StatusRegister *sr = proc->spsrs, *sr_end = proc->spsrs+5;
   for (; sr!=sr_end; ++sr)
     set_StatusRegister(sr,0x1f);
-  init_CP15(&proc->cp15);
   /* init all registers to 0 */
   int i = 0;
   for (;i<2;++i)

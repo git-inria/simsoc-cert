@@ -5,7 +5,7 @@
 #include <string.h>
 
 /* function used by the ELF loader */
-static struct SLv6_MMU *mmu_ptr = NULL;
+static SLv6_MMU *mmu_ptr = NULL;
 void elf_write_to_memory(const char *data, size_t start, size_t size) {
   assert(mmu_ptr);
   uint32_t j;
@@ -153,10 +153,12 @@ int main(int argc, const char *argv[]) {
   }
   /* create the processor and the MMU */
   struct SLv6_Processor proc;
-  struct SLv6_MMU mmu;
+  SLv6_MMU mmu;
+  struct SLv6_SystemCoproc cp15;
   init_MMU(&mmu, 4 /* memory start */, 0x100000 /* memory size */);
+  init_CP15(&cp15);
   mmu_ptr = &mmu;
-  init_Processor(&proc,&mmu);
+  init_Processor(&proc,&mmu,&cp15);
   /* load the ELF file */
   struct ElfFile elf;
   ef_init_ElfFile(&elf,filename);

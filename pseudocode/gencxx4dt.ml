@@ -133,6 +133,16 @@ let no_cond_variants xs =
 
 (** Generate the code corresponding to an expression *)
 
+let implicit_arg = function
+  | "ConditionPassed" -> "&proc->cpsr, "
+  | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr, "
+  | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "proc->cp15_ptr"
+  | "set_bit" | "set_field" -> "addr_of_"
+  | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
+  | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
+  | "reg_m" | "set_reg_m" -> "proc, "
+  | _ -> "";;
+
 let typeof x v =
   try List.assoc v x.xps
   with Not_found ->
@@ -161,7 +171,7 @@ let rec exp (p: xprog) b = function
   | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
 
   | Fun (f, es) -> bprintf b "%s(%s%a)"
-      (Gencxx.func f) (Gencxx.implicit_arg f) (list ", " (exp p)) es
+      (Gencxx.func f) (implicit_arg f) (list ", " (exp p)) es
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
   | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
   | SPSR (Some m) ->
@@ -204,9 +214,9 @@ and inst_aux p k b = function
   | Affect (dst, src) -> affect p k b dst src
   | Proc ("ClearExclusiveByAddress" as f, es) ->
       bprintf b "%s%d(%s%a)"
-        f (List.length es) (Gencxx.implicit_arg f) (list ", " (exp p)) es
+        f (List.length es) (implicit_arg f) (list ", " (exp p)) es
   | Proc (f, es) ->
-      bprintf b "%s(%s%a)" f (Gencxx.implicit_arg f) (list ", " (exp p)) es
+      bprintf b "%s(%s%a)" f (implicit_arg f) (list ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
       bprintf b "%s(proc,%a)" (Gencxx.func f) (list "," (exp p)) (e::es)
