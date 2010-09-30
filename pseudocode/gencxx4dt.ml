@@ -547,6 +547,10 @@ let may_branch_prog b (x: xprog) =
   else if x.xprog.finstr = "Tb_POP" then
     bprintf b "  case SLV6_%s_ID: return instr->args.%s.R==1;\n"
       x.xprog.fid x.xbaseid
+  (* special case for BL, BLX (1): check filed H *)
+  else if x.xprog.finstr = "Tb_BL" then
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.H!=2;\n"
+      x.xprog.fid x.xbaseid
   (* special case for CPS: clearing bit F or I may raise an interrupt *)
   else if x.xprog.finstr = "CPS" then (
     bprintf b "  case SLV6_CPS_ID:\n";
