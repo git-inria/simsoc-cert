@@ -154,7 +154,7 @@ int main(int argc, const char *argv[]) {
   /* create the processor and the MMU */
   struct SLv6_Processor proc;
   SLv6_MMU mmu;
-  struct SLv6_SystemCoproc cp15;
+  SLv6_SystemCoproc cp15;
   init_MMU(&mmu, 4 /* memory start */, 0x100000 /* memory size */);
   init_CP15(&cp15);
   mmu_ptr = &mmu;

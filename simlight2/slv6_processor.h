@@ -19,10 +19,10 @@ struct ARMv6_Processor; /* used only in SimSoC */
 
 struct SLv6_Processor {
   SLv6_MMU *mmu_ptr;
+  SLv6_SystemCoproc *cp15_ptr;
   struct ARMv6_Processor *proc_ptr; /* used only in SimSoC */
   struct SLv6_StatusRegister cpsr;
   struct SLv6_StatusRegister spsrs[5];
-  struct SLv6_SystemCoproc *cp15_ptr;
   size_t id;
   uint32_t regs[16];
 
@@ -40,7 +40,7 @@ struct SLv6_Processor {
 
 extern void init_Processor(struct SLv6_Processor*,
                            SLv6_MMU*,
-                           struct SLv6_SystemCoproc*);
+                           SLv6_SystemCoproc*);
 
 extern void destruct_Processor(struct SLv6_Processor*);
 

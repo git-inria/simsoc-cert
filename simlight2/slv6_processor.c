@@ -9,7 +9,7 @@ BEGIN_SIMSOC_NAMESPACE
 
 void init_Processor(struct SLv6_Processor *proc,
                     SLv6_MMU *m,
-                    struct SLv6_SystemCoproc *sc) {
+                    SLv6_SystemCoproc *sc) {
   proc->mmu_ptr = m;
   proc->cp15_ptr = sc;
   set_StatusRegister(&proc->cpsr,0x1df); /* = 0b111011111 = A+I+F+System */

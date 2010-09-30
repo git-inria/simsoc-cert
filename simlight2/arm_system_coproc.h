@@ -8,27 +8,27 @@
 
 #include "common.h"
 
-struct SLv6_SystemCoproc {
+typedef struct {
   bool ee_bit;
   bool u_bit;
   bool v_bit;
-};
+} SLv6_SystemCoproc;
 
-extern void init_CP15(struct SLv6_SystemCoproc*);
+extern void init_CP15(SLv6_SystemCoproc*);
 
-static inline bool CP15_reg1_EEbit(const struct SLv6_SystemCoproc *cp15) {
+static inline bool CP15_reg1_EEbit(const SLv6_SystemCoproc *cp15) {
   return cp15->ee_bit;}
-static inline bool CP15_reg1_Ubit(const struct SLv6_SystemCoproc *cp15) {
+static inline bool CP15_reg1_Ubit(const SLv6_SystemCoproc *cp15) {
   return cp15->u_bit;}
-static inline bool CP15_reg1_Vbit(const struct SLv6_SystemCoproc *cp15) {
+static inline bool CP15_reg1_Vbit(const SLv6_SystemCoproc *cp15) {
   return cp15->v_bit;}
 
-extern void dependent_operation_CP15(struct SLv6_SystemCoproc*);
-extern void load_CP15(struct SLv6_SystemCoproc*, uint32_t);
-extern void send_CP15(struct SLv6_SystemCoproc*, uint32_t);
-extern bool NotFinished_CP15(struct SLv6_SystemCoproc*);
-extern uint32_t first_value_CP15(struct SLv6_SystemCoproc*);
-extern uint32_t second_value_CP15(struct SLv6_SystemCoproc*);
-extern uint32_t value_CP15(struct SLv6_SystemCoproc*);
+extern void dependent_operation_CP15(SLv6_SystemCoproc*);
+extern void load_CP15(SLv6_SystemCoproc*, uint32_t);
+extern void send_CP15(SLv6_SystemCoproc*, uint32_t);
+extern bool NotFinished_CP15(SLv6_SystemCoproc*);
+extern uint32_t first_value_CP15(SLv6_SystemCoproc*);
+extern uint32_t second_value_CP15(SLv6_SystemCoproc*);
+extern uint32_t value_CP15(SLv6_SystemCoproc*);
 
 #endif /* ARM_SYSTEM_COPROC_H */

@@ -8,13 +8,12 @@
 
 #include "common.h"
 
-struct SLv6_MMU_t {
+typedef struct {
   uint32_t begin;
   uint32_t size;
   uint32_t end;
   uint8_t *mem;
-};
-typedef struct SLv6_MMU_t SLv6_MMU;
+} SLv6_MMU;
 
 extern void init_MMU(SLv6_MMU *mmu, uint32_t begin, uint32_t size);
 extern void destruct_MMU(SLv6_MMU *mmu);
