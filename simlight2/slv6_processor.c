@@ -37,6 +37,7 @@ void set_cpsr_mode(struct SLv6_Processor *proc, SLv6_Mode im) {
   SLv6_Mode om = proc->cpsr.mode; /* "out" mode */
   if (om==im) return; /* nothing to do */
   proc->cpsr.mode = im; /* "in" mode */
+  proc->mmu_ptr->user_mode = im==usr;
   if ((om==usr&&im==sys) || (om==sys&&im==usr)) return; /* nothing more to do */
   if (om==fiq)  /* leave fiq mode */
     for (i = 8; i<13; ++i) {

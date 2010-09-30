@@ -13,6 +13,7 @@ typedef struct {
   uint32_t size;
   uint32_t end;
   uint8_t *mem;
+  bool user_mode;
 } SLv6_MMU;
 
 extern void init_MMU(SLv6_MMU *mmu, uint32_t begin, uint32_t size);

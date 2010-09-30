@@ -12,6 +12,7 @@ struct SLv6_Processor;
 
 /* no IRQ or FIQ */
 static inline void update_pending_flags(struct SLv6_Processor *proc) {}
+static inline void exec_undefined_instruction(struct SLv6_Processor *proc, void *null) {}
 
 /* no MMU */
 static inline uint32_t slv6_TLB(uint32_t virtual_address) {return virtual_address;}
@@ -40,12 +41,17 @@ static inline bool IMPLEMENTATION_DEFINED_CONDITION() {return false;}
 static inline bool not_overridden_by_debug_hardware() {return true;}
 
 /* for coprocessors */
-extern void dependent_operation(struct SLv6_Processor *proc, uint8_t n);
-extern void load(struct SLv6_Processor *proc, uint8_t n, uint32_t x);
-extern void send(struct SLv6_Processor *proc, uint8_t n, uint32_t x);
-extern bool NotFinished(struct SLv6_Processor *proc, uint8_t n);
-extern uint32_t first_value(struct SLv6_Processor *proc, uint8_t n);
-extern uint32_t second_value(struct SLv6_Processor *proc, uint8_t n);
-extern uint32_t value(struct SLv6_Processor *proc, uint8_t n);
+extern bool slv6_CDP_dependent_operation(struct SLv6_Processor *proc, uint8_t n);
+extern bool slv6_MCR_send(struct SLv6_Processor *proc, uint8_t n,
+                          uint8_t opcode_1, uint8_t opcode_2,
+                          uint8_t CRn, uint8_t CRm, uint32_t Rd);
+extern bool slv6_MCRR_send(struct SLv6_Processor *proc, uint8_t n, uint32_t x);
+extern bool slv6_MRRC_first_value(struct SLv6_Processor *proc,
+                                  uint32_t *result, uint8_t n);
+extern bool slv6_MRRC_second_value(struct SLv6_Processor *proc,
+                                   uint32_t *result, uint8_t n);
+extern bool slv6_MRC_value(struct SLv6_Processor *proc, uint32_t *result, uint8_t n,
+                           uint8_t opcode_1, uint8_t opcode_2,
+                           uint8_t CRn, uint8_t CRm);
 
 #endif /* ARM_NOT_IMPLEMENTED_H */

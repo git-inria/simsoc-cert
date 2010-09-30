@@ -3,30 +3,32 @@
 
 #include "arm_not_implemented.h"
 
-void dependent_operation(struct SLv6_Processor *proc, uint8_t n) {
+bool slv6_CDP_dependent_operation(struct SLv6_Processor *proc, uint8_t n) {
   TODO("coprocessor dependent_operation");
 }
 
-void load(struct SLv6_Processor *proc, uint8_t n, uint32_t x) {
-  TODO("coprocessor load");
-}
-
-void send(struct SLv6_Processor *proc, uint8_t n, uint32_t x) {
+bool slv6_MCR_send(struct SLv6_Processor *proc, uint8_t n,
+                   uint8_t opcode_1, uint8_t opcode_2,
+                   uint8_t CRn, uint8_t CRm, uint32_t Rd) {
   TODO("coprocessor send");
 }
 
-bool NotFinished(struct SLv6_Processor *proc, uint8_t n) {
-  TODO("coprocessor NotFinished");
+bool slv6_MCRR_send(struct SLv6_Processor *proc, uint8_t n, uint32_t x) {
+  TODO("coprocessor send");
 }
 
-uint32_t first_value(struct SLv6_Processor *proc, uint8_t n) {
+bool slv6_MRRC_first_value(struct SLv6_Processor *proc,
+                           uint32_t *result, uint8_t n) {
   TODO("coprocessor first_value");
 }
 
-uint32_t second_value(struct SLv6_Processor *proc, uint8_t n) {
+bool slv6_MRRC_second_value(struct SLv6_Processor *proc,
+                                   uint32_t *result, uint8_t n) {
   TODO("coprocessor second_value");
 }
 
-uint32_t value(struct SLv6_Processor *proc, uint8_t n) {
+bool slv6_MRC_value(struct SLv6_Processor *proc, uint32_t *result, uint8_t n,
+                           uint8_t opcode_1, uint8_t opcode_2,
+                           uint8_t CRn, uint8_t CRm) {
   TODO("coprocessor value");
 }

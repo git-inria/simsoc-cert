@@ -36,7 +36,8 @@ let type_of_var = function
 
   | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
   | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
-  | "immedH" | "immedL" | "offset_8" | "shift" -> "uint8_t"
+  | "immedH" | "immedL" | "offset_8" | "shift" 
+  | "opcode_1" | "opcode_2" | "CRn" | "CRm" -> "uint8_t"
 
   | "cond" -> "SLv6_Condition"
   | "mode" -> "SLv6_Mode"

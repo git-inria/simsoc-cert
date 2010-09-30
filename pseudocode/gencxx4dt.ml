@@ -34,6 +34,29 @@ let patch_addr_of_next_instr (p: fprog) =
       in {p with finst = merge_inst i a} (* REMARK: merge_inst permutes its arguments *)
     with Not_found -> p;;
 
+(* coprocessor statments require additional arguments *)
+let patch_coproc (p: fprog) =
+  if p.finstr = "STC" || p.finstr = "LDC" (* TODO *)
+  then {p with finst = Proc ("exec_undefined_instruction", [])}
+  else
+    let args = function
+      | "MCR" | "MRC" -> [Var "opcode_1"; Var "opcode_2"; Var "CRn"; Var "CRm"]
+      | _ -> [] in
+    let rec inst = function
+      | Block is -> Block (List.map inst is)
+      | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
+      | If (e, i, None) -> If (e, inst i, None)
+      | While (e, i) -> While (e, inst i)
+      | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+      | Case (e, sis) ->
+          Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
+      | Coproc (e, s, es) -> Coproc (e, s, args p.finstr @ es)
+      | Affect (d, Coproc_exp (e, s, es)) ->
+          Affect (d, Coproc_exp (e, s, args p.finstr @ es))
+      | i -> i
+    in {p with finst = inst p.finst};; 
+
+
 (** Optimize the sub-expressions that can computed at decode-store time. *)
 
 let computed_params (p: fprog) (ps: (string*string) list) =
@@ -141,6 +164,7 @@ let implicit_arg = function
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
   | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
   | "reg_m" | "set_reg_m" -> "proc, "
+  | "exec_undefined_instruction" -> "proc, NULL"
   | _ -> "";;
 
 let typeof x v =
@@ -198,8 +222,6 @@ let rec exp (p: xprog) b = function
         | "31", "24" -> bprintf b "get_byte_3(%a)" (exp p) e
         | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
       end
-  | Coproc_exp (e, f, es) ->
-      bprintf b "%s(proc,%a)" (Gencxx.func f) (list "," (exp p)) (e::es)
   | _ -> string b "TODO(\"exp\")";;
 
 (** Generate the body of an instruction function *)
@@ -211,6 +233,15 @@ let rec inst p k b = function
 
 and inst_aux p k b = function
   | Unpredictable -> string b "unpredictable()"
+  | Coproc (e, s, es) ->
+      bprintf b "if (!slv6_%s_%s(proc,%a)) return"
+        p.xprog.finstr s (list "," (exp p)) (e::es)
+  | Affect (Var d, Coproc_exp (e, s, es)) ->
+      bprintf b "if (!slv6_%s_%s(proc,&%s,%a)) return"
+        p.xprog.finstr s d (list "," (exp p)) (e::es)
+  | Affect (Reg (r, None), Coproc_exp (e, s, es)) ->
+      bprintf b "if (!slv6_%s_%s(proc,addr_of_reg(proc,%a),%a)) return"
+        p.xprog.finstr s (exp p) r (list "," (exp p)) (e::es)
   | Affect (dst, src) -> affect p k b dst src
   | Proc ("ClearExclusiveByAddress" as f, es) ->
       bprintf b "%s%d(%s%a)"
@@ -218,8 +249,6 @@ and inst_aux p k b = function
   | Proc (f, es) ->
       bprintf b "%s(%s%a)" f (implicit_arg f) (list ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
-  | Coproc (e, f, es) ->
-      bprintf b "%s(proc,%a)" (Gencxx.func f) (list "," (exp p)) (e::es)
 
   | Block [] -> ()
   | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
@@ -680,7 +709,8 @@ let llvm_generator bn xs =
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
-  let fs': fprog list = flatten pcs' decs in
+  let fs'': fprog list = flatten pcs' decs in
+  let fs': fprog list = List.map patch_coproc fs'' in
   let fs: fprog list = List.map patch_addr_of_next_instr fs' in
   let xs': xprog list = List.rev (List.map xprog_of fs) in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
