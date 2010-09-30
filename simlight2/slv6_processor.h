@@ -70,6 +70,11 @@ static inline void set_cpsr_I_flag(struct SLv6_Processor *proc, bool i) {
   update_pending_flags(proc);
 }
 
+static inline void set_cpsr_A_flag(struct SLv6_Processor *proc, bool a) {
+  proc->cpsr.A_flag = a;
+  update_pending_flags(proc);
+}
+
 extern uint32_t *addr_of_reg_m(struct SLv6_Processor*, uint8_t reg_id, SLv6_Mode);
 
 static inline uint32_t reg_m(struct SLv6_Processor *proc,
@@ -150,7 +155,7 @@ static inline uint32_t address_of_current_instruction(struct SLv6_Processor *pro
   return proc->regs[15] - 2*inst_size(proc);
 }
 
-static inline bool high_vectors_configured(struct SLv6_Processor *proc) {
+static inline bool high_vectors_configured(const struct SLv6_Processor *proc) {
   return CP15_reg1_Vbit(&proc->cp15);
 }
 
@@ -184,6 +189,10 @@ static inline void decrement_pc_arm16(struct SLv6_Processor *proc) {
 
 static inline uint32_t get_pc(const struct SLv6_Processor *proc) {
   return proc->regs[15];
+}
+
+static inline uint32_t vector_start(const struct SLv6_Processor *proc) {
+  return high_vectors_configured(proc) ? 0xffff0000 : 0;
 }
 
 static inline void slv6_hook(struct SLv6_Processor *proc) {}

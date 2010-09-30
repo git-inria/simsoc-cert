@@ -279,10 +279,10 @@ and affect (p: xprog) k b dst src =
               bprintf b "set_StatusRegister(spsr_m(proc,%s),%a)"
                 (Gencxx.mode m) (exp p) src)
     | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
-    | Ast.Range (CPSR, Flag (("F"|"I" as s),_)) ->
-        bprintf b "set_cpsr_%s_flag(proc,%a)" s (exp p) src
     | Ast.Range (CPSR, Flag (s,_)) ->
         bprintf b "proc->cpsr.%s_flag = %a" s (exp p) src
+    | Ast.Range (CPSR, Index (Num ("6"|"7"|"8" as n))) ->
+        bprintf b "set_cpsr_%s(proc,%a)" (Gencxx.cpsr_flag n) (exp p) src
     | Ast.Range (CPSR, Index (Num n)) ->
         bprintf b "proc->cpsr.%s = %a" (Gencxx.cpsr_flag n) (exp p) src
     | Ast.Range (CPSR, Bits ("19", "18")) ->
@@ -597,6 +597,7 @@ let may_branch_prog b (x: xprog) =
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
   bprintf b "  switch (instr->id) {\n%a" (list "" may_branch_prog) xs;
+  bprintf b "  case SLV6_UNPRED_OR_UNDEF_ID: return true;\n";
   bprintf b "  default: return false;\n  }\n}\n";;
 
 (** print sizeof(T) for each instruction type T *)
