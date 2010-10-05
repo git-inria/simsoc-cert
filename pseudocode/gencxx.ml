@@ -404,15 +404,15 @@ let lsm_hack p =
     | InstARM when guard_ldm_stm p.pident ->
 	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
         let i = match p.pinst with
-          | If (c, Block ids, None) -> If (c, Block (ids @ [a]), None)
-          | Block ([x; If (c, Block ids, None)]) ->
-	      Block ([x; If (c, Block (ids @ [a]), None)])
+          | If (c, Block (i1::i2::tl), None) -> If (c, Block (i1::i2::a::tl), None)
+          | Block ([x; If (c, Block (i1::i2::tl), None)]) ->
+	      Block ([x; If (c, Block (i1::i2::a::tl), None)])
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | InstARM when p.pident.iname = "RFE" ->
 	(* add 'if (W) then Rn = new_Rn' at the end of the main block *)
         let i = match p.pinst with
-          | Block (l) -> Block (l @ [a])
+          | Block (l) -> Block (a::l)
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | InstARM when p.pident.iname = "SRS" ->

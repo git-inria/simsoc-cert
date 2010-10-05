@@ -41,8 +41,8 @@ void set_StatusRegister(struct SLv6_StatusRegister *sr, uint32_t x) {
   sr->GE1 = get_bit(x,17);
   sr->GE2 = get_bit(x,18);
   sr->GE3 = get_bit(x,19);
-  sr->A_flag = get_bit(x,9);
-  sr->E_flag = get_bit(x,8);
+  sr->E_flag = get_bit(x,9);
+  sr->A_flag = get_bit(x,8);
   sr->I_flag = get_bit(x,7);
   sr->F_flag = get_bit(x,6);
   sr->T_flag = get_bit(x,5);
