@@ -193,24 +193,12 @@ static inline uint32_t get_pc(const struct SLv6_Processor *proc) {
   return proc->regs[15];
 }
 
+static inline SLv6_Mode get_current_mode(const struct SLv6_Processor *proc) {
+  return proc->cpsr.mode;
+}
+
 static inline void slv6_hook(struct SLv6_Processor *proc) {
-  /* std::cout <<hex <<"DBG"; */
-  /* std::cout <<" R0 = " <<proc->regs[0] <<";"; */
-  /* std::cout <<" R1 = " <<proc->regs[1] <<";"; */
-  /* std::cout <<" R2 = " <<proc->regs[2] <<";"; */
-  /* std::cout <<" R3 = " <<proc->regs[3] <<"\nDBG"; */
-  /* std::cout <<" R4 = " <<proc->regs[4] <<";"; */
-  /* std::cout <<" R5 = " <<proc->regs[5] <<";"; */
-  /* std::cout <<" R6 = " <<proc->regs[6] <<";"; */
-  /* std::cout <<" R7 = " <<proc->regs[7] <<"\nDBG"; */
-  /* std::cout <<" R8 = " <<proc->regs[8] <<";"; */
-  /* std::cout <<" R9 = " <<proc->regs[9] <<";"; */
-  /* std::cout <<" R10 = " <<proc->regs[10] <<";"; */
-  /* std::cout <<" R11 = " <<proc->regs[11] <<"\nDBG"; */
-  /* std::cout <<" R12 = " <<proc->regs[12] <<";"; */
-  /* std::cout <<" SP = " <<proc->regs[13] <<";"; */
-  /* std::cout <<" LR = " <<proc->regs[14] <<";"; */
-  /* std::cout <<" PC = " <<proc->regs[15]-(proc->cpsr.T_flag ? 4 : 8) <<std::endl; */
+  /* debug_hook(proc); */
 }
 
 END_SIMSOC_NAMESPACE

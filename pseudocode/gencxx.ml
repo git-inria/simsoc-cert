@@ -40,7 +40,7 @@ let type_of_var = function
   | "opcode_1" | "opcode_2" | "CRn" | "CRm" -> "uint8_t"
 
   | "cond" -> "SLv6_Condition"
-  | "mode" -> "SLv6_Mode"
+  | "old_mode" | "mode" -> "SLv6_Mode"
   | "accvalue" | "result" -> "uint64_t"
   | _ -> "uint32_t";;
 

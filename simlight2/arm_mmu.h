@@ -26,4 +26,21 @@ extern void write_byte(SLv6_MMU*, uint32_t addr, uint8_t data);
 extern void write_half(SLv6_MMU*, uint32_t addr, uint16_t data);
 extern void write_word(SLv6_MMU*, uint32_t addr, uint32_t data);
 
+/* We do not have a real MMU, so an address cannot be protected */
+static inline uint8_t read_byte_as_user(SLv6_MMU *mmu, uint32_t addr) {
+  return read_byte(mmu,addr);
+}
+
+static inline uint32_t read_word_as_user(SLv6_MMU *mmu, uint32_t addr) {
+  return read_word(mmu,addr);
+}
+
+static inline void write_byte_as_user(SLv6_MMU *mmu, uint32_t addr, uint8_t data) {
+  write_byte(mmu,addr,data);
+}
+
+static inline void write_word_as_user(SLv6_MMU *mmu, uint32_t addr, uint32_t data) {
+  write_word(mmu,addr,data);
+}
+
 #endif /* ARM_MMU_H */

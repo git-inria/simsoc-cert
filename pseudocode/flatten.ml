@@ -101,7 +101,7 @@ let str_name p =
   let b = Buffer.create 16 in Genpc.name b p; Buffer.contents b;;
 
 (* Sequential composition of two instructions *)
-let merge_inst (i: inst) (m: inst) = match m, i with
+let merge_inst (i1: inst) (i2: inst) = match i1, i2 with
   | Block l1, Block l2 -> Block (l1@l2)
   | Block l, i -> Block (l@[i])
   | i, Block l -> Block (i::l)
@@ -167,7 +167,7 @@ let patch_SRS_RFE (p: prog) =
   in let i = Norm.replace_exp o n p.pinst
   in {p with pinst = i};;
 
-(* SRS does take "Rn" for its arguments
+(* SRS does not take "Rn" from its arguments
  * verbatim from page A4-174:
  * The base register, Rn, is the banked version of R13 for the mode specified
  * by <mode>, rather than the current mode.
@@ -237,7 +237,7 @@ let flatten (pcs: prog list) (decs: maplist) : fprog list =
       let id = idi ^ "_" ^ idm in
       let ref' = i.pref ^ "--" ^ i'.pref in
       let name = str_name i  ^ " -- " ^ str_name i' in
-      let inst = merge_inst i.pinst i'.pinst in
+      let inst = merge_inst i'.pinst i.pinst in
       let dec = merge_dec d d' in
       let params = merge_plist (parameters_of d) (parameters_of d') in
       let vcs = get_constraints idi @ get_constraints idm in

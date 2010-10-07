@@ -13,7 +13,7 @@
     printf("ERROR: " msg " (" __FILE__ ":%d)\n",__LINE__);              \
     abort(); } while (0);
 
-#define unpredictable() ERROR("simulating something unpredictable")
+#define unpredictable(msg) ERROR("simulating something unpredictable, inside: " msg)
 
 typedef char bool;
 #define true 1

@@ -20,6 +20,81 @@ open Flatten;;
 
 (** patches *)
 
+(* After instantiation of the addressing mode, the condition may be
+ * evaluated many times. Moreover, it is always better to test it at the
+ * beginning
+ * - The function below remove the condition tests that are inside.
+ * - Another function add one condition check at the beginning. *)
+let rec remove_cond_passed i = 
+  let rec flatten = function
+    | Block is :: tl -> is @ flatten tl
+    | i :: tl -> i :: flatten tl
+    | [] -> []
+  in match i with
+    | Block is -> Block (flatten (List.map remove_cond_passed is))
+    | If (Fun ("ConditionPassed", [Var "cond"]), i, None) -> i
+    | If (BinOp (Fun ("ConditionPassed", [Var "cond"]), "and", e), i, None) ->
+        If (e, i, None)
+    | If (c, i, None) -> If (c, remove_cond_passed i, None)
+    | If (c, i, Some i') -> If (c, remove_cond_passed i, Some (remove_cond_passed i'))
+    | _ -> i;;
+
+(* Some Load-Store addressing modes modify the address register (Rn)
+ * This modification should not happen before the last memory access
+ * because a failed memory access cancels this register writeback. *)
+let postpone_writeback (pcs: prog list) =
+  let init_new =  Block [
+    Affect (Var "new_Rn", Hex "0xBAD"); (* avoid g++ warnings *)
+    Affect (Var "old_mode", Fun ("get_current_mode", []))] in
+  let prog p =
+    let rec inst = function
+      | Block is -> Block (List.map inst is)
+      | Affect (Reg (Var "n", None), e) -> Affect (Var "new_Rn", e)
+      | If (c, i, None) -> If (c, inst i, None)
+      | If (c, i, Some i') -> If (c, inst i, Some (inst i'))
+      | While (e, i) -> While (e, inst i)
+      | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+      | Case (e, sis) -> Case (e, List.map (fun (s,i) -> (s, inst i)) sis)
+      | i -> i
+    in match p.pkind with
+      | InstARM | InstThumb -> p
+      | Mode _ ->
+          let i = remove_cond_passed p.pinst in
+          let i' = inst i in 
+            if i = i' then {p with pinst = i}
+            else {p with pinst = merge_inst init_new i'}
+  in List.map prog pcs;;
+
+(* insert_writeback is given latter, after the definition of xprog *)
+
+(* REMOVE: *)
+(* let has_memory_access (i: inst) = *)
+(*   let rec inst = function *)
+(*     | Block is -> List.exists inst is *)
+(*     | Unpredictable -> false *)
+(*     | Affect (e1, e2) -> exp e1 || exp e2  *)
+(*     | If (e, i, None) -> exp e || inst i *)
+(*     | If (e, i1, Some i2) -> exp e || inst i1 || inst i2 *)
+(*     | Proc (_, es) -> List.exists exp es *)
+(*     | While (e, i) -> exp e || inst i *)
+(*     | Assert e -> exp e *)
+(*     | For (_, _, _, i) -> inst i *)
+(*     | Coproc (e, _, es) -> exp e || List.exists exp es *)
+(*     | Case (e, sis) -> exp e || List.exists (fun (_,i) -> inst i) sis *)
+(*   and exp = function *)
+(*     | If_exp (e1, e2, e3) -> exp e1 || exp e2 || exp e3 *)
+(*     | Fun (_, es) -> List.exists exp es *)
+(*     | BinOp (e1, _, e2) -> exp e1 || exp e2 *)
+(*     | Reg (e, _) -> exp e *)
+(*     | Ast.Range (e, r) -> exp e || range r  *)
+(*     | Memory _ -> true *)
+(*     | Coproc_exp (e, _, es) -> exp e || List.exists exp es *)
+(*     | _ -> false *)
+(*   and range = function *)
+(*     | Index e -> exp e *)
+(*     | _ -> false *)
+(*   in inst i;; *)
+
 (* address_of_next_instruction() cannot be ued because it reads the
  * current value of the PC instead of the original one.
  * See for example BL, BLX (1) in thumb instruction set *)
@@ -31,7 +106,7 @@ let patch_addr_of_next_instr (p: fprog) =
       let size = if p.fkind = ARM then "4" else "2" in
       let a = Affect (Var "addr_of_next_instr",
                       BinOp (Reg (Num "15", None), "-", Num size))
-      in {p with finst = merge_inst i a} (* REMARK: merge_inst permutes its arguments *)
+      in {p with finst = merge_inst a i}
     with Not_found -> p;;
 
 (* coprocessor statments require additional arguments *)
@@ -57,7 +132,7 @@ let patch_coproc (p: fprog) =
     in {p with finst = inst p.finst};; 
 
 
-(** Optimize the sub-expressions that can computed at decode-store time. *)
+(** Optimize the sub-expressions that can be computed at decode-store time. *)
 
 let computed_params (p: fprog) (ps: (string*string) list) =
   try
@@ -67,7 +142,13 @@ let computed_params (p: fprog) (ps: (string*string) list) =
                    "*", Num "4")
     and n = Var "nb_reg_x4" in
     let p' = {p with finst = Norm.replace_exp o n p.finst} in
-      p', ps, [("nb_reg_x4", "uint8_t")]
+      if p.finstr="LDM2" || p.finstr="STM2" then (
+        (* we know that W is 0 *)
+        assert (List.mem_assoc "W" ps);
+        let p'' = {p with finst = Norm.replace_exp (Var "W") (Num "0") p.finst}
+        and remove (s,_) = s <> "W" in
+          p'', List.filter remove ps, [("nb_reg_x4", "uint8_t")]
+      ) else p', ps, [("nb_reg_x4", "uint8_t")]
   else if List.mem_assoc "signed_immed_24" ps then
     let se_lsl_2 = BinOp (Fun ("SignExtend_30", [Var "signed_immed_24"]),
                           "<<", Num "2") in
@@ -139,30 +220,69 @@ type xprog = {
 let xprog_of p =
   let ps, ls = Gencxx.V.vars p.finst in
   let p', kps, cs = computed_params p ps in
-    {xprog = p'; xps = ps; xls = ls; xcs = cs; xkps = kps; xbaseid = p.fid};;
+  let p'' = {p' with finst = remove_cond_passed p'.finst} in
+    {xprog = p''; xps = ps; xls = ls; xcs = cs; xkps = kps; xbaseid = p.fid};;
 
 (** specialization according to the condition field *)
 
-let is_conditional p = List.mem_assoc "cond" p.xps;;
+let is_conditional (p: xprog) = List.mem_assoc "cond" p.xps;;
 
-let no_cond_variant x =
-  let p = x.xprog in
-  let p' =
-    {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
-  in {x with xprog = p'; xps = List.remove_assoc "cond" x.xps};;
+let has_writeback (p: xprog) =
+  List.mem_assoc "new_Rn" p.xls &&
+    p.xprog.finstr <> "LDM2" && p.xprog.finstr <> "STM2";;
 
+(* Cf. postpone_writeback
+ * We insert the writeback after the last memory access.
+ * Inserting at the end would fail, because the processor mode 
+ * may have changed. *)
+let insert_writeback (xs: xprog list) =
+  let wb x = 
+    let aux = match x.xprog.finstr with
+      | "LDM3" -> Proc ("set_reg_m", [Var "n"; Var "old_mode"; Var "new_Rn"])
+      | "SRS" -> Proc ("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"])
+      | _ -> Affect (Reg (Var "n", None), Var "new_Rn")
+    in if List.mem_assoc "W" x.xkps
+      then If (BinOp (Var "W", "==", Num "1"), aux, None)
+      else aux
+  in let prog x =
+    if has_writeback x then
+      let inst = function
+        | Block is -> Block (is @ [wb x])
+(* REMOVE: *)
+(*             let rec aux = function *)
+(*               | hd :: tl -> let b, l = aux tl in *)
+(*                   if b then true, hd::l *)
+(*                   else *)
+(*                     if has_memory_access hd *)
+(*                     then true, hd::wb::l *)
+(*                     else false, hd::l *)
+(*               | [] -> false, [] *)
+(*             in Block (snd (aux is)) *)
+        | _ -> raise (Failure "insert_writeback")
+      in {x with xprog = {x.xprog with finst = inst x.xprog.finst}}
+    else x
+  in List.map prog xs;;
+
+(* for each instruction with a condition, we generate a variant without the condition *)
 let no_cond_variants xs =
-  List.map no_cond_variant (List.filter is_conditional xs);;
+  let prog x =
+    let p = x.xprog in
+    let p' =
+      {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
+    in {x with xprog = p'; xps = List.remove_assoc "cond" x.xps}
+  in List.map prog (List.filter is_conditional xs);;
 
 (** Generate the code corresponding to an expression *)
 
 let implicit_arg = function
   | "ConditionPassed" -> "&proc->cpsr, "
+  | "write_word_as_user" | "write_byte_as_user"
   | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr, "
   | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "proc->cp15_ptr"
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
-  | "address_of_current_instruction" | "high_vectors_configured" -> "proc"
+  | "address_of_current_instruction" | "high_vectors_configured"
+  | "get_current_mode" -> "proc"
   | "reg_m" | "set_reg_m" -> "proc, "
   | "exec_undefined_instruction" -> "proc, NULL"
   | _ -> "";;
@@ -172,6 +292,11 @@ let typeof x v =
   with Not_found ->
     try List.assoc v x.xls
   with Not_found -> List.assoc v x.xcs;;
+
+(* Load and Store instruction with a T suffix access the memory in special way *)
+let lst (p: xprog) = match p.xprog.finstr with
+  | "LDRT" | "LDRBT" | "STRT" | "STRBT" -> "_as_user"
+  | _ -> "";;
 
 let rec exp (p: xprog) b = function
   | Bin s -> string b (Gencxx.hex_of_bin s)
@@ -208,7 +333,7 @@ let rec exp (p: xprog) b = function
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (Gencxx.mode m)
   | Var s -> string b s
   | Memory (e, n) ->
-      bprintf b "read_%s(proc->mmu_ptr,%a)" (Gencxx.access_type n) (exp p) e
+      bprintf b "read_%s%s(proc->mmu_ptr,%a)" (Gencxx.access_type n) (lst p) (exp p) e
   | Ast.Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
   | Ast.Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (Gencxx.cpsr_flag s)
   | Ast.Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
@@ -232,7 +357,7 @@ let rec inst p k b = function
   | i -> bprintf b "%a%a;" indent k (inst_aux p k) i
 
 and inst_aux p k b = function
-  | Unpredictable -> string b "unpredictable()"
+  | Unpredictable -> bprintf b "unpredictable(\"%s\")" p.xprog.fid
   | Coproc (e, s, es) ->
       bprintf b "if (!slv6_%s_%s(proc,%a)) return"
         p.xprog.finstr s (list "," (exp p)) (e::es)
@@ -267,7 +392,8 @@ and inst_aux p k b = function
         (exp p) e (list "" (case_aux p k)) s indent k
 
   (* the condition has already been checked, or has been removed *)
-  | If (Fun ("ConditionPassed", [Var "cond"]), i, None) -> inst p k b i
+  | If (Fun ("ConditionPassed", [Var "cond"]), _, None) ->
+      raise (Failure "Unexpected condition check")
 
   | If (e, (Block _|If _ as i), None) ->
       bprintf b "if (%a) {\n%a\n%a}" (exp p) e (inst p (k+2)) i indent k
@@ -291,7 +417,7 @@ and case_aux p k b (n, i) =
     indent k (Gencxx.hex_of_bin n) (inst p (k+2)) i indent (k+2)
 
 and affect (p: xprog) k b dst src =
-  if src = Unpredictable_exp then string b "unpredictable()"
+  if src = Unpredictable_exp then bprintf b "unpredictable(\"%s\")" p.xprog.fid
   else match dst with
     | Reg (Var s, None) when s<>"i" ->
         if List.mem (Validity.NotPC s) p.xprog.fvcs
@@ -333,7 +459,7 @@ and affect (p: xprog) k b dst src =
     | Ast.Range (e1, Bits (n1, n2)) ->
         inst_aux p k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
-        inst_aux p k b (Proc ("write_" ^ Gencxx.access_type n, [addr; src]))
+        inst_aux p k b (Proc ("write_" ^ Gencxx.access_type n ^ lst p, [addr; src]))
     | Ast.Range (e, Index n) -> inst_aux p k b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\")";;
 
@@ -599,6 +725,9 @@ let may_branch_prog b (x: xprog) =
     bprintf b "  case SLV6_%s_ID: return instr->args.MSRimm.field_mask&1;\n" x.xprog.fid
   else if x.xprog.finstr = "MSRreg" then
     bprintf b "  case SLV6_%s_ID: return instr->args.MSRreg.field_mask&1;\n" x.xprog.fid
+  (* special case for MCR[R]: modifying the system coprocessor state may have special effects *)
+  else if x.xprog.finstr = "MCR" || x.xprog.finstr = "MCRR" then
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.cp_num==15;\n" x.xprog.fid x.xbaseid
   else
     let default = (false, []) in
     let rec union l l' =
@@ -611,10 +740,11 @@ let may_branch_prog b (x: xprog) =
         (* TODO: LDM(1) can be improved *)
       | Block is -> List.fold_left inst acc is
       | Affect (dst, _) -> combine acc (exp dst)
-      | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) -> (* case used by LDR *)
-          let b,l = inst default i1 in
-          let acc' = combine acc (if b then false, ["d"] else b,l) in
-            inst acc' i2
+      | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) -> (* case used by LDR (i1) and MRC (i2) *)
+          let b1,l1 = inst default i1 in
+          let acc1 = combine acc (if b1 then false, ["d"] else b1,l1) in
+          let b2,l2 = inst default i2 in
+            combine acc1 (b2, List.filter (fun x -> x<>"d") l2)
       | If (_, i1, Some i2) -> inst (inst acc i1) i2
       | If (_, i, None) -> inst acc i
       | While (_, i) -> inst acc i
@@ -708,13 +838,14 @@ let llvm_generator bn xs =
 
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
-  let pcs' = List.map Gencxx.lsm_hack pcs in (* hack LSM instructions *)
+  let pcs': prog list = postpone_writeback pcs in
   let fs'': fprog list = flatten pcs' decs in
   let fs': fprog list = List.map patch_coproc fs'' in
   let fs: fprog list = List.map patch_addr_of_next_instr fs' in
-  let xs': xprog list = List.rev (List.map xprog_of fs) in
+  let xs'': xprog list = List.rev (List.map xprog_of fs) in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
-  let xs: xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs' in
+  let xs': xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs'' in
+  let xs = insert_writeback xs' in
   let nocond_xs: xprog list = no_cond_variants xs in
   let all_xs: xprog list = xs@nocond_xs in
   let instr_count = List.length all_xs in
