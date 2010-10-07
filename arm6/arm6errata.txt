@@ -32,3 +32,5 @@ SSAT: "shift" in pseudo-code should be "sh".
 
 Miscellaneous Loads and Stores - Immediate post-indexed:
   In the encoding, ImmedL should be immedL
+
+LDRBT: the line "Rn = address" is a bug. It shall be removed.
