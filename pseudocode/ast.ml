@@ -234,3 +234,93 @@ module Make (G : Var) = struct
       list_of_map gs, list_of_map ls;;
 
 end;;
+
+(*****************************************************************************)
+(** Manipulations of ASTs *)
+(*****************************************************************************)
+
+(* replace expression 'o' by expresssion 'n' in instruction 'i' *)
+let replace_exp (o: exp) (n: exp) (i: inst) =
+  let count = ref 0 in
+  let rec exp e =
+    if e = o then (count := !count + 1; n) else match e with
+      | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
+      | Fun (s, es) -> Fun (s, List.map exp es)
+      | BinOp (e1, s, e2) -> BinOp (exp e1, s, exp e2)
+      | Reg (e, m) -> Reg (exp e, m)
+      | Range (e, r) -> Range (exp e, range r)
+      | Memory (e, s) -> Memory (exp e, s)
+      | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
+      | x -> x
+  and range r = match r with
+    | Index e -> Index (exp e)
+    | x -> x
+  and inst i = match i with
+    | Block is -> Block (List.map inst is)
+    | Affect (e1, e2) -> Affect (exp e1, exp e2)
+    | If (e, i1, Some i2) -> If (exp e, inst i1, Some (inst i2))
+    | If (e, i, None) -> If (exp e, inst i, None)
+    | Proc (s, es) -> Proc (s, List.map exp es)
+    | While (e, i) -> While (exp e, inst i)
+    | Assert e -> Assert (exp e)
+    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+    | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
+    | Case (e, sis) ->
+        Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
+    | x -> x
+  in let i' = inst i in
+    if !count = 0 then raise Not_found else i';;
+
+
+(* replace instruction 'o' by instruction 'n' in instruction 'i' *)
+let replace_inst (o: inst) (n: inst) (i: inst) =
+  let count = ref 0 in
+  let rec inst i =
+    if i = o then (count := !count + 1; n) else match i with
+    | Block is -> Block (List.map inst is)
+    | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
+    | If (e, i, None) -> If (e, inst i, None)
+    | While (e, i) -> While (e, inst i)
+    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
+    | Case (e, sis) ->
+        Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
+    | x -> x
+  in let i' = inst i in
+    if !count = 0 then raise Not_found else i';;
+
+(* Check whether a sub-tree of the expression e satisifies pe (expression
+ * predicate) of pr (range predicate) *)
+let rec exp_exists pe pr =
+  let rec exp e = if pe e then true else match e with
+   | If_exp (e1, e2, e3) -> exp e1 || exp e2 || exp e3
+   | Fun (_, es) -> List.exists exp es
+   | BinOp (e1, _, e2) -> exp e1 || exp e2
+   | Reg (e, _) -> exp e
+   | Range (e, r) -> exp e || range_exists pe pr r
+   | Memory (e, _) -> exp e 
+   | Coproc_exp (e, _, es) -> exp e || List.exists exp es
+   | _ -> false
+  in exp
+(* same for ranges *)
+and range_exists pe pr r = if pr r then true else match r with
+  | Index e -> exp_exists pe pr e
+  | _ -> false;;
+
+(* same for instructions *)
+let inst_exists pi pe pr =
+  let exp = exp_exists pe pr in
+  let rec inst i = if pi i then true else match i with
+    | Block is -> List.exists inst is
+    | Unpredictable -> false
+    | Affect (e1, e2) -> exp e1 || exp e2
+    | If (e, i, None) -> exp e || inst i
+    | If (e, i1, Some i2) -> exp e || inst i1 || inst i2
+    | Proc (_, es) -> List.exists exp es
+    | While (e, i) -> exp e || inst i
+    | Assert e -> exp e
+    | For (_, _, _, i) -> inst i
+    | Coproc (e, _, es) -> exp e || List.exists exp es
+    | Case (e, sis) -> exp e || List.exists (fun (_,i) -> inst i) sis
+  in inst;;
+
+let ftrue _ = true and ffalse _ = false;;

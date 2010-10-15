@@ -164,7 +164,7 @@ let patch_W (m: prog * maplist_element): prog * maplist_element =
 let patch_SRS_RFE (p: prog) =
   let o = Fun ("Number_Of_Set_Bits_In", [Var "register_list"])
   and n = Num "2"
-  in let i = Norm.replace_exp o n p.pinst
+  in let i = replace_exp o n p.pinst
   in {p with pinst = i};;
 
 (* SRS does not take "Rn" from its arguments
@@ -177,7 +177,7 @@ let patch_SRS (p: prog) =
   and n = Fun ("reg_m", [Num "13"; Var "mode"])
     (* FIXME: "n" should be "Reg (Num "13", Some (Var "mode"))", but it 
     * is not allowed by the Ast.exp type *)
-  in let i = Norm.replace_exp o n p.pinst
+  in let i = replace_exp o n p.pinst
   in {p with pinst = i};;
 
 (* get the list of parameters *)

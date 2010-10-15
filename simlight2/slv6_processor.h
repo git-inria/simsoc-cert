@@ -107,20 +107,28 @@ static inline uint32_t inst_size(struct SLv6_Processor *proc) {
   return proc->cpsr.T_flag ? 2 : 4;
 }
 
-static inline void set_pc_raw(struct SLv6_Processor *proc, uint32_t new_pc) {
+/* most of the time, we know inst_size when we call set_pc_raw.
+ * "ws" means "with size" */
+static inline void set_pc_raw_ws(struct SLv6_Processor *proc, uint32_t new_pc, uint32_t inst_size) {
   /* never set thumb/arm32 mode */
-  assert(!(new_pc&(inst_size(proc)-1)) && "pc misaligned");
-  proc->jump = true; proc->regs[15] = new_pc + 2*inst_size(proc);
+  assert(!(new_pc&(inst_size-1)) && "pc misaligned");
+  proc->jump = true; proc->regs[15] = new_pc + 2*inst_size;
+}
+static inline void set_pc_raw(struct SLv6_Processor *proc, uint32_t new_pc) {
+  set_pc_raw_ws(proc,new_pc,inst_size(proc));
 }
 
-static inline void set_reg_or_pc(struct SLv6_Processor *proc,
-                                 uint8_t reg_id, uint32_t data) {
+static inline void set_reg_or_pc_ws(struct SLv6_Processor *proc,
+                                    uint8_t reg_id, uint32_t data, uint32_t inst_size) {
   if (reg_id==15)
-    set_pc_raw(proc,data);
+    set_pc_raw_ws(proc,data,inst_size);
   else
     set_reg(proc,reg_id,data);
 }
-
+static inline void set_reg_or_pc(struct SLv6_Processor *proc,
+                                 uint8_t reg_id, uint32_t data) {
+  set_reg_or_pc_ws(proc,reg_id,data,inst_size(proc));
+}
 
 static inline void set_pc(struct SLv6_Processor *proc, uint32_t new_pc) {
   /* may set thumb/arm32 mode */

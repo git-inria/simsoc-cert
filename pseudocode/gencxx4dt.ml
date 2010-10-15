@@ -67,34 +67,6 @@ let postpone_writeback (pcs: prog list) =
 
 (* insert_writeback is given latter, after the definition of xprog *)
 
-(* REMOVE: *)
-(* let has_memory_access (i: inst) = *)
-(*   let rec inst = function *)
-(*     | Block is -> List.exists inst is *)
-(*     | Unpredictable -> false *)
-(*     | Affect (e1, e2) -> exp e1 || exp e2  *)
-(*     | If (e, i, None) -> exp e || inst i *)
-(*     | If (e, i1, Some i2) -> exp e || inst i1 || inst i2 *)
-(*     | Proc (_, es) -> List.exists exp es *)
-(*     | While (e, i) -> exp e || inst i *)
-(*     | Assert e -> exp e *)
-(*     | For (_, _, _, i) -> inst i *)
-(*     | Coproc (e, _, es) -> exp e || List.exists exp es *)
-(*     | Case (e, sis) -> exp e || List.exists (fun (_,i) -> inst i) sis *)
-(*   and exp = function *)
-(*     | If_exp (e1, e2, e3) -> exp e1 || exp e2 || exp e3 *)
-(*     | Fun (_, es) -> List.exists exp es *)
-(*     | BinOp (e1, _, e2) -> exp e1 || exp e2 *)
-(*     | Reg (e, _) -> exp e *)
-(*     | Ast.Range (e, r) -> exp e || range r  *)
-(*     | Memory _ -> true *)
-(*     | Coproc_exp (e, _, es) -> exp e || List.exists exp es *)
-(*     | _ -> false *)
-(*   and range = function *)
-(*     | Index e -> exp e *)
-(*     | _ -> false *)
-(*   in inst i;; *)
-
 (* address_of_next_instruction() cannot be ued because it reads the
  * current value of the PC instead of the original one.
  * See for example BL, BLX (1) in thumb instruction set *)
@@ -102,7 +74,7 @@ let patch_addr_of_next_instr (p: fprog) =
   let o = Fun ("address_of_next_instruction", [])
   and n = Var "addr_of_next_instr" in
     try 
-      let i = Norm.replace_exp o n p.finst in
+      let i = replace_exp o n p.finst in
       let size = if p.fkind = ARM then "4" else "2" in
       let a = Affect (Var "addr_of_next_instr",
                       BinOp (Reg (Num "15", None), "-", Num size))
@@ -141,11 +113,11 @@ let computed_params (p: fprog) (ps: (string*string) list) =
     let o = BinOp (Fun ("Number_Of_Set_Bits_In", [Var "register_list"]),
                    "*", Num "4")
     and n = Var "nb_reg_x4" in
-    let p' = {p with finst = Norm.replace_exp o n p.finst} in
+    let p' = {p with finst = replace_exp o n p.finst} in
       if p.finstr="LDM2" || p.finstr="STM2" then (
         (* we know that W is 0 *)
         assert (List.mem_assoc "W" ps);
-        let p'' = {p with finst = Norm.replace_exp (Var "W") (Num "0") p.finst}
+        let p'' = {p with finst = replace_exp (Var "W") (Num "0") p.finst}
         and remove (s,_) = s <> "W" in
           p'', List.filter remove ps, [("nb_reg_x4", "uint8_t")]
       ) else p', ps, [("nb_reg_x4", "uint8_t")]
@@ -159,13 +131,13 @@ let computed_params (p: fprog) (ps: (string*string) list) =
         let o = BinOp (tmp, "+", BinOp (Var "H", "<<", Num "1"))
         and n = BinOp (pc, "+", Var "pc_offset_h") 
         and remove (s,_) = s <> "H" && s <> "signed_immed_24" in
-        let p' = {p with finst = Norm.replace_exp o n p.finst} in
+        let p' = {p with finst = replace_exp o n p.finst} in
           p', List.filter remove ps, [("pc_offset_h", "uint32_t")]
       else
         (* we compute "(SignExtend_30(signed_immed_24) << 2)" *)
         let n = Var "pc_offset"
         and remove (s,_) = s <> "signed_immed_24" in
-        let p' = {p with finst = Norm.replace_exp se_lsl_2 n p.finst} in
+        let p' = {p with finst = replace_exp se_lsl_2 n p.finst} in
           p', List.filter remove ps, [("pc_offset", "uint32_t")]
   else if List.mem_assoc "rotate_imm" ps then (
     (* we compute immed_8 Rotate_Right (rotate_imm * 2) *)
@@ -174,7 +146,7 @@ let computed_params (p: fprog) (ps: (string*string) list) =
     let o = BinOp (Var "immed_8", "Rotate_Right", tmp)
     and n = Var "immed_rotated"
     and remove (s,_) =  s <> "immed_8" in
-    let p' = {p with finst = Norm.replace_exp o n p.finst} in
+    let p' = {p with finst = replace_exp o n p.finst} in
       p', List.filter remove ps, [("immed_rotated", "uint32_t")])
   else if List.mem_assoc "offset_12" ps then (
     (* we pre-compute the sign, which is given by the U bit*)
@@ -188,11 +160,11 @@ let computed_params (p: fprog) (ps: (string*string) list) =
     and minus = BinOp (rn, "-", Var "offset_12") in
     let o = If_exp (u, plus, minus)
     and n = BinOp (rn, "+", Var "signed_offset_12") in
-    let inst = Norm.replace_exp o n p.finst in
+    let inst = replace_exp o n p.finst in
       (* Case 2: we search a conditional instruction *)
     let o' = If (u, Affect (rn, plus), Some (Affect (rn, minus)))
     and n' = Affect (rn, n) in
-    let inst' = Norm.replace_inst o' n' inst in
+    let inst' = replace_inst o' n' inst in
     let p' = {p with finst = inst'} in
       p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
   else p, ps, []
@@ -297,6 +269,15 @@ let typeof x v =
 let lst (p: xprog) = match p.xprog.finstr with
   | "LDRT" | "LDRBT" | "STRT" | "STRBT" -> "_as_user"
   | _ -> "";;
+
+let inst_size (p: xprog) =
+  let pi = function
+    | Affect (Ast.Range (CPSR, Flag ("T", _)), _)
+    | Affect (Ast.Range (CPSR, Index (Num "5")), _) -> true
+    | _ -> false
+  in let exchange = inst_exists pi ffalse ffalse (* true if the instruction may switch ARM/Thumb mode *)
+  in if exchange p.xprog.finst then "inst_size(proc)"
+    else if is_thumb p.xprog then "2" else "4";;
 
 let rec exp (p: xprog) b = function
   | Bin s -> string b (Gencxx.hex_of_bin s)
@@ -422,8 +403,8 @@ and affect (p: xprog) k b dst src =
     | Reg (Var s, None) when s<>"i" ->
         if List.mem (Validity.NotPC s) p.xprog.fvcs
         then bprintf b "set_reg(proc,%s,%a)" s (exp p) src
-        else bprintf b "set_reg_or_pc(proc,%s,%a)" s (exp p) src
-    | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
+        else bprintf b "set_reg_or_pc_ws(proc,%s,%a,%s)" s (exp p) src (inst_size p)
+    | Reg (Num "15", None) -> bprintf b "set_pc_raw_ws(proc,%a,%s)" (exp p) src (inst_size p)
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
 	bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (Gencxx.mode m) (exp p) src

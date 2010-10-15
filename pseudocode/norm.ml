@@ -277,55 +277,6 @@ and affects = function
  * but only one pseudo-code. The function below splits the pseudo-code to
  * create two real instructions. *)
 
-(* replace expression 'o' by expresssion 'n' in instruction 'i' *)
-let replace_exp (o: exp) (n: exp) (i: inst) =
-  let count = ref 0 in
-  let rec exp e =
-    if e = o then (count := !count + 1; n) else match e with
-      | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
-      | Fun (s, es) -> Fun (s, List.map exp es)
-      | BinOp (e1, s, e2) -> BinOp (exp e1, s, exp e2)
-      | Reg (e, m) -> Reg (exp e, m)
-      | Range (e, r) -> Range (exp e, range r)
-      | Memory (e, s) -> Memory (exp e, s)
-      | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
-      | x -> x
-  and range r = match r with
-    | Index e -> Index (exp e)
-    | x -> x
-  and inst i = match i with
-    | Block is -> Block (List.map inst is)
-    | Affect (e1, e2) -> Affect (exp e1, exp e2)
-    | If (e, i1, Some i2) -> If (exp e, inst i1, Some (inst i2))
-    | If (e, i, None) -> If (exp e, inst i, None)
-    | Proc (s, es) -> Proc (s, List.map exp es)
-    | While (e, i) -> While (exp e, inst i)
-    | Assert e -> Assert (exp e)
-    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
-    | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
-    | Case (e, sis) ->
-        Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
-    | x -> x
-  in let i' = inst i in
-    if !count = 0 then raise Not_found else i';;
-
-
-(* replace instruction 'o' by instruction 'n' in instruction 'i' *)
-let replace_inst (o: inst) (n: inst) (i: inst) =
-  let count = ref 0 in
-  let rec inst i =
-    if i = o then (count := !count + 1; n) else match i with
-    | Block is -> Block (List.map inst is)
-    | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
-    | If (e, i, None) -> If (e, inst i, None)
-    | While (e, i) -> While (e, inst i)
-    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
-    | Case (e, sis) ->
-        Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
-    | x -> x
-  in let i' = inst i in
-    if !count = 0 then raise Not_found else i';;
-
 let rec split_msr ps =
   match ps with
     | p :: ps' ->
