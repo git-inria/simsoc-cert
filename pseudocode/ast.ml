@@ -239,11 +239,10 @@ end;;
 (** Manipulations of ASTs *)
 (*****************************************************************************)
 
-(* replace expression 'o' by expresssion 'n' in instruction 'i' *)
-let replace_exp (o: exp) (n: exp) (i: inst) =
-  let count = ref 0 in
+(* replace each expression using f (innermost first) *)
+let ast_exp_map (f: exp -> exp) (i: inst) =
   let rec exp e =
-    if e = o then (count := !count + 1; n) else match e with
+    let e' = match e with
       | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
       | Fun (s, es) -> Fun (s, List.map exp es)
       | BinOp (e1, s, e2) -> BinOp (exp e1, s, exp e2)
@@ -252,6 +251,7 @@ let replace_exp (o: exp) (n: exp) (i: inst) =
       | Memory (e, s) -> Memory (exp e, s)
       | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
       | x -> x
+    in f e'
   and range r = match r with
     | Index e -> Index (exp e)
     | x -> x
@@ -268,9 +268,13 @@ let replace_exp (o: exp) (n: exp) (i: inst) =
     | Case (e, sis) ->
         Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
     | x -> x
-  in let i' = inst i in
-    if !count = 0 then raise Not_found else i';;
+  in inst i;;
 
+(* replace expression 'o' by expresssion 'n' in instruction 'i' *)
+let replace_exp (o: exp) (n: exp) (i: inst) =
+  let f e = if e = o then n else e in
+  let i' = ast_exp_map f i in
+    if i = i' then raise Not_found else i';;
 
 (* replace instruction 'o' by instruction 'n' in instruction 'i' *)
 let replace_inst (o: inst) (n: inst) (i: inst) =

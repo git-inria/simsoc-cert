@@ -16,14 +16,15 @@ cd /path/to/simsoc-cert/simlight2 && make && cd ../test && ./check2
 
 Known bugs and possible improvements:
 
-- many instruction types in slv6_iss.h are identical. Thus, the generated code could be shortened.
+- many instruction types in slv6_iss.h are identical. Thus, the generated code
+  could be shortened.
 
-- some instructions (such as LDR) modifies the T flag after modifying the PC. Because setting the 
-  PC depends on T, the branch target can be erroneously 4 bytes before or 4 bytes after.
+- [BUG] some instructions (such as LDR) modifies the T flag after modifying the
+  PC. Because setting the PC depends on T, the branch target can be erroneously
+  4 bytes before or 4 bytes after.
 
-- the identifier of an instruction is stored in a size_t (4 or 8 bytes). It may be possible to save
-  memory by moving it to the first field of each sub-type, and change its type to uint16_t.
+- the sequential algorithm of the decoder is slow. It could be improved by a
+  "switch" based decoder.
 
-- the sequential algorithm of the decoder is slow. It could be improved by a "switch" based decoder.
-
-- more specialization may improve performence: S bit, L bit, W bit, condition for B, etc.
+- more specialization may improve performence: S bit, L bit, W bit, condition
+  for B, etc.

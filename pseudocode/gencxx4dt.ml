@@ -103,6 +103,13 @@ let patch_coproc (p: fprog) =
       | i -> i
     in {p with finst = inst p.finst};; 
 
+(* test the CP15 U bit after the alignment, because the unaligned case is rare *)
+let swap_u_test (p: fprog) =
+  let aux = function
+    | BinOp (BinOp (Fun ("CP15_reg1_Ubit", []), "==", Num "0") as u, "and", e) ->
+       BinOp (e, "and", u)
+    | x -> x
+  in {p with finst = ast_exp_map aux p.finst};;
 
 (** Optimize the sub-expressions that can be computed at decode-store time. *)
 
@@ -153,20 +160,25 @@ let computed_params (p: fprog) (ps: (string*string) list) =
     assert (List.mem_assoc "U" ps);
     let remove (s,_) = s <> "U" && s <> "offset_12" in
       (* there are two cases. The result is stored either in Rn or in address *)
-      (* Case 1: we search a conditional expression *)
     let u = BinOp (Var "U", "==", Num "1")
     and rn = Reg (Var "n", None) in
     let plus = BinOp (rn, "+", Var "offset_12")
     and minus = BinOp (rn, "-", Var "offset_12") in
     let o = If_exp (u, plus, minus)
     and n = BinOp (rn, "+", Var "signed_offset_12") in
-    let inst = replace_exp o n p.finst in
-      (* Case 2: we search a conditional instruction *)
-    let o' = If (u, Affect (rn, plus), Some (Affect (rn, minus)))
-    and n' = Affect (rn, n) in
-    let inst' = replace_inst o' n' inst in
-    let p' = {p with finst = inst'} in
-      p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
+      try
+        (* Case 1: we search a conditional expression *)
+        let inst = replace_exp o n p.finst in
+        let p' = {p with finst = inst} in
+          p', List.filter remove ps, [("signed_offset_12", "uint32_t")]
+      with Not_found ->
+        (* Case 2: we search a conditional instruction *)
+        let o' = If (u, Affect (Var "new_Rn", plus),
+                     Some (Affect (Var "new_Rn", minus)))
+        and n' = Affect (Var "new_Rn", n) in
+        let inst' = replace_inst o' n' p.finst in
+        let p' = {p with finst = inst'} in
+          p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
   else p, ps, []
   with Not_found -> p, ps, [];;
 
@@ -279,6 +291,16 @@ let inst_size (p: xprog) =
   in if exchange p.xprog.finst then "inst_size(proc)"
     else if is_thumb p.xprog then "2" else "4";;
 
+(* true if <s> is encoded on 4 bits in the instruction p *)
+let extended s p = is_arm p || (
+  if s = "d" || s = "n" then List.mem ("H1", 7, 7) p.fparams
+  else if s = "m" then List.mem ("H2", 6, 6) p.fparams
+  else false);;
+
+(* return true if the register <s> can be the PC in <p> *)
+let pc_possible s (p: fprog) =
+  not (List.mem (Validity.NotPC s) p.fvcs) && extended s p;;
+
 let rec exp (p: xprog) b = function
   | Bin s -> string b (Gencxx.hex_of_bin s)
   | Hex s | Num s -> string b s
@@ -289,6 +311,8 @@ let rec exp (p: xprog) b = function
       bprintf b "(to_u64(%a) << 32)" (exp p) e
   | BinOp (e, ("<"|">=" as op), Num "0") ->
       bprintf b "(%a %s 0)" (exp p) (Gencxx.to_signed e) op
+  | BinOp (Num n, "*", e) | BinOp (e, "*", Num n)->
+      bprintf b "(%a * %s)" (exp p) e n
   | BinOp (e1, "*", e2) -> if p.xprog.fid.[0] = 'S'
     then bprintf b "(to_i64(%a) * to_i64(%a))" (exp p) e1 (exp p) e2
     else bprintf b "(to_u64(%a) * to_u64(%a))" (exp p) e1 (exp p) e2
@@ -401,9 +425,9 @@ and affect (p: xprog) k b dst src =
   if src = Unpredictable_exp then bprintf b "unpredictable(\"%s\")" p.xprog.fid
   else match dst with
     | Reg (Var s, None) when s<>"i" ->
-        if List.mem (Validity.NotPC s) p.xprog.fvcs
-        then bprintf b "set_reg(proc,%s,%a)" s (exp p) src
-        else bprintf b "set_reg_or_pc_ws(proc,%s,%a,%s)" s (exp p) src (inst_size p)
+        if pc_possible s p.xprog
+        then bprintf b "set_reg_or_pc_ws(proc,%s,%a,%s)" s (exp p) src (inst_size p)
+        else bprintf b "set_reg(proc,%s,%a)" s (exp p) src
     | Reg (Num "15", None) -> bprintf b "set_pc_raw_ws(proc,%a,%s)" (exp p) src (inst_size p)
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
@@ -508,7 +532,7 @@ let sizeof t = match t with
 let inst_type b (p: xprog) =
   let field b (v, t) = bprintf b "%s %s;" t v
   and cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
-  in bprintf b "%astruct SLv6_%s {\n  %a\n};\n"
+  in bprintf b "%astruct SLv6_%s {\n  uint16_t id;\n  %a\n};\n"
        comment p p.xprog.fid
        (list "\n  " field) (List.stable_sort cmp (p.xkps @ p.xcs));;
 
@@ -623,11 +647,11 @@ module DecStoreConfig = struct
     in
       if is_conditional x then (
         bprintf b "  if (cond==SLV6_AL)\n";
-        bprintf b "    instr->id = SLV6_%s_NC_ID;\n" x.xprog.fid;
+        bprintf b "    instr->args.x.id = SLV6_%s_NC_ID;\n" x.xprog.fid;
         bprintf b "  else\n  ");
-      bprintf b "  instr->id = SLV6_%s_ID;\n" x.xprog.fid;
+      bprintf b "  instr->args.x.id = SLV6_%s_ID;\n" x.xprog.fid;
       bprintf b "%a" (list "" store) (x.xkps @ x.xcs);;
-  let return_action = "if (!found) instr->id = SLV6_UNPRED_OR_UNDEF_ID;"
+  let return_action = "if (!found) instr->args.x.id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;
 
@@ -750,7 +774,7 @@ let may_branch_prog b (x: xprog) =
 
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
-  bprintf b "  switch (instr->id) {\n%a" (list "" may_branch_prog) xs;
+  bprintf b "  switch (instr->args.x.id) {\n%a" (list "" may_branch_prog) xs;
   bprintf b "  case SLV6_UNPRED_OR_UNDEF_ID: return true;\n";
   bprintf b "  default: return false;\n  }\n}\n";;
 
@@ -766,6 +790,8 @@ let dump_sizeof bn xs =
     bprintf b "#include <stdio.h>\n\n";
     bprintf b "int main(int argc, char *argv[]) {\n";
     bprintf b "%a" (list "" aux) xs;
+    bprintf b
+      "  printf(\"%%2ld SLv6_Instruction\\n\", sizeof(struct SLv6_Instruction));\n";
     bprintf b "  return 0;\n}\n";
     let out = open_out ("print_sizes.c") in
       Buffer.output_buffer out b; close_out out;;
@@ -809,7 +835,7 @@ let llvm_generator bn xs =
   in let b = Buffer.create 10000 in
     bprintf b "void ARMv6_LLVM_Generator::generate_one_instruction";
     bprintf b "(SLv6_Instruction &instr) {\n";
-    bprintf b "  switch (instr.id) {\n%a  default: abort();\n  }\n}\n"
+    bprintf b "  switch (instr.args.x.id) {\n%a  default: abort();\n  }\n}\n"
       (list "" case) xs;
   let out = open_out (bn^"-llvm_generator.hpp") in
     Buffer.output_buffer out b; close_out out;;
@@ -820,9 +846,10 @@ let llvm_generator bn xs =
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs': prog list = postpone_writeback pcs in
-  let fs'': fprog list = flatten pcs' decs in
-  let fs': fprog list = List.map patch_coproc fs'' in
-  let fs: fprog list = List.map patch_addr_of_next_instr fs' in
+  let fs3: fprog list = flatten pcs' decs in
+  let fs2: fprog list = List.map swap_u_test fs3 in
+  let fs1: fprog list = List.map patch_coproc fs2 in
+  let fs: fprog list = List.map patch_addr_of_next_instr fs1 in
   let xs'': xprog list = List.rev (List.map xprog_of fs) in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
   let xs': xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs'' in
@@ -846,10 +873,10 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "\n%a" (list "\n" inst_type) xs;
     bprintf bh "\nstruct SLv6_Instruction {\n";
     bprintf bh "  SemanticsFunction sem_fct;\n";
-    bprintf bh "  size_t id;\n";
     bprintf bh "  union {\n%a" (list "" union_field) xs;
-    bprintf bh "    struct ARMv6_BasicBlock *basic_block;\n";
-    bprintf bh "    struct ARMv6_OptimizedBasicBlock *opt_basic_block;\n";
+    bprintf bh "    struct ARMv6_Any x;\n";
+    bprintf bh "    struct ARMv6_InstrBasicBlock basic_block;\n";
+    bprintf bh "    struct ARMv6_InstrOptimizedBasicBlock opt_basic_block;\n";
     bprintf bh "    struct ARMv6_SetReg set_reg;\n";
     bprintf bh "  } args;\n};\n";
     (* close the namespace (opened in ..._h_prelude.h *)

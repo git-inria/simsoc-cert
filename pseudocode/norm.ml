@@ -27,7 +27,7 @@ let string_of_op = function
 
 let size = function
   | Range (_, Bits (("15"|"31"), _)) -> "16"
-  | Var "signed_immed_11" -> "11"
+  | Var "signed_immed_11" | Var "offset_11" -> "11"
   | _ -> "8";;
 
 let rec exp = function
