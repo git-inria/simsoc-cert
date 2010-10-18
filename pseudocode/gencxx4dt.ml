@@ -11,6 +11,51 @@ Page numbers refer to ARMv6.pdf.
 Generate additional C/C++ code for implementing dynamic translation in Simlight.
 *)
 
+(* Transformation flow:
+ * 
+ * At the beginning, we have one list of progs (cf ast.ml) and another list of
+ * coding tables (cf codetype.ml).  Each list item describes either an
+ * instruction or an addressing mode case.
+ * 
+ * - MSR is splitted in MSRreg and MSRimm (cf file norm.ml)
+ * - the pseudo-code is normalized (cf file norm.ml)
+ * - the address write-back is disabled in the M2, M3, and M4 addressing modes
+ * - the pairs <instruction, addressing mode case> are flattened (cf file flatten.ml)
+ *   o during flattening, some pathes are applied: patch_W, patch_SRS, patch SRS_RFE
+ *
+ * From this point, we manipulate "flat programs" (cf flatten.ml). The notion of
+ * addressing mode has disappeared.
+ *
+ * - Where possible, we swap the conjunctions so that the CP15 U bit is tested after
+ *   the alignment. This is an optimization try.
+ * - We improve the instructions that use the coprocessor.
+ * - We fix a problem about "address of next instruction".
+ * - We compute the list of parameters and variables used by the pseudo-code
+ * - We replace some sub-expressions by "computed parameters"
+ * - We remove the ConditionPassed tests
+ * 
+ * From this point, we manipulate extended programs; i.e., flat program with 
+ * symbol tables.
+ *
+ * - We remove the Thumb instruction MOV(3), because it is identical to CPY
+ * - We insert the writebacks at the end of the instructions (previously removed
+ *   from the addressing mode cases
+ * - We specialize some instructions to obtain unconditional variants
+ *
+ * Now, the code generation can start.
+ *
+ * - We generate the instruction type ans sub-types.
+ * - We generate the tables containing, among other things, the instruction names
+ * - We generate the may_branch function
+ * - We generate the 4 decoders: {thumb, arm32} x {decode_and_store, decode_and_exec}
+ * - We generate a small program, which is used only to control the size of the
+ *   instruction type
+ * - We generate (part of) the ARM to LLVM translator
+ * - We generate the semantics function. We need 2 versions:
+ *   o one version with an expanded list of atomic arguments
+ *   o one version taking an SLv6_Instruction* as argument
+ *)
+
 open Ast;;
 open Printf;;
 open Util;;
