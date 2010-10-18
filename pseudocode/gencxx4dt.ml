@@ -843,16 +843,15 @@ let may_branch b xs =
 
 (** print sizeof(T) for each instruction type T *)
 
-let dump_sizeof bn xs =
+let dump_sizeof bn gs =
   let b = Buffer.create 10000 in
-  let aux b x =
-    let s = x.xprog.fid in
-      bprintf b "  printf(\"%%2ld %s\\n\", sizeof(struct SLv6_%s));\n" s s
+  let aux b (n,_) =
+    bprintf b "  printf(\"%%2ld SLv6_g%d\\n\", sizeof(struct SLv6_g%d));\n" n n
   in
     bprintf b "#include \"%s.h\"\n" bn;
     bprintf b "#include <stdio.h>\n\n";
     bprintf b "int main(int argc, char *argv[]) {\n";
-    bprintf b "%a" (list "" aux) xs;
+    bprintf b "%a" (list "" aux) gs;
     bprintf b
       "  printf(\"%%2ld SLv6_Instruction\\n\", sizeof(struct SLv6_Instruction));\n";
     bprintf b "  return 0;\n}\n";
@@ -964,7 +963,7 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
       DecExec.decoder bn Thumb thumb_xs;
       DecStore.decoder bn Thumb thumb_xs;
     (* generate a small program to verify the sizes of the instruciton types *)
-    dump_sizeof bn xs;
+    dump_sizeof bn groups;
     (* generate the LLVM generator (mode DT3) *)
     llvm_generator bn all_xs;
     (* Now, we generate the semantics functions. *)
