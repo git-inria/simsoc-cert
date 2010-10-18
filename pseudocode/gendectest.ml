@@ -21,7 +21,7 @@ open Validity;;
 open Flatten;;
 
 (*Set the seed of the random generator*)
-let init = Random.init 3
+let init = Random.init 1
 ;;
 
 (* output a 32 bits word in little-endian *)
@@ -96,60 +96,61 @@ let gen_tests out _ dec =
   List.iter (bin_inst out) dec;;
 *)
 
-let max_v i1 i2 =
-  if i1 > i2 then
-    int_of_float (2.0** (float (i1-i2)))
+(*the upper bound of random generation for parameter (s,p1 p2) in general case*)
+let max_v p1 p2 =
+  if p1 > p2 then
+    int_of_float (2.0** (float (p1-p2)))
   else 1;;
+
 
 let restrict p =
 let aux fmode =
   match fmode with
     | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
-	Or (NotPC "d", Or (NotPC "m", Or (NotPC "n", NotPC "s")))
+	Or (NotPC "Rd", Or (NotPC "Rm", Or (NotPC "Rn", NotPC "Rs")))
     | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
 	NotPC "m"
     | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
-	NotPC "n"
+	NotPC "Rn"
     | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
-	Or (NotPC "m", Or (NotPC "n", NotSame ("n", "m")))
-    | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> Or (NotV ("S", true), NotVs ("register_list", 0))
+	Or (NotPC "Rm", Or (NotPC "Rn", NotSame ("Rn", "Rm")))
+    | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> Or (NotV ("S", true), NotZero "register_list")
     | Some "M5_U" -> NotV ("U", false)
-    | None ->
+    | Some _ | None ->
 	begin match p.finstr with
-	  | "ADC"|"ADD"|"AND" -> NotPC "d"
-	  | "CLZ" -> Or (NotPC "m", NotPC "d")
+	  | "ADC"|"ADD"|"AND" -> NotPC "Rd"
+	  | "CLZ" -> Or (NotPC "m", NotPC "Rd")
 	  | "CPS" ->
 	      Or (And (NotVs ("imod", 0b00), NotV("mmod", false)), 
 		  Or (And (NotVs ("imod",0b01), NotV ("mmod", false)), 
 		      And (NotVs ("imod", 0b01), NotV ("mmod", true))))
-	  | "LDM1"|"LDM2"|"STM1"|"STM2" -> And (NotPC "n", NotZero "register_list")
-	  | "LDM3"|"LDRB" -> NotPC "n"
+	  | "LDM1"|"LDM2"|"STM1"|"STM2" -> And (NotPC "Rn", NotZero "register_list")
+	  | "LDM3"|"LDRB" -> NotPC "Rn"
 	  | "LDR"|"STR"|"STRB" -> NoWritebackDest
-	  | "LDRBT" -> Or (NotPC "n", NotSame ("d", "n"))
-	  | "LDREX" -> Or (NotPC "n", NotPC "d")
-	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> Or (NotPC "d", NoWritebackDest)
-	  | "LDRT"|"STRBT" -> Or (NotPC "d", NotSame ("d", "n"))
+	  | "LDRBT" -> Or (NotPC "n", NotSame ("Rd", "Rn"))
+	  | "LDREX" -> Or (NotPC "Rn", NotPC "Rd")
+	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> Or (NotPC "Rd", NoWritebackDest)
+	  | "LDRT"|"STRBT" -> Or (NotPC "Rd", NotSame ("Rd", "Rn"))
 	  | "MCR"|"MCRR"|"MRS"-> NotPC "d"
 	  | "MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS"  -> 
-	       Or (NotPC "d", Or (NotPC "m", Or (NotPC "s", NotPC "n")))
-	  | "MRRC" -> Or (NotSame ("d", "n"), Or (NotPC "d", NotPC "n"))
-	  | "MUL"  -> Or (NotPC "d", Or (NotPC "s", NotPC "m"))
+	       Or (NotPC "Rd", Or (NotPC "Rm", Or (NotPC "Rs", NotPC "Rn")))
+	  | "MRRC" -> Or (NotSame ("Rd", "Rn"), Or (NotPC "Rd", NotPC "Rn"))
+	  | "MUL"  -> Or (NotPC "Rd", Or (NotPC "Rs", NotPC "Rm"))
 	  | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
-	-> Or (NotPC "n", Or (NotPC "d", NotPC "m"))
-	  | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> Or (NotPC "d", NotPC "m")
-	  | "RFE" -> NotPC "n"
-	  | "SMLAD" -> Or (NotPC "d", Or (NotPC "m", NotPC "s"))
-	  | "SMLAL"-> Or (NotPC "dHi", Or (NotPC "dLo", Or (NotPC "s", NotPC "m")))
-	  | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> Or (NotPC "dHi", Or (NotPC "dLo", Or (NotPC "s", Or (NotPC "m", NotSame ("d","n")))))
-	  | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> Or (NotPC "d", Or (NotPC "s", NotPC "m"))
-	  | "STREX" -> Or (NotPC "n", Or (NotPC "d", Or (NotPC "m", Or (NotSame ("d","m"), NotSame ("d","n")))))
+	-> Or (NotPC "Rn", Or (NotPC "Rd", NotPC "Rm"))
+	  | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> Or (NotPC "Rd", NotPC "Rm")
+	  | "RFE" -> NotPC "Rn"
+	  | "SMLAD" -> Or (NotPC "Rd", Or (NotPC "Rm", NotPC "Rs"))
+	  | "SMLAL"-> Or (NotPC "RdHi", Or (NotPC "RdLo", Or (NotPC "Rs", NotPC "Rm")))
+	  | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> Or (NotPC "RdHi", Or (NotPC "RdLo", Or (NotPC "Rs", Or (NotPC "Rm", NotSame ("Rd","Rn")))))
+	  | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> Or (NotPC "Rd", Or (NotPC "Rs", NotPC "Rm"))
+	  | "STREX" -> Or (NotPC "Rn", Or (NotPC "Rd", Or (NotPC "Rm", Or (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
 	  | "STRT"-> NotSame ("d","n")
-	  | "SWP"|"SWPB" -> Or (NotPC "n", Or (NotPC "d", Or (NotPC "m", Or (NotSame ("d","m"), NotSame ("d","n")))))
-	  | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> Or (NotPC "n", Or (NotPC "d", NotPC "m"))
-	  | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H" -> Or (NotPC "d", NotPC "m")
+	  | "SWP"|"SWPB" -> Or (NotPC "Rn", Or (NotPC "Rd", Or (NotPC "Rm", Or (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
+	  | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> Or (NotPC "Rn", Or (NotPC "Rd", NotPC "Rm"))
+	  | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H" -> Or (NotPC "d", NotPC "Rm")
 	  | _ -> NoRestrict
 	end
-    | _ -> NoRestrict
 in aux p.fmode 
 ;;
 
@@ -175,7 +176,7 @@ let notsame s1 s2 params w =
 	  match params with
 	    | (s2', _, p22) -> 
 		if (s2' = s2) then
-		  let r1 = Random.int 15 in
+		  let r1 = Random.int 16 in
 		  let r2 = Random.int 15 in
 		    insert_bits (Int32.of_int r1) p12 
 		      (insert_bits (Int32.of_int (if (r2 = r1) then (r2+ 1) else r2)) p22 w)
@@ -205,11 +206,10 @@ let gen_tests ps =
       | (("cond"),_, p2) -> Insert_bits (Random.int 15, p2)
       | (_, p1, p2) -> 
 	  Insert_bits (Random.int (max_v p1 p2), p2)  
-  in let no_restrict_bits s ps =
-    match ps with
-      | (s', p1, p2) -> if (s' = s) then
-	  No_change
-	else Insert_bits (Random.int (max_v p1 p2), p2)
+  in let no_restrict_bits s (s', p1, p2) =
+      if (s' = s) then
+	No_change
+      else Insert_bits (Random.int (max_v p1 p2), p2)
   in
   let proc vs w =
     match vs with
