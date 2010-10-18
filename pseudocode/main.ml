@@ -186,7 +186,7 @@ let genr_output() =
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
-    | C4dt -> Gencxx4dt.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+    | C4dt -> Simlight2.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
     | DecTest -> Gendectest.gen_test stdout (get_pc_input()) (get_dec_input());;   
