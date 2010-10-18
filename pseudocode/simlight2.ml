@@ -250,6 +250,22 @@ let llvm_generator bn xs =
     Buffer.output_buffer out b; close_out out;;
 
 
+(* temporary functions *)
+
+let print_stat k xs =
+  let size = match k with ARM -> 32 | Thumb -> 16 in
+    for i = 0 to size-1 do
+      let v = ref 0 and p = ref 0 and r = ref 0 and s = ref 0 in
+      let aux x = match x.xprog.fdec.(i) with
+        | Value _ -> v := !v + 1
+        | Param1 _ | Param1s _ -> p := !p + 1
+        | Range _ -> r := !r + 1
+        | Shouldbe _ -> s := !s + 1
+        | _ -> ()
+      in List.iter aux xs;
+        printf "Bit %2d: %3d V, %3d P, %3d R, %3d S\n"  i !v !p !r !s
+    done;;
+
 (** main function *)
 
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
@@ -309,6 +325,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
       DecStore.decoder bn ARM arm_xs;
       DecExec.decoder bn Thumb thumb_xs;
       DecStore.decoder bn Thumb thumb_xs;
+      (* print_stat ARM arm_xs; *)
+      (* print_stat Thumb thumb_xs; *)
     (* generate a small program to verify the sizes of the instruciton types *)
     dump_sizeof bn groups;
     (* generate the LLVM generator (mode DT3) *)
