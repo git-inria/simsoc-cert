@@ -23,7 +23,7 @@ Known bugs and possible improvements:
   PC. Because setting the PC depends on T, the branch target can be erroneously
   4 bytes before or 4 bytes after.
 
-- the sequential algorithm of the decoder is slow. It could be improved by a
+- [done] the sequential algorithm of the decoder is slow. It could be improved by a
   "switch" based decoder.
 
 - more specialization may improve performance: S bit, L bit, W bit, condition
@@ -31,3 +31,5 @@ Known bugs and possible improvements:
 
 - searching sub-expressions that can be computed at decode time is currently done 
   fully by hand. An automatic analyzer would be helpful.
+
+- [BUG] coprocessor instructions of the form xxx2 are not managed at all.
