@@ -16,7 +16,7 @@ cd /path/to/simsoc-cert/simlight2 && make && cd ../test && ./check2
 
 Known bugs and possible improvements:
 
-- many instruction types in slv6_iss.h are identical. Thus, the generated code
+- [done] many instruction types in slv6_iss.h are identical. Thus, the generated code
   could be shortened.
 
 - [BUG] some instructions (such as LDR) modifies the T flag after modifying the
@@ -26,5 +26,8 @@ Known bugs and possible improvements:
 - the sequential algorithm of the decoder is slow. It could be improved by a
   "switch" based decoder.
 
-- more specialization may improve performence: S bit, L bit, W bit, condition
+- more specialization may improve performance: S bit, L bit, W bit, condition
   for B, etc.
+
+- searching sub-expressions that can be computed at decode time is currently done 
+  fully by hand. An automatic analyzer would be helpful.

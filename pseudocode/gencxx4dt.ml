@@ -28,10 +28,12 @@ Generate additional C/C++ code for implementing dynamic translation in Simlight.
  *
  * - Where possible, we swap the conjunctions so that the CP15 U bit is tested after
  *   the alignment. This is an optimization try.
- * - We improve the instructions that use the coprocessor.
+ * - We improve the instructions that use the coprocessor (+ disable LDC and STC).
  * - We fix a problem about "address of next instruction".
  * - We compute the list of parameters and variables used by the pseudo-code
  * - We replace some sub-expressions by "computed parameters"
+ * - We compute the list of instruction groups. All instructions in a group have
+ *   the same list of parameters
  * - We remove the ConditionPassed tests
  * 
  * From this point, we manipulate extended programs; i.e., flat program with 
@@ -44,7 +46,7 @@ Generate additional C/C++ code for implementing dynamic translation in Simlight.
  *
  * Now, the code generation can start.
  *
- * - We generate the instruction type ans sub-types.
+ * - We generate the instruction type and sub-types.
  * - We generate the tables containing, among other things, the instruction names
  * - We generate the may_branch function
  * - We generate the 4 decoders: {thumb, arm32} x {decode_and_store, decode_and_exec}
@@ -236,6 +238,9 @@ let compute_param = function
   | _ -> raise (Invalid_argument "compute_param");;
 
 (** extended program type allowing to store extra information *)
+
+type group = int * (string * string) list;; (* = id * parameters *)
+
 type xprog = {
   xprog: fprog;
   xps: (string * string) list; (* parameters *)
@@ -243,14 +248,36 @@ type xprog = {
   xcs: (string * string) list; (* computed parameters *)
   xkps: (string * string) list; (* parameters without the ones replaced
                                  * by computed prameters *)
-  xbaseid: string; (* id without "_NC" *)
+  xgid: int; (* id of the group *)
 }
 
-let xprog_of p =
-  let ps, ls = Gencxx.V.vars p.finst in
-  let p', kps, cs = computed_params p ps in
-  let p'' = {p' with finst = remove_cond_passed p'.finst} in
-    {xprog = p''; xps = ps; xls = ls; xcs = cs; xkps = kps; xbaseid = p.fid};;
+let union_id x = "g" ^ string_of_int x.xgid;;
+
+let sizeof t = match t with
+  | "uint8_t" | "bool" -> 1
+  | "uint16_t" -> 2
+  | "uint64_t" -> 8
+  | _ -> 4;;
+
+let xprogs_of ps =
+  let groups: group list ref = ref [(0, [])] in
+  let gid kps cs =
+    let ps =
+      (* fields are sorted according to their size, in order to minimize
+       * padding bytes *)
+      let cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
+      in List.stable_sort cmp (kps @ cs)
+    in
+      try fst (List.find (fun (_, x) -> x = ps) !groups)
+      with Not_found -> match !groups with
+        | (n, _) :: _ -> groups := (n+1, ps) :: !groups; n+1
+        | [] -> raise (Failure "error while computing group id")
+  in let xprog_of p =
+      let ps, ls = Gencxx.V.vars p.finst in
+      let p', kps, cs = computed_params p ps in
+      let p'' = {p' with finst = remove_cond_passed p'.finst} in
+        {xprog = p''; xps = ps; xls = ls; xcs = cs; xkps = kps; xgid = gid kps cs}
+  in List.rev (List.map xprog_of ps), !groups;;
 
 (** specialization according to the condition field *)
 
@@ -277,16 +304,6 @@ let insert_writeback (xs: xprog list) =
     if has_writeback x then
       let inst = function
         | Block is -> Block (is @ [wb x])
-(* REMOVE: *)
-(*             let rec aux = function *)
-(*               | hd :: tl -> let b, l = aux tl in *)
-(*                   if b then true, hd::l *)
-(*                   else *)
-(*                     if has_memory_access hd *)
-(*                     then true, hd::wb::l *)
-(*                     else false, hd::l *)
-(*               | [] -> false, [] *)
-(*             in Block (snd (aux is)) *)
         | _ -> raise (Failure "insert_writeback")
       in {x with xprog = {x.xprog with finst = inst x.xprog.finst}}
     else x
@@ -543,7 +560,7 @@ let prog_grouped b (p: xprog) =
       "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
       comment p p.xprog.fid;
     let expand b (n, t) =
-      bprintf b "  const %s %s = instr->args.%s.%s;\n" t n p.xbaseid n
+      bprintf b "  const %s %s = instr->args.%s.%s;\n" t n (union_id p) n
     in
       bprintf b "%a%a%a%a%a\n}\n"
         (list "" expand) (p.xkps @ p.xcs)
@@ -566,24 +583,16 @@ let decl_grouped b (p: xprog) =
 
 (** Generation of the instruction type *)
 
-let sizeof t = match t with
-  | "uint8_t" | "bool" -> 1
-  | "uint16_t" -> 2
-  | "uint64_t" -> 8
-  | _ -> 4;;
-
-(* Generate a type that can store an instruction 'p'
- * fields are sorted according to their size, in order to minimize padding bytes *)
-let inst_type b (p: xprog) =
-  let field b (v, t) = bprintf b "%s %s;" t v
-  and cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
-  in bprintf b "%astruct SLv6_%s {\n  uint16_t id;\n  %a\n};\n"
-       comment p p.xprog.fid
-       (list "\n  " field) (List.stable_sort cmp (p.xkps @ p.xcs));;
+(* Generate a type that can store an instruction of group g *)
+let group_type b (g: group) =
+  let n, ps = g in
+  let field b (v, t) = bprintf b "  %s %s;\n" t v
+  in bprintf b "/* Instruction Group #%d */\nstruct SLv6_g%d {\n  uint16_t id;\n%a};\n"
+       n n (list "" field) ps;;
 
 (* Generate a member of the big union type *)
-let union_field b (p: xprog) =
-  bprintf b "    struct SLv6_%s %s;\n" p.xprog.fid p.xprog.fid;;
+let union_field b (g: group) =
+  let n, _ = g in bprintf b "    struct SLv6_g%d g%d;\n" n n;;
 
 (** Generation of the decoder *)
 
@@ -688,15 +697,15 @@ module DecStoreConfig = struct
   let instr_call b id = bprintf b "try_store_%s(instr,bincode)" id;;
   let action b (x: xprog) =
     let store b (n, _) = 
-      bprintf b "  instr->args.%s.%s = %s;\n" x.xprog.fid n n
+      bprintf b "  instr->args.%s.%s = %s;\n" (union_id x) n n
     in
       if is_conditional x then (
         bprintf b "  if (cond==SLV6_AL)\n";
-        bprintf b "    instr->args.x.id = SLV6_%s_NC_ID;\n" x.xprog.fid;
+        bprintf b "    instr->args.g0.id = SLV6_%s_NC_ID;\n" x.xprog.fid;
         bprintf b "  else\n  ");
-      bprintf b "  instr->args.x.id = SLV6_%s_ID;\n" x.xprog.fid;
+      bprintf b "  instr->args.g0.id = SLV6_%s_ID;\n" x.xprog.fid;
       bprintf b "%a" (list "" store) (x.xkps @ x.xcs);;
-  let return_action = "if (!found) instr->args.x.id = SLV6_UNPRED_OR_UNDEF_ID;"
+  let return_action = "if (!found) instr->args.g0.id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;
 
@@ -717,7 +726,10 @@ let gen_tables b (xs: xprog list) =
 
 (* generate the numerical instruction identifier *)
 let gen_ids b xs =
-  let aux i x = bprintf b "#define SLV6_%s_ID %d\n" x.xprog.fid i in
+  let aux i x =
+    bprintf b "#define SLV6_%s_ID %d\n" x.xprog.fid i;
+    bprintf b "#define SLV6_%s_GID g%d\n" x.xprog.fid x.xgid
+  in
   list_iteri aux xs;
   bprintf b "#define SLV6_UNPRED_OR_UNDEF_ID SLV6_INSTRUCTION_COUNT\n";;
 
@@ -757,27 +769,32 @@ let may_branch_prog b (x: xprog) =
   (* special case for LDM (1): check bit 15 of register_list *)
   if x.xprog.finstr = "LDM1" then
     bprintf b "  case SLV6_%s_ID: return instr->args.%s.register_list>>15;\n"
-      x.xprog.fid x.xbaseid
+      x.xprog.fid (union_id x)
   (* special case for POP: check bit R *)
   else if x.xprog.finstr = "Tb_POP" then
     bprintf b "  case SLV6_%s_ID: return instr->args.%s.R==1;\n"
-      x.xprog.fid x.xbaseid
+      x.xprog.fid (union_id x)
   (* special case for BL, BLX (1): check filed H *)
   else if x.xprog.finstr = "Tb_BL" then
     bprintf b "  case SLV6_%s_ID: return instr->args.%s.H!=2;\n"
-      x.xprog.fid x.xbaseid
+      x.xprog.fid (union_id x)
   (* special case for CPS: clearing bit F or I may raise an interrupt *)
   else if x.xprog.finstr = "CPS" then (
     bprintf b "  case SLV6_CPS_ID:\n";
-    bprintf b "    return (instr->args.CPS.F || instr->args.CPS.I) && instr->args.CPS.imod==2;\n")
+    bprintf b
+      "    return (instr->args.%s.F || instr->args.%s.I) && instr->args.%s.imod==2;\n"
+      (union_id x) (union_id x) (union_id x))
   (* special case for MSR*: modifying bit F or I may raise an interrupt *)
   else if x.xprog.finstr = "MSRimm" then
-    bprintf b "  case SLV6_%s_ID: return instr->args.MSRimm.field_mask&1;\n" x.xprog.fid
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.field_mask&1;\n"
+      x.xprog.fid (union_id x)
   else if x.xprog.finstr = "MSRreg" then
-    bprintf b "  case SLV6_%s_ID: return instr->args.MSRreg.field_mask&1;\n" x.xprog.fid
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.field_mask&1;\n"
+      x.xprog.fid (union_id x)
   (* special case for MCR[R]: modifying the system coprocessor state may have special effects *)
   else if x.xprog.finstr = "MCR" || x.xprog.finstr = "MCRR" then
-    bprintf b "  case SLV6_%s_ID: return instr->args.%s.cp_num==15;\n" x.xprog.fid x.xbaseid
+    bprintf b "  case SLV6_%s_ID: return instr->args.%s.cp_num==15;\n"
+      x.xprog.fid (union_id x)
   else
     let default = (false, []) in
     let rec union l l' =
@@ -790,7 +807,8 @@ let may_branch_prog b (x: xprog) =
         (* TODO: LDM(1) can be improved *)
       | Block is -> List.fold_left inst acc is
       | Affect (dst, _) -> combine acc (exp dst)
-      | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) -> (* case used by LDR (i1) and MRC (i2) *)
+      | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) ->
+          (* case used by LDR (i1) and MRC (i2) *)
           let b1,l1 = inst default i1 in
           let acc1 = combine acc (if b1 then false, ["d"] else b1,l1) in
           let b2,l2 = inst default i2 in
@@ -813,13 +831,13 @@ let may_branch_prog b (x: xprog) =
       else match l with
         | [] -> () (* bprintf b "  case SLV6_%s_ID: return false;\n" x.xprog.fid *)
         | _ ->
-            let aux b s = bprintf b "instr->args.%s.%s==15" x.xbaseid s in
+            let aux b s = bprintf b "instr->args.%s.%s==15" (union_id x) s in
               bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
                 x.xprog.fid (list " || " aux) l;;
 
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
-  bprintf b "  switch (instr->args.x.id) {\n%a" (list "" may_branch_prog) xs;
+  bprintf b "  switch (instr->args.g0.id) {\n%a" (list "" may_branch_prog) xs;
   bprintf b "  case SLV6_UNPRED_OR_UNDEF_ID: return true;\n";
   bprintf b "  default: return false;\n  }\n}\n";;
 
@@ -863,7 +881,7 @@ let llvm_generator bn xs =
         | s -> raise (Invalid_argument ("llvm_type: "^s))
       in
         bprintf b "    Value *%s = ConstantInt::get(%s,instr.args.%s.%s);\n"
-          n (llvm_type t) x.xbaseid n
+          n (llvm_type t) (union_id x) n
     in
       if size = 1 then bprintf b "    IRB.CreateCall(fct,proc);\n"
       else (
@@ -880,7 +898,7 @@ let llvm_generator bn xs =
   in let b = Buffer.create 10000 in
     bprintf b "void ARMv6_LLVM_Generator::generate_one_instruction";
     bprintf b "(SLv6_Instruction &instr) {\n";
-    bprintf b "  switch (instr.args.x.id) {\n%a  default: abort();\n  }\n}\n"
+    bprintf b "  switch (instr.args.g0.id) {\n%a  default: abort();\n  }\n}\n"
       (list "" case) xs;
   let out = open_out (bn^"-llvm_generator.hpp") in
     Buffer.output_buffer out b; close_out out;;
@@ -895,10 +913,10 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let fs2: fprog list = List.map swap_u_test fs3 in
   let fs1: fprog list = List.map patch_coproc fs2 in
   let fs: fprog list = List.map patch_addr_of_next_instr fs1 in
-  let xs'': xprog list = List.rev (List.map xprog_of fs) in
+  let (xs2: xprog list), (groups: group list) = xprogs_of fs in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
-  let xs': xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs'' in
-  let xs = insert_writeback xs' in
+  let xs1: xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs2 in
+  let xs = insert_writeback xs1 in
   let nocond_xs: xprog list = no_cond_variants xs in
   let all_xs: xprog list = xs@nocond_xs in
   let instr_count = List.length all_xs in
@@ -915,11 +933,10 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
     bprintf bh "\n%a" gen_ids all_xs;
     (* generate the instruction type *)
-    bprintf bh "\n%a" (list "\n" inst_type) xs;
+    bprintf bh "\n%a" (list "\n" group_type) groups;
     bprintf bh "\nstruct SLv6_Instruction {\n";
     bprintf bh "  SemanticsFunction sem_fct;\n";
-    bprintf bh "  union {\n%a" (list "" union_field) xs;
-    bprintf bh "    struct ARMv6_Any x;\n";
+    bprintf bh "  union {\n%a" (list "" union_field) groups;
     bprintf bh "    struct ARMv6_InstrBasicBlock basic_block;\n";
     bprintf bh "    struct ARMv6_InstrOptimizedBasicBlock opt_basic_block;\n";
     bprintf bh "    struct ARMv6_SetReg set_reg;\n";

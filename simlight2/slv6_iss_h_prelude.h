@@ -14,10 +14,6 @@ BEGIN_SIMSOC_NAMESPACE
 struct SLv6_Processor;
 struct SLv6_Instruction;
 
-struct ARMv6_Any {
-  uint16_t id;
-};
-
 /* next types are used only inside SimSoC */
 struct ARMv6_BasicBlock;
 struct ARMv6_InstrBasicBlock {

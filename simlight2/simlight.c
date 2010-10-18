@@ -22,12 +22,12 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
   for (; a!=ea; a+=4) {
     const uint32_t bincode = read_word(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
-    instr.args.x.id = ~0;
+    instr.args.g0.id = ~0;
     arm_decode_and_store(&instr,bincode);
-    assert(instr.args.x.id<=SLV6_INSTRUCTION_COUNT);
+    assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
     printf("%s: %s\n",
-           slv6_instruction_references[instr.args.x.id],
-           slv6_instruction_names[instr.args.x.id]);
+           slv6_instruction_references[instr.args.g0.id],
+           slv6_instruction_names[instr.args.g0.id]);
   }
 }
 
@@ -40,12 +40,12 @@ void test_decode_thumb(struct SLv6_Processor *proc, struct ElfFile *elf) {
   for (; a!=ea; a+=2) {
     const uint16_t bincode = read_half(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
-    instr.args.x.id = ~0;
+    instr.args.g0.id = ~0;
     thumb_decode_and_store(&instr,bincode);
-    assert(instr.args.x.id<=SLV6_INSTRUCTION_COUNT);
+    assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
     printf("%s: %s\n",
-           slv6_instruction_references[instr.args.x.id],
-           slv6_instruction_names[instr.args.x.id]);
+           slv6_instruction_references[instr.args.g0.id],
+           slv6_instruction_names[instr.args.g0.id]);
   }
 }
 
