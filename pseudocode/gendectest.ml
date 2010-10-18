@@ -20,7 +20,8 @@ open Dec;;
 open Validity;;
 open Flatten;;
 
-let init = Random.init 1
+(*Set the seed of the random generator*)
+let init = Random.init 3
 ;;
 
 (* output a 32 bits word in little-endian *)
@@ -39,13 +40,11 @@ let push_bits (x: bool array) (y: int32) =
   let lst = Array.to_list x in
     List.fold_right push_bit lst y;; 
 
-let push_pc (x: int32) = 
-  push_bit false (push_bit true (push_bit true (push_bit true x)));;  
-
 let insert_bit (b: int32) (p: int) (w: int32) =
   let i = Int32.shift_left b p in
     Int32.logor i w;;
 
+(*insert bits at from position p*)
 let insert_bits i p w =
   let is = Int32.shift_left i p in
     Int32.logor is w;;
@@ -55,18 +54,26 @@ type vcon =
   | Insert_bit of bool * int
   | No_change
 ;;
-(*
-let gen_pre pc =
-  let aux ls w =
-    match ls with
-      | Value s -> push_bit s w
-      | Shouldbe s -> push_bit s w
-      | Range ("cond", _, _) -> push_bit (Random.bool ()) w
-      | Param1 _ | Param1s _ -> push_bit false w
-      | Range _ -> push_bit false w
-      | Nothing -> raise (Failure "unexpected case")
-  in Array.fold_right aux pc.fdec Int32.zero;;
 
+type vconstraint =
+  | NotPC of string   (* the string must contains the name of parameter *)
+  (*| NotLR of string (* the string must contains the name of parameter *)*)
+  (*| IsEven of string   (* parameter that should contain an even value *)*)
+  | NoWritebackDest    (* no write-back with Rd==Rn *)
+  | NotSame of string * string (* R<a> <> R<b> *)
+  (*| NotLSL0            (* to distinguished between (equivalent?) mode cases *)*)
+  (*| OtherVC of exp     (* Other validy constraints described by a boolean
+   * expression *)*)
+  | NotV of string * bool
+  | NotVs of string * int
+  | And of vconstraint * vconstraint
+  | NotZero of string
+  | Or of vconstraint * vconstraint
+  | NoRestrict
+;;
+
+(*
+(*Generate bits randomly*)
 let gen_bin pc =
   let aux ls w =
     match ls with
@@ -76,105 +83,6 @@ let gen_bin pc =
       | Range _ -> push_bit (Random.bool ()) w
       | Nothing -> raise (Failure "unexpected case")
   in Array.fold_right aux pc Int32.zero;;
-*)
-
-let gen_tests ps =
-  let aux1 dec =
-    match dec with
-      | (Shouldbe b, p) -> Insert_bit (b,p)
-      | (Value i, p) -> Insert_bit (i, p)
-      | ((Range _ | Param1 _ | Param1s _ | Nothing), _) -> No_change
-  in
-  let max_v i1 i2 =
-    if i2 >= i1 then
-      int_of_float (2.0** (float (i2-i1+1)))
-    else 1
-  in
-  let aux2 para =
-    match para with
-      | (("n"|"m"|"s"|"d"|"dLo"|"dHi"),_, p2) -> Insert_bits (Random.int 15, p2)
-      | (("cond"),_, p2) -> Insert_bits (Random.int 15, p2)
-      | (_, p1, p2) -> 
-	  Insert_bits (Random.int (max_v p1 p2), p2)
-  in
-  let proc vs w =
-    match vs with
-      | Insert_bits (i, p) -> insert_bits (Int32.of_int i) p w
-      | Insert_bit (b, p) -> insert_bit (if b then Int32.one else Int32.zero) p w
-      | No_change -> w
-  in 
-  let pos dec =
-    let ar = Array.create (Array.length dec) (Nothing, 0) in
-      for i = 0 to Array.length dec - 1 do
-	ar.(i) <- (dec.(i), i)
-      done;
-    ar
-  in match ps.finstr with
-    | "ADC"  -> 
-	Int32.logor (Array.fold_right proc (Array.map aux1 (pos ps.fdec)) Int32.zero)
-	  (List.fold_right proc (List.map aux2 (parameters_of ps.fdec)) Int32.zero)
-    | _ -> Int32.zero
-;;
-
-
-(*let gen_unpred (lh, ls) =
-  let aux lh ls =
-    match name (lh, ls) with
-      | ("BLX2"|"BXJ") :: _ -> NotPC ("m", 0)
-      | "CLZ" :: _ -> Or (NotPC ("m", 0), NotPC ("d", 12))
-      | "CPS"::_ -> Or (And (NotV ("mmod",Int32.zero,18), NotVs ("immod", 0b00,16)), 
-			Or (And (NotV ("mmod",Int32.zero,18), NotVs ("immod", 0b01,16)), 
-			    And (NotV ("mmod",Int32.one,18), NotVs ("immod", 0b01,16))))
-      | ("LDM1"|"LDM2"|"STM1"|"STM2") ::_ -> And (NotPC ("n", 16), NotZero 0)
-      | "LDM3" :: _ -> NotPC ("n", 16)
-      | ("LDR"|"STR"|"STRB") :: _ -> NoWritebackDest
-      | "LDRB" :: _ -> NotPC ("n", 16)
-      | "LDRBT" :: _ -> Or (NotPC ("n", 16), NotSame (16, 12))
-      (*| "LDRD" :: _ -> *)
-      | "LDREX" :: _ -> Or (NotPC ("n", 16), NotPC ("d", 12))
-      | ("LDRH"|"LDRSB"|"LDRSH"|"STRH") :: _ -> Or (NotPC ("d", 12), NoWritebackDest)
-      | ("LDRT"|"STRBT") :: _ -> Or (NotPC ("d", 12), NotSame (16, 12))
-      | "MCR" :: _ -> NotPC ("d", 12)
-      | "MCRR" :: _ -> NotPC ("d" , 12)
-      | ("MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS") :: _  -> 
-	  Or (NotPC ("d", 16), Or (NotPC ("m", 0), Or (NotPC ("s", 8), NotPC ("n", 12))))
-      | "MRRC" :: _ -> Or (NotSame (12, 16), Or (NotPC ("d", 12), NotPC ("n", 16)))
-      | "MRS" :: _ -> NotPC ("d", 12)
-      | "MUL" :: _ -> Or (NotPC ("d", 16), Or (NotPC ("s", 8), NotPC ("m",0)))
-      | ("PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX") :: _ 
-	-> Or (NotPC ("n", 16), Or (NotPC ("d", 12), NotPC ("m", 0)))
-      | ("REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH") :: _ -> Or (NotPC ("d", 12), NotPC ("m", 0))
-      | "RFE" :: _ -> NotPC ("n", 16)
-      | "SMLAD" :: _ -> Or (NotPC ("d",16), Or (NotPC ("m",0), NotPC ("s",8)))
-      | "SMLAL" :: _ -> Or (NotPC ("dHi", 16), Or (NotPC ("dLo", 12), Or (NotPC ("s", 8), NotPC ("m",0))))
-      | ("SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL") :: _ -> Or (NotPC ("dHi", 16), Or (NotPC ("dLo", 12), Or (NotPC ("s", 8), Or (NotPC ("m",0), NotSame (16,12)))))
-      | ("SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8"):: _ -> Or (NotPC ("d", 16), Or (NotPC ("s", 8), NotPC ("m", 0)))
-      (*| STRD ->*)
-      | "STREX" :: _ -> Or (NotPC ("n",16), Or (NotPC ("d",12), Or (NotPC ("m",0), Or (NotSame (12,0), NotSame (12,16)))))
-      | "STRT" :: _ -> NotSame (16,12)
-      | ("SWP"|"SWPB") :: _ -> Or (NotPC ("n",16), Or (NotPC ("d",12), Or (NotPC ("m",0), Or (NotSame (16,0), NotSame (16,12)))))
-      | ("UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX") :: _ -> Or (NotPC ("n",16), Or (NotPC ("d",12), NotPC ("m",0)))
-      | ("USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H") :: _ -> Or (NotPC ("d", 12), NotPC ("m",0))
-      | _ -> General
-  in
-  let rec aux2 m w =
-    match m with
-      | NotPC (_, p) -> insert_bits (Int32.of_int 15) p w
-      | NotLR (_, p) -> insert_bits (Int32.of_int 14) p w
-      | NotZero i -> insert_bit (Int32.of_int 0b000000000000000) i w
-      
-      | NotV (_,i,p) -> insert_bit i p w
-      | NotVs (_,s,p) ->  insert_bits (Int32.of_int s) p w
-      (*| And (NotV (_, i1,p1), NotV (_,i2,p2)) -> insert_bit i1 p1 (insert_bits i2 p2 w)*)
-      | NotSame (i1, i2) -> let r = (Random.int32 (Int32.of_int 0b1111)) in
-	  insert_bits r i1 (insert_bits r i2 w)
-      | NoWritebackDest -> insert_bit Int32.one 21 w
-      | Or (v1, v2) -> if Random.bool () then (aux2 v1 w) else (aux2 v2 w)
-      | And (v1, v2) -> aux2 v1 (aux2 v2 w)
-      | General 
-	  -> gen_bin ls
-  in aux2 (aux lh ls) (gen_pre ls)
-;;
 
 let bin_inst out ps =
   let md = add_mode (name ps) in
@@ -188,8 +96,163 @@ let gen_tests out _ dec =
   List.iter (bin_inst out) dec;;
 *)
 
+let max_v i1 i2 =
+  if i1 > i2 then
+    int_of_float (2.0** (float (i1-i2)))
+  else 1;;
+
+let restrict p =
+let aux fmode =
+  match fmode with
+    | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
+	Or (NotPC "d", Or (NotPC "m", Or (NotPC "n", NotPC "s")))
+    | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
+	NotPC "m"
+    | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
+	NotPC "n"
+    | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
+	Or (NotPC "m", Or (NotPC "n", NotSame ("n", "m")))
+    | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> Or (NotV ("S", true), NotVs ("register_list", 0))
+    | Some "M5_U" -> NotV ("U", false)
+    | None ->
+	begin match p.finstr with
+	  | "ADC"|"ADD"|"AND" -> NotPC "d"
+	  | "CLZ" -> Or (NotPC "m", NotPC "d")
+	  | "CPS" ->
+	      Or (And (NotVs ("imod", 0b00), NotV("mmod", false)), 
+		  Or (And (NotVs ("imod",0b01), NotV ("mmod", false)), 
+		      And (NotVs ("imod", 0b01), NotV ("mmod", true))))
+	  | "LDM1"|"LDM2"|"STM1"|"STM2" -> And (NotPC "n", NotZero "register_list")
+	  | "LDM3"|"LDRB" -> NotPC "n"
+	  | "LDR"|"STR"|"STRB" -> NoWritebackDest
+	  | "LDRBT" -> Or (NotPC "n", NotSame ("d", "n"))
+	  | "LDREX" -> Or (NotPC "n", NotPC "d")
+	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> Or (NotPC "d", NoWritebackDest)
+	  | "LDRT"|"STRBT" -> Or (NotPC "d", NotSame ("d", "n"))
+	  | "MCR"|"MCRR"|"MRS"-> NotPC "d"
+	  | "MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS"  -> 
+	       Or (NotPC "d", Or (NotPC "m", Or (NotPC "s", NotPC "n")))
+	  | "MRRC" -> Or (NotSame ("d", "n"), Or (NotPC "d", NotPC "n"))
+	  | "MUL"  -> Or (NotPC "d", Or (NotPC "s", NotPC "m"))
+	  | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
+	-> Or (NotPC "n", Or (NotPC "d", NotPC "m"))
+	  | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> Or (NotPC "d", NotPC "m")
+	  | "RFE" -> NotPC "n"
+	  | "SMLAD" -> Or (NotPC "d", Or (NotPC "m", NotPC "s"))
+	  | "SMLAL"-> Or (NotPC "dHi", Or (NotPC "dLo", Or (NotPC "s", NotPC "m")))
+	  | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> Or (NotPC "dHi", Or (NotPC "dLo", Or (NotPC "s", Or (NotPC "m", NotSame ("d","n")))))
+	  | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> Or (NotPC "d", Or (NotPC "s", NotPC "m"))
+	  | "STREX" -> Or (NotPC "n", Or (NotPC "d", Or (NotPC "m", Or (NotSame ("d","m"), NotSame ("d","n")))))
+	  | "STRT"-> NotSame ("d","n")
+	  | "SWP"|"SWPB" -> Or (NotPC "n", Or (NotPC "d", Or (NotPC "m", Or (NotSame ("d","m"), NotSame ("d","n")))))
+	  | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> Or (NotPC "n", Or (NotPC "d", NotPC "m"))
+	  | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H" -> Or (NotPC "d", NotPC "m")
+	  | _ -> NoRestrict
+	end
+    | _ -> NoRestrict
+in aux p.fmode 
+;;
+
+
+let notpc s (s', _, p2) w = 
+  if (s' = s) then insert_bits (Int32.of_int (Random.int 15)) p2 w
+  else w;;
+
+let notv s b (s', _, p2)  w =
+  if (s' = s) then insert_bit (if (not b) then Int32.one else Int32.zero) p2 w
+  else w;;
+
+let notvs s i (s', p1, p2) w =
+  if (s' = s) then
+    let r = Random.int (max_v p1 p2) in
+      insert_bits (Int32.of_int (if (r = i) then (r+ 1) else r)) p2 w
+  else w;;
+
+let notsame s1 s2 params w =
+  match params with
+    | (s1', _, p12) -> 
+	if (s1' = s1) then 
+	  match params with
+	    | (s2', _, p22) -> 
+		if (s2' = s2) then
+		  let r1 = Random.int 15 in
+		  let r2 = Random.int 15 in
+		    insert_bits (Int32.of_int r1) p12 
+		      (insert_bits (Int32.of_int (if (r2 = r1) then (r2+ 1) else r2)) p22 w)
+		else w
+	else w
+;;
+
+let notzero s params w =
+  match params with
+    | (s', p1, p2) ->
+	if (s' = s) then 
+	  let is = (Random.int (max_v p1 p2)) in
+	    insert_bits (Int32.of_int (if (is = 0) then (is+ 1) else is)) p2 w
+        else w;;
+
+let gen_tests ps =
+  let fix_bits dec =
+    match dec with
+      | (Shouldbe b, p) -> Insert_bit (b,p)
+      | (Value i, p) -> Insert_bit (i, p)
+      | ((Range _ | Param1 _ | Param1s _ | Nothing), _) -> No_change
+  in
+  let random_bits ps =
+    match ps with
+      | (("n"|"m"|"s"|"d"|"dLo"|"dHi"),_, p2) -> 
+	  Insert_bits (Random.int 16, p2)
+      | (("cond"),_, p2) -> Insert_bits (Random.int 15, p2)
+      | (_, p1, p2) -> 
+	  Insert_bits (Random.int (max_v p1 p2), p2)  
+  in let no_restrict_bits s ps =
+    match ps with
+      | (s', p1, p2) -> if (s' = s) then
+	  No_change
+	else Insert_bits (Random.int (max_v p1 p2), p2)
+  in
+  let proc vs w =
+    match vs with
+      | Insert_bits (i, p) -> insert_bits (Int32.of_int i) p w
+      | Insert_bit (b, p) -> insert_bit (if b then Int32.one else Int32.zero) p w
+      | No_change -> w
+  in 
+  let pos dec =
+    let ar = Array.create (Array.length dec) (Nothing, 0) in
+      for i = 0 to Array.length dec - 1 do
+	ar.(i) <- (dec.(i), i)
+      done;
+    ar
+  in
+  let vparams s w1 =
+    Int32.logor w1
+      (Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) Int32.zero)
+	 (List.fold_right proc (List.map (no_restrict_bits s) (parameters_of ps.fdec)) Int32.zero)) 
+  in
+  let rec gen res w = 
+    match res with
+      | Or (v1, v2) ->  gen v1 (gen v2 w)
+	  (*if Random.bool() then (proc1 v1 w) else (proc1 v2 w)*)
+      | And (v1, v2) -> gen v1 (gen v2 w)
+      | NotPC s -> vparams s (List.fold_right (notpc s) ps.fparams w)
+      | NotV (s, b) -> vparams s(List.fold_right (notv s b) ps.fparams w)
+      | NotVs (s, i) -> vparams s (List.fold_right (notvs s i) ps.fparams w)
+      | NotSame (s1, s2) -> vparams s2 (List.fold_right (notsame s1 s2) ps.fparams w)
+      | NotZero s -> vparams s (List.fold_right (notzero s) ps.fparams w)
+      | NoWritebackDest -> insert_bit Int32.one 21 w
+      | NoRestrict -> 
+	  Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) w)
+	    (List.fold_right proc (List.map random_bits (parameters_of ps.fdec)) w)
+  in match ps.finstr with
+    | _ ->
+	gen (restrict ps) Int32.zero
+    (*| _ -> Int32.zero*)
+;;
+
 let bin_insts out fs =
+  (*for i = 0 to 10 do*)
     output_word out (gen_tests fs)
+  (*done*)
 ;;
 
 let gen_test out pcs decs =
