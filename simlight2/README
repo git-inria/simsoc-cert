@@ -11,7 +11,7 @@ Executing:
 ... displays the available options.
 
 Recommended compilation command when compiled from emacs:
-cd /path/to/simsoc-cert/simlight2 && make && cd ../test && ./check2
+cd /path/to/simsoc-cert/simlight2 && make -j2 && cd ../test && ./check2
 
 
 Known bugs and possible improvements:
@@ -26,8 +26,9 @@ Known bugs and possible improvements:
 - [done] the sequential algorithm of the decoder is slow. It could be improved by a
   "switch" based decoder.
 
-- more specialization may improve performance: S bit, L bit, W bit, condition
-  for B, etc.
+- [done] more specialization may improve performance: S bit, L bit, W bit, and U bit.
+
+- more specialization may improve performance: condition for B, Rd <> PC, etc.
 
 - searching sub-expressions that can be computed at decode time is currently done 
   fully by hand. An automatic analyzer would be helpful.

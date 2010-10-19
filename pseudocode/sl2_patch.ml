@@ -201,13 +201,50 @@ type xprog = {
 
 let union_id x = "g" ^ string_of_int x.xgid;;
 
+(** specialization according to boolean parameters *)
+
+(* Currently, we specialize only on some boolean parameters. It would be interesting
+ * to specialize more and compare the performances. *)
+
+let is_param = function
+  | Codetype.Param1 _ | Codetype.Param1s _ -> true
+  | _ -> false;;
+
+let specialize (fp: fprog) (kps: (string * string) list) : 
+    (fprog * (string * string) list) list =
+  (* create a copy of fp where parameter s (bit n of the encoding) is replaced by v *) 
+  let specbit (n: int) (v: bool) (s: string) (fp, kps) =
+    let vs = if v then "1" else "0" in
+    let dec = Array.copy fp.fdec in dec.(n) <- Codetype.Value v; 
+      {fp with
+         fid = fp.fid^"_"^s^vs;
+         fname = fp.fname^" ("^s^"="^vs^")";
+         finst = replace_exp (Var s) (Num vs) fp.finst;
+         fdec = dec},
+    List.filter (fun (x, _) -> x <> s) kps in
+  let rec specbit_list (n: int) (s: string) = function
+    | hd :: tl ->
+        specbit n true s hd :: specbit n false s hd :: specbit_list n s tl
+    | [] -> [] in
+  let decide_and_spec fpkps (s, n, n') =
+    if n <> n' then fpkps (* specialize only boolean *)
+    else if n < 20 then fpkps (* we do not specialize all booleans parameter *)
+    else (
+      assert (is_param (let fp = fst (List.hd fpkps) in fp.fdec.(n)));
+      try specbit_list n s fpkps with Not_found -> fpkps)
+  in
+    if is_thumb fp then [fp, kps] (* no specialization for thumb mode *)
+    else List.fold_left decide_and_spec [fp, kps] fp.fparams;;
+
+(** from flat programs to extended programs *)
+
 let sizeof t = match t with
   | "uint8_t" | "bool" -> 1
   | "uint16_t" -> 2
   | "uint64_t" -> 8
   | _ -> 4;;
 
-let xprogs_of ps =
+let xprogs_of (ps: fprog list) : xprog list * group list =
   let groups: group list ref = ref [(0, [])] in
   let gid kps cs =
     let ps =
@@ -220,12 +257,15 @@ let xprogs_of ps =
       with Not_found -> match !groups with
         | (n, _) :: _ -> groups := (n+1, ps) :: !groups; n+1
         | [] -> raise (Failure "error while computing group id")
-  in let xprog_of p =
-      let ps, ls = Gencxx.V.vars p.finst in
-      let p', kps, cs = computed_params p ps in
-      let p'' = {p' with finst = remove_cond_passed p'.finst} in
-        {xprog = p''; xps = ps; xls = ls; xcs = cs; xkps = kps; xgid = gid kps cs}
-  in List.rev (List.map xprog_of ps), !groups;;
+  in let xprog_of fp =
+      let ps, ls = Gencxx.V.vars fp.finst in
+      let fp1, kps, cs = computed_params fp ps in
+      let fp2 = {fp1 with finst = remove_cond_passed fp1.finst} in
+      let fpkps = specialize fp2 kps in
+      let aux (fp, kps') = 
+        {xprog = fp; xps = ps; xls = ls; xcs = cs; xkps = kps'; xgid = gid kps' cs}
+      in List.map aux fpkps
+  in List.flatten (List.rev (List.map xprog_of ps)), !groups;;
 
 (** specialization according to the condition field *)
 

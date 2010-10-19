@@ -29,23 +29,24 @@ Generate additional C/C++ code for implementing dynamic translation in Simlight.
  * From this point, we manipulate "flat programs" (cf flatten.ml). The notion of
  * addressing mode has disappeared.
  *
+ * - We remove the Thumb instruction MOV(3), because it is identical to CPY
  * - Where possible, we swap the conjunctions so that the CP15 U bit is tested after
- *   the alignment. This is an optimization try.
+ *   the alignment. This is an optimization try, maybe useless.
  * - We improve the instructions that use the coprocessor (+ disable LDC and STC).
  * - We fix a problem about "address of next instruction".
  * - We compute the list of parameters and variables used by the pseudo-code
  * - We replace some sub-expressions by "computed parameters"
+ * - We specialize the instructions for some boolean parameter values
+ * - We remove the ConditionPassed tests
  * - We compute the list of instruction groups. All instructions in a group have
  *   the same list of parameters
- * - We remove the ConditionPassed tests
  * 
  * From this point, we manipulate extended programs; i.e., flat program with 
  * symbol tables.
  *
- * - We remove the Thumb instruction MOV(3), because it is identical to CPY
  * - We insert the writebacks at the end of the instructions (previously removed
- *   from the addressing mode cases
- * - We specialize some instructions to obtain unconditional variants
+ *   from the addressing mode cases)
+ * - We create the unconditional variants of the conditional instructions
  *
  * Now, the code generation can start.
  *
@@ -151,7 +152,6 @@ let may_branch_prog b (x: xprog) =
         | [] -> l' in
     let combine (b,l) (b',l') = ((b||b'), union l l') in
     let rec inst acc = function
-        (* TODO: LDM(1) can be improved *)
       | Block is -> List.fold_left inst acc is
       | Affect (dst, _) -> combine acc (exp dst)
       | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) ->
@@ -271,13 +271,13 @@ let print_stat k xs =
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
   let pcs': prog list = postpone_writeback pcs in
-  let fs3: fprog list = flatten pcs' decs in
+  let fs4: fprog list = flatten pcs' decs in
+    (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
+  let fs3: fprog list = List.filter (fun f -> f.fid <> "Tb_MOV3") fs4 in
   let fs2: fprog list = List.map swap_u_test fs3 in
   let fs1: fprog list = List.map patch_coproc fs2 in
   let fs: fprog list = List.map patch_addr_of_next_instr fs1 in
-  let (xs2: xprog list), (groups: group list) = xprogs_of fs in
-    (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
-  let xs1: xprog list = List.filter (fun x -> x.xprog.fid <> "Tb_MOV3") xs2 in
+  let (xs1: xprog list), (groups: group list) = xprogs_of fs in
   let xs = insert_writeback xs1 in
   let nocond_xs: xprog list = no_cond_variants xs in
   let all_xs: xprog list = xs@nocond_xs in
