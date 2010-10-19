@@ -240,7 +240,7 @@ end;;
 (*****************************************************************************)
 
 (* replace each expression using f (innermost first) *)
-let ast_exp_map (f: exp -> exp) (i: inst) =
+let ast_map (fi: inst -> inst) (fe: exp -> exp) (i: inst) =
   let rec exp e =
     let e' = match e with
       | If_exp (e1, e2, e3) -> If_exp (exp e1, exp e2, exp e3)
@@ -251,11 +251,12 @@ let ast_exp_map (f: exp -> exp) (i: inst) =
       | Memory (e, s) -> Memory (exp e, s)
       | Coproc_exp (e, s, es) -> Coproc_exp (exp e, s, List.map exp es)
       | x -> x
-    in f e'
+    in fe e'
   and range r = match r with
     | Index e -> Index (exp e)
     | x -> x
-  and inst i = match i with
+  and inst i =
+    let i' = match i with
     | Block is -> Block (List.map inst is)
     | Affect (e1, e2) -> Affect (exp e1, exp e2)
     | If (e, i1, Some i2) -> If (exp e, inst i1, Some (inst i2))
@@ -268,29 +269,20 @@ let ast_exp_map (f: exp -> exp) (i: inst) =
     | Case (e, sis) ->
         Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
     | x -> x
+    in fi i'
   in inst i;;
 
 (* replace expression 'o' by expresssion 'n' in instruction 'i' *)
 let replace_exp (o: exp) (n: exp) (i: inst) =
-  let f e = if e = o then n else e in
-  let i' = ast_exp_map f i in
+  let exp e = if e = o then n else e in
+  let i' = ast_map (fun x -> x) exp i in
     if i = i' then raise Not_found else i';;
 
 (* replace instruction 'o' by instruction 'n' in instruction 'i' *)
 let replace_inst (o: inst) (n: inst) (i: inst) =
-  let count = ref 0 in
-  let rec inst i =
-    if i = o then (count := !count + 1; n) else match i with
-    | Block is -> Block (List.map inst is)
-    | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
-    | If (e, i, None) -> If (e, inst i, None)
-    | While (e, i) -> While (e, inst i)
-    | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
-    | Case (e, sis) ->
-        Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
-    | x -> x
-  in let i' = inst i in
-    if !count = 0 then raise Not_found else i';;
+  let inst e = if e = o then n else e in
+  let i' = ast_map inst (fun x -> x) i in
+    if i = i' then raise Not_found else i';;
 
 (* Check whether a sub-tree of the expression e satisifies pe (expression
  * predicate) of pr (range predicate) *)

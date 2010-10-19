@@ -41,21 +41,15 @@ let postpone_writeback (pcs: prog list) =
   let init_new =  Block [
     Affect (Var "new_Rn", Hex "0xBAD"); (* avoid g++ warnings *)
     Affect (Var "old_mode", Fun ("get_current_mode", []))] in
-  let prog p =
-    let rec inst = function
-      | Block is -> Block (List.map inst is)
+  let prog p = 
+    let inst = function
       | Affect (Reg (Var "n", None), e) -> Affect (Var "new_Rn", e)
-      | If (c, i, None) -> If (c, inst i, None)
-      | If (c, i, Some i') -> If (c, inst i, Some (inst i'))
-      | While (e, i) -> While (e, inst i)
-      | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
-      | Case (e, sis) -> Case (e, List.map (fun (s,i) -> (s, inst i)) sis)
       | i -> i
     in match p.pkind with
       | InstARM | InstThumb -> p
       | Mode _ ->
           let i = remove_cond_passed p.pinst in
-          let i' = inst i in 
+          let i' = ast_map inst (fun x -> x) i in 
             if i = i' then {p with pinst = i}
             else {p with pinst = merge_inst init_new i'}
   in List.map prog pcs;;
@@ -84,27 +78,20 @@ let patch_coproc (p: fprog) =
     let args = function
       | "MCR" | "MRC" -> [Var "opcode_1"; Var "opcode_2"; Var "CRn"; Var "CRm"]
       | _ -> [] in
-    let rec inst = function
-      | Block is -> Block (List.map inst is)
-      | If (e, i1, Some i2) -> If (e, inst i1, Some (inst i2))
-      | If (e, i, None) -> If (e, inst i, None)
-      | While (e, i) -> While (e, inst i)
-      | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
-      | Case (e, sis) ->
-          Case (e, List.map (fun (s, i) -> (s, inst i)) sis)
+    let inst = function
       | Coproc (e, s, es) -> Coproc (e, s, args p.finstr @ es)
       | Affect (d, Coproc_exp (e, s, es)) ->
           Affect (d, Coproc_exp (e, s, args p.finstr @ es))
       | i -> i
-    in {p with finst = inst p.finst};; 
+    in {p with finst = ast_map inst (fun x -> x) p.finst};; 
 
 (* test the CP15 U bit after the alignment, because the unaligned case is rare *)
 let swap_u_test (p: fprog) =
-  let aux = function
+  let exp = function
     | BinOp (BinOp (Fun ("CP15_reg1_Ubit", []), "==", Num "0") as u, "and", e) ->
        BinOp (e, "and", u)
     | x -> x
-  in {p with finst = ast_exp_map aux p.finst};;
+  in {p with finst = ast_map (fun x -> x) exp p.finst};;
 
 (** Optimize the sub-expressions that can be computed at decode-store time. *)
 
@@ -210,6 +197,22 @@ let is_param = function
   | Codetype.Param1 _ | Codetype.Param1s _ -> true
   | _ -> false;;
 
+(* Remove some dead code after specialization *)
+let simplify i =
+  let exp = function
+    | If_exp (BinOp (Num a, "==", Num b), e1, e2) ->
+        if a = b then e1 else e2
+    | BinOp (BinOp (Num a, "==", Num b) as e1, "and", e2) ->
+        if a = b then e2 else e1
+    | e -> e
+  and inst = function
+    | If (BinOp (Num a, "==", Num b), i1, Some i2) ->
+        if a = b then i1 else i2
+    | If (BinOp (Num a, "==", Num b), i, None) ->
+        if a = b then i else Norm.nop
+    | i -> i
+  in ast_map inst exp i;;
+
 let specialize (fp: fprog) (kps: (string * string) list) : 
     (fprog * (string * string) list) list =
   (* create a copy of fp where parameter s (bit n of the encoding) is replaced by v *) 
@@ -219,7 +222,7 @@ let specialize (fp: fprog) (kps: (string * string) list) :
       {fp with
          fid = fp.fid^"_"^s^vs;
          fname = fp.fname^" ("^s^"="^vs^")";
-         finst = replace_exp (Var s) (Num vs) fp.finst;
+         finst = simplify (replace_exp (Var s) (Num vs) fp.finst);
          fdec = dec},
     List.filter (fun (x, _) -> x <> s) kps in
   let rec specbit_list (n: int) (s: string) = function
