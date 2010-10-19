@@ -98,10 +98,7 @@ let gen_tests out _ dec =
 
 (*the upper bound of random generation for parameter (s,p1 p2) in general case*)
 let max_v p1 p2 =
-  if p1 > p2 then
-    int_of_float (2.0** (float (p1-p2)))
-  else 1;;
-
+  Int32.to_int (Int32.shift_left Int32.one (p1-p2));;
 
 let restrict p =
 let aux fmode =
@@ -112,7 +109,7 @@ let aux fmode =
 	NotPC "m"
     | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
 	NotPC "Rn"
-    | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
+    | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"M2_Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
 	And (NotPC "Rm", And (NotPC "Rn", NotSame ("Rn", "Rm")))
     | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> And (NotV ("S", true), NotZero "register_list")
     | Some "M5_U" -> NotV ("U", false)
@@ -234,12 +231,12 @@ let gen_tests ps =
       | Or (v1, v2) ->  (*gen v1 (gen v2 w)*)
 	  if Random.bool() then (gen v1 w) else (gen v2 w)
       | And (v1, v2) -> gen v1 (gen v2 w)
-      | NotPC s -> vparams s (List.fold_right (notpc s) ps.fparams w)
-      | NotV (s, b) -> vparams s(List.fold_right (notv s b) ps.fparams w)
-      | NotVs (s, i) -> vparams s (List.fold_right (notvs s i) ps.fparams w)
-      | NotSame (s1, s2) -> vparams s2 (List.fold_right (notsame s1 s2) ps.fparams w)
-      | NotZero s -> vparams s (List.fold_right (notzero s) ps.fparams w)
-      | NoWritebackDest -> insert_bit Int32.one 21 w
+      | NotPC s -> vparams s (List.fold_right (notpc s) (parameters_of ps.fdec) w)
+      | NotV (s, b) -> vparams s(List.fold_right (notv s b)(parameters_of ps.fdec)  w)
+      | NotVs (s, i) -> vparams s (List.fold_right (notvs s i) (parameters_of ps.fdec) w)
+      | NotSame (s1, s2) -> vparams s2 (List.fold_right (notsame s1 s2) (parameters_of ps.fdec)  w)
+      | NotZero s -> vparams s (List.fold_right (notzero s) (parameters_of ps.fdec) w)
+      | NoWritebackDest -> vparams "W" (insert_bit Int32.zero 21 (gen (NotSame ("d", "n")) w))
       | NoRestrict -> 
 	  Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) w)
 	    (List.fold_right proc (List.map random_bits (parameters_of ps.fdec)) w)
