@@ -62,8 +62,8 @@ type vconstraint =
   | NoWritebackDest    (* no write-back with Rd==Rn *)
   | NotSame of string * string (* R<a> <> R<b> *)
   (*| NotLSL0            (* to distinguished between (equivalent?) mode cases *)*)
-  (*| OtherVC of exp     (* Other validy constraints described by a boolean
-   * expression *)*)
+  | OtherVC of exp     (* Other validy constraints described by a boolean
+   * expression *)
   | NotV of string * bool
   | NotVs of string * int
   | And of vconstraint * vconstraint
@@ -107,19 +107,19 @@ let restrict p =
 let aux fmode =
   match fmode with
     | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
-	Or (NotPC "Rd", Or (NotPC "Rm", Or (NotPC "Rn", NotPC "Rs")))
+	And (NotPC "Rd", And (NotPC "Rm", And (NotPC "Rn", NotPC "Rs")))
     | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
 	NotPC "m"
     | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
 	NotPC "Rn"
     | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
-	Or (NotPC "Rm", Or (NotPC "Rn", NotSame ("Rn", "Rm")))
-    | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> Or (NotV ("S", true), NotZero "register_list")
+	And (NotPC "Rm", And (NotPC "Rn", NotSame ("Rn", "Rm")))
+    | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> And (NotV ("S", true), NotZero "register_list")
     | Some "M5_U" -> NotV ("U", false)
     | Some _ | None ->
 	begin match p.finstr with
 	  | "ADC"|"ADD"|"AND" -> NotPC "Rd"
-	  | "CLZ" -> Or (NotPC "m", NotPC "Rd")
+	  | "CLZ" -> And (NotPC "Rm", NotPC "Rd")
 	  | "CPS" ->
 	      Or (And (NotVs ("imod", 0b00), NotV("mmod", false)), 
 		  Or (And (NotVs ("imod",0b01), NotV ("mmod", false)), 
@@ -127,28 +127,28 @@ let aux fmode =
 	  | "LDM1"|"LDM2"|"STM1"|"STM2" -> And (NotPC "Rn", NotZero "register_list")
 	  | "LDM3"|"LDRB" -> NotPC "Rn"
 	  | "LDR"|"STR"|"STRB" -> NoWritebackDest
-	  | "LDRBT" -> Or (NotPC "n", NotSame ("Rd", "Rn"))
-	  | "LDREX" -> Or (NotPC "Rn", NotPC "Rd")
-	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> Or (NotPC "Rd", NoWritebackDest)
-	  | "LDRT"|"STRBT" -> Or (NotPC "Rd", NotSame ("Rd", "Rn"))
-	  | "MCR"|"MCRR"|"MRS"-> NotPC "d"
+	  | "LDRBT" -> And (NotPC "Rn", NotSame ("Rd", "Rn"))
+	  | "LDREX" -> And (NotPC "Rn", NotPC "Rd")
+	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> And (NotPC "Rd", NoWritebackDest)
+	  | "LDRT"|"STRBT" -> And (NotPC "Rd", NotSame ("Rd", "Rn"))
+	  | "MCR"|"MCRR"|"MRS"-> NotPC "Rd"
 	  | "MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS"  -> 
-	       Or (NotPC "Rd", Or (NotPC "Rm", Or (NotPC "Rs", NotPC "Rn")))
-	  | "MRRC" -> Or (NotSame ("Rd", "Rn"), Or (NotPC "Rd", NotPC "Rn"))
-	  | "MUL"  -> Or (NotPC "Rd", Or (NotPC "Rs", NotPC "Rm"))
+	       And (NotPC "Rd", And (NotPC "Rm", And (NotPC "Rs", NotPC "Rn")))
+	  | "MRRC" -> And (NotSame ("Rd", "Rn"), And (NotPC "Rd", NotPC "Rn"))
+	  | "MUL"  -> And (NotPC "Rd", And (NotPC "Rs", NotPC "Rm"))
 	  | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
-	-> Or (NotPC "Rn", Or (NotPC "Rd", NotPC "Rm"))
-	  | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> Or (NotPC "Rd", NotPC "Rm")
+	-> And (NotPC "Rn", And (NotPC "Rd", NotPC "Rm"))
+	  | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> And (NotPC "Rd", NotPC "Rm")
 	  | "RFE" -> NotPC "Rn"
-	  | "SMLAD" -> Or (NotPC "Rd", Or (NotPC "Rm", NotPC "Rs"))
-	  | "SMLAL"-> Or (NotPC "RdHi", Or (NotPC "RdLo", Or (NotPC "Rs", NotPC "Rm")))
-	  | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> Or (NotPC "RdHi", Or (NotPC "RdLo", Or (NotPC "Rs", Or (NotPC "Rm", NotSame ("Rd","Rn")))))
-	  | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> Or (NotPC "Rd", Or (NotPC "Rs", NotPC "Rm"))
-	  | "STREX" -> Or (NotPC "Rn", Or (NotPC "Rd", Or (NotPC "Rm", Or (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
-	  | "STRT"-> NotSame ("d","n")
-	  | "SWP"|"SWPB" -> Or (NotPC "Rn", Or (NotPC "Rd", Or (NotPC "Rm", Or (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
-	  | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> Or (NotPC "Rn", Or (NotPC "Rd", NotPC "Rm"))
-	  | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H" -> Or (NotPC "d", NotPC "Rm")
+	  | "SMLAD" -> And (NotPC "Rd", And (NotPC "Rm", NotPC "Rs"))
+	  | "SMLAL"-> And (NotPC "RdHi", And (NotPC "RdLo", And (NotPC "Rs", NotPC "Rm")))
+	  | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> And (NotPC "RdHi", And (NotPC "RdLo", And (NotPC "Rs", And (NotPC "Rm", NotSame ("Rd","Rn")))))
+	  | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> And (NotPC "Rd", And (NotPC "Rs", NotPC "Rm"))
+	  | "STREX" -> And (NotPC "Rn", And (NotPC "Rd", And (NotPC "Rm", And (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
+	  | "STRT"-> NotSame ("Rd","Rn")
+	  | "SWP"|"SWPB" -> And (NotPC "Rn", And (NotPC "Rd", And (NotPC "Rm", And (NotSame ("Rd","Rm"), NotSame ("Rd","Rn")))))
+	  | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> And (NotPC "Rn", And (NotPC "Rd", NotPC "Rm"))
+	  | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXT H" -> And (NotPC "d", NotPC "Rm")
 	  | _ -> NoRestrict
 	end
 in aux p.fmode 
@@ -231,8 +231,8 @@ let gen_tests ps =
   in
   let rec gen res w = 
     match res with
-      | Or (v1, v2) ->  gen v1 (gen v2 w)
-	  (*if Random.bool() then (proc1 v1 w) else (proc1 v2 w)*)
+      | Or (v1, v2) ->  (*gen v1 (gen v2 w)*)
+	  if Random.bool() then (gen v1 w) else (gen v2 w)
       | And (v1, v2) -> gen v1 (gen v2 w)
       | NotPC s -> vparams s (List.fold_right (notpc s) ps.fparams w)
       | NotV (s, b) -> vparams s(List.fold_right (notv s b) ps.fparams w)
@@ -243,6 +243,7 @@ let gen_tests ps =
       | NoRestrict -> 
 	  Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) w)
 	    (List.fold_right proc (List.map random_bits (parameters_of ps.fdec)) w)
+      | OtherVC _ -> Int32.zero
   in match ps.finstr with
     | _ ->
 	gen (restrict ps) Int32.zero
