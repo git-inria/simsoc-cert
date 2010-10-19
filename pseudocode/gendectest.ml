@@ -57,8 +57,8 @@ type vcon =
 
 type vconstraint =
   | NotPC of string   (* the string must contains the name of parameter *)
-  (*| NotLR of string (* the string must contains the name of parameter *)*)
-  (*| IsEven of string   (* parameter that should contain an even value *)*)
+  | NotLR of string (* the string must contains the name of parameter *)
+  | IsEven of string   (* parameter that should contain an even value *)
   | NoWritebackDest    (* no write-back with Rd==Rn *)
   | NotSame of string * string (* R<a> <> R<b> *)
   (*| NotLSL0            (* to distinguished between (equivalent?) mode cases *)*)
@@ -124,6 +124,7 @@ let aux fmode =
 	  | "LDM1"|"LDM2"|"STM1"|"STM2" -> And (NotPC "Rn", NotZero "register_list")
 	  | "LDM3"|"LDRB" -> NotPC "Rn"
 	  | "LDR"|"STR"|"STRB" -> NoWritebackDest
+	  | "LDRD" | "STRD" -> And (NotLR "Rd", IsEven "Rd")
 	  | "LDRBT" -> And (NotPC "Rn", NotSame ("Rd", "Rn"))
 	  | "LDREX" -> And (NotPC "Rn", NotPC "Rd")
 	  | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> And (NotPC "Rd", NoWritebackDest)
@@ -156,6 +157,10 @@ let notpc s (s', _, p2) w =
   if (s' = s) then insert_bits (Int32.of_int (Random.int 15)) p2 w
   else w;;
 
+let notlr s (s', _, p2) w = 
+  if (s' = s) then insert_bits (Int32.of_int (Random.int 14)) p2 w
+  else w;;
+
 let notv s b (s', _, p2)  w =
   if (s' = s) then insert_bit (if (not b) then Int32.one else Int32.zero) p2 w
   else w;;
@@ -181,13 +186,17 @@ let notsame s1 s2 params w =
 	else w
 ;;
 
-let notzero s params w =
-  match params with
-    | (s', p1, p2) ->
-	if (s' = s) then 
-	  let is = (Random.int (max_v p1 p2)) in
-	    insert_bits (Int32.of_int (if (is = 0) then (is+ 1) else is)) p2 w
-        else w;;
+let notzero s (s', p1, p2) w =
+  if (s' = s) then 
+    let is = (Random.int (max_v p1 p2)) in
+      insert_bits (Int32.of_int (if (is = 0) then (is+ 1) else is)) p2 w
+  else w;;
+
+let iseven s (s', p1, p2) w =
+  if (s' = s) then 
+    let is = (Random.int (max_v p1 p2)) in
+      insert_bits (Int32.of_int ((is/2)*2)) p2 w
+  else w;;
 
 let gen_tests ps =
   let fix_bits dec =
@@ -228,10 +237,11 @@ let gen_tests ps =
   in
   let rec gen res w = 
     match res with
-      | Or (v1, v2) ->  (*gen v1 (gen v2 w)*)
+      | Or (v1, v2) ->
 	  if Random.bool() then (gen v1 w) else (gen v2 w)
       | And (v1, v2) -> gen v1 (gen v2 w)
       | NotPC s -> vparams s (List.fold_right (notpc s) (parameters_of ps.fdec) w)
+      | NotLR s -> vparams s (List.fold_right (notlr s) (parameters_of ps.fdec) w)
       | NotV (s, b) -> vparams s(List.fold_right (notv s b)(parameters_of ps.fdec)  w)
       | NotVs (s, i) -> vparams s (List.fold_right (notvs s i) (parameters_of ps.fdec) w)
       | NotSame (s1, s2) -> vparams s2 (List.fold_right (notsame s1 s2) (parameters_of ps.fdec)  w)
@@ -240,6 +250,7 @@ let gen_tests ps =
       | NoRestrict -> 
 	  Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) w)
 	    (List.fold_right proc (List.map random_bits (parameters_of ps.fdec)) w)
+      | IsEven s -> vparams s (List.fold_right (iseven s) (parameters_of ps.fdec) w)
       | OtherVC _ -> Int32.zero
   in match ps.finstr with
     | _ ->
