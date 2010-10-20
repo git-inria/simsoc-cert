@@ -34,6 +34,8 @@ let rec remove_cond_passed i =
     | If (c, i, Some i') -> If (c, remove_cond_passed i, Some (remove_cond_passed i'))
     | _ -> i;;
 
+(** Writebacks (part 1/2) *)
+ 
 (* Some Load-Store addressing modes modify the address register (Rn)
  * This modification should not happen before the last memory access
  * because a failed memory access cancels this register writeback. *)
@@ -181,8 +183,8 @@ type xprog = {
   xps: (string * string) list; (* parameters *)
   xls: (string * string) list; (* local variables *)
   xcs: (string * string) list; (* computed parameters *)
-  xkps: (string * string) list; (* parameters without the ones replaced
-                                 * by computed prameters *)
+  xips: (string * string) list; (* parameters of the instruction, after replacement
+                                 * of computed parameters *)
   xgid: int; (* id of the group *)
 }
 
@@ -210,6 +212,7 @@ let simplify i =
         if a = b then i1 else i2
     | If (BinOp (Num a, "==", Num b), i, None) ->
         if a = b then i else Norm.nop
+    | Block is -> Block (List.filter (fun i -> not (Norm.is_nop i)) is)
     | i -> i
   in ast_map inst exp i;;
 
@@ -239,6 +242,32 @@ let specialize (fp: fprog) (kps: (string * string) list) :
     if is_thumb fp then [fp, kps] (* no specialization for thumb mode *)
     else List.fold_left decide_and_spec [fp, kps] fp.fparams;;
 
+(** Writebacks (part 2/2) *)
+
+(* Cf. postpone_writeback
+ * We insert the writeback after the last memory access.
+ * Inserting at the end would fail, because the processor mode 
+ * may have changed. *)
+let insert_writeback fp ls kps =
+  let has_writeback =
+    List.mem_assoc "new_Rn" ls &&
+      fp.finstr <> "LDM2" && fp.finstr <> "STM2"
+  in
+    if has_writeback then 
+      let wb = 
+        let aux = match fp.finstr with
+          | "LDM3" -> Proc ("set_reg_m", [Var "n"; Var "old_mode"; Var "new_Rn"])
+          | "SRS" -> Proc ("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"])
+          | _ -> Affect (Reg (Var "n", None), Var "new_Rn")
+        in if List.mem_assoc "W" kps
+          then If (BinOp (Var "W", "==", Num "1"), aux, None)
+          else aux
+      in let inst = function
+        | Block is -> Block (is @ [wb])
+        | _ -> raise (Failure "insert_writeback")
+      in {fp with finst = inst fp.finst}
+    else fp;;
+
 (** from flat programs to extended programs *)
 
 let sizeof t = match t with
@@ -249,56 +278,30 @@ let sizeof t = match t with
 
 let xprogs_of (ps: fprog list) : xprog list * group list =
   let groups: group list ref = ref [(0, [])] in
-  let gid kps cs =
-    let ps =
-      (* fields are sorted according to their size, in order to minimize
-       * padding bytes *)
-      let cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
-      in List.stable_sort cmp (kps @ cs)
-    in
-      try fst (List.find (fun (_, x) -> x = ps) !groups)
-      with Not_found -> match !groups with
-        | (n, _) :: _ -> groups := (n+1, ps) :: !groups; n+1
-        | [] -> raise (Failure "error while computing group id")
+  let gid ps =
+    try fst (List.find (fun (_, x) -> x = ps) !groups)
+    with Not_found -> match !groups with
+      | (n, _) :: _ -> groups := (n+1, ps) :: !groups; n+1
+      | [] -> raise (Failure "error while computing group id")
   in let xprog_of fp =
       let ps, ls = Gencxx.V.vars fp.finst in
       let fp1, kps, cs = computed_params fp ps in
       let fp2 = {fp1 with finst = remove_cond_passed fp1.finst} in
-      let fpkps = specialize fp2 kps in
+      let fp3 = insert_writeback fp2 ls kps in
+      let fpkps = specialize fp3 kps in
       let aux (fp, kps') = 
-        {xprog = fp; xps = ps; xls = ls; xcs = cs; xkps = kps'; xgid = gid kps' cs}
+        let ips = 
+          (* fields are sorted according to their size, in order to minimize
+           * padding bytes *)
+          let cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
+          in List.stable_sort cmp (kps' @ cs)
+        in {xprog = fp; xps = ps; xls = ls; xcs = cs; xips = ips; xgid = gid ips}
       in List.map aux fpkps
   in List.flatten (List.rev (List.map xprog_of ps)), !groups;;
 
 (** specialization according to the condition field *)
 
 let is_conditional (p: xprog) = List.mem_assoc "cond" p.xps;;
-
-let has_writeback (p: xprog) =
-  List.mem_assoc "new_Rn" p.xls &&
-    p.xprog.finstr <> "LDM2" && p.xprog.finstr <> "STM2";;
-
-(* Cf. postpone_writeback
- * We insert the writeback after the last memory access.
- * Inserting at the end would fail, because the processor mode 
- * may have changed. *)
-let insert_writeback (xs: xprog list) =
-  let wb x = 
-    let aux = match x.xprog.finstr with
-      | "LDM3" -> Proc ("set_reg_m", [Var "n"; Var "old_mode"; Var "new_Rn"])
-      | "SRS" -> Proc ("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"])
-      | _ -> Affect (Reg (Var "n", None), Var "new_Rn")
-    in if List.mem_assoc "W" x.xkps
-      then If (BinOp (Var "W", "==", Num "1"), aux, None)
-      else aux
-  in let prog x =
-    if has_writeback x then
-      let inst = function
-        | Block is -> Block (is @ [wb x])
-        | _ -> raise (Failure "insert_writeback")
-      in {x with xprog = {x.xprog with finst = inst x.xprog.finst}}
-    else x
-  in List.map prog xs;;
 
 (* for each instruction with a condition, we generate a variant without the condition *)
 let no_cond_variants xs =
@@ -308,3 +311,20 @@ let no_cond_variants xs =
       {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
     in {x with xprog = p'; xps = List.remove_assoc "cond" x.xps}
   in List.map prog (List.filter is_conditional xs);;
+
+(** Weights *)
+
+(* Weight = how many times a semantics funtion function is used
+ * for some testbed *)
+
+let get_weights xs wf =
+  match wf with 
+    | Some s ->
+        let inc = open_in s in
+        let ws = List.map (fun x -> x, Scanf.fscanf inc " %d" (fun x -> x)) xs in
+          close_in inc;
+          let sort = List.sort (fun (_, w) (_, w') -> compare (-w) (-w'))
+          and t, a = List.partition (fun (x, _) -> is_thumb x.xprog) ws
+          in sort a @ sort t
+    | None -> (* weight of 1 for everybody *)
+        List.map (fun x -> x, 1) xs;;

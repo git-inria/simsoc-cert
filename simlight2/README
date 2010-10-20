@@ -34,3 +34,5 @@ Known bugs and possible improvements:
   fully by hand. An automatic analyzer would be helpful.
 
 - [BUG] coprocessor instructions of the form xxx2 are not managed at all.
+
+- we could add gcc directives for hot and cold semantics functions

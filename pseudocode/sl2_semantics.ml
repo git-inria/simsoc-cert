@@ -230,7 +230,9 @@ and affect (p: xprog) k b dst src =
     | _ -> string b "TODO(\"affect\")";;
 
 (* display a comment with the reference and the full instruction name *)
-let comment b p = bprintf b "/* %s\n * %s */\n" p.xprog.fref p.xprog.fname;;
+let comment b (x, w) =
+  let is_cold = if w = 0 then " [cold]" else "" in
+    bprintf b "/* %s%s\n * %s */\n" x.xprog.fref is_cold x.xprog.fname;;
 
 (* check the instruction condition *)
 let check_cond b p =
@@ -243,9 +245,9 @@ let prog_expanded b (p: xprog) =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xps in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a%a\n}\n"
-      comment p
+      comment (p, 1)
       p.xprog.fid
-      (list "" Gencxx.prog_arg) (p.xkps @ p.xcs)
+      (list "" Gencxx.prog_arg) p.xips
       check_cond p
       (list "" Gencxx.inreg_load) inregs
       (list "" Gencxx.local_decl) p.xls
@@ -257,12 +259,12 @@ let prog_grouped b (p: xprog) =
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b
       "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
-      comment p p.xprog.fid;
+      comment (p, 1) p.xprog.fid;
     let expand b (n, t) =
       bprintf b "  const %s %s = instr->args.%s.%s;\n" t n (union_id p) n
     in
       bprintf b "%a%a%a%a%a\n}\n"
-        (list "" expand) (p.xkps @ p.xcs)
+        (list "" expand) p.xips
         check_cond p
         (list "" Gencxx.inreg_load) inregs
         (list "" Gencxx.local_decl) p.xls
@@ -270,15 +272,15 @@ let prog_grouped b (p: xprog) =
 
 (* Declaration of the functions. This may be printed in a header file (.h) *)
 (* Version 1: The list of arguemetns is expanded *)
-let decl_expanded b (p: xprog) =
+let decl_expanded b (x, w) =
   bprintf b "%aEXTERN_C void slv6_X_%s(struct SLv6_Processor*%a);\n"
-    comment p p.xprog.fid (list "" Gencxx.prog_arg) (p.xkps @ p.xcs);;
+    comment (x, w) x.xprog.fid (list "" Gencxx.prog_arg) x.xips;;
 
 (* Version 2: The arguments are passed in a struct *)
-let decl_grouped b (p: xprog) =
+let decl_grouped b (x, w) =
   bprintf b
     "%aextern void slv6_G_%s(struct SLv6_Processor*, struct SLv6_Instruction*);\n"
-    comment p p.xprog.fid;;
+    comment (x, w) x.xprog.fid;;
 
 (** Generation of all the semantics functions *)
 
@@ -289,8 +291,9 @@ let decl_grouped b (p: xprog) =
  * - decl: a function, either decl_grouped or decl_expanded
  * - prog: a function, either prog_grouped or prog_expanded
  *)
-let semantics_functions bn xs v decl prog =
-  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
+let semantics_functions bn ws v decl prog =
+  let bh = Buffer.create 10000
+  and hot_bc = Buffer.create 10000 and cold_bc = Buffer.create 10000 in
     (* header file *)
     bprintf bh "#ifndef SLV6_ISS_%s_H\n#define SLV6_ISS_%s_H\n\n" v v;
     bprintf bh "#include \"common.h\"\n";
@@ -299,14 +302,22 @@ let semantics_functions bn xs v decl prog =
     bprintf bh "\nBEGIN_SIMSOC_NAMESPACE\n";
     bprintf bh "\nstruct SLv6_Processor;\n";
     bprintf bh "struct SLv6_Instruction;\n";
-    bprintf bh "\n%a" (list "\n" decl) xs;
+    bprintf bh "\n%a" (list "\n" decl) ws;
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
     bprintf bh "\n#endif /* SLV6_ISS_%s_H */\n" v;
-    (* source file *)
-    bprintf bc "#include \"%s_c_prelude.h\"\n" bn;
-    bprintf bc "\n%a" (list "\n" prog) xs;
-    bprintf bc "\nEND_SIMSOC_NAMESPACE\n";
-    let outh = open_out (bn^"_"^v^".h")
-    and outc = open_out (bn^"_"^v^".c") in
-      Buffer.output_buffer outh bh; close_out outh;
-      Buffer.output_buffer outc bc; close_out outc;;
+    (* source files *)
+    let cold_ws, hot_ws = List.partition (fun (_, w) -> w=0) ws in
+    let cold_xs = fst (List.split cold_ws)
+    and  hot_xs = fst (List.split  hot_ws) in
+      bprintf cold_bc "#include \"%s_c_prelude.h\"\n" bn;
+      bprintf cold_bc "\n%a" (list "\n" prog) cold_xs;
+      bprintf cold_bc "\nEND_SIMSOC_NAMESPACE\n";
+      bprintf  hot_bc "#include \"%s_c_prelude.h\"\n" bn;
+      bprintf  hot_bc "\n%a" (list "\n" prog) hot_xs;
+      bprintf  hot_bc "\nEND_SIMSOC_NAMESPACE\n";
+      let outh = open_out (bn^"_"^v^".h")
+      and cold_outc = open_out (bn^"_"^v^".cold.c")
+      and  hot_outc = open_out (bn^"_"^v^".hot.c") in
+        Buffer.output_buffer outh bh; close_out outh;
+        Buffer.output_buffer cold_outc cold_bc; close_out cold_outc;
+        Buffer.output_buffer  hot_outc  hot_bc; close_out  hot_outc;;

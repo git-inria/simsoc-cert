@@ -83,7 +83,7 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     (* Phase B: extract parameters and check validity *)
   let instB b p =
     bprintf b "%astatic %a {\n"
-      comment p DC.instr_prof (k, p.xprog.fid);
+      comment (p, 1) DC.instr_prof (k, p.xprog.fid);
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs 
     and params = p.xprog.fparams in
@@ -151,7 +151,7 @@ module DecExecConfig = struct
   let instr_call b id = bprintf b "try_exec_%s(proc,bincode)" id;;
   let action b (x: xprog) =
     let aux b (s,_) = bprintf b ",%s" s in
-      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) (x.xkps @ x.xcs);;
+      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xips;;
   let return_action = "return found;"
 end;;
 module DecExec = DecoderGenerator(DecExecConfig);;
@@ -176,7 +176,7 @@ module DecStoreConfig = struct
         bprintf b "    instr->args.g0.id = SLV6_%s_NC_ID;\n" x.xprog.fid;
         bprintf b "  else\n  ");
       bprintf b "  instr->args.g0.id = SLV6_%s_ID;\n" x.xprog.fid;
-      bprintf b "%a" (list "" store) (x.xkps @ x.xcs);;
+      bprintf b "%a" (list "" store) x.xips;;
   let return_action = "if (!found) instr->args.g0.id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;

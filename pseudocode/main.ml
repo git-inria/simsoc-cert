@@ -50,6 +50,9 @@ let is_set_output_type, get_output_type, set_output_type =
 let is_set_output_file, get_output_file, set_output_file =
   is_set_get_set "output file" "";;
 
+let is_set_weight_file, get_weight_file, set_weight_file =
+  is_set_get_set "weight file" "";;
+
 (*****************************************************************************)
 (** command line parsing *)
 (*****************************************************************************)
@@ -65,6 +68,8 @@ let rec options() =
   " Take pseudocode instructions as input";
   "-idec", String (fun s -> set_dec_input_file s),
   " Take decoding instructions as input";
+  "-iw", String (fun s -> set_weight_file s),
+  " Take an additional weight file as input (requires -oc4dt)";
   "-check", Unit set_check,
   " Check pseudocode pretty-printer (only with -ipc)";
   "-norm", Unit set_norm,
@@ -186,7 +191,9 @@ let genr_output() =
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
-    | C4dt -> Simlight2.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+    | C4dt ->
+        let wf = if is_set_weight_file() then Some (get_weight_file ()) else None in
+          Simlight2.lib (get_output_file()) (get_pc_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
     | DecTest -> Gendectest.gen_test stdout (get_pc_input()) (get_dec_input());;   
