@@ -39,3 +39,9 @@ parsebincode: parsebincode.ml codetype.cmx
 
 keepsyntax: keepsyntax.ml librap.cmx
 	ocamlopt -pp camlp4o librap.cmx $< -o $@
+
+testoper:
+	./keepoper < arm6inst.txt > resu_keepoper
+
+testbincode:
+	./keepbincode < arm6dec.txt > resu_keepbincode

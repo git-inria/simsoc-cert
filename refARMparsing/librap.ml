@@ -27,7 +27,8 @@ let rec list_of_stream = parser
 let ident =
   let bu = Buffer.create 16 in 
   let rec ident_aux = parser
-    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' as c; s >] -> 
+    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' | '_' as c; s >] -> 
+(*    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' as c; s >] -> *)
         Buffer.add_char bu c; ident_aux s
     | [< >] -> Buffer.contents bu in
   let ident c s = Buffer.clear bu; Buffer.add_char bu c; ident_aux s in
@@ -62,6 +63,7 @@ let rec eat_eol = parser
 (* Reading a header *)
 exception Not_header
 
+(* Sequence of integers separated by 1 dot *)
 let rec seqint1 = parser 
   | [< ''0'..'9'as c; n = horner (valdigit c); l = seqint  >] -> n, l
   | [< >] -> raise Not_header
