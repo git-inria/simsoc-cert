@@ -165,6 +165,14 @@ static inline uint32_t address_of_current_instruction(struct SLv6_Processor *pro
   return proc->regs[15] - 2*inst_size(proc);
 }
 
+static inline uint32_t addr_of_current_instr_arm32(struct SLv6_Processor *proc) {
+  return proc->regs[15] - 8;
+}
+
+static inline uint32_t addr_of_current_instr_arm16(struct SLv6_Processor *proc) {
+  return proc->regs[15] - 4;
+}
+
 static inline bool high_vectors_configured(const struct SLv6_Processor *proc) {
   return CP15_reg1_Vbit(proc->cp15_ptr);
 }

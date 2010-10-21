@@ -278,16 +278,16 @@ let print_stat k xs =
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) (wf: string option) =
   let pcs': prog list = postpone_writeback pcs in
-  let fs4: fprog list = flatten pcs' decs in
+  let fs4: fprog list = List.rev (flatten pcs' decs) in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
   let fs3: fprog list = List.filter (fun f -> f.fid <> "Tb_MOV3") fs4 in
   let fs2: fprog list = List.map swap_u_test fs3 in
   let fs1: fprog list = List.map patch_coproc fs2 in
   let fs: fprog list = List.map patch_addr_of_next_instr fs1 in
-  let (xs: xprog list), (groups: group list) = xprogs_of fs in
-  let nocond_xs: xprog list = no_cond_variants xs in
-  let all_xs: xprog list = xs@nocond_xs in
-  let ws: (xprog * int) list = get_weights all_xs wf in
+  let (xs: xprog list), (groups: group list) = xprogs_of fs wf in
+  let var_xs: xprog list = restricted_variants xs in
+  let all_xs: xprog list =
+    assert (wf <> None || var_xs = []); xs @ var_xs in
   let instr_count = List.length all_xs in
     (* create buffers for header file (bh) and source file (bc) *)
   let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
@@ -340,5 +340,5 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) (wf: string optio
     (* generate the LLVM generator (mode DT3) *)
     llvm_generator bn all_xs groups;
     (* Now, we generate the semantics functions. *)
-    semantics_functions bn ws "expanded" decl_expanded prog_expanded;
-    semantics_functions bn ws "grouped" decl_grouped prog_grouped;;
+    semantics_functions bn all_xs "expanded" decl_expanded prog_expanded;
+    semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;

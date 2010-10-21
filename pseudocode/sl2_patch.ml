@@ -15,6 +15,9 @@ open Ast;;
 open Util;;
 open Flatten;;
 
+(* We specialize all instructions whose weight is strictly greater than ... *)
+let specialization_threshold = 0;;
+
 (* After instantiation of the addressing mode, the condition may be
  * evaluated many times. Moreover, it is always better to test it at the
  * beginning
@@ -163,6 +166,15 @@ let computed_params (p: fprog) (ps: (string*string) list) =
         let inst' = replace_inst o' n' p.finst in
         let p' = {p with finst = inst'} in
           p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
+  else if List.mem_assoc "signed_immed_8" ps ||
+    List.mem_assoc "signed_immed_11" ps then (
+    (* we pre-compute SignExtend##(signed_immed_##) << 1 *)
+      let s = if List.mem_assoc "signed_immed_8" ps then "8" else "11" in
+      let o = BinOp (Fun ("SignExtend"^s, [Var ("signed_immed_"^s)]), "<<", Num "1")
+      and n = Var ("simmed_"^s^"_ext")
+      and remove (s', _) = s' <> ("signed_immed_"^s) in
+      let p' = {p with finst = replace_exp o n p.finst} in
+        p', List.filter remove ps, [(("simmed_"^s^"_ext"), "uint32_t")])
   else p, ps, []
   with Not_found -> p, ps, [];;
 
@@ -172,7 +184,32 @@ let compute_param = function
   | "pc_offset" -> "SignExtend_30(signed_immed_24) << 2"
   | "immed_rotated" -> "rotate_right(immed_8,rotate_imm*2)"
   | "signed_offset_12" -> "(U ? offset_12 : -offset_12)"
+  | "simmed_8_ext" -> "SignExtend8(signed_immed_8) << 1"
+  | "simmed_11_ext" -> "SignExtend11(signed_immed_11) << 1"
   | _ -> raise (Invalid_argument "compute_param");;
+
+(** Weights *)
+
+(* Weight = how many times a semantics funtion function is used
+ * for some testbed *)
+
+let get_weights fs wf =
+  let cmp (_, a) (_, b) = match a, b with
+    | Some a, Some b -> compare (-a) (-b)
+    | _ -> raise (Failure "get_weights, cmp") in
+  match wf with 
+    | Some s ->
+        let inc = open_in s in
+        let ws = List.map (fun f -> f, Scanf.fscanf inc " %d" (fun x -> Some x)) fs in
+          ( try
+              Scanf.fscanf inc " %d" ignore;
+              raise (Invalid_argument "get_weights: the weight file is too long")
+            with End_of_file -> () (* that's the good case *) );
+          close_in inc;
+          let t, a = List.partition (fun (f, _) -> is_thumb f) ws
+          in List.sort cmp a @ List.sort cmp t
+    | None ->
+        List.map (fun f -> f, None) fs;;
 
 (** extended program type allowing to store extra information *)
 
@@ -186,9 +223,17 @@ type xprog = {
   xips: (string * string) list; (* parameters of the instruction, after replacement
                                  * of computed parameters *)
   xgid: int; (* id of the group *)
+  xw: int option; (* weight *)
 }
 
 let union_id x = "g" ^ string_of_int x.xgid;;
+
+let is_hot x = match x.xw with
+  | Some w -> w > specialization_threshold
+  | None -> false;;
+let is_cold x = match x.xw with
+  | Some w -> w <= specialization_threshold
+  | None -> false;;
 
 (** specialization according to boolean parameters *)
 
@@ -216,7 +261,7 @@ let simplify i =
     | i -> i
   in ast_map inst exp i;;
 
-let specialize (fp: fprog) (kps: (string * string) list) : 
+let specialize (w: int option) (fp: fprog) (kps: (string * string) list) : 
     (fprog * (string * string) list) list =
   (* create a copy of fp where parameter s (bit n of the encoding) is replaced by v *) 
   let specbit (n: int) (v: bool) (s: string) (fp, kps) =
@@ -240,7 +285,10 @@ let specialize (fp: fprog) (kps: (string * string) list) :
       try specbit_list n s fpkps with Not_found -> fpkps)
   in
     if is_thumb fp then [fp, kps] (* no specialization for thumb mode *)
-    else List.fold_left decide_and_spec [fp, kps] fp.fparams;;
+    else match w with
+      | Some n when n > specialization_threshold ->
+          List.fold_left decide_and_spec [fp, kps] fp.fparams
+      | _ -> [fp, kps] (* no specialization when the weight is not great enough *)
 
 (** Writebacks (part 2/2) *)
 
@@ -276,55 +324,64 @@ let sizeof t = match t with
   | "uint64_t" -> 8
   | _ -> 4;;
 
-let xprogs_of (ps: fprog list) : xprog list * group list =
+let xprogs_of (fs: fprog list) (wf: string option) : xprog list * group list =
   let groups: group list ref = ref [(0, [])] in
   let gid ps =
     try fst (List.find (fun (_, x) -> x = ps) !groups)
     with Not_found -> match !groups with
       | (n, _) :: _ -> groups := (n+1, ps) :: !groups; n+1
       | [] -> raise (Failure "error while computing group id")
-  in let xprog_of fp =
+  in let xprog_of (fp, w) =
       let ps, ls = Gencxx.V.vars fp.finst in
       let fp1, kps, cs = computed_params fp ps in
       let fp2 = {fp1 with finst = remove_cond_passed fp1.finst} in
       let fp3 = insert_writeback fp2 ls kps in
-      let fpkps = specialize fp3 kps in
+      let fpkps = specialize w fp3 kps in
       let aux (fp, kps') = 
         let ips = 
           (* fields are sorted according to their size, in order to minimize
            * padding bytes *)
           let cmp (_,t) (_,t') = compare (sizeof t) (sizeof t')
           in List.stable_sort cmp (kps' @ cs)
-        in {xprog = fp; xps = ps; xls = ls; xcs = cs; xips = ips; xgid = gid ips}
+        in {xprog = fp; xps = ps; xls = ls; xcs = cs; xips = ips;
+            xgid = gid ips; xw = w}
       in List.map aux fpkps
-  in List.flatten (List.rev (List.map xprog_of ps)), !groups;;
+  in List.flatten (List.map xprog_of (get_weights fs wf)), !groups;;
 
-(** specialization according to the condition field *)
-
-let is_conditional (p: xprog) = List.mem_assoc "cond" p.xps;;
+(** Generation of restricted variants (e.g., cond = AL or immed = 0 *)
 
 (* for each instruction with a condition, we generate a variant without the condition *)
+
+let is_conditional x = List.mem_assoc "cond" x.xps;;
+
+(* this function is used by the decoder generatro too *)
+let no_cond_filter x = is_hot x && is_conditional x && x.xprog.finstr <> "Tb_B1";;
+
 let no_cond_variants xs =
   let prog x =
-    let p = x.xprog in
-    let p' =
-      {p with fid = p.fid^"_NC"; fref = p.fref^"--NC"; fname = p.fname^" (no cond)"}
-    in {x with xprog = p'; xps = List.remove_assoc "cond" x.xps}
-  in List.map prog (List.filter is_conditional xs);;
+    let f = x.xprog in
+    let f' =
+      {f with fid = f.fid^"_NC"; fref = f.fref^"--NC"; fname = f.fname^" (no cond)"}
+    in {x with xprog = f';
+          xps = List.remove_assoc "cond" x.xps;
+          xips = List.remove_assoc "cond" x.xips}
+  in List.map prog (List.filter no_cond_filter xs);;
 
-(** Weights *)
+(* for some instructions with an immediate value, we generate a variant with this
+ * value forced to zero *)
 
-(* Weight = how many times a semantics funtion function is used
- * for some testbed *)
+(* this functrion is used by the decoder generatro too *)
+let no_immed_filter x = List.mem x.xprog.finstr ["Tb_LDR1"; "Tb_LSL1"] && is_hot x;;
 
-let get_weights xs wf =
-  match wf with 
-    | Some s ->
-        let inc = open_in s in
-        let ws = List.map (fun x -> x, Scanf.fscanf inc " %d" (fun x -> x)) xs in
-          close_in inc;
-          let sort = List.sort (fun (_, w) (_, w') -> compare (-w) (-w'))
-          and t, a = List.partition (fun (x, _) -> is_thumb x.xprog) ws
-          in sort a @ sort t
-    | None -> (* weight of 1 for everybody *)
-        List.map (fun x -> x, 1) xs;;
+let no_immed_variants xs =
+  let prog x =
+    let f = x.xprog in
+    let f' =
+      {f with fid = f.fid^"_NI"; fref = f.fref^"--NI"; fname = f.fname^" (no immed)";
+         finst = replace_exp (Var "immed_5") (Num "0") f.finst}
+    in {x with xprog = f';
+          xps = List.remove_assoc "immed_5" x.xps;
+          xips = List.remove_assoc "immed_5" x.xips}
+  in List.map prog (List.filter no_immed_filter xs);;
+
+let restricted_variants xs = no_cond_variants xs @ no_immed_variants xs;;

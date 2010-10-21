@@ -36,4 +36,7 @@ extern bool sl_exec;
 #define END_SIMSOC_NAMESPACE
 #define EXTERN_C extern
 
+#define SLV6_HOT
+#define SLV6_COLD
+
 #endif /* COMMON_H */

@@ -21,8 +21,8 @@ open Printf;;
 
 let implicit_arg = function
   | "ConditionPassed" -> "&proc->cpsr, "
-  | "write_word_as_user" | "write_byte_as_user"
-  | "write_word" | "write_half" | "write_byte" -> "proc->mmu_ptr, "
+  | "slv6_write_word_as_user" | "slv6_write_byte_as_user"
+  | "slv6_write_word" | "slv6_write_half" | "slv6_write_byte" -> "proc->mmu_ptr, "
   | "CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> "proc->cp15_ptr"
   | "set_bit" | "set_field" -> "addr_of_"
   | "InAPrivilegedMode" | "CurrentModeHasSPSR" | "address_of_next_instruction"
@@ -99,7 +99,7 @@ let rec exp (p: xprog) b = function
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (Gencxx.mode m)
   | Var s -> string b s
   | Memory (e, n) ->
-      bprintf b "read_%s%s(proc->mmu_ptr,%a)" (Gencxx.access_type n) (lst p) (exp p) e
+      bprintf b "slv6_read_%s%s(proc->mmu_ptr,%a)" (Gencxx.access_type n) (lst p) (exp p) e
   | Ast.Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
   | Ast.Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (Gencxx.cpsr_flag s)
   | Ast.Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
@@ -225,14 +225,13 @@ and affect (p: xprog) k b dst src =
     | Ast.Range (e1, Bits (n1, n2)) ->
         inst_aux p k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->
-        inst_aux p k b (Proc ("write_" ^ Gencxx.access_type n ^ lst p, [addr; src]))
+        inst_aux p k b (Proc ("slv6_write_" ^ Gencxx.access_type n ^ lst p, [addr; src]))
     | Ast.Range (e, Index n) -> inst_aux p k b (Proc ("set_bit", [e; n; src]))
     | _ -> string b "TODO(\"affect\")";;
 
 (* display a comment with the reference and the full instruction name *)
-let comment b (x, w) =
-  let is_cold = if w = 0 then " [cold]" else "" in
-    bprintf b "/* %s%s\n * %s */\n" x.xprog.fref is_cold x.xprog.fname;;
+let comment b x =
+  bprintf b "/* %s\n * %s */\n" x.xprog.fref x.xprog.fname;;
 
 (* check the instruction condition *)
 let check_cond b p =
@@ -245,10 +244,10 @@ let prog_expanded b (p: xprog) =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] p.xps in
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a%a\n}\n"
-      comment (p, 1)
+      comment p
       p.xprog.fid
       (list "" Gencxx.prog_arg) p.xips
-      check_cond p
+      check_cond p 
       (list "" Gencxx.inreg_load) inregs
       (list "" Gencxx.local_decl) p.xls
       (inst p 2) p.xprog.finst;;
@@ -259,7 +258,7 @@ let prog_grouped b (p: xprog) =
   let inregs = List.filter (fun x -> List.mem x Gencxx.input_registers) ss in
     bprintf b
       "%avoid slv6_G_%s(struct SLv6_Processor *proc, struct SLv6_Instruction *instr) {\n"
-      comment (p, 1) p.xprog.fid;
+      comment p p.xprog.fid;
     let expand b (n, t) =
       bprintf b "  const %s %s = instr->args.%s.%s;\n" t n (union_id p) n
     in
@@ -272,15 +271,21 @@ let prog_grouped b (p: xprog) =
 
 (* Declaration of the functions. This may be printed in a header file (.h) *)
 (* Version 1: The list of arguemetns is expanded *)
-let decl_expanded b (x, w) =
+let decl_expanded b x =
   bprintf b "%aEXTERN_C void slv6_X_%s(struct SLv6_Processor*%a);\n"
-    comment (x, w) x.xprog.fid (list "" Gencxx.prog_arg) x.xips;;
+    comment x x.xprog.fid (list "" Gencxx.prog_arg) x.xips;;
 
 (* Version 2: The arguments are passed in a struct *)
-let decl_grouped b (x, w) =
-  bprintf b
-    "%aextern void slv6_G_%s(struct SLv6_Processor*, struct SLv6_Instruction*);\n"
-    comment (x, w) x.xprog.fid;;
+let decl_grouped b x =
+  let attr =
+    if is_cold x then " SLV6_COLD"
+    else if is_hot x then " SLV6_HOT"
+    else ""
+  in
+    bprintf b "%a/* weight = %s */\n" comment x
+      (match x.xw with Some n -> string_of_int n | None -> "?");
+    bprintf b "extern void slv6_G_%s" x.xprog.fid;
+    bprintf b "(struct SLv6_Processor*, struct SLv6_Instruction*)%s;\n" attr;;
 
 (** Generation of all the semantics functions *)
 
@@ -291,7 +296,7 @@ let decl_grouped b (x, w) =
  * - decl: a function, either decl_grouped or decl_expanded
  * - prog: a function, either prog_grouped or prog_expanded
  *)
-let semantics_functions bn ws v decl prog =
+let semantics_functions bn (xs: xprog list) (v: string) decl prog =
   let bh = Buffer.create 10000
   and hot_bc = Buffer.create 10000 and cold_bc = Buffer.create 10000 in
     (* header file *)
@@ -302,13 +307,11 @@ let semantics_functions bn ws v decl prog =
     bprintf bh "\nBEGIN_SIMSOC_NAMESPACE\n";
     bprintf bh "\nstruct SLv6_Processor;\n";
     bprintf bh "struct SLv6_Instruction;\n";
-    bprintf bh "\n%a" (list "\n" decl) ws;
+    bprintf bh "\n%a" (list "\n" decl) xs;
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
     bprintf bh "\n#endif /* SLV6_ISS_%s_H */\n" v;
     (* source files *)
-    let cold_ws, hot_ws = List.partition (fun (_, w) -> w=0) ws in
-    let cold_xs = fst (List.split cold_ws)
-    and  hot_xs = fst (List.split  hot_ws) in
+    let hot_xs, cold_xs = List.partition is_hot xs in
       bprintf cold_bc "#include \"%s_c_prelude.h\"\n" bn;
       bprintf cold_bc "\n%a" (list "\n" prog) cold_xs;
       bprintf cold_bc "\nEND_SIMSOC_NAMESPACE\n";

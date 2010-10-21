@@ -35,4 +35,6 @@ Known bugs and possible improvements:
 
 - [BUG] coprocessor instructions of the form xxx2 are not managed at all.
 
-- we could add gcc directives for hot and cold semantics functions
+- [done] we could add gcc directives for hot and cold semantics functions
+
+- weights should be updated after specialization, else the hot/cold partition is poor.

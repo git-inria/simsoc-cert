@@ -20,13 +20,13 @@ void destruct_MMU(SLv6_MMU *mmu) {
   free(mmu->mem);
 }
 
-uint8_t read_byte(SLv6_MMU *mmu, uint32_t addr) {
+uint8_t slv6_read_byte(SLv6_MMU *mmu, uint32_t addr) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   DEBUG(printf("read byte %x from %x\n",(uint32_t)mmu->mem[addr-mmu->begin],addr));
   return mmu->mem[addr-mmu->begin];
 }
 
-uint16_t read_half(SLv6_MMU *mmu, uint32_t addr) {
+uint16_t slv6_read_half(SLv6_MMU *mmu, uint32_t addr) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   assert((addr&1)==0 && "misaligned acces");
   union {
@@ -38,7 +38,7 @@ uint16_t read_half(SLv6_MMU *mmu, uint32_t addr) {
   return tmp.half;
 }
 
-uint32_t read_word(SLv6_MMU *mmu, uint32_t addr) {
+uint32_t slv6_read_word(SLv6_MMU *mmu, uint32_t addr) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   assert((addr&3)==0 && "misaligned acces");
   union {
@@ -50,13 +50,13 @@ uint32_t read_word(SLv6_MMU *mmu, uint32_t addr) {
   return tmp.word;
 }
 
-void write_byte(SLv6_MMU *mmu, uint32_t addr, uint8_t data) {
+void slv6_write_byte(SLv6_MMU *mmu, uint32_t addr, uint8_t data) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   mmu->mem[addr-mmu->begin] = data;
   DEBUG(printf("write byte %x to %x\n",(uint32_t) data,addr));
 }
 
-void write_half(SLv6_MMU *mmu, uint32_t addr, uint16_t data) {
+void slv6_write_half(SLv6_MMU *mmu, uint32_t addr, uint16_t data) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   assert((addr&1)==0 && "misaligned acces");
   union {
@@ -68,7 +68,7 @@ void write_half(SLv6_MMU *mmu, uint32_t addr, uint16_t data) {
   DEBUG(printf("write half %x to %x\n",tmp.half,addr));
 }
 
-void write_word(SLv6_MMU *mmu, uint32_t addr, uint32_t data) {
+void slv6_write_word(SLv6_MMU *mmu, uint32_t addr, uint32_t data) {
   assert(mmu->begin<=addr && addr<mmu->end && "out of memory access");
   assert((addr&3)==0 && "misaligned acces");
   union {

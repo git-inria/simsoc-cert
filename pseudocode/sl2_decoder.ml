@@ -83,7 +83,7 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     (* Phase B: extract parameters and check validity *)
   let instB b p =
     bprintf b "%astatic %a {\n"
-      comment (p, 1) DC.instr_prof (k, p.xprog.fid);
+      comment p DC.instr_prof (k, p.xprog.fid);
     (* extract parameters *)
     let vc = Validity.vcs_to_exp p.xprog.fvcs 
     and params = p.xprog.fparams in
@@ -171,10 +171,15 @@ module DecStoreConfig = struct
     let store b (n, _) = 
       bprintf b "  instr->args.%s.%s = %s;\n" (union_id x) n n
     in
-      if is_conditional x then (
+      if no_cond_filter x then (
         bprintf b "  if (cond==SLV6_AL)\n";
         bprintf b "    instr->args.g0.id = SLV6_%s_NC_ID;\n" x.xprog.fid;
-        bprintf b "  else\n  ");
+        bprintf b "  else\n  "
+      ) else if no_immed_filter x then (
+        bprintf b "  if (immed_5==0)\n";
+        bprintf b "    instr->args.g0.id = SLV6_%s_NI_ID;\n" x.xprog.fid;
+        bprintf b "  else\n  "
+      );
       bprintf b "  instr->args.g0.id = SLV6_%s_ID;\n" x.xprog.fid;
       bprintf b "%a" (list "" store) x.xips;;
   let return_action = "if (!found) instr->args.g0.id = SLV6_UNPRED_OR_UNDEF_ID;"

@@ -10,7 +10,7 @@ void elf_write_to_memory(const char *data, size_t start, size_t size) {
   assert(mmu_ptr);
   uint32_t j;
   for (j = 0; j<size; ++j)
-    write_byte(mmu_ptr,start+j,data[j]);
+    slv6_write_byte(mmu_ptr,start+j,data[j]);
 }
 
 void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
@@ -20,7 +20,7 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
   sl_debug = false;
   struct SLv6_Instruction instr;
   for (; a!=ea; a+=4) {
-    const uint32_t bincode = read_word(proc->mmu_ptr,a);
+    const uint32_t bincode = slv6_read_word(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
     instr.args.g0.id = ~0;
     arm_decode_and_store(&instr,bincode);
@@ -38,7 +38,7 @@ void test_decode_thumb(struct SLv6_Processor *proc, struct ElfFile *elf) {
   sl_debug = false;
   struct SLv6_Instruction instr;
   for (; a!=ea; a+=2) {
-    const uint16_t bincode = read_half(proc->mmu_ptr,a);
+    const uint16_t bincode = slv6_read_half(proc->mmu_ptr,a);
     printf("decode %x -> ", bincode);
     instr.args.g0.id = ~0;
     thumb_decode_and_store(&instr,bincode);
@@ -80,10 +80,10 @@ void simulate(struct SLv6_Processor *proc, struct ElfFile *elf) {
   do {
     DEBUG(puts("---------------------"));
     if (proc->cpsr.T_flag) {
-      thumb_bincode = read_half(proc->mmu_ptr,address_of_current_instruction(proc));
+      thumb_bincode = slv6_read_half(proc->mmu_ptr,address_of_current_instruction(proc));
       found = thumb_decode_and_exec(proc,thumb_bincode);
     } else {
-      arm_bincode = read_word(proc->mmu_ptr,address_of_current_instruction(proc));
+      arm_bincode = slv6_read_word(proc->mmu_ptr,address_of_current_instruction(proc));
       found = arm_decode_and_exec(proc,arm_bincode);
     }
     if (!found)

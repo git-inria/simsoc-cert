@@ -30,12 +30,6 @@ all: simlight
 simlight: $(OBJECTS)
 	$(CC) $^ -o $@
 
-slv6_iss_grouped.cold.o: slv6_iss_grouped.cold.c $(HEADERS) Makefile
-	$(CC) -c $(CPPFLAGS) -Wall -Wextra -Wno-unused -Werror -O2 $< -o $@
-
-slv6_iss_grouped.hot.o: slv6_iss_grouped.hot.c $(HEADERS) Makefile
-	$(CC) -c $(CPPFLAGS) -Wall -Wextra -Wno-unused -Werror -O3 $< -o $@
-
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
