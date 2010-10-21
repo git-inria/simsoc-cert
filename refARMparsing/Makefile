@@ -8,8 +8,15 @@ default: $(TARGETS)
 clean:
 	rm -f *.cm* *.o *~ $(TARGETS)
 
-keepoper: keepoper.ml
-	ocamlopt -pp camlp4o $< -o $@
+
+librap.cmx: librap.ml
+	ocamlopt -pp camlp4o -c $< 
+
+librap.cmo: librap.ml
+	ocamlc -pp camlp4o -c $< 
+
+keepoper: keepoper.ml librap.cmx
+	ocamlopt -pp camlp4o librap.cmx $< -o $@
 
 indentation: indentation.ml
 	ocamlopt -pp camlp4o $< -o $@
@@ -17,8 +24,8 @@ indentation: indentation.ml
 oneline_expr: oneline_expr.ml
 	ocamlopt -pp camlp4o $< -o $@
 
-keepbincode: keepbincode.ml
-	ocamlopt -pp camlp4o $< -o $@
+keepbincode: keepbincode.ml librap.cmx
+	ocamlopt -pp camlp4o  librap.cmx $< -o $@
 
 codetype.cmx: codetype.ml
 	ocamlopt -c $< 
