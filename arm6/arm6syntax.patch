@@ -1,30 +1,33 @@
 --- arm6.txt	2010-05-28 15:58:07.000000000 +0800
-+++ arm6syntax.txt	2010-10-21 17:33:51.000000000 +0800
-@@ -20400,7 +20400,6 @@
++++ arm6syntax.txt	2010-10-21 17:38:46.000000000 +0800
+@@ -20400,8 +20400,6 @@
  
  
           Syntax
 -         One of:
- 
+-
           [<Rn>,    +/-<Rm>,   LSL #<shift_imm>]
           [<Rn>,    +/-<Rm>,   LSR #<shift_imm>]
-@@ -20615,7 +20614,6 @@
+          [<Rn>,    +/-<Rm>,   ASR #<shift_imm>]
+@@ -20615,8 +20613,6 @@
  
  
           Syntax
 -         One of:
- 
+-
           [<Rn>,    +/-<Rm>,   LSL #<shift_imm>]!
           [<Rn>,    +/-<Rm>,   LSR #<shift_imm>]!
-@@ -20847,7 +20845,6 @@
+          [<Rn>,    +/-<Rm>,   ASR #<shift_imm>]!
+@@ -20847,8 +20843,6 @@
  
  
           Syntax
 -         One of:
- 
+-
           [<Rn>],   +/-<Rm>,    LSL   #<shift_imm>
           [<Rn>],   +/-<Rm>,    LSR   #<shift_imm>
-@@ -49653,4 +49650,4 @@
+          [<Rn>],   +/-<Rm>,    ASR   #<shift_imm>
+@@ -49653,4 +49647,4 @@
  
  
  Glossary-18   Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.   ARM DDI 0100I
