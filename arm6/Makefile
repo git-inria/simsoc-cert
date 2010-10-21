@@ -30,6 +30,9 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat
 %dec.txt: %.txt %dec.patch
 	cp -a $< $@; patch $@ < $*dec.patch
 
+%syntax.txt: %.txt %syntax.patch
+	cp -a $< $@; patch $@ < $*syntax.patch
+
 %inst.arm: %inst.txt $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/preproc_pseudo.sh $(DIR)/indentation
 	cat $< | $(DIR)/keepoper | $(DIR)/oneline_expr | $(DIR)/preproc_pseudo.sh | $(DIR)/indentation > $@ || (rm -f $@; exit 1)
 
@@ -77,6 +80,12 @@ usage-patch-dec:
 
 patch-dec:
 	diff -u $(PROC).txt $(PROC)dec.txt > $(PROC)dec.patch || exit 0
+
+usage-patch-syntax:
+	echo update $(PROC)syntax.txt to the desired contents, then make patch-syntax
+
+patch-syntax:
+	diff -u $(PROC).txt $(PROC)syntax.txt > $(PROC)syntax.patch || exit 0
 
 usage-patch-exn:
 	echo update $(PROC)exn.txt to the desired contents, then make patch-exn
