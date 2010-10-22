@@ -34,7 +34,7 @@ codetype.cmo: codetype.ml
 	ocamlc -c $< 
 
 parsebincode: parsebincode.ml codetype.cmx
-	ocamlopt -pp camlp4o codetype.cmx parsebincode.ml -o $@
+	ocamlopt -pp camlp4o librap.cmx codetype.cmx parsebincode.ml -o $@
 
 
 keepsyntax: keepsyntax.ml librap.cmx

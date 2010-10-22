@@ -28,7 +28,6 @@ let ident =
   let bu = Buffer.create 16 in 
   let rec ident_aux = parser
     | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' | '_' as c; s >] -> 
-(*    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' as c; s >] -> *)
         Buffer.add_char bu c; ident_aux s
     | [< >] -> Buffer.contents bu in
   let ident c s = Buffer.clear bu; Buffer.add_char bu c; ident_aux s in

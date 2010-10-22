@@ -12,87 +12,25 @@ Parser for binary encoding of instructions
 *)
 
 (* 
-#load "codetype.cmx";; 
+#load "codetype.cmo";; 
 #load "dynlink.cma";; 
 #load "camlp4o.cma";; 
+#load "librap.cmo";;
 ocamlc -pp camlp4o
 *)
 
+module LR = Librap
 module CT = Codetype
-
-(* For testing *)
-let rec list_of_stream = parser
-  | [< 'x; l = list_of_stream >] -> x :: l
-  | [< >] -> []
-
-
-(* Identifiers *)
-let ident =
-  let bu = Buffer.create 16 in 
-  let rec ident_aux = parser
-    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' | '_' as c; s >] -> 
-        Buffer.add_char bu c; ident_aux s
-    | [< >] -> Buffer.contents bu in
-  let ident c s = Buffer.clear bu; Buffer.add_char bu c; ident_aux s in
-  ident
-
-(* Returns full line as string *)
-let take_eol =
-  let bu = Buffer.create 80 in 
-  let rec aux = parser
-    | [< ''\n' >] -> Buffer.contents bu
-    | [< 'c; s >] -> Buffer.add_char bu c; aux s in
-  let take_eol c s = Buffer.clear bu; Buffer.add_char bu c; aux s in
-  take_eol
-
-exception Empty_line_expected
-let skip_empty_line = parser
-    | [< ''\n' >] -> ()
-    | [<  >] -> raise Empty_line_expected
-
-(* integers *)
-
-let valdigit c = int_of_char c - int_of_char '0'
-let rec horner n = parser 
-  | [< '  '0'..'9' as c; s >] -> horner (10 * n + valdigit c) s
-  | [< >] -> n
-
-(* Jumps to eol *)
-let rec eat_eol = parser 
-  | [< ''\n'; s >] -> ()
-  | [< 'c; s >] -> eat_eol s
-
-(* Reading a header *)
-exception Not_header
-
-(* Sequence of integers separated by 1 dot *)
-let rec seqint1 = parser 
-  | [< ''0'..'9'as c; n = horner (valdigit c); l = seqint  >] -> n, l
-  | [< >] -> raise Not_header
-and seqint = parser
-  | [< ''.' ; s  >] -> let n, l = seqint1 s in n :: l
-  | [< >] -> []
-
-let rec title = parser 
-  | [< '' ' ; s >] -> title s
-  | [< ''A'..'Z' | 'a'..'z' as c; s = take_eol c >] -> s
-  | [< >] -> raise Not_header
-
-(* ex. A4.1.2 ADC  *)
-type header = Header of char * int * int list * string
-
-let end_header c = parser
-  | [< n, l = seqint1; t = title >] -> Header (c, n, l, t)
 
 
 let rec header = parser
   | [< '' ' ; s >] -> header s
-  | [< ''A'..'Z' as c; s >] -> end_header c s
+  | [< ''A'..'Z' as c; s >] -> LR.end_header c s
 
 (* Sequence of integers separated by white spaces *)
 exception Not_seq_int_spaces
 let rec seqwhint1 c = parser 
-  | [< n = horner (valdigit c); l = seqwhint  >] -> n :: l
+  | [< n = LR.horner (LR.valdigit c); l = seqwhint  >] -> n :: l
   | [< >] -> raise Not_seq_int_spaces
 and seqwhint = parser
   | [< '' ' ; s  >] -> seqwhint s
@@ -110,7 +48,7 @@ type code_contents =
 
 let rec code_contents = parser
   | [< '' ' ; s >] -> code_contents s
-  | [< '  '0'..'9' | 'a'..'z'| 'A'..'Z' | '_' | '!' as c; id = ident c >] -> 
+  | [< '  '0'..'9' | 'a'..'z'| 'A'..'Z' | '_' | '!' as c; id = LR.ident c >] -> 
       if c = '!' then Onebit (String.sub id 1 (String.length id -1 )) else
 	match id with
 	  | "0" -> B0
@@ -124,14 +62,14 @@ let rec seq_contents = parser
   | [< t = code_contents; l = seq_contents >] -> t :: l
   | [< >] -> []
 
-type instruction = Instruction of header * int list * code_contents list
+type instruction = Instruction of LR.header * int list * code_contents list
 
 let instruction = parser
   | [< h = header;
        li = seqwhint;
-       () = skip_empty_line;
+       () = LR.skip_empty_line;
        lc = seq_contents;
-       () = skip_empty_line
+       () = LR.skip_empty_line
     >] -> Instruction (h, li, lc)
 
 let rec instructions_list = parser
@@ -204,9 +142,9 @@ let build_map lint lcont =
     else raise (Inconsistent (start, lint, lcont, map));
     map
 
-let light = function Header (_, n, l, s) -> (CT.LH (n::l, s))
+let light = function LR.Header (_, n, l, s) -> (CT.LH (n::l, s))
 
-let print_err_header (Header (c, n, l, s)) =
+let print_err_header (LR.Header (c, n, l, s)) =
   Printf.fprintf stderr "Inconsistent %c%i" c n;
   List.iter (fun n -> Printf.fprintf stderr ".%i" n) l;
   Printf.fprintf stderr " %s\n"s
