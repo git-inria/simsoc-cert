@@ -31,43 +31,43 @@ let beforeopdescr = "Shifted register operand value"
 let to_next_Ainstr = LR.to_given_header (LR.filpart 'A')
 
 
-let rec to_contents_instr = parser
-  | [< '' ' ; s >] -> to_contents_instr s
+let rec to_syntax_instr = parser
+  | [< '' ' ; s >] -> to_syntax_instr s
   | [< ''A'..'Z' as c; a = LR.take_eol c; s >] ->
       if a = "Syntax" then ()
-      else to_contents_instr s
-  | [< () = LR.eat_eol; s >] -> to_contents_instr s
+      else to_syntax_instr s
+  | [< () = LR.eat_eol; s >] -> to_syntax_instr s
 
-let rec in_operation = parser 
+let rec in_syntax = parser 
   | [< ''\n'; s >] -> ()
   | [< 'c; a = LR.take_eol c; s >] ->
-    print_endline a; in_operation s
+    print_endline a; in_syntax s
 
 (* Only part A is considered in ARM manual *)
 
 type stop_ou_encore = Stop | Continue | Op of LR.header 
-exception PB_check_then_to_operation_or_next_header
+exception PB_check_then_to_syntax_or_next_header
 
-let rec to_operation_or_next_header h = parser
+let rec to_syntax_or_next_header h = parser
   | [< ba = LR.blanks_alpha; s >] ->
       (match ba with 
       | LR.NH "Syntax" -> Op h
-      | LR.NH _ -> to_operation_or_next_header h s
-      | LR.SH h1 -> check_then_to_operation_or_next_header h1 s )
-  | [< () = LR.eat_eol; s >] -> to_operation_or_next_header h s
-and check_then_to_operation_or_next_header h s = 
-      if LR.filpart 'A' h then to_operation_or_next_header h s
+      | LR.NH _ -> to_syntax_or_next_header h s
+      | LR.SH h1 -> check_then_to_syntax_or_next_header h1 s )
+  | [< () = LR.eat_eol; s >] -> to_syntax_or_next_header h s
+and check_then_to_syntax_or_next_header h s = 
+      if LR.filpart 'A' h then to_syntax_or_next_header h s
       else if LR.filendinstr h then Stop
       else Continue
 
 
 let rec loop_instrs = parser
   | [< h = LR.to_next_header; s >] -> 
-      (match check_then_to_operation_or_next_header h s with
+      (match check_then_to_syntax_or_next_header h s with
 	 | Op h1 -> 
 	     begin
 	       LR.print_header h1;
-	       in_operation s;
+	       in_syntax s;
                loop_instrs s
 	     end
 	 | Stop -> ()

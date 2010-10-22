@@ -31,13 +31,6 @@ let beforeopdescr = "Shifted register operand value"
 let to_next_Ainstr = LR.to_given_header (LR.filpart 'A')
 
 
-let rec to_contents_instr = parser
-  | [< '' ' ; s >] -> to_contents_instr s
-  | [< ''A'..'Z' as c; a = LR.take_eol c; s >] ->
-      if a = "Operation" then ()
-      else to_contents_instr s
-  | [< () = LR.eat_eol; s >] -> to_contents_instr s
-
 let rec in_operation = parser 
   | [< ''\n'; s >] -> in_operation1 s
   | [< 'c; a = LR.take_eol c; s >] -> 
