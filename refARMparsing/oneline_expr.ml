@@ -15,8 +15,11 @@ by detecting lines starting with a binop : +, AND, and, OR, or
 (* 
 #load "dynlink.cma";; 
 #load "camlp4o.cma";; 
+#load "librap.cmo";;
 ocamlc -pp camlp4o
 *)
+
+module LR = Librap
 
 (* For testing *)
 let rec list_of_stream = parser
@@ -24,19 +27,10 @@ let rec list_of_stream = parser
   | [< >] -> []
 
 
-(* Identifiers *)
-let ident =
-  let bu = Buffer.create 16 in 
-  let rec ident_aux = parser
-    | [< '  'a'..'z'| 'A'..'Z' | '0'..'9' as c; s >] -> 
-        Buffer.add_char bu c; ident_aux s
-    | [< >] -> Buffer.contents bu in
-  let ident c s = Buffer.clear bu; Buffer.add_char bu c; ident_aux s in
-  ident
-
 type op = Char of char | String of string | Nop
 
 (* Full line *)
+(* Different from librap version *)
 (* A \n after a bin op is discarded 
    We assume that there are no trailing blanks
 *)
@@ -49,7 +43,7 @@ let take_eol =
     | [< ''\n' >] -> op, Buffer.contents bu
     | [< '' '; s >] -> Buffer.add_char bu ' '; deb op s
     | [< ''+' | '-' as c; s >] -> Buffer.clear bu; fin (Char c) s 
-    | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = ident c s in 
+    | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = LR.ident c s in 
       (match i with
 	 | "or" | "and" | "OR" | "AND"  as op -> Buffer.clear bu; after_op (String op) s 
 	 | _ -> Buffer.add_string bu i; fin op s
@@ -58,7 +52,7 @@ let take_eol =
   and fin op  = parser
     | [< ''\n' >] -> op, Buffer.contents bu
     | [< ''+' | '-' as c; s >] -> Buffer.add_char bu c; after_op op s 
-    | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = ident c s in 
+    | [< '  'a'..'z' | 'A'..'Z' as c; s >] -> let i = LR.ident c s in 
       (Buffer.add_string bu i;
        match i with
 	 | "or" | "and" | "OR" | "AND"  -> after_op op s

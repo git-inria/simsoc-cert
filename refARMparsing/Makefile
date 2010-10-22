@@ -21,11 +21,11 @@ keepoper: keepoper.ml librap.cmx
 indentation: indentation.ml
 	ocamlopt -pp camlp4o $< -o $@
 
-oneline_expr: oneline_expr.ml
-	ocamlopt -pp camlp4o $< -o $@
+oneline_expr: oneline_expr.ml librap.cmx
+	ocamlopt -pp camlp4o librap.cmx $< -o $@
 
 keepbincode: keepbincode.ml librap.cmx
-	ocamlopt -pp camlp4o  librap.cmx $< -o $@
+	ocamlopt -pp camlp4o librap.cmx $< -o $@
 
 codetype.cmx: codetype.ml
 	ocamlopt -c $< 
@@ -33,7 +33,7 @@ codetype.cmx: codetype.ml
 codetype.cmo: codetype.ml
 	ocamlc -c $< 
 
-parsebincode: parsebincode.ml codetype.cmx
+parsebincode: parsebincode.ml librap.cmx codetype.cmx 
 	ocamlopt -pp camlp4o librap.cmx codetype.cmx parsebincode.ml -o $@
 
 
