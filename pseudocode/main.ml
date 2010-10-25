@@ -36,8 +36,6 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
-let set_s i = Random.init i;;
-
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
