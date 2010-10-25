@@ -1,3 +1,5 @@
+(* efficiency problem related to termination checker in 8.2,
+solved in 8.3 *)
 
 Require Import Bool.
 
