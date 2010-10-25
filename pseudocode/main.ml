@@ -36,6 +36,8 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
+let set_s i = Random.init i;;
+
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
@@ -52,6 +54,9 @@ let is_set_output_file, get_output_file, set_output_file =
 
 let is_set_weight_file, get_weight_file, set_weight_file =
   is_set_get_set "weight file" "";;
+
+let is_set_seed, get_seed, set_seed =
+  is_set_get_set "test generator seed" 0;;
 
 (*****************************************************************************)
 (** command line parsing *)
@@ -86,6 +91,8 @@ let rec options() =
   " Output Coq decoder (requires -idec)";
   "-otest", Unit (fun () -> set_norm(); set_output_type DecTest),
   " Output test for Coq and Simlight decoders, in binary format (requires -idec)";
+  "-s", Int (fun i -> set_seed i),
+  " Set the seed to initialize the test generator";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
@@ -117,9 +124,7 @@ let parse_args() =
           error "option -ocoq-dec incompatible with -ipc"
         else ignore (get_dec_input_file())
     | DecTest ->
-        (*if is_set_pc_input_file() then
-          error "option -otest incompatible with -ipc"
-        else*)ignore(get_pc_input_file()); ignore (get_dec_input_file())
+	ignore(get_pc_input_file()); ignore (get_dec_input_file())
 ;;
 
 (*****************************************************************************)
@@ -196,7 +201,8 @@ let genr_output() =
           Simlight2.lib (get_output_file()) (get_pc_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
-    | DecTest -> Gendectest.gen_test stdout (get_pc_input()) (get_dec_input());;   
+    | DecTest -> 
+	Gendectest.gen_test stdout (get_pc_input()) (get_dec_input()) (get_seed ());;   
 
 let main() =
   parse_args();
