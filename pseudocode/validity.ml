@@ -33,6 +33,8 @@ type vconstraint =
   | NotLSL0            (* to distinguished between (equivalent?) mode cases *)
   | Not2lowRegs        (* not (H1 == 0 && H2 == 0), for thumb isntructions *)
   | BLXbit0            (* special constraint for the thumb BLX (1) instruction *)
+  | Or of vconstraint list * vconstraint list
+  | NotV of string * int
   | OtherVC of exp     (* Other validy constraints described by a boolean
                         * expression *)
 
@@ -241,7 +243,7 @@ let get_constraints i =
 
 (* generate an expression that check the constraints *)
 exception Empty_list;;
-let vcs_to_exp vcs =
+let rec vcs_to_exp vcs :Ast.exp option=
   let aux vc = match vc with
     | NotPC s -> BinOp (Var s, "!=", Num "15")
     | NotLR s -> BinOp (Var s, "!=", Num "14")
@@ -268,6 +270,16 @@ let vcs_to_exp vcs =
         let h = BinOp (Var "H", "!=", Bin "0b01") in
         let o1 = BinOp (Var "offset_11", "AND", Num "1") in
           BinOp (h, "or", BinOp (o1, "==", Num "0"))
+    | Or (l1, l2) -> 
+	let a = vcs_to_exp l1 in let b = vcs_to_exp l2 in
+	  begin match a,b with
+	    | None, None -> raise Empty_list
+	    | Some a, Some b -> BinOp (a, "or", b)
+	    | None, Some b -> b
+	    | Some a, None -> a
+	  end
+    | NotV (s, i) -> 
+	BinOp (Var s, "!=", Num (Char.escaped (char_of_int i)))
     | OtherVC e -> e
   in
   let rec auxl vcs = match vcs with
