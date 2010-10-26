@@ -142,8 +142,6 @@ let build_map lint lcont =
     else raise (Inconsistent (start, lint, lcont, map));
     map
 
-let light = function LR.Header (_, n, l, s) -> (CT.LH (n::l, s))
-
 let print_err_header (LR.Header (c, n, l, s)) =
   Printf.fprintf stderr "Inconsistent %c%i" c n;
   List.iter (fun n -> Printf.fprintf stderr ".%i" n) l;
@@ -153,7 +151,7 @@ let rec maplist = function
   | [] -> []
   | Instruction (h, li, lc) :: l -> 
       let k =
-	try let b = build_map li lc in fun q -> (light h, b) :: q 
+	try let b = build_map li lc in fun q -> (LR.light h, b) :: q 
 	with Inconsistent (_, _, _, _) ->
 	  print_err_header h; fun q -> q in
       k (maplist l)
@@ -168,7 +166,7 @@ let rec debug_maplist a = function
   | Instruction (h, li, lc) :: l ->
        match (try OK (build_map li lc) with e -> Exn(e)) with
 	 | Exn (e)  -> e, a
-	 | OK (m) -> debug_maplist ((light h, m) :: a) l
+	 | OK (m) -> debug_maplist ((LR.light h, m) :: a) l
 
 
 (* Returns the intended list of maps,

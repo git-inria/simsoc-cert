@@ -27,14 +27,23 @@ oneline_expr: oneline_expr.ml librap.cmx
 keepbincode: keepbincode.ml librap.cmx
 	ocamlopt -pp camlp4o librap.cmx $< -o $@
 
-codetype.cmx: codetype.ml
-	ocamlopt -c $< 
+codetype.cmx: codetype.ml librap.cmx
+	ocamlopt -c librap.cmx $< 
 
-codetype.cmo: codetype.ml
-	ocamlc -c $< 
+codetype.cmo: codetype.ml librap.cmo
+	ocamlc -c librap.cmo $< 
+
+syntaxtype.cmx: syntaxtype.ml librap.cmx
+	ocamlopt -c librap.cmx $< 
+
+syntaxtype.cmo: syntaxtype.ml librap.cmo
+	ocamlc -c librap.cmo $< 
 
 parsebincode: parsebincode.ml librap.cmx codetype.cmx 
 	ocamlopt -pp camlp4o librap.cmx codetype.cmx parsebincode.ml -o $@
+
+parsesyntax: parsesyntax.ml librap.cmx syntaxtype.cmx 
+	ocamlopt -pp camlp4o librap.cmx syntaxtype.cmx parsesyntax.ml -o $@
 
 
 keepsyntax: keepsyntax.ml librap.cmx
