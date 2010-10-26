@@ -22,16 +22,6 @@ ocamlc -pp camlp4o
 module LR = Librap
 module ST = Syntaxtype
 
-let str = Stream.of_string "+abc"
-
-let x = Stream.peek str
-let y = Stream.peek str
-
-let pa = parser
-  | [< 'c; s >] -> c
-
-let z = pa str
-
 let notspecial c = match c with
   | '<' | '>' | '{' | '}' | '+' | '\n' -> false
   | _ -> true
