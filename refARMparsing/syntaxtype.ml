@@ -12,11 +12,11 @@ Parser for binary encoding of instructions
 *)
 
 type token =
-  | Param of string (* <chaine> *)
+  | Param of string (* <string> *)
   | OptParam of string * string option (* {fixed part, optional parameter} *)
   | PlusMinus (* +/- *)
-  | Const of string (* le reste *)
+  | Const of string (* all other possibilities *)
 
 
-type variant = token list;;
-type syntax = Librap.lightheader (* ref *) * variant list;;
+type variant = token list
+type syntax = Librap.lightheader (* ref *) * variant list

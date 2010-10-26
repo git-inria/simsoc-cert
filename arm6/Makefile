@@ -5,7 +5,7 @@ PROC := arm6
 
 FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
 	$(PROC)exn.arm $(PROC)exn.v \
-	$(PROC)dec.txt $(PROC)dec.dat $(PROC)dec.v $(PROC)test.elf
+	$(PROC)dec.txt $(PROC)dec.dat $(PROC)syntax.dat $(PROC)dec.v $(PROC)test.elf
 
 DIR := ../refARMparsing
 
@@ -16,10 +16,11 @@ GEN := ../pseudocode/main
 .PRECIOUS: $(PROC).txt $(FILES)
 
 default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
-testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.txt
-	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.txt.ref $(PROC)syntax.txt
+testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)syntax.txt
+	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.txt.ref $(PROC)syntax.dat $(PROC)syntax.txt
 	diff $(PROC)inst.arm.ref $(PROC)inst.arm
 	diff $(PROC)dec.dat.ref $(PROC)dec.dat
+	diff $(PROC)syntax.dat.ref $(PROC)syntax.dat
 	diff $(PROC)syntax.txt.ref $(PROC)syntax.txt
 
 %.txt: %.pdf
@@ -45,6 +46,9 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.txt
 
 %dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
 	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || (rm -f $@; exit 1)
+
+%syntax.dat: %syntax.txt $(DIR)/keepsyntax $(DIR)/parsesyntax
+	cat $< | $(DIR)/keepsyntax | $(DIR)/parsesyntax > $@ || (rm -f $@; exit 1)
 
 %inst.v: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocoq-inst > $@ || (rm -f $@; exit 1)

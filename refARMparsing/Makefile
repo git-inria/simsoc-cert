@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax
+TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax parsesyntax
 
 default: $(TARGETS)
 
@@ -54,3 +54,6 @@ testoper:
 
 testbincode:
 	./keepbincode < arm6dec.txt > resu_keepbincode
+
+testsyntax:
+	./keepsyntax < arm6syntax.txt > resu_keepsyntax
