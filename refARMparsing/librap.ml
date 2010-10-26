@@ -108,6 +108,10 @@ let print_header = function
 let end_header c = parser
   | [< n, l = seqint1; t = title >] -> Header (c, n, l, t)
 
+let rec header = parser
+  | [< '' ' ; s >] -> header s
+  | [< ''A'..'Z' as c; s >] -> end_header c s
+
 let rec blanks_alpha = parser
   | [< '' ' ; s >] -> blanks_alpha s
   | [< ''A'..'Z' as c; s >] -> 

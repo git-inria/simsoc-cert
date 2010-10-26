@@ -23,10 +23,6 @@ module LR = Librap
 module CT = Codetype
 
 
-let rec header = parser
-  | [< '' ' ; s >] -> header s
-  | [< ''A'..'Z' as c; s >] -> LR.end_header c s
-
 (* Sequence of integers separated by white spaces *)
 exception Not_seq_int_spaces
 let rec seqwhint1 c = parser 
@@ -65,7 +61,7 @@ let rec seq_contents = parser
 type instruction = Instruction of LR.header * int list * code_contents list
 
 let instruction = parser
-  | [< h = header;
+  | [< h = LR.header;
        li = seqwhint;
        () = LR.skip_empty_line;
        lc = seq_contents;
