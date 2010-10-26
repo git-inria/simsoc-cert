@@ -33,7 +33,7 @@ let pa = parser
 let z = pa str
 
 let notspecial c = match c with
-  | '<' | '>' | '{' | '}' | '+' -> false
+  | '<' | '>' | '{' | '}' | '+' | '\n' -> false
   | _ -> true
 
 (* vanilla strings, prefixed by a string and delimited by special characters *)
@@ -102,11 +102,14 @@ let rec syntax = parser
 
 let main s : ST.syntax list = syntax s
 
-(* let () = *)
-(*   let l = main (Stream.of_channel stdin) in *)
-(*   output_value stdout l *)
+(* *)
+
+let () =
+  let l = main (Stream.of_channel stdin) in
+  output_value stdout l
 
 (* test: print the list of headers, so we can check if some instructions are missing *)
+
 (*
 module LH = Lightheadertype
 
