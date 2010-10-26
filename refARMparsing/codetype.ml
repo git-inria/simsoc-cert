@@ -19,5 +19,5 @@ type pos_contents =
   | Range of string * int * int    (* length position, e.g. Rn 4 0 *)
   | Shouldbe of bool               (* false -> SBZ, true -> SBO *)
 
-type maplist_element = (Librap.lightheader * pos_contents array)
+type maplist_element = (Lightheadertype.lightheader * pos_contents array)
 type maplist = maplist_element list

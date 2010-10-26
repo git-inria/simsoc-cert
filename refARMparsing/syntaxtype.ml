@@ -19,4 +19,4 @@ type token =
 
 
 type variant = token list
-type syntax = Librap.lightheader (* ref *) * variant list
+type syntax = Lightheadertype.lightheader (* ref *) * variant list

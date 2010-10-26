@@ -102,9 +102,25 @@ let rec syntax = parser
 
 let main s : ST.syntax list = syntax s
 
-let () = 
+(* let () = *)
+(*   let l = main (Stream.of_channel stdin) in *)
+(*   output_value stdout l *)
+
+(* test: print the list of headers, so we can check if some instructions are missing *)
+(*
+module LH = Lightheadertype
+
+let print_lightheader = function
+    LH.LH (l, s) ->
+      print_int (List.nth l 0); print_char '.';
+      print_int (List.nth l 1); print_char '.';
+      print_int (List.nth l 2); print_char '\t';
+      print_endline s
+
+let () =
   let l = main (Stream.of_channel stdin) in
-  output_value stdout l
+    List.iter (fun (lh,_) -> print_lightheader lh) l
+*)
 
 (* *)
 
