@@ -21,6 +21,8 @@ open Sl2_patch;;
 
 (* TODO: variant selection *)
 
+let printer_args = "FILE *f, struct SLv6_Instruction *instr, uint32_t bincode";;
+
 let string b s = bprintf b "  fprintf(f,\"%s\");\n" s;;
 
 let dstring b f x = bprintf b "  fprintf(f,\"%%s\",%a);\n" f x;;
@@ -31,7 +33,16 @@ let dinthex b f x = bprintf b "  fprintf(f,\"%%x\",%a);\n" f x;;
 
 let dintdec b f x = bprintf b "  fprintf(f,\"%%d\",%a);\n" f x;;
 
-let param s b x = bprintf b "instr->args.%s.%s" (union_id x) s;;
+let param s b x =
+  if x.xprog.finstr = "BKPT" && s = "immed_16" then
+    bprintf b "(get_bits(bincode,19,8)<<4)|get_bits(bincode,3,0)"
+  else if List.mem_assoc s x.xips then bprintf b "instr->args.%s.%s" (union_id x) s
+  else
+    let _s, x, y = try List.find (fun (s',_,_) -> s = s') x.xprog.fparams
+    with Not_found -> raise (Invalid_argument ("no parameter named \""^s^
+                                                 "\" in "^x.xprog.fid))
+    in if x = y then bprintf b "get_bit(bincode,%d)" x
+      else bprintf b "get_bits(bincode,%d,%d)" x y;;
 
 let mode b x = bprintf b "  slv6_print_mode(f,%a);\n" (param "mode") x;;
 
@@ -48,11 +59,15 @@ let printer b (x: xprog) =
               (* REMARK: some examples if the manual use "c" instead of "CR" *)
 
               (* immediate values *)
-          | "immed_16" | "immed_24" | "offset_12" | "offset_8"
+          | "immed_16" | "immed_24" | "offset_12"
           | "immed_3" | "immed_8" | "immed_7" | "immed_5" -> dinthex b (param p) x
           | "opcode_1" | "opcode_2" | "opcode" | "shift_imm" -> dintdec b (param p) x
 
               (* special cases *)
+          | "offset_8" -> (
+              try let b' = Buffer.create 32 in
+                dinthex b' (param p) x; bprintf b "%s" (Buffer.contents b')
+              with Invalid_argument _ -> dinthex b (param "immedHL") x)
           | "target_address" when x.xprog.fkind = ARM -> (* B, BL *)
               string b "PC+#"; dinthex b (param "pc_offset") x (* CHECK ME *)
           | "target_addr" when x.xprog.fkind = ARM -> (* BLX(1) *)
@@ -63,7 +78,7 @@ let printer b (x: xprog) =
               string b "PC+#"; dinthex b (param "simmed_11_ext") x (* CHECK ME *)
           | "target_addr" -> (* Thumb BL, BLX(1) *)
               raise (Failure "Thumb BL, BLX(1) requires a special function")
-          | "coproc" -> string b "p"; dintdec b (param p) x
+          | "coproc" -> string b "p"; dintdec b (param "cp_num") x
           | "effect" -> (* CPS x2 *)
               let (y, z) = match x.xprog.fkind with ARM -> (2,3) | Thumb -> (0,1) in
                 bprintf b "  if (%a==%d) fprintf(f,\"IE\");\n" (param "imod") x y;
@@ -77,7 +92,7 @@ let printer b (x: xprog) =
               bprintf b "  slv6_print_reglist(f,%a);\n" (param "register_list") x
                 (* CHECK POP and PUSH cases *)
           | "fields" -> (* MSRimm, MSRreg *)
-              bprintf b "  if (%a&1) fputc('c',f);\n" (param "fiald_mask") x;
+              bprintf b "  if (%a&1) fputc('c',f);\n" (param "field_mask") x;
               bprintf b "  if (%a&2) fputc('x',f);\n" (param "field_mask") x;
               bprintf b "  if (%a&4) fputc('s',f);\n" (param "field_mask") x;
               bprintf b "  if (%a&8) fputc('f',f);\n" (param "field_mask") x;
@@ -120,7 +135,7 @@ let printer b (x: xprog) =
                 (param "shift_imm") x (param "shift_imm") x
               in string b s; dintdec b aux x
           | "shift" -> (* SSAT, USAT *)
-              bprintf b "  if (%a) {\n  " (param "sh") x;
+              bprintf b "  if (%a) {\n  " (param "shift") x;
               string b s; bprintf b "  "; string b "  ASR #"; bprintf b "  ";
               ( let aux b x = bprintf b "%a ? %a : 32"
                   (param "shift_imm") x (param "shift_imm") x in dintdec b aux x);
@@ -137,46 +152,47 @@ let printer b (x: xprog) =
     | PlusMinus -> 
         let aux b x = bprintf b "%a ? '+' : '-'" (param "U") x in dchar b aux x
   in
-    bprintf b "void slv6_P_%s(FILE *f, struct SLv6_Instruction *instr) {\n"
-      x.xprog.fid;
-    bprintf b "  TODO(\"ASM printing of %s\");\n}\n" x.xprog.fid;;
-(*     if x.xprog.finstr = "Tb_BL" then ( *)
-(*       bprintf b "void slv6_P_%s(FILE *f, struct SLv6_Instruction *instr) {\n" *)
-(*         x.xprog.fid; *)
-(*       bprintf b "  TODO(\"ASM printing of Thumb BL, BLX(1)\");\n}\n" *)
-(*     ) else *)
-(*       match x.xprog.fsyntax with *)
-(*         | [] -> *)
-(*             raise (Invalid_argument ("printer: empty variant list for instruction: "^ *)
-(*                      x.xprog.finstr)) *)
-(*         | [v] ->  *)
-(*             bprintf b "void slv6_P_%s(FILE *f, struct SLv6_Instruction *instr) {\n%a}\n" *)
-(*               x.xprog.fid (list "" token) v *)
-(*         | _ ->  *)
-(*             bprintf b "void slv6_P_%s(FILE *f, struct SLv6_Instruction *instr) {\n%a}\n" *)
-(*               x.xprog.fid (list "" token)  *)
-(*               (List.hd x.xprog.fsyntax);; (\* FIXME: add variant selection *\) *)
+(*     bprintf b "void slv6_P_%s(%s) {\n" printer_args *)
+(*       x.xprog.fid; *)
+(*     bprintf b "  TODO(\"ASM printing of %s\");\n}\n" x.xprog.fid;; *)
+    if x.xprog.finstr = "Tb_BL" then (
+      bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid printer_args;
+      bprintf b "  TODO(\"ASM printing of Thumb BL, BLX(1)\");\n}\n"
+    ) else
+      match x.xprog.fsyntax with
+        | [] ->
+            raise (Invalid_argument ("printer: empty variant list for instruction: "^
+                     x.xprog.finstr))
+        | [v] ->
+            bprintf b "void slv6_P_%s(%s) {\n%a}\n"
+              x.xprog.fid printer_args (list "" _token) v
+        | _ ->
+            bprintf b "void slv6_P_%s(%s) {\n%a}\n"
+              x.xprog.fid printer_args (list "" _token)
+              (List.hd x.xprog.fsyntax);; (* FIXME: add variant selection *)
 
 let printers bn xs =
   ( let bh = Buffer.create 10000 in
       bprintf bh "#ifndef %s_PRINTERS_H\n#define %s_PRINTERS_H\n\n" bn bn;
       bprintf bh "#include <stdio.h>\n#include \"%s.h\"\n\n" bn;
-      bprintf bh "typedef void (*PrintFunction)(FILE*, struct SLv6_Instruction*);\n";
+      bprintf bh "typedef void (*PrintFunction)(%s);\n" printer_args;
       bprintf bh "extern PrintFunction slv6_printers[SLV6_TABLE_SIZE];\n\n";
-      bprintf bh "extern void slv6_print_instr(FILE*, struct SLv6_Instruction*);\n\n";
+      bprintf bh "extern void slv6_print_instr(%s);\n\n" printer_args;
       bprintf bh "#endif /* %s_PRINTERS_H */\n" bn;
       let outh = open_out (bn^"_printers.h") in
         Buffer.output_buffer outh bh; close_out outh
   );
   ( let bc = Buffer.create 10000
     and aux b x = bprintf b "\n  slv6_P_%s" x.xprog.fid in
-      bprintf bc "#include \"%s_printers.h\"\n#include \"slv6_processor.h\"\n\n" bn;
+      bprintf bc "#include \"%s_printers.h\"\n" bn;
+      bprintf bc "#include \"slv6_math.h\"\n";
+      bprintf bc "#include \"slv6_processor.h\"\n\n";
       bprintf bc "%a\n" (list "\n" printer) xs;
       bprintf bc "PrintFunction slv6_printers[SLV6_TABLE_SIZE] = {%a};\n\n"
         (list "," aux) xs;
-      bprintf bc "void slv6_print_instr(FILE *f, struct SLv6_Instruction *instr) {\n";
+      bprintf bc "void slv6_print_instr(%s) {\n" printer_args;
       bprintf bc "  assert(instr->args.g0.id<SLV6_TABLE_SIZE);\n";
-      bprintf bc "  slv6_printers[instr->args.g0.id](f,instr);\n}\n";
+      bprintf bc "  slv6_printers[instr->args.g0.id](f,instr,bincode);\n}\n";
       let outc = open_out (bn^"_printers.c") in
         Buffer.output_buffer outc bc; close_out outc
   );;

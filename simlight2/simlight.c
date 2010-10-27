@@ -29,7 +29,7 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
 /*     printf("%s: %s\n", */
 /*            slv6_instruction_references[instr.args.g0.id], */
 /*            slv6_instruction_names[instr.args.g0.id]); */
-    slv6_print_instr(stdout, &instr); fputc('\n',stdout);
+    slv6_print_instr(stdout, &instr, bincode); fputc('\n',stdout);
   }
 }
 

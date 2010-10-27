@@ -175,6 +175,13 @@ let computed_params (p: fprog) (ps: (string*string) list) =
       and remove (s', _) = s' <> ("signed_immed_"^s) in
       let p' = {p with finst = replace_exp o n p.finst} in
         p', List.filter remove ps, [(("simmed_"^s^"_ext"), "uint32_t")])
+  else if List.mem_assoc "immedH" ps && List.mem_assoc "immedL" ps then (
+    (* we pre-compute (immedH << 4) OR immedL *)
+    let o = BinOp (BinOp (Var "immedH", "<<", Num "4"), "OR", Var "immedL")
+    and n = Var "immedHL"
+    and remove (s', _) = s' <> "immedH" && s' <> "immedL" in
+      let p' = {p with finst = replace_exp o n p.finst} in
+        p', List.filter remove ps, ["immedHL", "uint8_t"])
   else p, ps, []
   with Not_found -> p, ps, [];;
 
@@ -186,6 +193,7 @@ let compute_param = function
   | "signed_offset_12" -> "(U ? offset_12 : -offset_12)"
   | "simmed_8_ext" -> "SignExtend8(signed_immed_8) << 1"
   | "simmed_11_ext" -> "SignExtend11(signed_immed_11) << 1"
+  | "immedHL" -> "(immedH << 4) | immedL"
   | _ -> raise (Invalid_argument "compute_param");;
 
 (** Weights *)
