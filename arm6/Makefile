@@ -17,11 +17,10 @@ GEN := ../pseudocode/main
 
 default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)syntax.txt
-	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.txt.ref $(PROC)syntax.dat $(PROC)syntax.txt
+	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.dat.ref $(PROC)syntax.dat
 	diff $(PROC)inst.arm.ref $(PROC)inst.arm
 	diff $(PROC)dec.dat.ref $(PROC)dec.dat
 	diff $(PROC)syntax.dat.ref $(PROC)syntax.dat
-	diff $(PROC)syntax.txt.ref $(PROC)syntax.txt
 
 %.txt: %.pdf
 	pdftotext -layout $< $@

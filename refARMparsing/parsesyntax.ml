@@ -22,11 +22,11 @@ ocamlc -pp camlp4o
 module LR = Librap
 module ST = Syntaxtype
 
+(* vanilla strings, prefixed by a string and delimited by special characters *)
 let notspecial c = match c with
   | '<' | '>' | '{' | '}' | '+' | '\n' -> false
   | _ -> true
 
-(* vanilla strings, prefixed by a string and delimited by special characters *)
 let string =
   let bu = Buffer.create 16 in 
   let rec string_aux = parser
@@ -35,6 +35,7 @@ let string =
   let string prf s = Buffer.clear bu; Buffer.add_string bu prf; string_aux s in
   string
 
+(* Consumes an expected character at the current position *)
 exception Lacking_char_at_pos of char * int
 let endparam = parser
   | [< '  '>' >] -> ()
@@ -44,33 +45,39 @@ let endopt = parser
   | [< s >] -> raise (Lacking_char_at_pos('}', Stream.count s))
 
 
+(* Identifier followed by '>' *)
 let param = parser
   | [< '  '0'..'9' | 'a'..'z'| 'A'..'Z' | '_' | '!' as c;
        id = LR.ident c;
        () = endparam >] -> id
 
-let plusminus1 = parser
+(* The "+/-" token *)
+let plusslash = parser
   | [< ''-' >] ->  ST.PlusMinus
   | [< s >] -> ST.Const(string "+/" s)
 
-let plusminus = parser
-  | [< ''/' ; r = plusminus1 >] ->  r
+let plus = parser
+  | [< ''/' ; r = plusslash >] ->  r
   | [< s >] -> ST.Const(string "+" s)
 
+(* Optional parameter *)
 let optparam = parser
   | [< ''<' ; p = param >] -> Some(p)
   | [< >] -> None
 
  
+(* *)
+
 let token = parser
   | [< ''<' ; p = param >] -> ST.Param(p)
-  | [< ''+' ; r = plusminus >] -> r
+  | [< ''+' ; r = plus >] -> r
   | [< ''{' ; c = string ""; o = optparam ; () = endopt >] -> ST.OptParam(c,o)
   | [< s >] -> ST.Const(string "" s)
 
 
 (* *)
 
+(* Utility *)
 let rec skip_blancs = parser
    | [< '' ' ; s >] -> skip_blancs s
    | [< >] -> ()
@@ -78,6 +85,10 @@ let rec skip_blancs = parser
 
 (* *)
 
+(*
+Here we assume that a header starts at the very beginning of a line,
+whereas variants start with a blank character. 
+*)
 let rec variant = parser
    | [< ''\n' >] -> []
    | [< t = token ; v = variant >] -> t :: v
