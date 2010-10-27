@@ -33,6 +33,8 @@ let dinthex b f x = bprintf b "  fprintf(f,\"%%x\",%a);\n" f x;;
 
 let dintdec b f x = bprintf b "  fprintf(f,\"%%d\",%a);\n" f x;;
 
+let dint_0is32 b f x = bprintf b "  fprintf(f,\"%%d\",(%a ? %a : 32));\n" f x f x;;
+
 let param s b x =
   if x.xprog.finstr = "BKPT" && s = "immed_16" then
     bprintf b "(get_bits(bincode,19,8)<<4)|get_bits(bincode,3,0)"
@@ -47,7 +49,7 @@ let param s b x =
 let mode b x = bprintf b "  slv6_print_mode(f,%a);\n" (param "mode") x;;
 
 let printer b (x: xprog) =
-  let _token b = function
+  let token b = function
     | Const s -> string b s
     | Param p -> (
         match p with
@@ -61,7 +63,8 @@ let printer b (x: xprog) =
               (* immediate values *)
           | "immed_16" | "immed_24" | "offset_12"
           | "immed_3" | "immed_8" | "immed_7" | "immed_5" -> dinthex b (param p) x
-          | "opcode_1" | "opcode_2" | "opcode" | "shift_imm" -> dintdec b (param p) x
+          | "opcode_1" | "opcode_2" | "opcode" -> dintdec b (param p) x
+          | "shift_imm" -> dint_0is32 b (param p) x
 
               (* special cases *)
           | "offset_8" -> (
@@ -131,14 +134,11 @@ let printer b (x: xprog) =
               bprintf b "  if (%a) {\n  " (param "shift_imm") x; string b s;
               bprintf b "  "; dintdec b (param "shift_imm") x; bprintf b "  }\n"
           | "shift_imm" when x.xprog.finstr = "PKHTB" ->
-              let aux b x = bprintf b "%a ? %a : 32"
-                (param "shift_imm") x (param "shift_imm") x
-              in string b s; dintdec b aux x
+              string b s; dint_0is32 b (param "shift_imm") x
           | "shift" -> (* SSAT, USAT *)
               bprintf b "  if (%a) {\n  " (param "shift") x;
               string b s; bprintf b "  "; string b "  ASR #"; bprintf b "  ";
-              ( let aux b x = bprintf b "%a ? %a : 32"
-                  (param "shift_imm") x (param "shift_imm") x in dintdec b aux x);
+              dint_0is32 b (param "shift_imm") x;
               bprintf b "  } else if (%a) {\n  " (param "shift_imm") x;
               string b s; bprintf b "  "; string b "  LSL #"; bprintf b "  ";
               dintdec b (param "shift_imm") x; bprintf b "  }\n"
@@ -152,24 +152,34 @@ let printer b (x: xprog) =
     | PlusMinus -> 
         let aux b x = bprintf b "%a ? '+' : '-'" (param "U") x in dchar b aux x
   in
-(*     bprintf b "void slv6_P_%s(%s) {\n" printer_args *)
-(*       x.xprog.fid; *)
-(*     bprintf b "  TODO(\"ASM printing of %s\");\n}\n" x.xprog.fid;; *)
     if x.xprog.finstr = "Tb_BL" then (
       bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid printer_args;
       bprintf b "  TODO(\"ASM printing of Thumb BL, BLX(1)\");\n}\n"
-    ) else
-      match x.xprog.fsyntax with
-        | [] ->
-            raise (Invalid_argument ("printer: empty variant list for instruction: "^
-                     x.xprog.finstr))
-        | [v] ->
-            bprintf b "void slv6_P_%s(%s) {\n%a}\n"
-              x.xprog.fid printer_args (list "" _token) v
-        | _ ->
-            bprintf b "void slv6_P_%s(%s) {\n%a}\n"
-              x.xprog.fid printer_args (list "" _token)
-              (List.hd x.xprog.fsyntax);; (* FIXME: add variant selection *)
+    ) else (
+      bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid printer_args;
+      ( match x.xprog.fsyntax with
+          | [] -> raise (Invalid_argument "printer: empty variant list")
+          | [v] -> bprintf b "%a" (list "" token) v
+          | [c; nc] when List.mem (Param "coproc") c ->
+              bprintf b "if (bincode>>28==0xf) {\n%a} else {\n%a}\n"
+              (list "" token) nc (list "" token) c
+          | [e; ne] when x.xprog.fid = "CPS" ->
+              bprintf b "if (%a<=1) {\n%a} else {\n%a}\n" (param "imod") x
+              (list "" token) ne (list "" token) e
+          | [ll; lr; ar; rr; rx] ->
+              bprintf b "switch (%a) {\n" (param "shift") x;
+              bprintf b "case 0: {\n%a} return;\n" (list "" token) ll;
+              bprintf b "case 1: {\n%a} return;\n" (list "" token) lr;
+              bprintf b "case 2: {\n%a} return;\n" (list "" token) ar;
+              bprintf b "case 3: if (%a) {\n%a} else {\n%a} return;\n"
+                (param "shift_imm") x (list "" token) rr (list "" token) rx;
+              bprintf b "}\n"
+          | [cpsr; spsr] when List.mem x.xprog.fid ["MRS"; "MSRimm"; "MSRreg"] ->
+              bprintf b "if (%a) {\n%a} else {\n%a}\n" (param "R") x
+              (list "" token) spsr (list "" token) cpsr              
+          | _ -> raise (Failure ("case not implemented: "^x.xprog.fid)));
+      bprintf b "}\n"
+    );;
 
 let printers bn xs =
   ( let bh = Buffer.create 10000 in
