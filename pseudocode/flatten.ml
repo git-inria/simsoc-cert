@@ -18,6 +18,8 @@ open Ast;;
 open Dec;;
 open Codetype;;
 open Validity;;
+open Syntaxtype;;
+
 
 (* type for "flat" programs *)
 type fkind = ARM | Thumb;;
@@ -30,6 +32,7 @@ type fprog = {
   fkind: fkind; (* ARM or Thumb *)
   fname: string; (* whole name *)
   finst: inst; (* the pseudo-code *)
+  fsyntax: variant list; (* the syntax, with the variants *)
   fdec: pos_contents array; (* coding table *)
   fparams: (string * int * int) list; (* the parameters defined in the original 
                                        * coding tables *)
@@ -55,6 +58,8 @@ let is_thumb f = f.fkind = Thumb;;
       if ConditionPassed(cond) then
         begin ... end
     end
+ * fsyntax = [[Const "ADC"; OptParam ("", Some "cond"); OptParam ("S", None); 
+               Const "  "; Param "Rd"; Const ", "; Param "Rn"; Const ", "; Param "Rm"]]
  * fdec = pos_contents array of
     |31..28|27...21|20|19..16|15..12|11.....4|3..0|
     | cond |0000101|S |  Rn  |  Rd  |00000000| Rm |
@@ -136,17 +141,42 @@ let merge_dec (ipca: pos_contents array) (mpca: pos_contents array) =
       | _ -> raise (Invalid_argument "merge_pos_contents")
   in array_map2 merge_pos_contents mpca ipca;;
 
+(* merge the syntax definitions. Mode parameters are replaced by the mode syntax.
+ * Note that the mode syntax is itself a token list list, so replacing may imply
+ * duplication *)
+let merge_syntax si sm =
+  let mode_vars =
+    ["shifter_operand"; "addressing_mode"; "post_indexed_addressing_mode"] in
+  let aux (t: token) (tll: token list list) : token list list =
+    match t with
+    | Param p when List.mem p mode_vars ->
+        List.flatten (List.map (fun tl -> List.map ((@) tl) tll) sm) 
+    | t -> List.map (fun tl -> t :: tl) tll
+  in List.flatten (List.map (fun tl -> List.fold_right aux tl [[]]) si);;
+
+let test_merge_syntax () =
+  let si = [[Param "AA"; Param "shifter_operand"; Const "X"];
+            [Param "BB"; Param "shifter_operand"; Const "X"]]
+  and sm = [[Param "M1"; Const "Y"];
+            [Param "M2"; Const "Y"]]
+  and sf = [[Param "AA"; Param "M1"; Const "Y"; Const "X"];
+            [Param "AA"; Param "M2"; Const "Y"; Const "X"];
+            [Param "BB"; Param "M1"; Const "Y"; Const "X"];
+            [Param "BB"; Param "M2"; Const "Y"; Const "X"]]
+  in if merge_syntax si sm = sf then () else raise (Failure "test_merge_syntax");;
+
+
 (* Split the list of programs according to their kind *)
-let classify pds =
+let classify psds =
   let is = ref [] and ms = Array.create 5 [] in
   let rec aux = function
-    | (p, d) :: tail -> (
+    | (p, s, d) :: tail -> (
         match p.pkind with
-          | Mode i -> ms.(i-1) <- (p,d) :: ms.(i-1)
-          | InstARM | InstThumb -> is := (p,d) :: !is);
+          | Mode i -> ms.(i-1) <- (p, s, d) :: ms.(i-1)
+          | InstARM | InstThumb -> is := (p, s, d) :: !is);
         aux tail
     | [] -> (!is, ms)
-  in aux pds;;
+  in aux psds;;
 
 (* Patch the W bit for LDRT, LDRBT, STRT, anfd STRBT *)
 (* Verbatim from page A5-29:
@@ -154,11 +184,12 @@ let classify pds =
  * They use a minor modification of the above bit pattern, where bit[21]
  * (the W bit) is 1, not 0 as shown.
  *)
-let patch_W (m: prog * maplist_element): prog * maplist_element =
-  let i, (lh, pca) = m in
-  let pca'= Array.copy pca in
+let patch_W (m: prog * variant list * pos_contents array)
+    : prog * variant list * pos_contents array =
+  let i, s, pca = m in
+  let pca' = Array.copy pca in
     pca'.(21) <- Value true;
-    i, (lh, pca');;
+    i, s, pca';;
 
 (* For SRS and RFE, "register_list" is a constant *)
 let patch_SRS_RFE (p: prog) =
@@ -219,38 +250,44 @@ let rec merge_plist a b =
 (* FIXME: there are 2 defintions for the register_list parameter of LDM(3)
  * currently, we keep only the definition from the addressing mode *)
 
+let rec combine_psd ps ss ds = match ps, ss, ds with
+  | h1::t1, h2::t2, h3::t3 -> (h1, snd h2, snd h3) :: combine_psd t1 t2 t3
+  | [], [], [] -> []
+  | _ -> raise (Invalid_argument "combine_psd");;
+
 (* Main function *)
-let flatten (pcs: prog list) (decs: maplist) : fprog list =
-  let decs' = (* remove encodings *)
+let flatten (ps: prog list) (ss: syntax list) (ds: maplist) : fprog list =
+  let ds' = (* remove encodings *)
     let aux x = add_mode (fst x) <> DecEncoding in
-      List.filter aux decs
+      List.filter aux ds
   in
-  (* IMPORTANT: normalization of pcs must be done before calling flatten,
-   * else List.combine pcs decs' will fail.*)
-  let pds = List.combine pcs decs' in
-  let is, ms = classify pds in
+  (* IMPORTANT: normalization of ps and ss must be done before calling flatten,
+   * else List.combine ps ss ds' will fail.*)
+  let psds = combine_psd ps ss ds' in
+  let is, ms = classify psds in
     (* Flatten one instruction *)
-  let flatten_one (i,(_,d): prog * maplist_element) =
+  let flatten_one (i, s, d: prog * variant list * pos_contents array) =
     
-    let merge_progs (i, d) (i', (_, d')) =
+    let merge_progs (i, s, d) (i', s', d') =
       let idi = str_ident i and idm = str_ident i' in
       let id = idi ^ "_" ^ idm in
       let ref' = i.pref ^ "--" ^ i'.pref in
       let name = str_name i  ^ " -- " ^ str_name i' in
       let inst = merge_inst i'.pinst i.pinst in
+      let syntax = merge_syntax s s' in
       let dec = merge_dec d d' in
       let params = merge_plist (parameters_of d) (parameters_of d') in
       let vcs = get_constraints idi @ get_constraints idm in
       {fid = id; finstr = idi; fmode = Some idm; fref = ref';
        fkind = ARM; fname = name;
-       finst = inst; fdec = dec; fparams = params; fvcs = vcs}
+       finst = inst; fsyntax = syntax; fdec = dec; fparams = params; fvcs = vcs}
     in
       if i.pkind = InstARM then
         match i.pident.iname with
             (* Mode 1: list given in section A3.4 *)
           | "ADC" | "ADD" | "AND" | "BIC" | "EOR" | "ORR" | "MOV" | "MVN"
           | "SUB" | "SBC" | "RSB" | "RSC" | "TST" | "TEQ" | "CMP" | "CMN" ->
-              List.map (merge_progs (i,d)) ms.(0)
+              List.map (merge_progs (i,s,d)) ms.(0)
                 
           (* Verbatim from section A5.2:
            * All nine of the following options are available for LDR, LDRB,
@@ -260,48 +297,48 @@ let flatten (pcs: prog list) (decs: maplist) : fprog list =
            * offset options (the first three in the list) are available.
            *)
           | "LDR" | "LDRB" | "STR" | "STRB" ->
-              List.map (merge_progs (i,d)) ms.(1)
+              List.map (merge_progs (i,s,d)) ms.(1)
           | "LDRT" | "LDRBT" | "STRT" | "STRBT" ->
-              let aux (m,_) = match m.pref with
+              let aux (m,_,_) = match m.pref with
                 | "A5.2.8" | "A5.2.9" | "A5.2.10" -> true
                 | _ -> false
               in let ms = List.filter aux ms.(1)
               in let ms' = List.map patch_W ms
-              in List.map (merge_progs (i,d)) ms'
+              in List.map (merge_progs (i,s,d)) ms'
           | "PLD" ->
-              let aux (m,_) = match m.pref with
+              let aux (m,_,_) = match m.pref with
                 | "A5.2.2" | "A5.2.3" | "A5.2.4" -> true
                 | _ -> false
-              in List.map (merge_progs (i,d)) (List.filter aux ms.(1))
+              in List.map (merge_progs (i,s,d)) (List.filter aux ms.(1))
                    
           (* Mode 3: cf section A5.3 *)
           | "LDRH" | "LDRSH" | "STRH" | "LDRSB" | "LDRD" | "STRD" ->
-              List.map (merge_progs (i,d)) ms.(2)
+              List.map (merge_progs (i,s,d)) ms.(2)
                 
           (* Mode 4: cf section A5.4 *)
           | "LDM" | "STM" ->
-              List.map (merge_progs (i,d)) ms.(3)
+              List.map (merge_progs (i,s,d)) ms.(3)
           | "RFE" ->
-              let aux (i, d) = patch_SRS_RFE i, d in
-                List.map (merge_progs (i, d)) (List.map aux ms.(3))
+              let aux (i, s, d) = patch_SRS_RFE i, s, d in
+                List.map (merge_progs (i,s,d)) (List.map aux ms.(3))
           | "SRS" ->
-              let aux (i, d) = patch_SRS (patch_SRS_RFE i), d in
-                List.map (merge_progs (i, d)) (List.map aux ms.(3))
+              let aux (i, s, d) = patch_SRS (patch_SRS_RFE i), s, d in
+                List.map (merge_progs (i,s,d)) (List.map aux ms.(3))
                   
           (* Mode 5: cf section A5.5 *)
           | "LDC" | "STC" ->
-              List.map (merge_progs (i,d)) ms.(4)
+              List.map (merge_progs (i,s,d)) ms.(4)
                 
           (* other instrucitons *)
           | _ ->
               let id = str_ident i in
                 [{fid = id; finstr = id; fmode = None; fref = i.pref;
-                  fkind = ARM; fname = str_name i; finst = i.pinst;
+                  fkind = ARM; fname = str_name i; finst = i.pinst; fsyntax = s;
                   fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
       else
         let id = str_ident i in
           [{fid = id; finstr = id; fmode = None; fref = i.pref;
-            fkind = Thumb; fname = str_name i; finst = i.pinst;
+            fkind = Thumb; fname = str_name i; finst = i.pinst; fsyntax = s;
             fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
             
   in List.flatten (List.map flatten_one is);;

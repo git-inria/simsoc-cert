@@ -12,6 +12,7 @@
 #include "slv6_status_register.h"
 #include "arm_system_coproc.h"
 #include "arm_not_implemented.h"
+#include <stdio.h>
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -216,6 +217,10 @@ static inline SLv6_Mode get_current_mode(const struct SLv6_Processor *proc) {
 static inline void slv6_hook(struct SLv6_Processor *proc) {
   /* debug_hook(proc); */
 }
+
+extern void slv6_print_reg(FILE *f, uint8_t n);
+
+extern void slv6_print_reglist(FILE *f, uint16_t regs);
 
 END_SIMSOC_NAMESPACE
 

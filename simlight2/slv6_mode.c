@@ -46,4 +46,8 @@ const char *mode2string(SLv6_Mode mode) {
   abort();
 }
 
+void slv6_print_mode(FILE *f, SLv6_Mode m) {
+  fprintf(f,"%s",mode2string(m));
+}
+
 END_SIMSOC_NAMESPACE

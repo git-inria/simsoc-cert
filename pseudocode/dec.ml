@@ -26,6 +26,7 @@ Functions used by the Coq generator and the C++ generator
  *)
 
 open Codetype;; (* from the directory "refARMparsing" *)
+open Lightheadertype;; (* from the directory "refARMparsing" *)
 
 (*convert the name string to list*)
 let str_to_lst s =

@@ -15,7 +15,7 @@ GEN := ../pseudocode/main
 
 .PRECIOUS: $(PROC).txt $(FILES)
 
-default: $(PROC)inst.vo $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
+default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
 testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)syntax.txt
 	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.txt.ref $(PROC)syntax.dat $(PROC)syntax.txt
 	diff $(PROC)inst.arm.ref $(PROC)inst.arm

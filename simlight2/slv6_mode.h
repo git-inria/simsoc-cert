@@ -7,6 +7,7 @@
 #define SLV6_MODE_H
 
 #include "common.h"
+#include <stdio.h>
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -18,6 +19,8 @@ extern bool decode_mode(SLv6_Mode*, uint32_t);
 extern uint32_t encode_mode(SLv6_Mode);
 
 extern const char *mode2string(SLv6_Mode);
+
+extern void slv6_print_mode(FILE *f, SLv6_Mode m);
 
 END_SIMSOC_NAMESPACE
 

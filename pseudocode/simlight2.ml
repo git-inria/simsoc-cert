@@ -68,10 +68,12 @@ open Printf;;
 open Util;;
 open Dec;;
 open Codetype;;
+open Syntaxtype;;
 open Flatten;;
 open Sl2_patch;;
 open Sl2_semantics;;
 open Sl2_decoder;;
+open Sl2_print;;
 
 (** Generation of the instruction type *)
 
@@ -276,9 +278,10 @@ let print_stat k xs =
 (** main function *)
 
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
-let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) (wf: string option) =
+let lib (bn: string) (pcs: prog list) (ss: syntax list)
+    (decs: Codetype.maplist) (wf: string option) =
   let pcs': prog list = postpone_writeback pcs in
-  let fs4: fprog list = List.rev (flatten pcs' decs) in
+  let fs4: fprog list = List.rev (flatten pcs' ss decs) in
     (* remove MOV (3) thumb instruction, because it is redundant with CPY. *)
   let fs3: fprog list = List.filter (fun f -> f.fid <> "Tb_MOV3") fs4 in
   let fs2: fprog list = List.map swap_u_test fs3 in
@@ -339,6 +342,8 @@ let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) (wf: string optio
     dump_sizeof bn groups;
     (* generate the LLVM generator (mode DT3) *)
     llvm_generator bn all_xs groups;
+    (* generate the ASM printers *)
+    printers bn all_xs;
     (* Now, we generate the semantics functions. *)
     semantics_functions bn all_xs "expanded" decl_expanded prog_expanded;
     semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;

@@ -118,4 +118,28 @@ uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m
   abort();
 }
 
+void slv6_print_reg(FILE *f, uint8_t n) {
+  assert(n<16);
+  switch (n) {
+  case 15: fprintf(f,"PC"); return;
+  case 14: fprintf(f,"LR"); return;
+  case 13: fprintf(f,"SP"); return;
+  default: fprintf(f,"R%d",(int)n);
+  }
+}
+
+void slv6_print_reglist(FILE *f, uint16_t regs) {
+  bool first = true;
+  int i;
+  fputc('{',f);
+  for (i = 0; i<16; ++i)
+    if ((regs>>i)&1) {
+      if (first) first = false;
+      else fprintf(f,", ");
+      slv6_print_reg(f,i);
+    }
+  assert(!first);
+  fputc('}',f);
+}
+
 END_SIMSOC_NAMESPACE

@@ -23,6 +23,7 @@ open Printf;;
 open Util;;     (* for the "list" function *)
 open Codetype;; (* from the directory "refARMparsing" *)
 open Dec;;
+open Lightheadertype;;
 
 (*****************************************************************************)
 (** generate the comment above the pattern *)

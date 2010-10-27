@@ -8,6 +8,7 @@
 
 #include "common.h"
 #include "slv6_status_register.h"
+#include <stdio.h>
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -40,6 +41,8 @@ static inline bool ConditionPassed(struct SLv6_StatusRegister *sr, SLv6_Conditio
   }
   assert(false && "invalid cond"); abort();
 }
+
+extern void slv6_print_cond(FILE *f, SLv6_Condition c);
 
 END_SIMSOC_NAMESPACE
 

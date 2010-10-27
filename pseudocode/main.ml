@@ -44,6 +44,9 @@ let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
 let is_set_dec_input_file, get_dec_input_file, set_dec_input_file =
   is_set_get_set "input file name for decoding instructions" "";;
 
+let is_set_syntax_input_file, get_syntax_input_file, set_syntax_input_file =
+  is_set_get_set "input file name for syntax instructions" "";;
+
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
 
@@ -71,6 +74,8 @@ let rec options() =
   " Take pseudocode instructions as input";
   "-idec", String (fun s -> set_dec_input_file s),
   " Take decoding instructions as input";
+  "-isyntax", String (fun s -> set_syntax_input_file s),
+  " Take syntax instructions as input";
   "-iw", String (fun s -> set_weight_file s),
   " Take an additional weight file as input (requires -oc4dt)";
   "-check", Unit set_check,
@@ -82,13 +87,13 @@ let rec options() =
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
   " Output C (implies -norm, requires -ipc and -idec)";
   "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
-  " Output C/C++ for dynamic translation (implies -norm, requires -ipc and -idec)";
+  " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
   "-otest", Unit (fun () -> set_norm(); set_output_type DecTest),
-  " Output test for Coq and Simlight decoders, in binary format (requires -idec)";
+  " Output test for Coq and Simlight decoders, in binary format (requires -ipc, -isyntax, and -idec)";
   "-s", Int (fun i -> set_seed i),
   " Set the seed to initialize the test generator";
   "-v", Unit set_verbose,
@@ -112,7 +117,11 @@ let parse_args() =
         if is_set_dec_input_file() then
           error "option -opc incompatible with -idec"
         else ignore(get_pc_input_file());
-    | Cxx | C4dt -> ignore(get_pc_input_file());  ignore(get_dec_input_file())
+    | Cxx -> ignore(get_pc_input_file()); ignore(get_dec_input_file())
+    | C4dt ->
+        ignore(get_pc_input_file());
+        ignore(get_syntax_input_file());
+        ignore(get_dec_input_file())
     | CoqInst ->
         if is_set_dec_input_file() then
           error "option -ocoq-inst incompatible with -idec"
@@ -122,7 +131,9 @@ let parse_args() =
           error "option -ocoq-dec incompatible with -ipc"
         else ignore (get_dec_input_file())
     | DecTest ->
-	ignore(get_pc_input_file()); ignore (get_dec_input_file())
+        ignore(get_pc_input_file());
+        ignore(get_syntax_input_file());
+        ignore(get_dec_input_file())
 ;;
 
 (*****************************************************************************)
@@ -158,6 +169,7 @@ let parse_file fn =
 
 let get_pc_input, set_pc_input = get_set [];;
 let get_dec_input, set_dec_input = get_set [];;
+let get_syntax_input, set_syntax_input = get_set [];;
 
 let check() =
   if get_check() then
@@ -172,22 +184,33 @@ let norm() =
   if get_norm() then
     let ps = get_pc_input() in
       verbose "normalization... ";
-      let ps = List.map Norm.prog (Norm.split_msr ps) in
+      let ps = List.map Norm.prog (Norm.split_msr_code ps) in
 	if get_check() then
 	  let ps' = List.map Norm.prog ps in
 	    if ps = ps' then verbose "ok\n" else error "failed"
 	else verbose "\n";
 	set_pc_input ps;
-	check();;
+        if is_set_syntax_input_file() then
+          let ss = get_syntax_input() in
+          let ss' = Norm.split_msr_syntax ss in
+            set_syntax_input ss';
+	    check();;
 
 let parse_input_file() =
-  verbose "parsing...\n";
+  if is_set_syntax_input_file() then (
+    verbose "read syntax data...\n";
+    set_syntax_input (input_value (open_in (get_syntax_input_file())))
+  );
   if is_set_pc_input_file() then (
+    verbose "parsing pseudo-code...\n";
     set_pc_input (parse_file (get_pc_input_file()));
     check();
-    norm());
-  if is_set_dec_input_file() then
-    set_dec_input (input_value (open_in (get_dec_input_file())));;
+    norm()
+  );
+  if is_set_dec_input_file() then (
+    verbose "read coding tables...\n";
+    set_dec_input (input_value (open_in (get_dec_input_file())))
+  );;
 
 let genr_output() =
   verbose "code generation...\n";
@@ -196,11 +219,13 @@ let genr_output() =
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
     | C4dt ->
         let wf = if is_set_weight_file() then Some (get_weight_file ()) else None in
-          Simlight2.lib (get_output_file()) (get_pc_input()) (get_dec_input()) wf
+          Simlight2.lib (get_output_file()) (get_pc_input())
+            (get_syntax_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
     | DecTest -> 
-	Gendectest.gen_test stdout (get_pc_input()) (get_dec_input()) (get_seed ());;   
+	Gendectest.gen_test stdout (get_pc_input()) (get_syntax_input())
+          (get_dec_input()) (get_seed ());;   
 
 let main() =
   parse_args();

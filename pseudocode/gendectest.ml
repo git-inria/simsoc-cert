@@ -248,8 +248,8 @@ let bin_insts out fs =
   (*done*)
 ;;
 
-let gen_test out pcs decs seed =
+let gen_test out pcs ss decs seed =
   set_binary_mode_out out true;
   Random.init seed;
-  let fs: fprog list = List.filter is_arm (flatten pcs decs) in
+  let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
     List.iter (bin_insts out) fs;;

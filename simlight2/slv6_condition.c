@@ -28,4 +28,8 @@ const char *condition2string(SLv6_Condition cond) {
   abort();
 }
 
+void slv6_print_cond(FILE *f, SLv6_Condition cond) {
+  fprintf(f,"%s",condition2string(cond));
+}
+
 END_SIMSOC_NAMESPACE

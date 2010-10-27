@@ -2,6 +2,7 @@
 #include "slv6_processor.h"
 #include "common.h"
 #include "elf_loader.h"
+#include "slv6_iss_printers.h"
 #include <string.h>
 
 /* function used by the ELF loader */
@@ -25,9 +26,10 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
     instr.args.g0.id = ~0;
     arm_decode_and_store(&instr,bincode);
     assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
-    printf("%s: %s\n",
-           slv6_instruction_references[instr.args.g0.id],
-           slv6_instruction_names[instr.args.g0.id]);
+/*     printf("%s: %s\n", */
+/*            slv6_instruction_references[instr.args.g0.id], */
+/*            slv6_instruction_names[instr.args.g0.id]); */
+    slv6_print_instr(stdout, &instr); fputc('\n',stdout);
   }
 }
 
