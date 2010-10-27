@@ -71,12 +71,19 @@ let token = parser
 
 (* *)
 
+let rec skip_blancs = parser
+   | [< '' ' ; s >] -> skip_blancs s
+   | [< >] -> ()
+
+
+(* *)
+
 let rec variant = parser
    | [< ''\n' >] -> []
    | [< t = token ; v = variant >] -> t :: v
 
 let rec variants = parser
-   | [< '' ' ; v = variant ; vs = variants >] -> v :: vs
+   | [< '' ' ; () = skip_blancs; v = variant ; vs = variants >] -> v :: vs
    | [< >] -> []
 
 let instruction = parser
