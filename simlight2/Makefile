@@ -24,7 +24,8 @@ GENFILES_MO=slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
             slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
             slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c \
             slv6_iss-llvm_generator.hpp slv6_iss_printers.c \
-            slv6_iss_printers.h
+            slv6_iss_printers.h slv6_iss_printers.cpp \
+            slv6_iss_printers.hpp
 GENFILES=$(GENFILES_MO) slv6_iss.c
 
 all: simlight
