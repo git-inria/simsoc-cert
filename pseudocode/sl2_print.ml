@@ -34,7 +34,7 @@ end;;
 module CPrinterConfig = struct
   let out = "f";;
   let printer_args = "FILE *f, struct SLv6_Instruction *instr, uint32_t bincode";;
-  let string b s = bprintf b "  fprintf(f,\"%s\");\n" s;;
+  let string b s = bprintf b "  fprintf(f,\"%s\");\n" (String.escaped s);;
   let char b c = bprintf b "  fputc('%c',f);\n" c;;
   let dstring b f x = bprintf b "  fprintf(f,\"%%s\",%a);\n" f x;;
   let dchar b f x = bprintf b "  fprintf(f,\"%%c\",%a);\n" f x;;
@@ -47,12 +47,12 @@ module CxxPrinterConfig = struct
   let out = "os";;
   let printer_args =
     "std::ostream &os, struct SLv6_Instruction *instr, uint32_t bincode";;
-  let string b s = bprintf b "  os <<\"%s\";\n" s;;
+  let string b s = bprintf b "  os <<\"%s\";\n" (String.escaped s);;
   let char b c = bprintf b "  os <<'%c';\n" c;;
-  let dstring b f x = bprintf b "  os <<%a;\n" f x;;
+  let dstring b f x = bprintf b "  os <<(%a);\n" f x;;
   let dchar = dstring;;
-  let dinthex b f x = bprintf b "  os <<hex <<%a;\n" f x;;
-  let dintdec b f x = bprintf b "  os <<dec <<%a;\n" f x;;
+  let dinthex b f x = bprintf b "  os <<hex <<(%a);\n" f x;;
+  let dintdec b f x = bprintf b "  os <<dec <<(%a);\n" f x;;
   let dint_0is32 b f x = bprintf b "  os <<dec <<(%a ? %a : 32);\n" f x f x;;
 end;;
 
@@ -156,7 +156,8 @@ module Printer (PC: PrinterConfig) = struct
           
       | OptParam (s, Some p) -> (
           match p with
-            | "cond" -> bprintf b "  if (%a!=SLV6_AL) slv6_print_cond(%s,%a);\n"
+            | "cond" ->
+                bprintf b "  if (%a!=0xe) slv6_print_cond(%s,(SLv6_Condition)%a);\n"
                 (param "cond") x PC.out (param "cond") x
             | "mode" -> (* CPS *)
                 bprintf b "  if (%a) {\n  " (param "mmod") x;
@@ -189,7 +190,8 @@ module Printer (PC: PrinterConfig) = struct
     in
       if x.xprog.finstr = "Tb_BL" then (
         bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid PC.printer_args;
-        bprintf b "  TODO(\"ASM printing of Thumb BL, BLX(1)\");\n}\n"
+        PC.string b "BL, BLX(1): prefix or suffix"; (* FIXME *)
+        bprintf b "}\n"
       ) else (
         bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid PC.printer_args;
         ( match x.xprog.fsyntax with
@@ -267,6 +269,10 @@ let cxx_printers bn xs =
         bprintf bc "#include \"slv6_math.h\"\n";
         bprintf bc "#include \"slv6_processor.h\"\n\n";
         bprintf bc "namespace simsoc {\n\n";
+        bprintf bc "extern void slv6_print_cond(std::ostream&, SLv6_Condition);\n";
+        bprintf bc "extern void slv6_print_mode(std::ostream&, SLv6_Mode);\n";
+        bprintf bc "extern void slv6_print_reg(std::ostream&, uint8_t);\n\n";
+        bprintf bc "extern void slv6_print_reglist(std::ostream&, uint16_t);\n\n";
         bprintf bc "%a\n" (list "\n" CxxPrinter.printer) xs;
         bprintf bc "PrintFunction slv6_printers[SLV6_TABLE_SIZE] = {%a};\n\n"
           (list "," aux) xs;
