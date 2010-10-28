@@ -46,8 +46,8 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 %dec.dat: %dec.txt $(DIR)/keepbincode $(DIR)/parsebincode
 	cat $< | $(DIR)/keepbincode | $(DIR)/parsebincode > $@ || (rm -f $@; exit 1)
 
-%syntax.dat: %syntax.txt $(DIR)/keepsyntax $(DIR)/parsesyntax
-	cat $< | $(DIR)/keepsyntax | $(DIR)/parsesyntax > $@ || (rm -f $@; exit 1)
+%syntax.dat: %syntax.txt $(DIR)/keepsyntax $(DIR)/parsesyntax $(DIR)/blanks_syntax.sh
+	cat $< | $(DIR)/keepsyntax | $(DIR)/blanks_syntax.sh | $(DIR)/parsesyntax > $@ || (rm -f $@; exit 1)
 
 %inst.v: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocoq-inst > $@ || (rm -f $@; exit 1)
