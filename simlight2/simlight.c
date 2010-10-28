@@ -22,7 +22,7 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
   struct SLv6_Instruction instr;
   for (; a!=ea; a+=4) {
     const uint32_t bincode = slv6_read_word(proc->mmu_ptr,a);
-    printf("decode %x -> ", bincode);
+    printf("decode %x ->   \t", bincode);
     instr.args.g0.id = ~0;
     arm_decode_and_store(&instr,bincode);
     assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
