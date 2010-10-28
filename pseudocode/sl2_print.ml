@@ -51,8 +51,8 @@ module CxxPrinterConfig = struct
   let char b c = bprintf b "  os <<'%c';\n" c;;
   let dstring b f x = bprintf b "  os <<(%a);\n" f x;;
   let dchar = dstring;;
-  let dinthex b f x = bprintf b "  os <<hex <<(%a);\n" f x;;
-  let dintdec b f x = bprintf b "  os <<dec <<(%a);\n" f x;;
+  let dinthex b f x = bprintf b "  os <<hex <<(uint32_t)(%a);\n" f x;;
+  let dintdec b f x = bprintf b "  os <<dec <<(int32_t)(%a);\n" f x;;
   let dint_0is32 b f x = bprintf b "  os <<dec <<(%a ? %a : 32);\n" f x f x;;
 end;;
 
@@ -122,10 +122,15 @@ module Printer (PC: PrinterConfig) = struct
                 bprintf b "  if (%a)" (param "I") x; PC.char b 'i';
                 bprintf b "  if (%a)" (param "F") x; PC.char b 'f'
             | "mode" -> (* CPS, SRS *) mode b x
+            | "registers" when x.xprog.fid = "Tb_PUSH" -> (* add LR if R *)
+                bprintf b "  slv6_print_reglist(%s,%a|((uint16_t)%a<<14));\n"
+                  PC.out (param "register_list") x (param "R") x
+            | "registers" when x.xprog.fid = "Tb_POP" -> (* add PC if R *)
+                bprintf b "  slv6_print_reglist(%s,%a|((uint16_t)%a<<15));\n"
+                  PC.out (param "register_list") x (param "R") x
             | "registers" | "registers_without_pc" | "registers_and_pc" -> (* LSM *)
                 bprintf b "  slv6_print_reglist(%s,%a);\n"
                   PC.out (param "register_list") x
-                  (* CHECK POP and PUSH cases *)
             | "fields" -> (* MSRimm, MSRreg *)
                 bprintf b "  if (%a&1)" (param "field_mask") x; PC.char b 'c';
                 bprintf b "  if (%a&2)" (param "field_mask") x; PC.char b 'x';
