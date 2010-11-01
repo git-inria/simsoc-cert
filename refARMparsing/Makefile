@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax parsesyntax
+TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax parsesyntax convert_syntax
 
 default: $(TARGETS)
 
@@ -50,9 +50,11 @@ parsebincode: parsebincode.ml librap.cmx codetype.cmx lightheadertype.cmx
 parsesyntax: parsesyntax.ml librap.cmx syntaxtype.cmx lightheadertype.cmx
 	ocamlopt -pp camlp4o librap.cmx syntaxtype.cmx lightheadertype.cmx parsesyntax.ml -o $@
 
-
 keepsyntax: keepsyntax.ml librap.cmx lightheadertype.cmx
 	ocamlopt -pp camlp4o librap.cmx lightheadertype.cmx $< -o $@
+
+convert_syntax: convert_syntax.ml 
+	ocamlopt -pp camlp4o $< -o $@
 
 testoper:
 	./keepoper < arm6inst.txt > resu_keepoper
