@@ -17,7 +17,7 @@ let print_syntax b syn =
       | Const s -> bprintf b "%s" s
       | Param s -> bprintf b "<%s>" s
       | OptParam (s, None) -> bprintf b "{%s}" s
-      | OptParam (_, Some s) -> bprintf b "{<%s>}" s
+      | OptParam (s1, Some s) -> bprintf b "{%s<%s>}" s1 s
       | PlusMinus -> bprintf b "+/-"
   in
   let rec aux2 b var =
