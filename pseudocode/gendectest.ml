@@ -458,6 +458,8 @@ let rotation rot =
     | 0b11 -> "ROR #32"
     | _ -> ""
 
+let coproc cp = "p"^(string_of_int cp);;
+
 (*get the vaule from the value table by the name of parameter*)
 let get_v s lst = 
   (fun l -> 
@@ -481,8 +483,12 @@ let asm_insts b ps =
 	    | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
 	  end 
       | OptParam (s, None) -> 
-	  if (get_v s lst = 1) then bprintf b "%s" s
-	  else bprintf b ""
+	  begin match ps.finstr with
+	    | "STC" -> if (get_v "N" lst = 1) then bprintf b "%s" s
+	      else bprintf b ""
+	    | _ -> if (get_v s lst = 1) then bprintf b "%s" s
+	      else bprintf b ""
+	  end 
       | Param s -> 
 	  begin match s with
 	    | ("Rd"|"Rn"|"Rs"|"Rm"|"Rdhi"|"Rdlo") as s -> 
@@ -492,6 +498,8 @@ let asm_insts b ps =
 		bprintf b "%s" (iflags (get_v "A" lst) (get_v "I" lst) 
 				  (get_v "F" lst))
 	    | "effect" -> bprintf b "%s" (effect (get_v "imod" lst))
+	    | "coproc" -> bprintf b "%s" (coproc (get_v "cp_num" lst))
+	    | "registers" -> bprintf b "%d" (get_v "register_list" lst)
 	    | _ -> bprintf b "%d" (get_v s lst)
 	  end 
       | PlusMinus -> bprintf b "+/-"
