@@ -12,19 +12,23 @@ Generate additional C/C++ code for implementing dynamic translation in Simlight.
 *)
 
 (* Transformation flow:
- *
+ * 
  * In general, patch functions are in sl2_patch.ml, and generation functions are
  * in this file.
  * 
  * At the beginning, we have one list of progs (cf ast.ml) and another list of
- * coding tables (cf codetype.ml).  Each list item describes either an
- * instruction or an addressing mode case.
+ * coding tables (cf codetype.ml). There is a third list describing the ASM
+ * syntax (cf syntaxtype.ml). Each list item describes either an instruction or
+ * an addressing mode case.
  * 
  * - MSR is splitted in MSRreg and MSRimm (cf file norm.ml)
+ *   o there are two functions: msr_split_code and msr_split_syntax. Decoding tables
+ *     are already separated. 
  * - the pseudo-code is normalized (cf file norm.ml)
  * - the address write-back is disabled in the M2, M3, and M4 addressing modes
- * - the pairs <instruction, addressing mode case> are flattened (cf file flatten.ml)
- *   o during flattening, some pathes are applied: patch_W, patch_SRS, patch SRS_RFE
+ * - the 3-uplets <instruction, addressing mode case, syntax> are flattened (cf file
+     flatten.ml)
+ *   o during flattening, some patches are applied: patch_W, patch_SRS, patch SRS_RFE
  *
  * From this point, we manipulate "flat programs" (cf flatten.ml). The notion of
  * addressing mode has disappeared.
@@ -58,6 +62,9 @@ Generate additional C/C++ code for implementing dynamic translation in Simlight.
  * - We generate a small program, which is used only to control the size of the
  *   instruction type
  * - We generate (part of) the ARM to LLVM translator
+ * - We generate the ASM printers. We need 2 versions:
+ *   o one C version using fprintf and FILE*
+ *   o one C++ version using streams 
  * - We generate the semantics function (cf sl2_semantics.ml). We need 2 versions:
  *   o one version with an expanded list of atomic arguments
  *   o one version taking an SLv6_Instruction* as argument
