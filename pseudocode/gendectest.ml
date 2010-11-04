@@ -19,10 +19,6 @@ open Validity;;
 open Flatten;;
 open Syntaxtype;;
 
-(*****************************************************************************)
-(* binary tests generation*)
-(*****************************************************************************)
-
 (* output a 32 bits word in little-endian *)
 let output_word out (word: int32) =
   output_byte out (Int32.to_int word);
@@ -122,43 +118,45 @@ let restrict p =
 	  [NotPC "Rm"; NotPC "Rn"; NotSame ("Rn", "Rm")]
       | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> [NotV ("S", 0b1); NotZero "register_list"]
       | Some "M5_U" -> [NotV ("U", 0b0)]
-      | Some _ | None ->
-	  begin match p.finstr with
-	    | "ADC"|"ADD"|"AND" -> [NotPC "Rd"]
-	    | "CLZ" -> [NotPC "Rm"; NotPC "Rd"]
-	    | "CPS" ->
-		[Or ([NotV ("imod", 0b00); NotV("mmod", 0b0)], 
-		    [Or ([NotV ("imod",0b01); NotV ("mmod", 0b0)], 
-			[NotV ("imod", 0b01); NotV ("mmod", 0b1)])])]
-	    | "LDM1"|"LDM2"|"STM1"|"STM2" -> [NotPC "Rn"; NotZero "register_list"]
-	    | "LDM3"|"LDRB" -> [NotPC "Rn"]
-	    | "LDR"|"STR"|"STRB" -> [NoWritebackDest]
-	    | "LDRD" | "STRD" -> [NotLR "Rd"; NotPC "Rd"; IsEven "Rd"]
-	    | "LDRBT" -> [NotPC "Rn"; NotSame ("Rd", "Rn")]
-	    | "LDREX" -> [NotPC "Rn"; NotPC "Rd"]
-	    | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> [NotPC "Rd"; NoWritebackDest]
-	    | "LDRT"|"STRBT" -> [NotPC "Rd"; NotSame ("Rd", "Rn")]
-	    | "MCR"|"MCRR"|"MRS"-> [NotPC "Rd"]
-	    | "MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS"  -> 
-		[NotPC "Rd"; NotPC "Rm"; NotPC "Rs"; NotPC "Rn"]
-	    | "MRRC" -> [NotSame ("Rd", "Rn"); NotPC "Rd"; NotPC "Rn"]
-	    | "MUL"  -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
-	    | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
-		-> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
-	    | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> [NotPC "Rd"; NotPC "Rm"]
-	    | "RFE" -> [NotPC "Rn"]
-	    | "SMLAD" -> [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"]
-	    | "SMLAL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"]
-	    | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"; NotSame ("Rd","Rn")]
-	    | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
-	    | "STREX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
-	    | "STRT"-> [NotSame ("Rd","Rn")]
-	    | "SWP"|"SWPB" -> [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
-	    | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
-	    | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXTH" -> [NotPC "Rd"; NotPC "Rm"]
-	    | _ -> []
-	  end
-  in aux p.fmode 
+      | Some _ | None -> []
+  in
+  let aux2 finstr =
+    begin match finstr with
+      | "ADC"|"ADD"|"AND" -> [NotPC "Rd"]
+      | "CLZ" -> [NotPC "Rm"; NotPC "Rd"]
+      | "CPS" ->
+	  [Or ([NotV ("imod", 0b00); NotV("mmod", 0b0)], 
+	       [Or ([NotV ("imod",0b01); NotV ("mmod", 0b0)], 
+		    [NotV ("imod", 0b01); NotV ("mmod", 0b1)])])]
+      | "LDM1"|"LDM2"|"STM1"|"STM2" -> [NotPC "Rn"; NotZero "register_list"]
+      | "LDM3"|"LDRB" -> [NotPC "Rn"]
+      | "LDR"|"STR"|"STRB" -> [NoWritebackDest]
+      | "LDRD" | "STRD" -> [NotLR "Rd"; NotPC "Rd"; IsEven "Rd"]
+      | "LDRBT" -> [NotPC "Rn"; NotSame ("Rd", "Rn")]
+      | "LDREX" -> [NotPC "Rn"; NotPC "Rd"]
+      | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> [NotPC "Rd"; NoWritebackDest]
+      | "LDRT"|"STRBT" -> [NotPC "Rd"; NotSame ("Rd", "Rn")]
+      | "MCR"|"MCRR"|"MRS"-> [NotPC "Rd"]
+      | "MLA"|"SMLAxy"|"SMLAWy"|"SMLSD"|"SMMLS"  -> 
+	  [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"; NotPC "Rn"]
+      | "MRRC" -> [NotSame ("Rd", "Rn"); NotPC "Rd"; NotPC "Rn"]
+      | "MUL"  -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
+      | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
+	  -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
+      | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> [NotPC "Rd"; NotPC "Rm"]
+      | "RFE" -> [NotPC "Rn"]
+      | "SMLAD" -> [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"]
+      | "SMLAL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"]
+      | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"; NotSame ("Rd","Rn")]
+      | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
+      | "STREX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
+      | "STRT"-> [NotSame ("Rd","Rn")]
+      | "SWP"|"SWPB" -> [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
+      | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
+      | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXTH" -> [NotPC "Rd"; NotPC "Rm"]
+      | _ -> []
+    end
+  in aux p.fmode @ (aux2 p.finstr) 
 ;;
 
 (*a serie of bits whose value can't be v*)
@@ -206,100 +204,6 @@ let isodd (_,p1,p2) =
 (*value can't be odd*)
 let iseven s params w =
   notv s (isodd params) params w;;
-
-(*main function to generate instructions*)
-let gen_tests_bin ps =
-  let fix_bits dec =
-    match dec with
-      | (Shouldbe b, p) -> Insert_bits ((if b then 0b1 else 0b0),p)
-      | (Value i, p) -> Insert_bits ((if i then 0b1 else 0b0), p)
-      | ((Range _ | Param1 _ | Param1s _ | Nothing), _) -> No_change
-  in
-  let random_bits ps =
-    match ps with
-      | (("Rn"|"Rm"|"Rs"|"Rd"|"RdLo"|"RdHi"),_, p2) -> 
-	  Insert_bits (Random.int 16, p2)
-      | ("cond",_, p2) -> Insert_bits (Random.int 15, p2)
-      | (_, p1, p2) -> 
-	  Insert_bits (Random.int (upper_bound p1 p2), p2)    
-  in 
-  let no_restrict_bits clst params =
-    let aux (s,p1,p2) =
-      if (List.exists ((=)s) clst) then 
-	No_change 
-      else 
-	random_bits (s,p1,p2)
-    in List.map aux params
-  in
-  let proc vs w =
-    match vs with
-      | Insert_bits (i, p) -> insert_bits (Int32.of_int i) p w
-      | No_change -> w
-  in 
-  let pos dec =
-    let ar = Array.create (Array.length dec) (Nothing, 0) in
-      for i = 0 to Array.length dec - 1 do
-	ar.(i) <- (dec.(i), i)
-      done;
-    ar
-  in
-  let rem ps =
-    let rec aux res lst =
-      match res with
-	| NotPC s| NotLR s| NotV (s,_)| NotZero s| IsEven s-> lst @ [s]
-	| NotSame (s1,s2)| NotZero2 (s1,s2)-> lst @ [s1; s2]
-	| NoWritebackDest-> lst @ ["W"]
-	| NotLSL0| Not2lowRegs| BLXbit0| OtherVC _ -> lst
-	| Or(l1,_)-> List.fold_right aux l1 lst
-    in List.fold_right aux (restrict ps) []
-  in
-  let vparams =
-    Int32.logor (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) Int32.zero)
-      (List.fold_right proc (no_restrict_bits (rem ps) (parameters_of ps.fdec)) Int32.zero)
-  in
-  let rec gen res w = 
-    match res with
-      | Or (lv1, lv2) ->
-	  if Random.bool() then (List.fold_right gen lv1 w) else (List.fold_right gen lv2 w)
-      | NotPC s -> (List.fold_right (notpc s) (parameters_of ps.fdec) w)
-      | NotLR s -> (List.fold_right (notlr s) (parameters_of ps.fdec) w)
-      | NotV (s, i) -> (List.fold_right (notv s [i]) (parameters_of ps.fdec) w)
-      | NotSame (s1, s2) -> ((notsame s1 s2) (parameters_of ps.fdec) w)
-      | NotZero s -> (List.fold_right (notzero s) (parameters_of ps.fdec) w)
-      | NoWritebackDest -> (insert_bits Int32.zero 21 (gen (NotSame ("Rd", "Rn")) w))
-      | NotLSL0 -> gen (Or ([NotZero "shift"], [NotZero "shift_imm"])) w
-      | Not2lowRegs -> w
-      | BLXbit0 -> w
-      | NotZero2 _ -> w
-      | IsEven s -> (List.fold_right (iseven s) (parameters_of ps.fdec) w)
-      | OtherVC _ -> w 
-  in match restrict ps with
-    | [] -> vparams
-    | r -> List.fold_right gen r vparams;;
-
-
-let consts ps w =
-  let rec aux1 res lst =
-    let params = parameters_of ps.fdec in
-    let bnames s p = if ((fun (s',_,_) -> s') p) = s then true else false
-    in
-      match res with 
-	| NotPC s -> [(s, [15])]
-	| NotLR s -> [(s, [14])]
-	| NotV (s, i) -> [(s, [i])]
-	| NotSame (s1, s2) -> [(s1, [])] @ [(s2, [get_bits_by_name s1 params w])]
-	| NotZero s -> [(s, [0])]
-	| NoWritebackDest -> (aux1 (NotSame ("Rd","Rn")) lst) @ [("W", [1])]
-	| NotLSL0 -> []
-	| Not2lowRegs -> []
-	| BLXbit0 -> []
-	| NotZero2 _ -> []
-	| IsEven s -> [(s, isodd (List.find (bnames s) params))]
-	| OtherVC _ -> []
-	| Or (lv1, lv2) -> List.fold_right aux1 lv1 (List.fold_right aux1 lv2 lst)
-  in 
-    List.fold_right aux1 (restrict ps) []
-;;
 
 (*****************************************************************************)
 (*build a list to store the parameters and their values*)
@@ -381,19 +285,83 @@ let valid_lst ops =
   in List.map aux (other_constr (build_lv ops))
 ;;
 
-(*
+let value_table ps =
+  let aux (p, lv) =
+    (p, List.nth lv (Random.int (List.length lv))) in
+    List.map aux (valid_lst (mark_params ps));;
+
 let print_lst b ps =
   let aux b ((s,_,_),lst) =
+    bprintf b "%s" ps.finstr;
     bprintf b "%s" s;
     (list " " int) b lst
   in 
     (list "" aux) b (valid_lst (mark_params ps))
-;;*)
+;;
 
+(*get the vaule from the value table by the name of parameter*)
+
+let get_vs s lst =
+  (fun l -> 
+     if l = [] then []
+     else List.map (fun ((_,_,_),v) -> v)l)
+    (List.filter (fun p -> (fun ((s',_,_), _) -> s') p =s) lst)
+
+let get_v s lst =
+  match (get_vs s lst) with
+    | [] -> 0
+    | ls -> List.nth ls 0
+;;
+
+(*****************************************************************************)
+(* binary tests generation*)
+(*****************************************************************************)
+
+let gen_tests_bin ps =
+  let fix_bits dec =
+    match dec with
+      | (Shouldbe b, p) -> Insert_bits ((if b then 0b1 else 0b0),p)
+      | (Value i, p) -> Insert_bits ((if i then 0b1 else 0b0), p)
+      | ((Range _ | Param1 _ | Param1s _ | Nothing), _) -> No_change
+  in
+  let lst = value_table ps in
+  let params (s, _, p2) =
+    Insert_bits (get_v s lst, p2)    
+  in 
+  let proc vs w =
+    match vs with
+      | Insert_bits (i, p) -> insert_bits (Int32.of_int i) p w
+      | No_change -> w
+  in 
+  let pos dec =
+    let ar = Array.create (Array.length dec) (Nothing, 0) in
+      for i = 0 to Array.length dec - 1 do
+	ar.(i) <- (dec.(i), i)
+      done;
+    ar
+  in
+    Int32.logor 
+      (Array.fold_right proc (Array.map fix_bits (pos ps.fdec)) Int32.zero)
+      (List.fold_right proc 
+	 (List.map params (add_R (parameters_of ps.fdec))) Int32.zero)
+;;
+    
 
 (*****************************************************************************)
 (*assembly tests generation*)
 (*****************************************************************************)
+
+(*mask build by the bits from position p1 to p2*)
+let mask' p1 p2 =
+  let rec aux p n =
+    if (n=0) then
+      1 lsl p else (1 lsl p) + (aux (p+1) (n-1))
+  in aux p2 (p1-p2)
+;;
+
+(*get bits value form position p1 to p2*)
+let get_bits' p1 p2 w =
+  ((mask' p1 p2) land w) lsr p2;;
 
 (*encoding condition*)
 let cond v =
@@ -458,16 +426,51 @@ let rotation rot =
     | 0b11 -> "ROR #32"
     | _ -> ""
 
-let coproc cp = "p"^(string_of_int cp);;
+let fields f =
+  let c = if (get_bits' 0 0 f) = 1 then "c" else ""
+  and x = if (get_bits' 1 1 f) = 1 then "x" else ""
+  and s = if (get_bits' 2 2 f) = 1 then "s" else ""
+  and f = if (get_bits' 3 3 f) = 1 then "f" else ""
+  in c^x^s^f
 
-(*get the vaule from the value table by the name of parameter*)
-let get_v s lst = 
-  (fun l -> 
-     if l = [] then 0
-     else (fun ((_,_,_),vs) -> List.nth vs (Random.int (List.length vs)))
-       (List.nth l (Random.int (List.length l)))) 
-    (List.filter (fun p -> (fun ((s',_,_), _) -> s') p =s) lst)
-;;
+let coproc cp = "p"^(string_of_int cp)
+
+let target_address si24 =
+  "PC+#"^(string_of_int (si24 lsl 1))
+
+let immed_16 is =
+  match is with
+    | [] -> 0
+    | [i] -> i
+    | i1::i2::_ ->
+	let i1' = if i1>15 then i1 lsl 4 else i1 in
+	let i2' = if i2>15 then i2 lsl 4 else i2 in
+	  i1' + i2'
+
+let m1_immediate rot im8 = 
+  im8 lsr (2* rot) + 
+    ((get_bits' ((2* rot) mod 8) 0 im8) lsl (8-((2* rot) mod 8)))
+
+let m3_offset_8 h l = (h lsl 4) + l
+
+let reg_list b regs =
+  bprintf b "{ ";
+  let ar = Array.create 16 [] in
+    for i = 0 to 15 do
+      let regi = (get_bits' i i regs) in
+	ar.(i) <- (if regi = 1 then [reg i] else [])
+    done;
+    (list " " string) b (List.flatten (Array.to_list ar));
+    bprintf b " }"
+
+let endian_sp e =
+  if e=1 then "BE" else "LE"
+
+let ssat_shift si sh =
+  if sh = 0 && si >= 0 && si <= 32 then "LSL #"^(string_of_int si)
+  else if sh = 1 && si = 0 then "ASR #"^(string_of_int 32)
+  else if sh = 1 && si > 0 && si <= 31 then "ASR #"^(string_of_int si)
+  else "LSL #0"  
 
 (*main function to generate the instructions in assembly code*)
 let asm_insts b ps =
@@ -480,7 +483,7 @@ let asm_insts b ps =
 	    | "rotation" -> 
 		bprintf b "%s%s" s1 (rotation (get_v "rotate" lst))
 	    | "register_list"
-	    | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
+	    | _ -> bprintf b "%s" s1; reg_list b (get_v s2 lst)
 	  end 
       | OptParam (s, None) -> 
 	  begin match ps.finstr with
@@ -491,17 +494,60 @@ let asm_insts b ps =
 	  end 
       | Param s -> 
 	  begin match s with
-	    | ("Rd"|"Rn"|"Rs"|"Rm"|"Rdhi"|"Rdlo") as s -> 
+	    | ("Rd"|"Rn"|"Rs"|"Rm"|"RdHi"|"RdLo") as s -> 
 		bprintf b "%s" (reg (get_v s lst))
+	    | ("CRn"|"CRm") as s ->
+		bprintf b "CR%d" (get_v s lst)
 	    | ("x"|"y") as s -> bprintf b "%s" (xy (get_v s lst))
 	    | "iflags" -> 
 		bprintf b "%s" (iflags (get_v "A" lst) (get_v "I" lst) 
 				  (get_v "F" lst))
 	    | "effect" -> bprintf b "%s" (effect (get_v "imod" lst))
 	    | "coproc" -> bprintf b "%s" (coproc (get_v "cp_num" lst))
-	    | "registers" -> bprintf b "%d" (get_v "register_list" lst)
+	    | "registers"|"registers_without_pc"|"registers_and_pc" -> 
+		 reg_list b (get_v "register_list" lst)
+	    | "immediate" as s->
+		begin match ps.finstr with
+		  | "MSR" -> 
+		      bprintf b "%d" (get_v "immed_8" lst)
+		  | _ -> 
+		      begin match ps.fmode with
+			| Some "M1_Imm" ->
+			    bprintf b "%d" (m1_immediate 
+					      (get_v "rotate_imm" lst) 
+					      (get_v "immed_8" lst))
+			| _ -> bprintf b "%d" (get_v s lst)
+		      end
+		end
+	    | "fields" -> bprintf b "%s" (fields (get_v "field_mask" lst))
+	    | "target_address"| "target_addr" -> 
+		bprintf b "%s" (target_address (get_v "signed_immed_24" lst))
+	    | "immed" as s-> 
+		begin match ps.finstr with
+		  | "SSAT"| "SSAT16"| "USAT"| "USAT16" -> 
+		      bprintf b "%d" (get_v "sat_imm" lst)
+		  | _ -> bprintf b "%d" (get_v s lst)
+		end
+	    | "immed_16" -> bprintf b "%d" (immed_16 (get_vs "immed" lst))
+	    | "offset_8" as s ->
+		begin match ps.fmode with
+		  | Some "M3_ImmOff" | Some "M3_Imm_postInd" ->
+		      bprintf b "%d" (m3_offset_8 
+					(get_v "immedH" lst) 
+					(get_v "immedL" lst))
+		  | _ -> bprintf b "%d" (get_v s lst)
+		end
+	    | "endian_specifier" ->
+		bprintf b "%s" (endian_sp (get_v "E" lst))
+	    | "shift" as s-> 
+		begin match ps.finstr with
+		  | "SSAT"| "USAT" -> 
+		      bprintf b "%s" (ssat_shift (get_v "shift_imm" lst) 
+					(get_v "sh" lst))
+		  | _ -> bprintf b "%d" (get_v s lst)
+		end
 	    | _ -> bprintf b "%d" (get_v s lst)
-	  end 
+	  end
       | PlusMinus -> bprintf b "+/-"
   in let rec aux2 b var lst =
       match var with
@@ -511,7 +557,7 @@ let asm_insts b ps =
       match syn with
 	| [] -> bprintf b ""
 	| v::vs -> aux2 b v lst; bprintf b "\n"; aux3 b vs lst
-  in aux3 b ps.fsyntax (valid_lst (mark_params ps))
+  in aux3 b ps.fsyntax (value_table ps)
 ;;
 
 (*****************************************************************************)
@@ -535,7 +581,8 @@ let gen_bin_test out pcs ss decs seed =
 (*output assembly tests*)
 (*****************************************************************************)
 
-let gen_asm_test bn pcs ss decs =
+let gen_asm_test bn pcs ss decs seed =
+  Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
   let b = Buffer.create 100000 in
     (list "" asm_insts) b (List.rev fs);

@@ -235,7 +235,7 @@ let genr_output() =
           (get_dec_input()) (get_seed ())
     | DecAsmTest ->
 	Gendectest.gen_asm_test (get_output_file()) (get_pc_input()) 
-	  (get_syntax_input()) (get_dec_input())
+	  (get_syntax_input()) (get_dec_input()) (get_seed ())
 ;;   
 
 let main() =
