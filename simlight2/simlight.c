@@ -109,6 +109,8 @@ void usage(const char *pname) {
   puts("\t-r0   display the content of r0 before exiting");
   puts("\t-r0=N exit with an error status if r0!=N at the end of simulation");
   puts("\t-dec  decode the .text section (turn off simulation)");
+  puts("\t-Adec  decode the .text section using the ARM32 variant");
+  puts("\t-Tdec  decode the .text section using the Thumb variant");
 }
 
 int main(int argc, const char *argv[]) {
@@ -116,6 +118,8 @@ int main(int argc, const char *argv[]) {
   bool show_r0 = false;
   bool check_r0 = false;
   bool hexa_r0 = false;
+  bool arm32 = false;
+  bool thumb = false;
   uint32_t expected_r0 = 0;
   /* commmand line parsing */
   int i;
@@ -131,9 +135,15 @@ int main(int argc, const char *argv[]) {
         check_r0 = true;
         expected_r0 = strtoul(argv[i]+4,NULL,0);
         hexa_r0 = !strncmp(argv[i]+4,"0x",2);
-      } else if (!strcmp(argv[i],"-dec"))
+      } else if (!strcmp(argv[i],"-dec")) {
         sl_exec = false;
-      else {
+      } else if (!strcmp(argv[i],"-Adec")) {
+        sl_exec = false;
+        arm32 = true;
+      } else if (!strcmp(argv[i],"-Tdec")) {
+        sl_exec = false;
+        thumb = true;
+      } else {
         printf("Error: unrecognized option: \"%s\".\n\n", argv[i]);
         usage(argv[0]);
         return 1;
@@ -171,8 +181,14 @@ int main(int argc, const char *argv[]) {
   /* main task */
   if (sl_exec)
     simulate(&proc,&elf);
-  else
-    test_decode(&proc,&elf);
+  else {
+    if (arm32)
+      test_decode_arm(&proc,&elf);
+    else if (thumb)
+      test_decode(&proc,&elf);
+    else
+      test_decode(&proc,&elf);
+  }
   /* check result */
   if (show_r0)
     printf("r0 = %d\n",reg(&proc,0));
