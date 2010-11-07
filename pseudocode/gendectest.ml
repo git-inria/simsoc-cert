@@ -232,7 +232,7 @@ let mark_params ps =
     List.map (fun (p,c) -> 
 		if (is_s s p) then (p, c@[Some constr]) else (p, c)) ops
   in 
-  let aux restr ops =
+  let rec aux restr ops =
     match restr with
       | NotPC s -> mark_ps s "PC" ops
       | NotLR s -> mark_ps s "LR" ops
@@ -240,17 +240,19 @@ let mark_params ps =
       | NotSame (s1, s2) -> mark_ps s2 "NotSame2" (mark_ps s1 "NotSame1" ops)
       | NotZero s -> mark_ps s "0" ops
       | NoWritebackDest -> mark_ps "W" "0" ops
-      | NotLSL0|Not2lowRegs|BLXbit0|NotZero2 _
-      | IsEven _|OtherVC _|Or _ -> mark_ps "" "" ops
+      | NotZero2 (s1, s2) -> mark_ps s1 "0" (mark_ps s2 "0" ops)
+      | IsEven s -> mark_ps s "IsEven" ops
+      | Or (r1, r2) -> List.fold_right aux r1 (List.fold_right aux r2 ops)
+      | NotLSL0|Not2lowRegs|BLXbit0
+      | OtherVC _  -> mark_ps "" "" ops
   in 
     match (restrict ps) with
       | [] -> oparams
       | lst -> List.fold_right aux lst oparams
 ;;
 
-
 (*associate the parameter with a list of valid values*)
-let build_lv ops =
+let build_lv ops = 
   let aux (p, lconstr) =
     let aux1 constr =
       match constr with
@@ -259,12 +261,15 @@ let build_lv ops =
 	      | "PC" -> [15]
 	      | "LR" -> [14]
 	      | "0" -> [0]
+	      | "NotSame1" | "NotSame2" -> []
+	      | "IsEven" -> []
+	      (*| i -> [int_of_string i]*)
 	      | _ -> []
 	    end
 	| None -> []
     in (p,List.flatten (List.map aux1 lconstr))
   in List.map aux ops
-;;
+;;(*FIXME*)
 
 let other_constr ops =
   let aux (p, c) =
@@ -277,8 +282,8 @@ let valid_lst ops =
   let aux ((s', p1, p2), lv) =
     let m = upper_bound p1 p2 in
     let length = 
-      if m> 0 && m<Sys.max_array_length
-      then m else 1 in
+      if m> 0 && m < Sys.max_array_length
+      then m else Sys.max_array_length in
     let lst = Array.to_list (Array.init length (fun i -> i)) in
     let lst' = List.fold_right (fun v -> List.filter ((!=) v)) lv lst in
       ((s',p1,p2),lst')
@@ -289,6 +294,23 @@ let value_table ps =
   let aux (p, lv) =
     (p, List.nth lv (Random.int (List.length lv))) in
     List.map aux (valid_lst (mark_params ps));;
+
+
+(*let get_vs_not_same s1 s2 ps =
+  if List.exists ((=)(NotSame (s1, s2))) (restrict ps) then
+    let lst = valid_lst (mark_params ps)
+    and lst' = value_table ps in
+    let lv2 = (fun (_, lv) -> lv) (List.find (fun ((s,_,_),_) -> s = s2) lst)
+    in
+      List.map (fun ((s,p1,p2), v) -> 
+		  if s = s2 then
+		    let v1 = (fun (_, v) -> v)
+		      (List.find (fun ((s,_,_),_) -> s = s1) lst') in
+		    let lv2' = List.filter ((!=)v1) lv2 in
+		      ((s,p1,p2),List.nth lv2' (Random.int (List.length lv2')))
+		  else ((s,p1,p2),v)) lst'
+;;
+*)
 
 let print_lst b ps =
   let aux b ((s,_,_),lst) =
@@ -381,7 +403,7 @@ let cond v =
     | 12 -> "GT"
     | 13 -> "LE"
     | 14 -> "AL"
-    | i -> string_of_int i
+    | _ -> ""
 
 (*print registers by name*)
 let reg r =
@@ -435,8 +457,13 @@ let fields f =
 
 let coproc cp = "p"^(string_of_int cp)
 
+let sign_ext n x =
+  let p = 1 lsl n in
+  let y = x mod p in
+    if y < (1 lsl (n-1)) then y else y - p
+
 let target_address si24 =
-  "PC+#"^(string_of_int (si24 lsl 1))
+  (sign_ext 24 si24) lsl 1
 
 let immed_16 is =
   match is with
@@ -448,8 +475,33 @@ let immed_16 is =
 	  i1' + i2'
 
 let m1_immediate rot im8 = 
-  im8 lsr (2* rot) + 
-    ((get_bits' ((2* rot) mod 8) 0 im8) lsl (8-((2* rot) mod 8)))
+  im8 lsr (2* rot) (*FIXME*)
+
+let m1_immediate rot im8 =
+  let ar = Array.init 8 (fun i -> get_bits' i i im8) in
+  let lst = Array.to_list ar in
+  let rec ror num lst =
+    match num with
+      | 0 -> lst
+      | n -> match lst with
+	  | [] -> []
+	  | h::t -> (ror (n-1) t) @ [h]
+  in
+  let rec sum lst =
+    match lst with
+      | [] -> 0
+      | h::t -> h+ (sum t)
+  in
+  let ar' = Array.create 8 0 in
+    match (ror rot lst) with
+      | [] -> 0
+      | l ->
+	  for i = 0 to 7 do
+	    ar'.(i) <- (List.nth l i) lsl i
+	  done;
+	  let lst' = Array.to_list ar' in
+	    sum lst'
+;;
 
 let m3_offset_8 h l = (h lsl 4) + l
 
@@ -521,7 +573,7 @@ let asm_insts b ps =
 		end
 	    | "fields" -> bprintf b "%s" (fields (get_v "field_mask" lst))
 	    | "target_address"| "target_addr" -> 
-		bprintf b "%s" (target_address (get_v "signed_immed_24" lst))
+		bprintf b "PC+#%d" (target_address (get_v "signed_immed_24" lst))
 	    | "immed" as s-> 
 		begin match ps.finstr with
 		  | "SSAT"| "SSAT16"| "USAT"| "USAT16" -> 
