@@ -296,21 +296,21 @@ let value_table ps =
     List.map aux (valid_lst (mark_params ps));;
 
 
-(*let get_vs_not_same s1 s2 ps =
-  if List.exists ((=)(NotSame (s1, s2))) (restrict ps) then
+let get_vs_not_same s1 s2 ps =
     let lst = valid_lst (mark_params ps)
     and lst' = value_table ps in
-    let lv2 = (fun (_, lv) -> lv) (List.find (fun ((s,_,_),_) -> s = s2) lst)
-    in
-      List.map (fun ((s,p1,p2), v) -> 
-		  if s = s2 then
-		    let v1 = (fun (_, v) -> v)
-		      (List.find (fun ((s,_,_),_) -> s = s1) lst') in
-		    let lv2' = List.filter ((!=)v1) lv2 in
-		      ((s,p1,p2),List.nth lv2' (Random.int (List.length lv2')))
-		  else ((s,p1,p2),v)) lst'
+      if List.exists ((=)(NotSame (s1, s2))) (restrict ps) then
+	let lv2 = (fun (_, lv) -> lv) (List.find (fun ((s,_,_),_) -> s = s2) lst)
+	in
+	  List.map (fun ((s,p1,p2), v) -> 
+		      if (s = s2) then
+			(let v1 = (fun (_, v) -> v)
+			   (List.find (fun ((s,_,_),_) -> s = s1) lst') in
+			 let lv2' = List.filter ((!=)v1) lv2 in
+			   ((s,p1,p2),List.nth lv2' (Random.int (List.length lv2'))))
+		      else ((s,p1,p2),v)) lst'
+      else List.map (fun x -> x) lst'
 ;;
-*)
 
 let print_lst b ps =
   let aux b ((s,_,_),lst) =
@@ -474,9 +474,6 @@ let immed_16 is =
 	let i2' = if i2>15 then i2 lsl 4 else i2 in
 	  i1' + i2'
 
-let m1_immediate rot im8 = 
-  im8 lsr (2* rot) (*FIXME*)
-
 let m1_immediate rot im8 =
   let ar = Array.init 8 (fun i -> get_bits' i i im8) in
   let lst = Array.to_list ar in
@@ -493,14 +490,11 @@ let m1_immediate rot im8 =
       | h::t -> h+ (sum t)
   in
   let ar' = Array.create 8 0 in
-    match (ror rot lst) with
-      | [] -> 0
-      | l ->
-	  for i = 0 to 7 do
-	    ar'.(i) <- (List.nth l i) lsl i
-	  done;
-	  let lst' = Array.to_list ar' in
-	    sum lst'
+    for i = 0 to 7 do
+      ar'.(i) <- (List.nth (ror rot lst) i) lsl i
+    done;
+    let lst' = Array.to_list ar' in
+      sum lst'
 ;;
 
 let m3_offset_8 h l = (h lsl 4) + l
@@ -580,7 +574,7 @@ let asm_insts b ps =
 		      bprintf b "%d" (get_v "sat_imm" lst)
 		  | _ -> bprintf b "%d" (get_v s lst)
 		end
-	    | "immed_16" -> bprintf b "%d" (immed_16 (get_vs "immed" lst))
+	    | "immed_16" -> bprintf b "%x" (immed_16 (get_vs "immed" lst))
 	    | "offset_8" as s ->
 		begin match ps.fmode with
 		  | Some "M3_ImmOff" | Some "M3_Imm_postInd" ->
