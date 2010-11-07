@@ -22,7 +22,7 @@ void test_decode_arm(struct SLv6_Processor *proc, struct ElfFile *elf) {
   struct SLv6_Instruction instr;
   for (; a!=ea; a+=4) {
     const uint32_t bincode = slv6_read_word(proc->mmu_ptr,a);
-    printf("decode %x ->   \t", bincode);
+    printf("decode %8x ->\t", bincode);
     instr.args.g0.id = ~0;
     arm_decode_and_store(&instr,bincode);
     assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
@@ -41,7 +41,7 @@ void test_decode_thumb(struct SLv6_Processor *proc, struct ElfFile *elf) {
   struct SLv6_Instruction instr;
   for (; a!=ea; a+=2) {
     const uint16_t bincode = slv6_read_half(proc->mmu_ptr,a);
-    printf("decode %x -> ", bincode);
+    printf("decode %8x ->\t", bincode);
     instr.args.g0.id = ~0;
     thumb_decode_and_store(&instr,bincode);
     assert(instr.args.g0.id<=SLV6_INSTRUCTION_COUNT);
@@ -113,6 +113,10 @@ void usage(const char *pname) {
   puts("\t-Tdec  decode the .text section using the Thumb variant");
 }
 
+void slv6_P_undef_unpred(FILE *f, struct SLv6_Instruction *instr, uint32_t bincode) {
+  fprintf(f,"undefined or unpredictable instruction");
+}
+
 int main(int argc, const char *argv[]) {
   const char *filename = NULL;
   bool show_r0 = false;
@@ -163,6 +167,8 @@ int main(int argc, const char *argv[]) {
     usage(argv[0]);
     return (argc>1);
   }
+  /* provide a printer for undefined/unpredictable */
+  slv6_printers[SLV6_INSTRUCTION_COUNT] = slv6_P_undef_unpred;
   /* create the processor and the MMU */
   struct SLv6_Processor proc;
   SLv6_MMU mmu;
