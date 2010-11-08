@@ -220,11 +220,12 @@ let dump_sizeof bn gs =
  * which is included in the file "arm_v6_llvm_generator.cpp".
  * The generated file cannot be compiled outside SimSoC. *)
 
-let llvm_generator bn xs groups =
-  let group b (i, args) =
-    bprintf b
-      "  static void gen_instr_g%d(ARMv6_LLVM_Generator &lg, Function *fct," i;
-    bprintf b " SLv6_Instruction &instr) {\n";
+let llvm_generator bn xs =
+  let case b (x: xprog) = 
+    bprintf b "  case SLV6_%s_ID: {\n" x.xprog.fid;
+    bprintf b "    Function *fct = module->getFunction(\"slv6_X_%s\"); assert(fct);\n"
+      x.xprog.fid;
+    let args = x.xips in
     let size = 1 + List.length args in
     let name b (n,_) = bprintf b "%s" n in
     let value b (n,t) =
@@ -234,37 +235,28 @@ let llvm_generator bn xs groups =
         | "uint32_t" | "SLv6_Condition" | "SLv6_Mode" -> "i32"
         | s -> raise (Invalid_argument ("llvm_type: "^s))
       in
-        bprintf b "    Value *%s = ConstantInt::get(lg.%s,instr.args.g%d.%s);\n"
-          n (llvm_type t) i n
+        bprintf b "    Value *%s = ConstantInt::get(%s,instr.args.%s.%s);\n"
+          n (llvm_type t) (union_id x) n
     in
-      if size = 1 then bprintf b "    lg.IRB.CreateCall(fct,lg.proc);\n"
+      if size = 1 then bprintf b "    IRB.CreateCall(fct,proc);\n"
       else (
         bprintf b "%a" (list "" value) args;
         if size<=4 then 
-          bprintf b "    lg.IRB.CreateCall%d(fct,lg.proc,%a);\n"
+          bprintf b "    IRB.CreateCall%d(fct,proc,%a);\n"
             size (list "," name) args
         else (
-          bprintf b "    Value *args[%d] = {lg.proc,%a};\n"
+          bprintf b "    Value *args[%d] = {proc,%a};\n"
             size (list "," name) args;
-          bprintf b "    lg.IRB.CreateCall<Value**>(fct,args,args+%d);\n" size)
+          bprintf b "    IRB.CreateCall<Value**>(fct,args,args+%d);\n" size)
       );
-      bprintf b "  }\n" in
-  let case b (x: xprog) = 
-    bprintf b "  case SLV6_%s_ID: {\n" x.xprog.fid;
-    bprintf b "    Function *fct = module->getFunction(\"slv6_X_%s\"); assert(fct);\n"
-      x.xprog.fid;
-    bprintf b "    ARMv6_LLVM_Tools::gen_instr_%s(*this,fct,instr);\n  } break;\n"
-      (union_id x)
+    bprintf b "  } break;\n";
   in let b = Buffer.create 10000 in
-    bprintf b "struct ARMv6_LLVM_Tools: ARMv6_LLVM_Generator {\n\n%a};\n\n"
-      (list "\n" group) groups;
     bprintf b "void ARMv6_LLVM_Generator::generate_one_instruction";
     bprintf b "(SLv6_Instruction &instr) {\n";
     bprintf b "  switch (instr.args.g0.id) {\n%a  default: abort();\n  }\n}\n"
       (list "" case) xs;
   let out = open_out (bn^"-llvm_generator.hpp") in
     Buffer.output_buffer out b; close_out out;;
-
 
 (* temporary functions *)
 
@@ -348,7 +340,7 @@ let lib (bn: string) (pcs: prog list) (ss: syntax list)
     (* generate a small program to verify the sizes of the instruciton types *)
     dump_sizeof bn groups;
     (* generate the LLVM generator (mode DT3) *)
-    llvm_generator bn all_xs groups;
+    llvm_generator bn all_xs;
     (* generate the ASM printers *)
     printers bn all_xs;
     (* Now, we generate the semantics functions. *)
