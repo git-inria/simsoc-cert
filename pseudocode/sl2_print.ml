@@ -168,7 +168,8 @@ module Printer (PC: PrinterConfig) = struct
                 bprintf b "  if (%a) {\n  " (param "mmod") x;
                 PC.string b s; bprintf b "  "; mode b x; bprintf b "  }\n"
             | "opcode_2" ->
-                bprintf b "  if (%a)" (param p) x; PC.dintdec b (param p) x
+                bprintf b "  if (%a) {\n  " (param p) x; PC.string b s;
+                bprintf b "  "; PC.dintdec b (param p) x; bprintf b "  }\n"
             | "shift_imm" when x.xprog.finstr = "PKHBT" ->
                 bprintf b "  if (%a) {\n  " (param "shift_imm") x; PC.string b s;
                 bprintf b "  "; PC.dintdec b (param "shift_imm") x; bprintf b "  }\n"
