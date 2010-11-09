@@ -110,6 +110,8 @@ let restrict p =
     match fmode with
       | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
 	  [NotPC "Rd"; NotPC "Rm"; NotPC "Rn"; NotPC "Rs"]
+      | Some "M1_LSLImm" -> [NotLSL0]
+      | Some "M1_RRImm" -> [NotV ("shift_imm", 0b0)]
       | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
 	  [NotPC "Rm"]
       | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
@@ -239,11 +241,12 @@ let mark_params ps =
       | NotV (s, i) -> mark_ps s (string_of_int i) ops
       | NotSame (s1, s2) -> mark_ps s2 "NotSame2" (mark_ps s1 "NotSame1" ops)
       | NotZero s -> mark_ps s "0" ops
-      | NoWritebackDest -> mark_ps "W" "0" ops
+      | NoWritebackDest -> mark_ps "W" "0" (aux (NotSame ("Rd","Rn")) ops)
       | NotZero2 (s1, s2) -> mark_ps s1 "0" (mark_ps s2 "0" ops)
       | IsEven s -> mark_ps s "IsEven" ops
       | Or (r1, r2) -> List.fold_right aux r1 (List.fold_right aux r2 ops)
-      | NotLSL0|Not2lowRegs|BLXbit0
+      | NotLSL0 -> mark_ps "shift_imm" "0" ops
+      | Not2lowRegs|BLXbit0
       | OtherVC _  -> mark_ps "" "" ops
   in 
     match (restrict ps) with
@@ -390,8 +393,8 @@ let cond v =
   match v with
     | 0 -> "EQ"
     | 1 -> "NE"
-    | 2 -> "CS"
-    | 3 -> "CC"
+    | 2 -> "HS"
+    | 3 -> "LO"
     | 4 -> "MI"
     | 5 -> "PL"
     | 6 -> "VS"
@@ -402,7 +405,7 @@ let cond v =
     | 11 -> "LT"
     | 12 -> "GT"
     | 13 -> "LE"
-    | 14 -> "AL"
+    | 14 -> ""
     | _ -> ""
 
 (*print registers by name*)
@@ -411,9 +414,9 @@ let reg r =
     | 15 -> "PC"
     | 14 -> "LR"
     | 13 -> "SP"
-    | 12 -> "IP"
+    (*| 12 -> "IP"
     | 11 -> "FP"
-    | 10 -> "LS" 
+    | 10 -> "LS" *)
     | i -> "R"^string_of_int i
 
 (*encoding of other parameters*)
@@ -442,10 +445,10 @@ let iflags a i f =
 
 let rotation rot =
   match rot with
-    | 0b00 -> "Omitted"
-    | 0b01 -> "ROR #8"
-    | 0b10 -> "ROR #16"
-    | 0b11 -> "ROR #32"
+    | 0b00 -> ""
+    | 0b01 -> ", ROR #8"
+    | 0b10 -> ", ROR #16"
+    | 0b11 -> ", ROR #24"
     | _ -> ""
 
 let fields f =
@@ -458,12 +461,13 @@ let fields f =
 let coproc cp = "p"^(string_of_int cp)
 
 let sign_ext n x =
-  let p = 1 lsl n in
-  let y = x mod p in
-    if y < (1 lsl (n-1)) then y else y - p
+  let sign = get_bits n n x in
+    if sign = Int32.zero then
+       x
+    else Int32.logor (get_bits 31 (n+1) Int32.minus_one)  x
 
 let target_address si24 =
-  (sign_ext 24 si24) lsl 1
+  Int32.shift_left (sign_ext 24 (Int32.of_int si24)) 2
 
 let immed_16 is =
   match is with
@@ -473,47 +477,48 @@ let immed_16 is =
 	let i1' = if i1>15 then i1 lsl 4 else i1 in
 	let i2' = if i2>15 then i2 lsl 4 else i2 in
 	  i1' + i2'
+(*
+static inline uint32_t rotate_right(uint32_t x, uint32_t n) {
+  if (n==0) return x;
+  assert(0<n && n<32 && "not implemented for this value of n");
+  assert(n!=32);
+  return (x<<(32-n)) | (x>>n);
+*)
+let m1_immediate r im8 :int32 =
+  let rot = r *2 in
+  if rot = 0 then
+   Int32.of_int im8
+  else
+    let x = Int32.of_int im8 in
+    Int32.logor (Int32.shift_left x (32-rot)) (Int32.shift_right_logical x rot)
 
-let m1_immediate rot im8 =
-  let ar = Array.init 8 (fun i -> get_bits' i i im8) in
-  let lst = Array.to_list ar in
-  let rec ror num lst =
-    match num with
-      | 0 -> lst
-      | n -> match lst with
-	  | [] -> []
-	  | h::t -> (ror (n-1) t) @ [h]
-  in
-  let rec sum lst =
-    match lst with
-      | [] -> 0
-      | h::t -> h+ (sum t)
-  in
-  let ar' = Array.create 8 0 in
-    for i = 0 to 7 do
-      ar'.(i) <- (List.nth (ror rot lst) i) lsl i
-    done;
-    let lst' = Array.to_list ar' in
-      sum lst'
-;;
-
-let m3_offset_8 h l = (h lsl 4) + l
+let m3_offset_8 h l = Int32.logor (Int32.shift_left (Int32.of_int h) 4) (Int32.of_int l)
 
 let reg_list b regs =
-  bprintf b "{ ";
+  bprintf b "{";
   let ar = Array.create 16 [] in
     for i = 0 to 15 do
       let regi = (get_bits' i i regs) in
 	ar.(i) <- (if regi = 1 then [reg i] else [])
     done;
-    (list " " string) b (List.flatten (Array.to_list ar));
-    bprintf b " }"
+    (list ", " string) b (List.flatten (Array.to_list ar));
+    bprintf b "}"
+
+let reg_list_and_pc b regs =
+  bprintf b "{";
+  let ar = Array.create 16 [] in
+    for i = 0 to 15 do
+      let regi = (get_bits' i i regs) in
+	ar.(i) <- (if regi = 1 then [reg i] else [])
+    done;
+    (list ", " string) b (List.flatten (Array.to_list ar));
+    bprintf b ", PC}"
 
 let endian_sp e =
   if e=1 then "BE" else "LE"
 
 let ssat_shift si sh =
-  if sh = 0 && si >= 0 && si <= 32 then "LSL #"^(string_of_int si)
+  if sh = 0 && si >= 0 && si <= 31 then "LSL #"^(string_of_int si)
   else if sh = 1 && si = 0 then "ASR #"^(string_of_int 32)
   else if sh = 1 && si > 0 && si <= 31 then "ASR #"^(string_of_int si)
   else "LSL #0"  
@@ -527,22 +532,31 @@ let asm_insts b ps =
 	  begin match s2 with
 	    | "cond" as s -> bprintf b "%s%s" s1 (cond (get_v s lst))
 	    | "rotation" -> 
-		bprintf b "%s%s" s1 (rotation (get_v "rotate" lst))
-	    | "register_list"
-	    | _ -> bprintf b "%s" s1; reg_list b (get_v s2 lst)
+		bprintf b "%s" (rotation (get_v "rotate" lst))
+	    | "register_list" -> bprintf b "%s" s1; reg_list b (get_v s2 lst)
+	    | "shift" -> 
+		begin match ps.finstr with
+		  | "SSAT"| "USAT" -> 
+		      bprintf b "%s%s" s1 (ssat_shift (get_v "shift_imm" lst) 
+					     (get_v "sh" lst))
+		  | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
+		end
+	    | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
 	  end 
       | OptParam (s, None) -> 
 	  begin match ps.finstr with
 	    | "STC" -> if (get_v "N" lst = 1) then bprintf b "%s" s
 	      else bprintf b ""
 	    | _ -> if (get_v s lst = 1) then bprintf b "%s" s
-	      else bprintf b ""
+	      else if s = "!" && (get_v "W" lst = 1) then 
+		bprintf b "!"
+	      else bprintf b ""		
 	  end 
       | Param s -> 
 	  begin match s with
 	    | ("Rd"|"Rn"|"Rs"|"Rm"|"RdHi"|"RdLo") as s -> 
 		bprintf b "%s" (reg (get_v s lst))
-	    | ("CRn"|"CRm") as s ->
+	    | ("CRn"|"CRm"|"CRd") as s ->
 		bprintf b "CR%d" (get_v s lst)
 	    | ("x"|"y") as s -> bprintf b "%s" (xy (get_v s lst))
 	    | "iflags" -> 
@@ -550,16 +564,20 @@ let asm_insts b ps =
 				  (get_v "F" lst))
 	    | "effect" -> bprintf b "%s" (effect (get_v "imod" lst))
 	    | "coproc" -> bprintf b "%s" (coproc (get_v "cp_num" lst))
-	    | "registers"|"registers_without_pc"|"registers_and_pc" -> 
-		 reg_list b (get_v "register_list" lst)
+	    | "registers"|"registers_without_pc" -> 
+		reg_list b (get_v "register_list" lst)
+	    | "registers_and_pc" ->
+		reg_list_and_pc b (get_v "register_list" lst)
 	    | "immediate" as s->
 		begin match ps.finstr with
-		  | "MSR" -> 
-		      bprintf b "%d" (get_v "immed_8" lst)
+		  | "MSRimm" -> 
+		      bprintf b "0x%lx" (m1_immediate 
+					      (get_v "rotate_imm" lst) 
+					      (get_v "immed_8" lst))
 		  | _ -> 
 		      begin match ps.fmode with
 			| Some "M1_Imm" ->
-			    bprintf b "%d" (m1_immediate 
+			    bprintf b "0x%lx" (m1_immediate 
 					      (get_v "rotate_imm" lst) 
 					      (get_v "immed_8" lst))
 			| _ -> bprintf b "%d" (get_v s lst)
@@ -567,42 +585,63 @@ let asm_insts b ps =
 		end
 	    | "fields" -> bprintf b "%s" (fields (get_v "field_mask" lst))
 	    | "target_address"| "target_addr" -> 
-		bprintf b "PC+#%d" (target_address (get_v "signed_immed_24" lst))
+		bprintf b "PC+#0x%lx" (target_address (get_v "signed_immed_24" lst))
 	    | "immed" as s-> 
 		begin match ps.finstr with
 		  | "SSAT"| "SSAT16"| "USAT"| "USAT16" -> 
-		      bprintf b "%d" (get_v "sat_imm" lst)
+		      bprintf b "%d" ((get_v "sat_imm" lst))
 		  | _ -> bprintf b "%d" (get_v s lst)
 		end
 	    | "immed_16" -> bprintf b "%x" (immed_16 (get_vs "immed" lst))
+	    | "immed_24" as s -> bprintf b "0x%x" (get_v s lst)
 	    | "offset_8" as s ->
 		begin match ps.fmode with
-		  | Some "M3_ImmOff" | Some "M3_Imm_postInd" ->
-		      bprintf b "%d" (m3_offset_8 
+		  | Some "M3_ImmOff" | Some "M3_Imm_postInd" | Some "M3_Imm_preInd" ->
+		      bprintf b "0x%lx" (m3_offset_8 
 					(get_v "immedH" lst) 
 					(get_v "immedL" lst))
 		  | _ -> bprintf b "%d" (get_v s lst)
 		end
 	    | "endian_specifier" ->
 		bprintf b "%s" (endian_sp (get_v "E" lst))
-	    | "shift" as s-> 
-		begin match ps.finstr with
-		  | "SSAT"| "USAT" -> 
-		      bprintf b "%s" (ssat_shift (get_v "shift_imm" lst) 
-					(get_v "sh" lst))
-		  | _ -> bprintf b "%d" (get_v s lst)
-		end
+	    | "shift_imm" as s ->
+		bprintf b "%d" (get_v s lst)
+	    | "offset_12" as s ->bprintf b "0x%x" (get_v s lst)
 	    | _ -> bprintf b "%d" (get_v s lst)
 	  end
-      | PlusMinus -> bprintf b "+/-"
+      | PlusMinus -> if (get_v "U" lst = 1) then bprintf b "+"
+	else bprintf b "-"
   in let rec aux2 b var lst =
       match var with
 	| [] -> bprintf b ""
 	| tk::tks -> aux b tk lst; aux2 b tks lst
   in let rec aux3 b syn lst =
       match syn with
-	| [] -> bprintf b ""
-	| v::vs -> aux2 b v lst; bprintf b "\n"; aux3 b vs lst
+	| [] -> raise (Failure "empty syntax list")
+	| [v] ->  aux2 b v lst; bprintf b "\n";
+	| [c; nc] when List.mem (Param "coproc") c ->
+	    if (get_v "cond" lst) = 0xf then  aux2 b nc lst
+	    else aux2 b c lst; bprintf b "\n"
+
+        | [e; ne] when ps.fid = "CPS" ->
+	    if (get_v "imod" lst) = 1 then aux2 b ne lst
+	    else aux2 b e lst; bprintf b "\n"
+        | [ll; lr; ar; rr; rx] ->
+	    (match (get_v "shift" lst) with
+	      | 0 -> aux2 b ll lst; bprintf b "\n"
+	      | 1 -> aux2 b lr lst; bprintf b "\n"
+	      | 2 -> aux2 b ar lst; bprintf b "\n"
+	      | 3 -> 
+		  if (get_v "shift_imm" lst) = 0 then
+		    aux2 b rx lst
+		  else aux2 b rr lst; bprintf b "\n"
+	      | _ -> raise (Failure "not a shift operand"))	
+        | [cpsr; spsr] when List.mem ps.fid ["MRS"; "MSRimm"; "MSRreg"] ->
+	    if (get_v "R" lst) = 1 then
+	      aux2 b spsr lst
+	    else aux2 b cpsr lst; 
+	    bprintf b "\n"          
+        | _ -> raise (Failure ("case not implemented: "^ps.fid))
   in aux3 b ps.fsyntax (value_table ps)
 ;;
 
