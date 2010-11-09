@@ -338,6 +338,12 @@ let get_v s lst =
     | ls -> List.nth ls 0
 ;;
 
+let set_v s nv lst =
+  (fun l -> 
+     if l = [] then []
+     else List.map (fun ((s',p1,p2),v) -> if s' =s
+		    then ((s',p1,p2),nv) else ((s',p1,p2),v)) l) lst;;
+
 (*****************************************************************************)
 (* binary tests generation*)
 (*****************************************************************************)
@@ -464,10 +470,14 @@ let sign_ext n x =
   let sign = get_bits n n x in
     if sign = Int32.zero then
        x
-    else Int32.logor (get_bits 31 (n+1) Int32.minus_one)  x
+    else Int32.logor (get_bits 31 (n+1) Int32.minus_one) x
 
 let target_address si24 =
   Int32.shift_left (sign_ext 24 (Int32.of_int si24)) 2
+
+let target_addr si24 h =
+  Int32.add (Int32.shift_left (sign_ext 24 (Int32.of_int si24)) 2) 
+    (Int32.shift_left (Int32.of_int h) 1)
 
 let immed_16 is =
   match is with
@@ -477,13 +487,7 @@ let immed_16 is =
 	let i1' = if i1>15 then i1 lsl 4 else i1 in
 	let i2' = if i2>15 then i2 lsl 4 else i2 in
 	  i1' + i2'
-(*
-static inline uint32_t rotate_right(uint32_t x, uint32_t n) {
-  if (n==0) return x;
-  assert(0<n && n<32 && "not implemented for this value of n");
-  assert(n!=32);
-  return (x<<(32-n)) | (x>>n);
-*)
+
 let m1_immediate r im8 :int32 =
   let rot = r *2 in
   if rot = 0 then
@@ -584,8 +588,11 @@ let asm_insts b ps =
 		      end
 		end
 	    | "fields" -> bprintf b "%s" (fields (get_v "field_mask" lst))
-	    | "target_address"| "target_addr" -> 
+	    | "target_address" -> 
 		bprintf b "PC+#0x%lx" (target_address (get_v "signed_immed_24" lst))
+	    |"target_addr" -> bprintf b "PC+#0x%lx" 
+	       (target_addr (get_v "signed_immed_24" (set_v "H" 1 lst)) 
+	       (get_v "H" (set_v "H" 1 lst)))
 	    | "immed" as s-> 
 		begin match ps.finstr with
 		  | "SSAT"| "SSAT16"| "USAT"| "USAT16" -> 
