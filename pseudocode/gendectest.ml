@@ -518,6 +518,16 @@ let reg_list_and_pc b regs =
     (list ", " string) b (List.flatten (Array.to_list ar));
     bprintf b ", PC}"
 
+let reg_list_without_pc b regs =
+  bprintf b "{";
+  let ar = Array.create 15 [] in
+    for i = 0 to 14 do
+      let regi = (get_bits' i i regs) in
+	ar.(i) <- (if regi = 1 then [reg i] else [])
+    done;
+    (list ", " string) b (List.flatten (Array.to_list ar));
+    bprintf b "}"
+
 let endian_sp e =
   if e=1 then "BE" else "LE"
 
@@ -568,10 +578,12 @@ let asm_insts b ps =
 				  (get_v "F" lst))
 	    | "effect" -> bprintf b "%s" (effect (get_v "imod" lst))
 	    | "coproc" -> bprintf b "%s" (coproc (get_v "cp_num" lst))
-	    | "registers"|"registers_without_pc" -> 
+	    | "registers" -> 
 		reg_list b (get_v "register_list" lst)
 	    | "registers_and_pc" ->
 		reg_list_and_pc b (get_v "register_list" lst)
+	    | "registers_without_pc" ->
+		reg_list_without_pc b (get_v "register_list" lst)
 	    | "immediate" as s->
 		begin match ps.finstr with
 		  | "MSRimm" -> 
