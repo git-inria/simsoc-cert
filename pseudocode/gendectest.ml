@@ -43,7 +43,7 @@ let insert_bits i p w =
 (*mask build by the bits from position p1 to p2*)
 let mask p1 p2 =
   let rec aux p n =
-    if (n=0) then
+   if (n=0) then
       Int32.shift_left Int32.one p
     else
       Int32.add (Int32.shift_left Int32.one p) (aux (p+1) (n-1))
@@ -132,7 +132,8 @@ let restrict p =
 		    [NotV ("imod", 0b01); NotV ("mmod", 0b1)])])]
       | "LDM1"|"LDM2"|"STM1"|"STM2" -> [NotPC "Rn"; NotZero "register_list"]
       | "LDM3"|"LDRB" -> [NotPC "Rn"]
-      | "LDR"|"STR"|"STRB" -> [NoWritebackDest]
+      | "LDR"|"STR" -> [NoWritebackDest]
+      | "STRB" -> [NotPC "Rd"; NoWritebackDest]
       | "LDRD" | "STRD" -> [NotLR "Rd"; NotPC "Rd"; IsEven "Rd"]
       | "LDRBT" -> [NotPC "Rn"; NotSame ("Rd", "Rn")]
       | "LDREX" -> [NotPC "Rn"; NotPC "Rd"]
@@ -232,22 +233,21 @@ let mark_params ps =
   in
   let mark_ps s constr ops = 
     List.map (fun (p,c) -> 
-		if (is_s s p) then (p, c@[Some constr]) else (p, c)) ops
+		if (is_s s p) then (p, c@ constr) else (p, c)) ops
   in 
   let rec aux restr ops =
     match restr with
-      | NotPC s -> mark_ps s "PC" ops
-      | NotLR s -> mark_ps s "LR" ops
-      | NotV (s, i) -> mark_ps s (string_of_int i) ops
-      | NotSame (s1, s2) -> mark_ps s2 "NotSame2" (mark_ps s1 "NotSame1" ops)
-      | NotZero s -> mark_ps s "0" ops
-      | NoWritebackDest -> mark_ps "W" "0" (aux (NotSame ("Rd","Rn")) ops)
-      | NotZero2 (s1, s2) -> mark_ps s1 "0" (mark_ps s2 "0" ops)
-      | IsEven s -> mark_ps s "IsEven" ops
-      | Or (r1, r2) -> List.fold_right aux r1 (List.fold_right aux r2 ops)
-      | NotLSL0 -> mark_ps "shift_imm" "0" ops
+      | NotPC s -> mark_ps s [(Some 15)] ops
+      | NotLR s -> mark_ps s [(Some 14)] ops
+      | NotV (s, i) -> mark_ps s [(Some i)] ops
+      | NotZero s -> mark_ps s [(Some 0)] ops
+      | NoWritebackDest -> mark_ps "W" [(Some 0)] (aux (NotSame ("Rd","Rn")) ops)
+      | NotZero2 (s1, s2) -> mark_ps s1 [(Some 0)] (mark_ps s2 [(Some 0)] ops)
+      | Or (r1, r2) -> if Random.bool() then
+	  List.fold_right aux r1 ops else (List.fold_right aux r2 ops)
+      | NotLSL0 -> mark_ps "shift_imm" [(Some 0)] ops
       | Not2lowRegs|BLXbit0
-      | OtherVC _  -> mark_ps "" "" ops
+      | OtherVC _ | NotSame _ | IsEven _ -> mark_ps ""[None] ops
   in 
     match (restrict ps) with
       | [] -> oparams
@@ -259,20 +259,11 @@ let build_lv ops =
   let aux (p, lconstr) =
     let aux1 constr =
       match constr with
-	| Some optstr -> 
-	    begin match optstr with
-	      | "PC" -> [15]
-	      | "LR" -> [14]
-	      | "0" -> [0]
-	      | "NotSame1" | "NotSame2" -> []
-	      | "IsEven" -> []
-	      (*| i -> [int_of_string i]*)
-	      | _ -> []
-	    end
+	| Some optint -> [optint]
 	| None -> []
     in (p,List.flatten (List.map aux1 lconstr))
   in List.map aux ops
-;;(*FIXME*)
+;;
 
 let other_constr ops =
   let aux (p, c) =
@@ -294,8 +285,12 @@ let valid_lst ops =
 ;;
 
 let value_table ps =
-  let aux (p, lv) =
-    (p, List.nth lv (Random.int (List.length lv))) in
+  let aux ((s,p1,p2), lv) =
+    match lv with
+      | [] -> raise (Failure (s^"has no validity value"))
+      | lv ->
+	  ((s,p1,p2), List.nth lv (Random.int (List.length lv))) 
+  in
     List.map aux (valid_lst (mark_params ps));;
 
 
@@ -316,10 +311,10 @@ let get_vs_not_same s1 s2 ps =
 ;;
 
 let print_lst b ps =
-  let aux b ((s,_,_),lst) =
+  let aux b ((s,_,_),_) =
     bprintf b "%s" ps.finstr;
     bprintf b "%s" s;
-    (list " " int) b lst
+    (*(list " " int) b lst*)
   in 
     (list "" aux) b (valid_lst (mark_params ps))
 ;;
@@ -334,7 +329,7 @@ let get_vs s lst =
 
 let get_v s lst =
   match (get_vs s lst) with
-    | [] -> 0
+    | [] -> raise (Failure (s^" has no value"))
     | ls -> List.nth ls 0
 ;;
 
@@ -481,12 +476,10 @@ let target_addr si24 h =
 
 let immed_16 is =
   match is with
-    | [] -> 0
-    | [i] -> i
-    | i1::i2::_ ->
-	let i1' = if i1>15 then i1 lsl 4 else i1 in
-	let i2' = if i2>15 then i2 lsl 4 else i2 in
-	  i1' + i2'
+    | [] -> raise (Failure "no immed")
+    | [i] -> Int32.of_int i
+    | i1::i2::_ -> Int32.logor (Int32.shift_left (Int32.of_int i1) 4) 
+	(Int32.of_int i2)
 
 let m1_immediate r im8 :int32 =
   let rot = r *2 in
@@ -535,7 +528,7 @@ let ssat_shift si sh =
   if sh = 0 && si >= 0 && si <= 31 then "LSL #"^(string_of_int si)
   else if sh = 1 && si = 0 then "ASR #"^(string_of_int 32)
   else if sh = 1 && si > 0 && si <= 31 then "ASR #"^(string_of_int si)
-  else "LSL #0"  
+  else "LSL #0" 
 
 (*main function to generate the instructions in assembly code*)
 let asm_insts b ps =
@@ -552,18 +545,20 @@ let asm_insts b ps =
 		begin match ps.finstr with
 		  | "SSAT"| "USAT" -> 
 		      bprintf b "%s%s" s1 (ssat_shift (get_v "shift_imm" lst) 
-					     (get_v "sh" lst))
+					     (get_v "shift" lst))
 		  | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
 		end
 	    | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
 	  end 
-      | OptParam (s, None) -> 
-	  begin match ps.finstr with
-	    | "STC" -> if (get_v "N" lst = 1) then bprintf b "%s" s
+      | OptParam (s, None) ->
+	  begin match s with
+	    | "L" -> if ps.finstr = "LDC" then bprintf b "L"
+	      else if ps.finstr = "STC" then bprintf b ""
+	      else if (get_v "L" lst = 1) then bprintf b "%s" s
 	      else bprintf b ""
-	    | _ -> if (get_v s lst = 1) then bprintf b "%s" s
-	      else if s = "!" && (get_v "W" lst = 1) then 
-		bprintf b "!"
+	    | "!" -> if s = "!" && (get_v "W" lst = 1) then 
+		bprintf b "!" else bprintf b ""
+	    | s -> if (get_v s lst = 1) then bprintf b "%s" s
 	      else bprintf b ""		
 	  end 
       | Param s -> 
@@ -611,7 +606,8 @@ let asm_insts b ps =
 		      bprintf b "%d" ((get_v "sat_imm" lst))
 		  | _ -> bprintf b "%d" (get_v s lst)
 		end
-	    | "immed_16" -> bprintf b "%x" (immed_16 (get_vs "immed" lst))
+	    | "immed_16" -> 
+		bprintf b "0x%lx" (immed_16 (get_vs "immed" lst))
 	    | "immed_24" as s -> bprintf b "0x%x" (get_v s lst)
 	    | "offset_8" as s ->
 		begin match ps.fmode with
@@ -641,7 +637,6 @@ let asm_insts b ps =
 	| [c; nc] when List.mem (Param "coproc") c ->
 	    if (get_v "cond" lst) = 0xf then  aux2 b nc lst
 	    else aux2 b c lst; bprintf b "\n"
-
         | [e; ne] when ps.fid = "CPS" ->
 	    if (get_v "imod" lst) = 1 then aux2 b ne lst
 	    else aux2 b e lst; bprintf b "\n"
