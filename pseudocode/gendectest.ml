@@ -26,14 +26,6 @@ let output_word out (word: int32) =
   output_byte out (Int32.to_int (Int32.shift_right_logical word 16));
   output_byte out (Int32.to_int (Int32.shift_right_logical word 24));;
 
-(* add a bit on the right of 'w', e.g.: push_bit true 0b101 = 0b1011 *)
-let push_bit (b: bool) (w: int32) =
-  let w' = Int32.shift_left w 1 in
-    if b then Int32.succ w' else w'
-
-let push_bits (x: bool array) (y: int32) =
-  let lst = Array.to_list x in
-    List.fold_right push_bit lst y;; 
 
 (*insert bits from position p*)
 let insert_bits i p w =
@@ -42,33 +34,18 @@ let insert_bits i p w =
 
 (*mask build by the bits from position p1 to p2*)
 let mask p1 p2 =
-  let rec aux p n =
-   if (n=0) then
-      Int32.shift_left Int32.one p
-    else
-      Int32.add (Int32.shift_left Int32.one p) (aux (p+1) (n-1))
-  in aux p2 (p1-p2)
+  let size = p1-p2+1 in (* number of bit in the mask *)
+    if size=32 then Int32.minus_one
+    else Int32.shift_left (Int32.sub (Int32.shift_left Int32.one size) Int32.one) p2
 ;;
+
+let test_mask =
+  let expected = Int32.of_int 0xf0 in
+    if expected <> mask 7 4 then raise (Failure "mask is wrong"); ();;
 
 (*get bits value form position p1 to p2*)
 let get_bits p1 p2 w =
   Int32.shift_right (Int32.logand (mask p1 p2) w) p2;;
-
-(*get the bits value by the name of parameter*)
-let get_bits_by_name s ps w =
-  let aux (s',p1,p2) w =
-    if (s' = s) then get_bits p1 p2 w
-    else Int32.zero
-  in Int32.to_int (List.fold_right aux ps w)
-;;
-
-(*return the position p1 and p2 of parameter s*)
-let get_pos s ps =
-  let aux s (s', p1, p2) =
-    if s = s' then [p1; p2]
-    else []
-  in List.map (aux s) ps
-;;
 
 (*operation on bitwise*)
 type bitwise_change =
@@ -76,37 +53,9 @@ type bitwise_change =
   | No_change
 ;;
 
-(*Generate bits randomly*)
-(*let gen_bin pc =
-  let aux ls w =
-    match ls with
-      | Value s -> push_bit s w
-      | Shouldbe s -> push_bit s w
-      | Param1 _ | Param1s _ -> push_bit (Random.bool ()) w
-      | Range _ -> push_bit (Random.bool ()) w
-      | Nothing -> raise (Failure "unexpected case")
-  in Array.fold_right aux pc Int32.zero;;
-
-let bin_inst out ps =
-  let md = add_mode (name ps) in
-    match md with
-      | DecInst -> (*output_word out (gen_bin ls)*)
-      | DecEncoding -> ()
-      | DecMode _ -> ();;
-
-let gen_tests out _ dec =
-  set_binary_mode_out out true;
-  List.iter (bin_inst out) dec;;
-*)
-
-(*the upper bound of random generation for parameter (s,p1 p2) in general case*)
-let upper_bound p1 p2 =
-  Int32.to_int (Int32.shift_left Int32.one (p1-p2+1))
-;;
-
 (*add constraint to instructions by addressing mode and name*)
 let restrict p =
-  let aux fmode =
+  let mode_constraints fmode =
     match fmode with
       | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
 	  [NotPC "Rd"; NotPC "Rm"; NotPC "Rn"; NotPC "Rs"]
@@ -114,15 +63,18 @@ let restrict p =
       | Some "M1_RRImm" -> [NotV ("shift_imm", 0b0)]
       | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
 	  [NotPC "Rm"]
-      | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|"M3_Imm_postInd"|"M5_Imm_preInd") -> 
+      | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|
+		  "M3_Imm_postInd"|"M5_Imm_preInd") -> 
 	  [NotPC "Rn"]
-      | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"M2_Sc_Reg_postInd"|"M3_Reg_preInd"|"M3_Reg_postInd") -> 
+      | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"M2_Sc_Reg_postInd"|
+		  "M3_Reg_preInd"|"M3_Reg_postInd") -> 
 	  [NotPC "Rm"; NotPC "Rn"; NotSame ("Rn", "Rm")]
-      | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") -> [NotV ("S", 0b1); NotZero "register_list"]
+      | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") ->
+	  [NotV ("S", 0b1); NotZero "register_list"]
       | Some "M5_U" -> [NotV ("U", 0b0)]
       | Some _ | None -> []
   in
-  let aux2 finstr =
+  let instr_constraints finstr =
     begin match finstr with
       | "ADC"|"ADD"|"AND" -> [NotPC "Rd"]
       | "CLZ" -> [NotPC "Rm"; NotPC "Rd"]
@@ -144,69 +96,33 @@ let restrict p =
 	  [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"; NotPC "Rn"]
       | "MRRC" -> [NotSame ("Rd", "Rn"); NotPC "Rd"; NotPC "Rn"]
       | "MUL"  -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
-      | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"|"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"|"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
+      | "PKHBT"|"PKHTB"|"QADD"|"QADD8"|"QADD16"|"QADDSUBX"|"QDADD"|"QDSUB"|"QSUB"
+      |	"QSUB16"|"QSUB8"|"QSUBADDX"|"SADD16"|"SADD8"|"SADDSUBX"|"SEL"|"SHADD16"|"SHADD8"
+      |"SHADDSUBX"|"SHSUB16"|"SHSUB8"|"SHSUBADDX"|"SSUB16"|"SSUB8"|"SSUBADDX"
 	  -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
-      | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"|"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> [NotPC "Rd"; NotPC "Rm"]
+      | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"
+      |"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> [NotPC "Rd"; NotPC "Rm"]
       | "RFE" -> [NotPC "Rn"]
       | "SMLAD" -> [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"]
       | "SMLAL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"]
-      | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"; NotSame ("Rd","Rn")]
-      | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" -> [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
-      | "STREX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
+      | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"->
+	  [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"; NotSame ("Rd","Rn")]
+      | "SMMUL"|"SMUAD"|"SMULxy"|"SMULWy"|"SMUSD"|"USAD8"|"USADA8" ->
+	  [NotPC "Rd"; NotPC "Rs"; NotPC "Rm"]
+      | "STREX" ->
+	  [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
       | "STRT"-> [NotSame ("Rd","Rn")]
-      | "SWP"|"SWPB" -> [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
-      | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"|"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"|"USUB16"|"USUB8"|"USUBADDX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
-      | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXTH" -> [NotPC "Rd"; NotPC "Rm"]
+      | "SWP"|"SWPB" ->
+	  [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
+      | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"
+      |"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"
+      |"USUB16"|"USUB8"|"USUBADDX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
+      | "USAT"|"USAT16"|"UXTAB"|"UXTAB16"|"UXTAH"|"UXTB"|"UXTB16"|"UXTH" ->
+	  [NotPC "Rd"; NotPC "Rm"]
       | _ -> []
     end
-  in aux p.fmode @ (aux2 p.finstr) 
+  in mode_constraints p.fmode @ instr_constraints p.finstr 
 ;;
-
-(*a serie of bits whose value can't be v*)
-let notv s lv (s', p1, p2) w =
-  if (s' = s) then
-    let m = upper_bound p1 p2 in
-    let lst = Array.to_list (Array.init m (fun i -> i)) in
-    let lst' = List.fold_right (fun v -> List.filter ((!=) v)) lv lst in
-    let r = Random.int (List.length lst') in
-      insert_bits (Int32.of_int (List.nth lst' r)) p2 w
-  else w;;
-
-(*NotPC*)
-let notpc s params w = 
-  notv s [15] params w;;
-
-(*NotLR*)
-let notlr s params w = 
-  notv s [14] params w;;
-
-(*two parameters that can't have the same value*)
-let notsame s1 s2 lst_v w =
-  let r2 = Random.int 16 in
-  let aux (s2', _, p22) w =
-    if (s2' = s2) then 
-      let w1 = insert_bits (Int32.of_int r2) p22 w in
-	w1
-    else w
-  in
-    List.fold_right (notv s1 [r2]) lst_v (List.fold_right aux lst_v w)
-;;
-
-(*bits can't be zero*)
-let notzero s (s', p1, p2) w =
-  notv s [0] (s', p1, p2) w;;
-
-let isodd (_,p1,p2) =
-  let aux p1 p2 lst =
-    let m = upper_bound p1 p2 in
-    let l = Array.to_list (Array.init m (fun i -> i)) in
-      List.fold_right (fun i j -> if (i mod 2) != 0 then j @ [i] else j) l lst
-  in aux p1 p2 []
-;;
-
-(*value can't be odd*)
-let iseven s params w =
-  notv s (isodd params) params w;;
 
 (*****************************************************************************)
 (*build a list to store the parameters and their values*)
@@ -223,51 +139,38 @@ let add_R ps =
 
 (*mark each parameter with their constraints*)
 let mark_params ps =
-  let params = add_R (parameters_of ps.fdec) in
-  let oparams = 
-    let ar = Array.init (List.length params) 
-      (fun i -> (List.nth params i, [None]))
-    in Array.to_list ar
+  let params: (string * int * int) list = add_R (parameters_of ps.fdec) in
+  let oparams: ((string * int * int) * int list) list =
+    List.map (fun p -> p, []) params
   in
-  let is_s s (s',_,_) = (=) s s' 
+  let is_s s (s',_,_) = s = s' 
   in
-  let mark_ps s constr ops = 
-    List.map (fun (p,c) -> 
-		if (is_s s p) then (p, c@ constr) else (p, c)) ops in
-  let isodd = List.map (fun i -> Some i) (Array.to_list 
-					    (Array.init 8 (fun i -> 2*i+1)))
+  let mark_ps (s:string) (constr: int list)
+      (ops: ((string * int * int) * int list) list) = 
+    List.map (fun (p,c) -> if (is_s s p) then (p, c @ constr) else (p, c)) ops in
+  let isodd = (Array.to_list (Array.init 8 (fun i -> 2*i+1)))
   in 
-  let rec aux restr ops =
+  let rec constraint_to_exclusion_list restr ops =
     match restr with
-      | NotPC s -> mark_ps s [(Some 15)] ops
-      | NotLR s -> mark_ps s [(Some 14)] ops
-      | NotV (s, i) -> mark_ps s [(Some i)] ops
-      | NotZero s -> mark_ps s [(Some 0)] ops
-      | NoWritebackDest -> mark_ps "W" [(Some 0)] (aux (NotSame ("Rd","Rn")) ops)
-      | NotZero2 (s1, s2) -> mark_ps s1 [(Some 0)] (mark_ps s2 [(Some 0)] ops)
-      | Or (r1, r2) -> if Random.bool() then
-	  List.fold_right aux r1 ops else (List.fold_right aux r2 ops)
-      | NotLSL0 -> mark_ps "shift_imm" [(Some 0)] ops
+      | NotPC s -> mark_ps s [15] ops
+      | NotLR s -> mark_ps s [14] ops
+      | NotV (s, i) -> mark_ps s [i] ops
+      | NotZero s -> mark_ps s [0] ops
+      | NoWritebackDest ->
+	  constraint_to_exclusion_list (Or ([NotV ("W", 1)], [NotSame ("Rd","Rn")])) ops
+      | NotZero2 (s1, s2) ->
+	  constraint_to_exclusion_list (Or ([NotZero s1], [NotZero s2])) ops
+      | Or (r1, r2) -> if Random.bool()
+	then List.fold_right constraint_to_exclusion_list r1 ops
+	else List.fold_right constraint_to_exclusion_list r2 ops
+      | NotLSL0 -> mark_ps "shift_imm" [0] ops
       | IsEven s -> mark_ps s isodd ops
-      | Not2lowRegs|BLXbit0
-      | OtherVC _ | NotSame _ -> mark_ps ""[None] ops
+      | Not2lowRegs| BLXbit0 | OtherVC _ | NotSame _ -> ops
   in 
-    match (restrict ps) with
-      | [] -> oparams
-      | lst -> List.fold_right aux lst oparams
+    List.fold_right constraint_to_exclusion_list (restrict ps) oparams
 ;;
 
-(*associate the parameter with a list of valid values*)
-let build_lv ops = 
-  let aux (p, lconstr) =
-    let aux1 constr =
-      match constr with
-	| Some optint -> [optint]
-	| None -> []
-    in (p,List.flatten (List.map aux1 lconstr))
-  in List.map aux ops
-;;
-
+(* condition has value from 0 to 14*)
 let other_constr ops =
   let aux (p, c) =
     match p with
@@ -275,52 +178,37 @@ let other_constr ops =
       | _ -> (p,c)
   in List.map aux ops
 
-let valid_lst ops =
-  let aux ((s', p1, p2), lv) =
-    let m = upper_bound p1 p2 in
-    let length = 
-      if m> 0 && m < Sys.max_array_length
-      then m else Sys.max_array_length in
-    let lst = Array.to_list (Array.init length (fun i -> i)) in
-    let lst' = List.fold_right (fun v -> List.filter ((!=) v)) lv lst in
-      ((s',p1,p2),lst')
-  in List.map aux (other_constr (build_lv ops))
+(*the upper bound of random generation for parameter (s,p1 p2) in general case*)
+let upper_bound p1 p2 =
+  Int32.to_int (Int32.shift_left Int32.one (p1-p2+1))
 ;;
+
+(* build the valid value list for parameters *)
+(* let valid_lst (ops: ((string * int * int) * int list) list) = *)
+(*   let aux ((s', p1, p2), lv) = *)
+(*     let value = upper_bound p1 p2 in *)
+(*     let length =  *)
+(*       if m> 0 && m < Sys.max_array_length *)
+(*       then m else Sys.max_array_length in *)
+(*     let lst = Array.to_list (Array.init length (fun i -> i)) in *)
+(*     let lst' = List.fold_right (fun v -> List.filter ((<>) v)) lv lst in *)
+(*       ((s',p1,p2),lst') *)
+(*   in List.map aux (other_constr ops) *)
+(* ;; *)
+
+let chose_param_value ((_s,p1,p2),cs) =
+  let total = upper_bound p1 p2 in
+  let keep = total - List.length cs in
+  let replacement_list =
+    let n = ref keep in
+    let generate_replacement () = while List.mem !n cs do n := !n +1 done; !n
+    in List.map (fun c -> (c,generate_replacement())) cs
+  in
+  let candidate = Random.int keep in
+    try List.assoc candidate replacement_list with Not_found -> candidate;;
 
 let value_table ps =
-  let aux ((s,p1,p2), lv) =
-    match lv with
-      | [] -> raise (Failure (s^"has no validity value"))
-      | lv ->
-	  ((s,p1,p2), List.nth lv (Random.int (List.length lv))) 
-  in
-    List.map aux (valid_lst (mark_params ps));;
-
-
-let get_vs_not_same s1 s2 ps =
-    let lst = valid_lst (mark_params ps)
-    and lst' = value_table ps in
-      if List.exists ((=)(NotSame (s1, s2))) (restrict ps) then
-	let lv2 = (fun (_, lv) -> lv) (List.find (fun ((s,_,_),_) -> s = s2) lst)
-	in
-	  List.map (fun ((s,p1,p2), v) -> 
-		      if (s = s2) then
-			(let v1 = (fun (_, v) -> v)
-			   (List.find (fun ((s,_,_),_) -> s = s1) lst') in
-			 let lv2' = List.filter ((!=)v1) lv2 in
-			   ((s,p1,p2),List.nth lv2' (Random.int (List.length lv2'))))
-		      else ((s,p1,p2),v)) lst'
-      else List.map (fun x -> x) lst'
-;;
-
-let print_lst b ps =
-  let aux b ((s,_,_),_) =
-    bprintf b "%s" ps.finstr;
-    bprintf b "%s" s;
-    (*(list " " int) b lst*)
-  in 
-    (list "" aux) b (valid_lst (mark_params ps))
-;;
+  List.map (fun (p,c) -> (p, chose_param_value (p,c))) (other_constr (mark_params ps));;
 
 (*get the vaule from the value table by the name of parameter*)
 
