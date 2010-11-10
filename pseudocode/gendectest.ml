@@ -233,7 +233,9 @@ let mark_params ps =
   in
   let mark_ps s constr ops = 
     List.map (fun (p,c) -> 
-		if (is_s s p) then (p, c@ constr) else (p, c)) ops
+		if (is_s s p) then (p, c@ constr) else (p, c)) ops in
+  let isodd = List.map (fun i -> Some i) (Array.to_list 
+					    (Array.init 8 (fun i -> 2*i+1)))
   in 
   let rec aux restr ops =
     match restr with
@@ -246,8 +248,9 @@ let mark_params ps =
       | Or (r1, r2) -> if Random.bool() then
 	  List.fold_right aux r1 ops else (List.fold_right aux r2 ops)
       | NotLSL0 -> mark_ps "shift_imm" [(Some 0)] ops
+      | IsEven s -> mark_ps s isodd ops
       | Not2lowRegs|BLXbit0
-      | OtherVC _ | NotSame _ | IsEven _ -> mark_ps ""[None] ops
+      | OtherVC _ | NotSame _ -> mark_ps ""[None] ops
   in 
     match (restrict ps) with
       | [] -> oparams
