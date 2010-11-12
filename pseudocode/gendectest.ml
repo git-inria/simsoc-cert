@@ -59,16 +59,21 @@ let restrict p =
     match fmode with
       | Some ("M1_LSRReg"|"M1_LSLReg"|"M1_ASRReg"|"M1_RRReg") -> 
 	  [NotPC "Rd"; NotPC "Rm"; NotPC "Rn"; NotPC "Rs"]
-      | Some "M1_LSLImm" -> [NotLSL0]
-      | Some "M1_RRImm" -> [NotV ("shift_imm", 0b0)]
-      | Some ("M2_RegOff"|"M2_ScRegOff"|"M3_RegOff") -> 
+      | Some ("M1_Imm"|"M1_LSLImm"|"M1_ASRImm"|"M1_RRImm"|"M1_LSRImm") -> 
+	  [NotLSL0]
+      | Some ("M2_RegOff"|"M3_RegOff") -> 
 	  [NotPC "Rm"]
       | Some ("M2_Imm_preInd"|"M2_Imm_postInd"|"M3_Imm_preInd"|
 		  "M3_Imm_postInd"|"M5_Imm_preInd") -> 
 	  [NotPC "Rn"]
-      | Some ("M2_Reg_preInd"|"M2_ScReg_preInd"|"M2_Reg_postInd"|"M2_Sc_Reg_postInd"|
+      | Some "M2_ScReg_postInd" ->
+	  [NotPC "Rm"; NotPC "Rn"; NotSame ("Rn", "Rm"); NotLSL0]
+      | Some ("M2_Reg_preInd"|"M2_Reg_postInd"|
 		  "M3_Reg_preInd"|"M3_Reg_postInd") -> 
 	  [NotPC "Rm"; NotPC "Rn"; NotSame ("Rn", "Rm")]
+      | Some "M2_ScReg_preInd" -> 
+	  [NotPC "Rm"; NotPC "Rn"; NotSame ("Rn", "Rm"); NotLSL0]
+      | Some "M2_ScRegOff" -> [NotPC "Rm"; NotLSL0]
       | Some ("M4_IA"|"M5_IB"|"M5_DA"|"M5_DB") ->
 	  [NotV ("S", 0b1); NotZero "register_list"]
       | Some "M5_U" -> [NotV ("U", 0b0)]
@@ -83,11 +88,11 @@ let restrict p =
 	       [Or ([NotV ("imod",0b01); NotV ("mmod", 0b0)], 
 		    [NotV ("imod", 0b01); NotV ("mmod", 0b1)])])]
       | "LDM1"|"LDM2"|"STM1"|"STM2" -> [NotPC "Rn"; NotZero "register_list"]
-      | "LDM3"|"LDRB" -> [NotPC "Rn"]
+      | "LDM3" -> [NotPC "Rn"]
       | "LDR"|"STR" -> [NoWritebackDest]
-      | "STRB" -> [NotPC "Rd"; NoWritebackDest]
+      | "LDRB" |"STRB" -> [NotPC "Rd"; NoWritebackDest]
       | "LDRD" | "STRD" -> [NotLR "Rd"; NotPC "Rd"; IsEven "Rd"]
-      | "LDRBT" -> [NotPC "Rn"; NotSame ("Rd", "Rn")]
+      | "LDRBT" -> [NotPC "Rd"; NotSame ("Rd", "Rn")]
       | "LDREX" -> [NotPC "Rn"; NotPC "Rd"]
       | "LDRH"|"LDRSB"|"LDRSH"|"STRH" -> [NotPC "Rd"; NoWritebackDest]
       | "LDRT"|"STRBT" -> [NotPC "Rd"; NotSame ("Rd", "Rn")]
@@ -103,7 +108,7 @@ let restrict p =
       | "REV"|"REV16"|"REVSH"|"SSAT"|"SSAT16"|"SXTAB"
       |"SXTAB16"|"SXTAH"|"SXTB"|"SXTB16"|"SXTH"-> [NotPC "Rd"; NotPC "Rm"]
       | "RFE" -> [NotPC "Rn"]
-      | "SMLAD" -> [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"]
+      | "SMLAD"|"SMMLA" -> [NotPC "Rd"; NotPC "Rm"; NotPC "Rs"]
       | "SMLAL"-> [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"]
       | "SMLALxy"|"SMLALD"|"SMLSLD"|"SMULL"|"UMAAD"|"UMLAL"|"UMULL"->
 	  [NotPC "RdHi"; NotPC "RdLo"; NotPC "Rs"; NotPC "Rm"; NotSame ("Rd","Rn")]
@@ -113,7 +118,7 @@ let restrict p =
 	  [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
       | "STRT"-> [NotSame ("Rd","Rn")]
       | "SWP"|"SWPB" ->
-	  [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rd","Rm"); NotSame ("Rd","Rn")]
+	  [NotPC "Rn"; NotPC "Rd" ;NotPC "Rm"; NotSame ("Rn","Rm"); NotSame ("Rd","Rn")]
       | "UADD16"|"UADD8"|"UADDSUBX"|"UHADD16"|"UHADD8"|"UHADDSUBX"|"UHSUB16"|"UHSUB8"
       |"UHSUBADDX"|"UQADD16"|"UQADD8"|"UQADDSUBX"|"UQSUB16"|"UQSUB8"|"UQSUBADDX"
       |"USUB16"|"USUB8"|"USUBADDX" -> [NotPC "Rn"; NotPC "Rd"; NotPC "Rm"]
@@ -149,7 +154,7 @@ let mark_params ps =
       (ops: ((string * int * int) * int list) list) = 
     List.map (fun (p,c) -> if (is_s s p) then (p, c @ constr) else (p, c)) ops in
   let isodd = (Array.to_list (Array.init 8 (fun i -> 2*i+1)))
-  in 
+  in
   let rec constraint_to_exclusion_list restr ops =
     match restr with
       | NotPC s -> mark_ps s [15] ops
@@ -158,7 +163,7 @@ let mark_params ps =
       | NotZero s -> mark_ps s [0] ops
       | NoWritebackDest ->
 	  constraint_to_exclusion_list (Or ([NotV ("W", 1)], [NotSame ("Rd","Rn")])) ops
-      | NotZero2 (s1, s2) ->
+      | NotZero2 (s1, s2) -> 
 	  constraint_to_exclusion_list (Or ([NotZero s1], [NotZero s2])) ops
       | Or (r1, r2) -> if Random.bool()
 	then List.fold_right constraint_to_exclusion_list r1 ops
@@ -170,11 +175,16 @@ let mark_params ps =
     List.fold_right constraint_to_exclusion_list (restrict ps) oparams
 ;;
 
-(* condition has value from 0 to 14*)
+(* condition has value from 0 to 14 
+ * and mode has 7 values that has meaning *)
 let other_constr ops =
+  let md = [0b10000;0b10001;0b10010;0b10011;0b10111;0b11011;0b11111] in
+  let not_mode = List.fold_right (fun m -> List.filter ((<>)m)) md
+    (Array.to_list (Array.init 32 (fun i -> i))) in
   let aux (p, c) =
     match p with
       | ("cond",_,_) -> (p,c@[15])
+      | ("mode",_,_) -> (p,c@not_mode)
       | _ -> (p,c)
   in List.map aux ops
 
@@ -207,8 +217,33 @@ let chose_param_value ((_s,p1,p2),cs) =
   let candidate = Random.int keep in
     try List.assoc candidate replacement_list with Not_found -> candidate;;
 
-let value_table ps =
+let value_table' ps =
   List.map (fun (p,c) -> (p, chose_param_value (p,c))) (other_constr (mark_params ps));;
+
+
+let value_table ps =
+  let is_s s ((s',_,_),_) = s = s' in
+  let v_tb = value_table' ps in 
+  let v1 s1 = (fun (_,v) -> v) (List.find (fun l -> is_s s1 l) v_tb)
+  and v2 s2 = (fun (_,v) -> v) (List.find (fun l -> is_s s2 l) v_tb) in
+  let reg_lst res lst =
+    match res with
+      | NotSame(s1,s2) -> lst@[((s1,v1),(s2,v2))]
+      | OtherVC _|NotV (_, _)|Or (_, _)|NotZero2 (_, _)|NotZero _|IsEven _|NotLR _|
+	    NotPC _|BLXbit0|Not2lowRegs|NotLSL0|NoWritebackDest -> lst
+  in let notsame_regs = List.fold_right reg_lst (restrict ps) [] in
+  let op_ns ((s1,v1),(s2,v2)) lst =
+    if v1 == v2 then 
+      let cs2 = (fun (_,cs) -> cs) (List.find (fun l -> is_s s1 l)
+				      (other_constr (mark_params ps))) in
+      List.map (fun ((s,p1,p2),v) -> if is_s s2 ((s,p1,p2),v) then 
+		  ((s,p1,p2),chose_param_value ((s,p1,p2),cs2@[v2 s2]))
+		else ((s,p1,p2),v)) lst 
+    else v_tb
+  in match notsame_regs with
+    | [] -> v_tb
+    | regs -> List.fold_right op_ns regs v_tb
+;;   
 
 (*get the vaule from the value table by the name of parameter*)
 
@@ -297,7 +332,6 @@ let cond v =
     | 11 -> "LT"
     | 12 -> "GT"
     | 13 -> "LE"
-    | 14 -> ""
     | _ -> ""
 
 (*print registers by name*)
@@ -341,6 +375,17 @@ let rotation rot =
     | 0b01 -> ", ROR #8"
     | 0b10 -> ", ROR #16"
     | 0b11 -> ", ROR #24"
+    | _ -> ""
+
+let mode md =
+  match md with
+    | 0b10000 -> "usr"
+    | 0b10001 -> "fiq"
+    | 0b10010 -> "irq"
+    | 0b10011 -> "sup"
+    | 0b10111 -> "abt"
+    | 0b11011 -> "und"
+    | 0b11111 -> "sys"
     | _ -> ""
 
 let fields f =
@@ -415,7 +460,7 @@ let reg_list_without_pc b regs =
 let endian_sp e =
   if e=1 then "BE" else "LE"
 
-let ssat_shift si sh =
+let shift si sh =
   if sh = 0 && si >= 0 && si <= 31 then "LSL #"^(string_of_int si)
   else if sh = 1 && si = 0 then "ASR #"^(string_of_int 32)
   else if sh = 1 && si > 0 && si <= 31 then "ASR #"^(string_of_int si)
@@ -432,13 +477,10 @@ let asm_insts b ps =
 	    | "rotation" -> 
 		bprintf b "%s" (rotation (get_v "rotate" lst))
 	    | "register_list" -> bprintf b "%s" s1; reg_list b (get_v s2 lst)
-	    | "shift" -> 
-		begin match ps.finstr with
-		  | "SSAT"| "USAT" -> 
-		      bprintf b "%s%s" s1 (ssat_shift (get_v "shift_imm" lst) 
-					     (get_v "shift" lst))
-		  | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
-		end
+	    | "shift" ->  
+		bprintf b "%s%s" s1 (shift (get_v "shift_imm" lst) 
+				       (get_v "shift" lst))
+	    | "mode" -> bprintf b "%s%s" s1 (mode (get_v "mode" lst))
 	    | _ -> bprintf b "%s%d" s1 (get_v s2 lst)
 	  end 
       | OptParam (s, None) ->
@@ -511,8 +553,9 @@ let asm_insts b ps =
 	    | "endian_specifier" ->
 		bprintf b "%s" (endian_sp (get_v "E" lst))
 	    | "shift_imm" as s ->
-		bprintf b "%d" (get_v s lst)
-	    | "offset_12" as s ->bprintf b "0x%x" (get_v s lst)
+		bprintf b "%d" (if get_v s lst = 32 then 0 else get_v s lst)
+	    | "offset_12" as s -> bprintf b "0x%x" (get_v s lst)
+	    | "mode" as s -> bprintf b "%s" (mode (get_v s lst))
 	    | _ -> bprintf b "%d" (get_v s lst)
 	  end
       | PlusMinus -> if (get_v "U" lst = 1) then bprintf b "+"
@@ -564,7 +607,9 @@ let gen_bin_test out pcs ss decs seed =
   set_binary_mode_out out true;
   Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
-    List.iter (bin_insts out) (List.rev fs)
+  let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
+  let fs' = List.filter (fun f -> not (List.mem f.finstr cp_instr)) fs in
+    List.iter (bin_insts out) (List.rev fs')
 ;;
 
 (*****************************************************************************)
@@ -574,8 +619,25 @@ let gen_bin_test out pcs ss decs seed =
 let gen_asm_test bn pcs ss decs seed =
   Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
-  let b = Buffer.create 100000 in
-    (list "" asm_insts) b (List.rev fs);
-    let outh = open_out (bn^".asm") in
-      Buffer.output_buffer outh b; close_out outh;
+  let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
+  let fs' = List.filter (fun f -> not (List.mem f.finstr cp_instr)) fs in
+  let ba = Buffer.create 100000 in
+    (list "" asm_insts) ba (List.rev fs');
+    let outa = open_out (bn^".asm") in
+      Buffer.output_buffer outa ba; close_out outa;
+;;
+
+let gen_test bn pcs ss decs seed =
+  Random.init seed;
+  let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
+  let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
+  let fs' = List.filter (fun f -> not (List.mem f.finstr cp_instr)) fs in
+  let ba = Buffer.create 100000 in
+  let bb = Buffer.create 100000 in
+    (list "" asm_insts) ba (List.rev fs');
+    let outa = open_out (bn^".asm") and outb = open_out (bn^".bin") in
+      set_binary_mode_out outb true;
+      List.iter (bin_insts outb) (List.rev fs');
+      Buffer.output_buffer outa ba; close_out outa;
+      Buffer.output_buffer outb bb; close_out outb
 ;;
