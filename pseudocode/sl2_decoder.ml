@@ -57,6 +57,8 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     let class_count = match k with ARM -> 512 | Thumb -> 32 in
     let classes = Array.create class_count [] in
     let classify p =
+      let is_conditional p = let d = p.xprog.fdec and v1 = Codetype.Value true in
+        not (d.(31)=v1 && d.(30)=v1 && d.(29)=v1 && d.(28)=v1) in
       let mask, value = Gencxx.mask_value p.xprog.fdec in 
       let opmask, opcode = match k with
         | Thumb ->
