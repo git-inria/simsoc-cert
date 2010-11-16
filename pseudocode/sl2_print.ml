@@ -137,7 +137,7 @@ module Printer (PC: PrinterConfig) = struct
                 bprintf b "  if (%a&4)" (param "field_mask") x; PC.char b 's';
                 bprintf b "  if (%a&8)" (param "field_mask") x; PC.char b 'f'
             | "endian_specifier" -> (* SETEND *)
-                let aux b x = bprintf b "(%a ? \"BE\" : \"LE32\")" (param "E") x
+                let aux b x = bprintf b "(%a ? \"BE\" : \"LE\")" (param "E") x
                 in PC.dstring b aux x
             | "x" | "y" -> (* SMLA<x><y>, SMLAL<x><y>, ... *)
                 let aux b x = bprintf b "(%a ? 'T' : 'B')" (param p) x in
