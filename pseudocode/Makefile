@@ -67,7 +67,7 @@ default: $(CMOFILES) $(CMXFILES) $(BYTS) $(OPTS) $(BINS)
 
 # files with fragile pattern-matching allowed
 
-FRAGILE_FILES := ast flatten genpc norm gencxx sl2_patch sl2_semantics sl2_decoder sl2_print simlight2 gencoq
+FRAGILE_FILES := ast flatten genpc norm gencxx sl2_patch sl2_semantics sl2_decoder sl2_print simlight2 gencoq gendectest
 
 $(FRAGILE_FILES:%=%.cmo) $(FRAGILE_FILES:%=%.cmx): WARNINGS = $(FRAGILE)
 
@@ -109,5 +109,13 @@ clean:
 	$(HIDE) $(OCAMLDEP) $(FILES:%=%.ml) $(BINFILES:%=%.ml) > .depend
 
 parser.cmi: ast.cmi
+
+bintest:
+	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -obin-test > test.bin
+	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -oasm-test test
+	../elf/bin2elf test.bin test.elf 
+	../simlight2/simlight -Adec ../pseudocode/test.elf | perl -p -e "s/[^\t]*\t//" | perl -p -e "s/CPY/MOV/" >tst.asm
+
+
 
 include .depend

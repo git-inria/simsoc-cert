@@ -37,7 +37,7 @@ let set_debug() =
 let set_check() = set_check(); set_verbose();;
 
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | DecBinTest 
-		   | DecAsmTest;;
+		   | DecAsmTest | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -99,6 +99,8 @@ let rec options() =
   " Set the seed to initialize the test generator";
   "-oasm-test", String (fun s -> set_norm(); set_output_type DecAsmTest; set_output_file s),
   " Output test for Coq and Simlight decoders, in assembly format (requires -ipc, -isyntax, and -idec)";
+  "-otest", String (fun s -> set_norm(); set_output_type DecTest; set_output_file s),
+  " Output test for Coq and Simlight decoders, in assembly and binary format (requires -ipc, -isyntax, and -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
@@ -138,6 +140,10 @@ let parse_args() =
         ignore(get_syntax_input_file());
         ignore(get_dec_input_file())
     | DecAsmTest ->
+	ignore(get_pc_input_file());
+	ignore(get_syntax_input_file());
+	ignore(get_dec_input_file())
+    | DecTest ->
 	ignore(get_pc_input_file());
 	ignore(get_syntax_input_file());
 	ignore(get_dec_input_file())
@@ -235,6 +241,8 @@ let genr_output() =
           (get_dec_input()) (get_seed ())
     | DecAsmTest ->
 	Gendectest.gen_asm_test (get_output_file()) (get_pc_input()) 
+	  (get_syntax_input()) (get_dec_input()) (get_seed ())
+    | DecTest -> Gendectest.gen_test (get_output_file()) (get_pc_input()) 
 	  (get_syntax_input()) (get_dec_input()) (get_seed ())
 ;;   
 
