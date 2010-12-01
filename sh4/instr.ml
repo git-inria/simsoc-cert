@@ -127,7 +127,7 @@ struct
 		Some (ll, { t with next = None ; pos = succ t.pos })
 	    | Some (l, tt) ->
 	      match l with 
-		| x :: _ when (if Str.string_match r x 0 then true else ((*Printf.printf "%s\n%!" x;*) false)) -> Some (ll, { t with ic = tt ; next = Some l ; pos = succ t.pos })
+		| x :: _ when Str.string_match r x 0 -> Some (ll, { t with ic = tt ; next = Some l ; pos = succ t.pos })
 		| _ -> aux (l :: ll) in
     match t.next with
       | None -> None
