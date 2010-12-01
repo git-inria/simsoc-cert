@@ -114,7 +114,7 @@ struct
   let init9_channel = init9_ P.open_in_channel
 
   let input_instr =
-    let r = Str.regexp "9\\.[0-9]+ +" in
+    let r = Str.regexp "9\\.[0-9]+ +" in (* delimites the beginning of an instruction (see chapter 9.) *)
     fun t ->
     let rec aux ll = 
       match try Some (input_page_fmt9 t.ic) with Unknown_header -> None | Unknown_footer -> None with
@@ -143,7 +143,7 @@ let _ =
 
   let t = S.init9_channel stdin in
 
-  let split_at f = 
+  let split_from_beg_at f =
     let rec aux l_pred = function
 	| x :: xs -> 
 	  if f x then
@@ -153,25 +153,37 @@ let _ =
 	| [] -> None in
     aux [] in
 
-  let split_err s l = match split_at s l with None -> assert false | Some s -> s in
+  let split_from_end_at f = 
+    let rec aux l_succ = function
+	| x :: xs -> 
+	  if f x then
+	    Some (List.rev xs, x, l_succ)
+	  else
+	    aux (x :: l_succ) xs
+	| [] -> None in
+    fun l -> aux [] (List.rev l) in
+
+  let split_beg s l = match split_from_beg_at s l with None -> assert false | Some s -> s in
+  let split_end s l = match split_from_end_at s l with None -> assert false | Some s -> s in
+
+  let accol_end = Str.regexp " *} *" (* C code usually end with a '}' delimiter *) in
+  let comment = Str.regexp " */\\*.*\\*/ *" (* a line containing C comment like /* */ *) in
 
   let rec aux t =
     match S.input_instr t with 
       | None -> ()
       | Some (l, t) -> 
 	let l = List.flatten (List.rev l) in
-	let l1, _, l = split_err ((=) "Description") l in
-	let l2, _, l = split_err ((=) "Operation") l in
-	let l3, n, l = 
-	  try split_err (fun x -> x <> "" && List.for_all (fun c -> x.[0] <> c) [' ' ; '{' ; '}'] ) l 
-	  with _ -> "ZZZZZZZZZZZZZZZZZZZZZZZ" :: l, "", [] in
+	let l1, _, l = split_beg ((=) "Description") l in
+	let l2, _, l = split_beg ((=) "Operation") l in
+	let l3, n, l = split_end (fun x -> List.exists (fun r -> Str.string_match r x 0) [ accol_end; comment ]) l in
 	begin
 	  List.iter (fun s -> Printf.printf "%s\n" s) l1; 
 	  Printf.printf "DDDDDDDDDDDDDDDDDDDDDDD \n%!" ;
 	  List.iter (fun s -> Printf.printf "%s\n" s) l2; 
 	  Printf.printf "OOOOOOOOOOOOOOOOOOOOOOO \n%!" ;
 	  List.iter (fun s -> Printf.printf "%s\n" s) l3; 
-	  Printf.printf "EEEEEEEEEEEEEEEEEEEEEEE \n%s\n%!" n;
+	  Printf.printf "%s\nEEEEEEEEEEEEEEEEEEEEEEE\n%!" n;
 	  List.iter (fun s -> Printf.printf "%s\n" s) l; 
 	  Printf.printf "_______________________ %d\n%!" (S.pos t);
 	  aux t;
