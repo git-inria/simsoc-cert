@@ -3,6 +3,7 @@ sig
   type t
 
   val open_in : string (** filename *) -> t
+  val open_in_channel : in_channel -> t
 (* val input_page : t -> (string list * t) option *)
   val input_page_rev : t -> (string list * t) option (** return the lines of the page in reverse order *)
   val throw_page : t -> int -> t (** [throw_page _ n] read [max n 0] pages and ignores them *)
@@ -16,9 +17,11 @@ struct
 
   let input_line ic = try Some (input_line ic) with End_of_file -> None
 
-  let open_in fic = 
-    let ic = open_in_bin fic in
+  let open_in_channel ic = 
     { ic = ic ; next = input_line ic ; pos = 0 }
+
+  let open_in fic = 
+    open_in_channel (open_in_bin fic)
 
   let input_page_rev t = 
     let rec aux l =
@@ -58,6 +61,7 @@ sig
   type t
 
   val init9 : string (* filename *) -> t
+  val init9_channel : in_channel -> t
   val input_instr : t -> (string list list * t) option
   val pos : t -> int
   val close_in : t -> unit
@@ -100,11 +104,14 @@ struct
  	  | _ -> raise Unknown_footer (*; (* WARNING this unknown footer is kept by default *) List.rev l*)
       ), t)
 
-  let init9 f = 
-    let t = P.throw_page (P.open_in f) nb_page_to_ignore in
+  let init9_ f_open f = 
+    let t = P.throw_page (f_open f) nb_page_to_ignore in
     match input_page_fmt9 t with
       | None -> { ic = t ; pos = 0 ; next = None }
       | Some (l, t) -> { ic = t ; pos = 0 ; next = Some l }
+
+  let init9 = init9_ P.open_in
+  let init9_channel = init9_ P.open_in_channel
 
   let input_instr =
     let r = Str.regexp "9\\.[0-9]+ +" in
@@ -134,7 +141,7 @@ end
 let _ = 
   let module S = SH4_section9 in
 
-  let t = S.init9 "r.txt" in
+  let t = S.init9_channel stdin in
 
   let split_at f = 
     let rec aux l_pred = function
@@ -171,6 +178,5 @@ let _ =
 	end in
   begin
     aux t;
-    S.close_in t;
   end
 
