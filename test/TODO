@@ -1,5 +1,5 @@
 
-- mv extract_file.sh into the tool directory
+- mv v2ml.sh into the tool directory
 
 - mv debug.ml in another more appropriate directory
 
