@@ -8,6 +8,8 @@ THUMB_FILES := thumb_test $(C_FILES)
 
 default: $(ARM_FILES:%=%_a.cmo) $(THUMB_FILES:%=%_t.cmo)
 
+elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
+
 .PRECIOUS: $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) \
 	  $(ARM_FILES:%=%_a.elf) \
 	  $(ARM_FILES:%=%_a.ml) $(ARM_FILES:%=%_a.mli) \
