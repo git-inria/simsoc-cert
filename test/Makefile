@@ -26,7 +26,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	ocamlc -c -I ../extract/tmp extract.cma $<
 
 %.ml %.mli: %.v %.vo
-	./extract_file.sh $<
+	./v2ml.sh $<
 
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
