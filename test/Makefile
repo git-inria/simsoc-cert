@@ -24,7 +24,7 @@ default: $(ARM_FILES:%=%_a.cmo) $(THUMB_FILES:%=%_t.cmo)
 	ocamlc -c -I ../extract/tmp extract.cma $<
 
 %.ml %.mli: %.v %.vo
-	./extract_file $<
+	./extract_file.sh $<
 
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
