@@ -99,8 +99,6 @@ let rec options() =
   " Set the seed to initialize the test generator";
   "-oasm-test", String (fun s -> set_norm(); set_output_type DecAsmTest; set_output_file s),
   " Output test for Coq and Simlight decoders, in assembly format (requires -ipc, -isyntax, and -idec)";
-  "-otest", String (fun s -> set_norm(); set_output_type DecTest; set_output_file s),
-  " Output test for Coq and Simlight decoders, in assembly and binary format (requires -ipc, -isyntax, and -idec)";
   "-v", Unit set_verbose,
   " Verbose mode"
 ])
