@@ -1,18 +1,27 @@
 SimSoC-Cert, a Coq library for certifying Systems-on-Chips
 ----------------------------------------------------------
 
-The aim of this Coq library (Coq is a proof assistant developped at
-INRIA available at http://coq.inria.fr/) is to provide formalizations
-of instruction-sets and their semantics for various architectures used
-in embedded systems.
+The aim of SimSoC-Cert is to provide tools for:
 
-This software is governed by the CeCILL license under French law and
+- extracting useful information (assembly syntax, instruction binary
+  encoding, instruction semantics/pseudo-code) from the PDF
+  documentation of various processors (ARMv6, SH4),
+
+- generating from this extracted information instructions set
+  simulators in various programming languages (Coq, C),
+
+- automatically check in the Coq proof assistant (http://coq.inria.fr)
+  that the generated C code is equivalent to the generated Coq code by
+  using the semantics of C formalized in the Coq library of the
+  CompCert project (http://compcert.inria.fr).
+
+This toolkit is governed by the CeCILL license under French law and
 abiding by the rules of distribution of free software. You can use,
 modify and/or redistribute the software under the terms of the CeCILL
 license as circulated by CEA, CNRS and INRIA at the following URL
 "http://www.cecill.info". A copy is provided in the files
-Licence_CeCILL_V2-en.txt (english) and Licence_CeCILL_V2-fr.txt
-(french).
+Licence_CeCILL_V2-en.txt (English) and Licence_CeCILL_V2-fr.txt
+(French).
 
 As a counterpart to the access to the source code and rights to copy,
 modify and redistribute granted by the license, users are provided only

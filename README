@@ -1,4 +1,23 @@
-Directory tools contains
-- dependot: construction of a dot file from Makefile 
-  dependence specifications, transitive dependencies are removed
-  NB: install -> tools/bin
+SimSoC-Cert, a toolkit for generating certified processor simulators
+--------------------------------------------------------------------
+
+SimSoC-Cert is available on http://formes.asia/cms/software/simsoc-cert .
+
+The aim of SimSoC-Cert is to provide tools for:
+
+- extracting useful information (assembly syntax, instruction binary
+  encoding, instruction semantics/pseudo-code) from the PDF
+  documentation of various processors (ARMv6, SH4),
+
+- generating from this extracted information instructions set
+  simulators in various programming languages (Coq, C),
+
+- automatically check in the Coq proof assistant (http://coq.inria.fr)
+  that the generated C code is equivalent to the generated Coq code by
+  using the semantics of C formalized in the Coq library of the
+  CompCert project (http://compcert.inria.fr).
+
+LICENSE: this file describes the license governing this tool.
+COPYRIGHTS: this file describes the copyrights holders.
+INSTALL: this file describes a compilation procedure.
+THANKS: thanks to various people for their comments or help.
