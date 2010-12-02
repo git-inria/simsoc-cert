@@ -86,4 +86,4 @@ prefix_zo.c: ... to be completed
 Remark: the pseudocode is automatically normalized (like with -norm).
 
 Options:
--iw file4.wgt: 
+-iw file4.wgt: instructions of non-zero weigth are not specialized.
