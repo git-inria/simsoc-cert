@@ -38,14 +38,15 @@ simlight: $(OBJECTS)
 
 $(GENFILES): ../pseudocode/main ../arm6/arm6inst.arm ../arm6/arm6syntax.dat ../arm6/arm6dec.dat
 	../pseudocode/main -v -oc4dt slv6_iss -ipc ../arm6/arm6inst.arm \
-                           -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat
+                           -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat \
+                           -iw weights.1 
 
 $(GENFILES_MO): slv6_iss.c
 
 ../pseudocode/main: FORCE
 	cd ../pseudocode && $(MAKE)
 
-../arm6/arm6inst.arm ../arm6/arm6dec.dat: FORCE
+../arm6/arm6inst.arm ../arm6/arm6dec.dat ../arm6/arm6syntax.dat: FORCE
 	cd ../arm6 && $(MAKE) $@
 
 clean:

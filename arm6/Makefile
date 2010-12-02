@@ -73,6 +73,9 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 %dec.cpp: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocpp > $@
 
+$(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/keepsyntax $(DIR)/parsesyntax $(DIR)/keepbincode $(DIR)/parsebincode $(DIR)/indentation:
+	cd $(DIR) && $(MAKE) `basename $@`
+
 clean:
 	rm -f *~ *.glob *.vo $(FILES)
 
