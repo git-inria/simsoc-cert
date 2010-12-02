@@ -116,9 +116,9 @@ let print f x =
 (** warnings or errors *)
 (*****************************************************************************)
 
-let warning s = fprintf stderr "warning: %s\n" s;;
+let warning s = eprintf "warning: %s\n" s;;
 
-let error s = fprintf stderr "error: %s\n" s; exit 1;;
+let error s = eprintf "error: %s\n" s; exit 1;;
 
 (*****************************************************************************)
 (** generic functions for handling references *)
@@ -148,6 +148,6 @@ let is_set_get_set m init =
 let get_verbose, set_verbose = get_set_bool();;
 let get_debug, set_debug = get_set_bool();;
 
-let fverbose fmt f x = if get_verbose() then fprintf stderr fmt f x else ();;
+let fverbose fmt f x = if get_verbose() then eprintf fmt f x else ();;
 
-let verbose x = if get_verbose() then fprintf stderr "%s" x else ();;
+let verbose x = if get_verbose() then eprintf "%s" x else ();;
