@@ -48,7 +48,7 @@ Generate a Coq decoder from an ARMv6 instruction encoding description:
 Convert a ARMv6 instruction semantics description file into a Coq file:
 -----------------------------------------------------------------------
 
-./main -ipc file1.arm -coq-inst > file2.v
+./main -ipc file1.pc -coq-inst > file2.v
 
 Remark: the pseudocode is automatically normalized (like with -norm).
 
@@ -71,19 +71,54 @@ Options:
 Generate a non-optimized C simulator for ARMv6:
 -----------------------------------------------
 
-./main -ipc file1.arm -idec file2.dat -ocxx > file3.c
+./main -ipc file1.arm -idec file2.dat -ocxx prefix
+
+Generates:
+prefix.h: C header file
+prefix.c: C source file, including decoders and semantics functions
 
 Remark: the pseudocode is automatically normalized (like with -norm).
 
-Generate an optimized C simulator from an ARMv6:
-------------------------------------------------
+Generate an optimized C simulator from an ARMv6 description:
+------------------------------------------------------------
 
 ./main -ipc file1.pc -idec file2.dat -isyntax file3.dat -oc4dt prefix
 
 Generates:
-prefix_zo.c: ... to be completed
+prefix.h: the instruction type and the instruction numeric identifiers
+prefix.c: instruction names, and the "may_branch" function
+prefix_expanded.h: declaration of the semantics function, with an expanded
+                   list of arguments
+prefix_expanded.hot.c, prefix_expanded.cold.c: implementation of the previous
+                                               header file.
+prefix_grouped.h: declaration of the semantics function, with the arguments
+                  stored in a structure type.
+prefix_grouped.hot.c, prefix_grouped.cold.c: implementation of the previous
+                                             header file.
+prefix_arm_decode_exec.c: decoder for ARM32 code, which directly call the
+                          semantics function.
+prefix_thumb_decode_exec.c: decoder for Thumb code, which directly call the
+                            semantics function.
+prefix_arm_decode_store.c: decoder for ARM32 code, which store the decoded
+                           instruction using the type defined in prefix.h.
+prefix_thumb_decode_store.c: decoder for Thumb code, which store the decoded
+                             instruction using the type defined in prefix.h.
+prefix-llvm_generator.hpp: part of an ARM to LLVM translator. This file
+                           cannot be compiled outside SimSoC.
+prefix_printer.h, prefix_printer.c: instruction printers using the ASM
+                                    format (C code using fprintf). 
+prefix_printer.hpp, prefix_printer.cpp: instruction printers using the ASM
+                                        format (C++ code using streams).
+print_sizes.c: stand-alone program to control the size of the instruction
+               type and subtypes. 
 
-Remark: the pseudocode is automatically normalized (like with -norm).
+Remark:
+- the pseudocode is automatically normalized (like with -norm).
+- the following files are not used by simlight2 (but are used by SimSoC):
+  prefix-llvm_generator.hpp, prefix_printer.hpp, and prefix_printer.cpp
+- the following files are not used by SimSoC:
+  prefix_arm_decode_exec.c, prefix_thumb_decode_exec.c, prefix_printer.h,
+  and prefix_printer.c
 
 Options:
 -iw file4.wgt: instructions of non-zero weigth are not specialized.
