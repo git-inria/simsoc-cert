@@ -33,6 +33,6 @@ case $1 in
 esac
 
 base=`basename $1 .v`
-tmp=/tmp/tmp_$base.v
+tmp=/tmp/extract_$base.v
 echo "Require Extraction $base. Extraction Library $base." > $tmp
 coqc -q -R ../coq SimSoCCert -I ../arm6 $tmp
