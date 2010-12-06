@@ -182,6 +182,12 @@ let is_cp15_reg1 s =
 (** expressions *)
 (*****************************************************************************)
 
+let local_vars =
+  ["target";"jpc";"invalidhandler";"alu_out";"address";"value";"data";
+   "physical_address";"processor_id";"operand";"byte_mask";"mask";"sum";
+   "diff";"operand1";"operand2";"product1";"product2";"accvalue";
+   "diffofproducts";"result";"temp";"diff1";"diff2";"diff3";"diff4"];;
+
 (*FIXME: raise an exception instead of use a todo for the instruction
   containing this expression*)
 
@@ -194,9 +200,16 @@ let is_not_num = function
   | _ -> true;;
 
 (* add parentheses around complex expressions *)
+
 let rec pexp b = function
+  | Var s as e ->
+      if List.mem s local_vars then par loc_exp b e else exp b e
+  | Fun (f, []) as e when depend_on_config f -> exp b e 
+  | e -> par exp b e
+
+and pexp_ad b = function
   | Var _ as e -> exp b e
-  | Fun (f, []) as e when depend_on_config f -> exp b e
+  | Fun (f, []) as e when depend_on_config f -> exp b e 
   | e -> par exp b e
 
 (* like pexp but prints numbers as integers (not words) *)
@@ -219,6 +232,10 @@ and regnum_exp b = function
    function nat_of_Z *)
 and nat_exp b e = bprintf b "(nat_of_Z %a)" pexp e
 
+and loc_exp b = function
+  | Var s -> bprintf b "get_loc \"%s\" loc" s
+  | e -> pexp b e
+
 and exp b = function
     (* convert numbers into Coq words *)
   | Bin s -> word bin b s
@@ -232,7 +249,7 @@ and exp b = function
   (* optimization: since, in SimSoC-Cert, everything is represented by
      words, zero-extension is always done (implicitly) and does not
      need to be applied explicitly *)
-  | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" exp e
+  | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" pexp e
 
   (* Add a conversion from word to bool *)
   | Fun ("not", [Range _ as e]) ->
@@ -300,7 +317,7 @@ let rec inst k b i = indent b k; inst_aux k b i
 and pinst k b i = indent b k; par (inst_aux k) b i
 
 and inst_cons k b = function
-  | Affect (Var _, _) as i -> inst k b i
+  (*| Affect (Var _, _) as i -> inst k b i*)
   | i -> indent b k; postfix " ::" (inst_aux k) b i
 
 and inst_aux k b = function
@@ -342,8 +359,8 @@ and inst_aux k b = function
       with Not_found -> todo "Case" (Genpc.inst 0) b i end
 
   | For (x, p, q, i) ->
-      bprintf b "loop %s %s (fun %s =>\n%a)" p q x (inst (k+2)) i
-
+      bprintf b "loop %s %s (fun %s => \n%a)" p q x (inst (k+2)) i
+        
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
   | Proc (f, []) -> fun_name b f
@@ -352,8 +369,10 @@ and inst_aux k b = function
 
 and affect b v = function
   (* an affectation of a variable is converted into a Coq "let" *)
-  | Var s -> bprintf b "let %s := %a in" s exp v
+  (*| Var s -> bprintf b "let %s := %a in" s exp v*)
+
   (* otherwise, we use some Coq update function *)
+  | Var s ->  bprintf b "update_loc \"%s\" %a" s pexp v
   (* affectation of a CPSR bit requires a special case *)
   | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s pexp v
   | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp v pexp e
@@ -371,6 +390,86 @@ and set b = function
   | SPSR None -> bprintf b "set_spsr None"
   | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
   | Memory (e, n) -> bprintf b "write %a %a" pexp e size n
+  | _ -> raise Not_found;;
+
+let rec inst_ad k b i = indent b k; inst_aux_ad k b i
+
+and pinst_ad k b i = indent b k; par (inst_aux_ad k) b i
+
+and inst_cons_ad k b = function
+  (*| Affect (Var _, _) as i -> inst k b i*)
+  | i -> indent b k; postfix " ::" (inst_aux_ad k) b i
+
+and inst_aux_ad k b = function
+  (*FIXME: to be done*)
+  | Proc ("Start_opcode_execution_at", _) as i ->
+      todo "StartOpcodeExecutionAt" (Genpc.inst 0) b i
+  | While _ as i -> todo "While" (Genpc.inst 0) b i
+  | Coproc _ as i -> todo "Coproc" (Genpc.inst 0) b i
+
+  | Assert _ -> invalid_arg "Gencoq.inst_aux"
+
+  | Unpredictable -> string b "unpredictable EmptyMessage"
+      (*FIXME: replace empty string by program name*)
+
+  | Block [] -> string b "block nil"
+  | Block is ->
+      bprintf b "block (\n%a\n%anil)"
+	(list "\n" (inst_cons_ad (k+2))) is indent (k+2)
+
+  | If (e, i1, None) ->
+      bprintf b "if_then %a\n%a" pexp_ad e (pinst_ad (k+2)) i1
+  | If (e, i1, Some i2) ->
+      bprintf b "if_then_else %a\n%a\n%a"
+	pexp_ad e (pinst_ad (k+2)) i1 (pinst_ad (k+2)) i2
+
+  (* try to generate the code of an affectation; in case of failure,
+     output a "todo" *)
+  | Affect (e, v) as i ->
+      begin try affect_ad b v e
+      with Not_found -> todo "Affect" (Genpc.inst 0) b i end
+
+  (* adhoc treatment of case's: as case's are only used for defining
+     the variable index, we convert a case which branches define index
+     into a let index := followed by a Coq match *)
+  | Case (e, nis) as i ->
+      begin try bprintf b
+	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
+	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
+      with Not_found -> todo "Case" (Genpc.inst 0) b i end
+
+  | For (x, p, q, i) ->
+      bprintf b "loop %s %s (fun %s => \n%a)" p q x (inst_ad (k+2)) i
+        
+  (* print no parenthesis if there is no argument (functions are
+     curryfied in Coq) *)
+  | Proc (f, []) -> fun_name b f
+  (* default printing of function calls *)
+  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
+
+and affect_ad b v = function
+  (* an affectation of a variable is converted into a Coq "let" *)
+  | Var s -> bprintf b "let %s := %a in" s exp v
+
+  (* otherwise, we use some Coq update function *)
+  (*| Var s ->  bprintf b "update_loc \"%s\" %a" s pexp v*)
+  (* affectation of a CPSR bit requires a special case *)
+  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s pexp_ad v
+  | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp_ad v pexp_ad e
+  | e -> bprintf b "%a %a" set e pexp_ad v
+
+and range_ad b = function
+  | Flag (s, _) -> bprintf b "set_bit %sbit" s
+  | Index i -> bprintf b "set_bit %a" num_exp i
+  | Bits (p, q) -> bprintf b "set_bits %a %a" num p num q
+
+and set_ad b = function
+  | Reg (e, None) -> bprintf b "set_reg %a" regnum_exp e
+  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m regnum_exp e
+  | CPSR -> bprintf b "set_cpsr"
+  | SPSR None -> bprintf b "set_spsr None"
+  | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
+  | Memory (e, n) -> bprintf b "write %a %a" pexp_ad e size n
   | _ -> raise Not_found;;
 
 (*****************************************************************************)
@@ -413,8 +512,8 @@ let split = function
 
 let block k b i =
   let is1, is2 = split i in
-    List.iter (endline (inst k) b) is1;
-    bprintf b "%alet r := %a true s0 in" indent k (inst_aux k) (Block is2);;
+    List.iter (endline (inst_ad k) b) is1;
+    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux_ad k) (Block is2);;
 
 (* default result component value *)
 let default b _ = string b ", repr 0";;
@@ -429,12 +528,12 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | InstARM -> bprintf b "%a true s0" (inst 2) p.pinst
+    | InstARM -> bprintf b "%a loc true s0" (inst 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
 	  if StrSet.mem p.pref problems then
-	    bprintf b "  let r := %a true s0 in\n    (r%a)"
+	    bprintf b "  let r := %a nil true s0 in\n    (r%a)"
 	      (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
 	      (list "" default) ls
 	else
@@ -449,9 +548,18 @@ let pinst b p =
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
+let init_loc b p = 
+  match p.pkind with
+    | InstARM -> bprintf b "let loc := nil in\n"
+    | _ -> ();;
+
 let semfun b p gs =
   match p.pkind with
-    | InstARM | Mode _ ->
+    | InstARM ->
+        bprintf b
+          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a%a.\n\n"
+          p.pref Genpc.name p name p (list "" arg_typ) gs result p init_loc p pinst p
+    | Mode _ ->
         bprintf b
           "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
           p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p
@@ -503,7 +611,7 @@ let call bcall_inst bcall_mode p gs =
 		"\n      match mode%d_step s0 m_ with (r%a) =>\n"
 		k (list "" mode_var) (mode_vars k);
               bprintf b "        match r with\n";
-              bprintf b "          | Ok _ s1 =>";
+              bprintf b "          | Ok _ _ s1 =>";
 	      bprintf b " %a_step s1%a\n" name p args gs;
               bprintf b "          | _ => r\n        end\n      end\n"
 	end

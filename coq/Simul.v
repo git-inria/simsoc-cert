@@ -83,7 +83,7 @@ Module Make (Import I : INST).
 
   Definition handle_exception (s : state) : simul_result :=
     match handle_exception s with
-      | Ok _ s' => SimOk s'
+      | Ok _ _ s' => SimOk s'
       | Ko m | Todo m => SimKo s m
     end.
 
@@ -101,7 +101,7 @@ Module Make (Import I : INST).
             | DecUndefined => handle_exception (add_exn s UndIns)
             | DecInst i =>
               match step s i with
-                | Ok b s' => handle_exception (incr_PC_ARM b s')
+                | Ok _ b s' => handle_exception (incr_PC_ARM b s')
                 | Ko m | Todo m => SimKo s m
               end
           end

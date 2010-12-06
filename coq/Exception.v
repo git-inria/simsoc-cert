@@ -29,7 +29,7 @@ Definition Reset_step (s0 : state) : result :=
     if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901760)))
       (set_reg PC (repr (Z0))) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.3 UndIns *)
 Definition UndIns_step (s0 : state) : result :=
@@ -43,7 +43,7 @@ Definition UndIns_step (s0 : state) : result :=
     if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901764)))
       (set_reg PC (repr (Zpos 4))) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.4 SoftInt *)
 Definition SoftInt_step (s0 : state) : result :=
@@ -57,7 +57,7 @@ Definition SoftInt_step (s0 : state) : result :=
     if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901768)))
       (set_reg PC (repr (Zpos 8))) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.5 PFAbort *)
 Definition PFAbort_step (s0 : state) : result :=
@@ -72,7 +72,7 @@ Definition PFAbort_step (s0 : state) : result :=
     if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901772)))
       (set_reg PC (repr (Zpos 12))) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.6 DataAbort *)
 Definition DataAbort_step (s0 : state) : result :=
@@ -87,7 +87,7 @@ Definition DataAbort_step (s0 : state) : result :=
     if_then_else (high_vectors_configured s0)
       (set_reg PC (repr (Zpos 4294901776)))
       (set_reg PC (repr (Zpos 16))) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.8 IRQ *)
 Definition IRQ_step (s0 : state) : result :=
@@ -104,7 +104,7 @@ Definition IRQ_step (s0 : state) : result :=
         (set_reg PC (repr (Zpos 4294901784)))
         (set_reg PC (repr (Zpos 24))))
       (set_reg PC (VE_IRQ_address)) ::
-    nil) true s0.
+    nil) nil true s0.
 
 (* A2.6.9 FIQ *)
 Definition FIQ_step (s0 : state) : result :=
@@ -122,11 +122,11 @@ Definition FIQ_step (s0 : state) : result :=
         (set_reg PC (repr (Zpos 4294901788)))
         (set_reg PC (repr (Zpos 28))))
       (set_reg PC (VE_FIQ_address)) ::
-    nil) true s0.
+    nil) nil true s0.
 
 Definition step (s : state) : result :=
   match exns s with
-    | nil => Ok false s
+    | nil => Ok nil false s
     | e :: _ =>
       match e with
         | Reset => Reset_step s
@@ -134,7 +134,7 @@ Definition step (s : state) : result :=
         | SoftInt => SoftInt_step s
         | PFAbort => PFAbort_step s
         | DataAbort => DataAbort_step s
-        | ImpAbort => todo ImpreciseDataAbort false s
+        | ImpAbort => todo ImpreciseDataAbort nil false s
         | IRQ => IRQ_step s
         | FIQ => FIQ_step s
       end
