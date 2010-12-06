@@ -299,7 +299,7 @@ let lib (bn: string) (pcs: prog list) (ss: syntax list)
     bprintf bh "#include \"%s_h_prelude.h\"\n" bn;
     (match wf with Some _ -> bprintf bh "\n#define SLV6_USE_WEIGHTS 1\n" | None -> ());
     bprintf bh "\n#define SLV6_INSTRUCTION_COUNT %d\n" instr_count;
-    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+9)\n\n";
+    bprintf bh "\n#define SLV6_TABLE_SIZE (SLV6_INSTRUCTION_COUNT+11)\n\n";
     bprintf bh "extern const char *slv6_instruction_names[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern const char *slv6_instruction_references[SLV6_TABLE_SIZE];\n";
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
