@@ -51,9 +51,9 @@ module CxxPrinterConfig = struct
   let char b c = bprintf b "  os <<'%c';\n" c;;
   let dstring b f x = bprintf b "  os <<(%a);\n" f x;;
   let dchar = dstring;;
-  let dinthex b f x = bprintf b "  os <<hex <<(uint32_t)(%a);\n" f x;;
-  let dintdec b f x = bprintf b "  os <<dec <<(int32_t)(%a);\n" f x;;
-  let dint_0is32 b f x = bprintf b "  os <<dec <<(%a ? %a : 32);\n" f x f x;;
+  let dinthex b f x = bprintf b "  os <<std::hex <<(uint32_t)(%a);\n" f x;;
+  let dintdec b f x = bprintf b "  os <<std::dec <<(int32_t)(%a);\n" f x;;
+  let dint_0is32 b f x = bprintf b "  os <<std::dec <<(%a ? %a : 32);\n" f x f x;;
 end;;
 
 module Printer (PC: PrinterConfig) = struct
