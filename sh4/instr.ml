@@ -77,6 +77,15 @@ struct
   let close_in t = close_in t.ic
 end
 
+  (** Suppress the first block of empty string (eventually) figuring at the beginning of the list *)
+  let del_line = 
+    let rec aux = function 
+      | "" :: l -> aux l
+      | l -> l in
+    aux 
+
+    let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0)
+
 module type SH4_SECTION9 = 
 sig
   type t
@@ -118,12 +127,6 @@ struct
   let nb_page_to_ignore = 214 (* Section 9 begins at page 215 *) + 1 (* we don't import the first page *) 
   let nb_page_to_read = 202 (* the whole section 9 *)
 
-  (** Suppress the first block of empty string (eventually) figuring at the beginning of the list *)
-  let del_line = 
-    let rec aux = function 
-      | "" :: l -> aux l
-      | l -> l in
-    aux 
 
   (** Behaves like [PDF_page.input_page_rev] but the header and the footer are suppressed (along with empty lines). 
       In the case we try to input a "not section 9" page, [Unknown_header] or [Unknown_footer] is thrown depending the case. *)
@@ -132,7 +135,6 @@ struct
       Str.regexp " *Section 9 Instruction Descriptions *", 
       Str.regexp " *REJ09B0318-0600 *", 
       Str.regexp " *Rev. 6.00 Sep 13, 2006 page [0-9]+ of 424 *" in
-    let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0) in
     fun t ->
     match P.input_page_rev t with
       | None -> None
@@ -215,10 +217,44 @@ struct
   let close_in t = P.close_in t.ic
 end
 
+
+let display_dec = false
+let display_c = true
+
+module States = struct
+  type t = 
+    | Tiret
+    | Pos of int
+    | Range of int * int
+end
+
+module T_bit = struct
+  type t = 
+    | Tiret
+    | Zero
+    | One
+    | One_Zero
+    | Borrow
+    | Carry
+    | LSB
+    | MSB
+    | Overflow
+    | Result_of_
+    | Test
+    | Underflow
+end
+
+type decoder = 
+    { h : string option
+    ; inst_code : string option
+    ; states : States.t
+    ; t_bit : T_bit.t option } 
+
 let _ = 
   let module S = SH4_section9 in
 
   let t = S.init_channel stdin in
+(* let t = S.init Sys.argv.(1) in *)
 
   (** [split_from_beg_at f l] returns [l1, x, l2] where the following conditions hold :
   - [l] is equal to [l1 @ [x] @ l2]
@@ -251,6 +287,33 @@ let _ =
   let accol_end = Str.regexp " *} *" (* C code usually end with a '}' delimiter *) in
   let comment = Str.regexp " */\\*.*\\*/ *" (* a line containing C comment like /* */ *) in
 
+  let find_nl = 
+    let r = Str.regexp "^ *$" in
+    let rec aux b1 l_pred = function
+      | x :: xs ->
+	let b2 = l_match [ r, x ] in
+	if b1 && b2 then
+	  List.rev l_pred, xs
+	else
+	  aux b2 (x :: l_pred) xs in
+    aux false [] in
+
+  let matched_group_i n s = int_of_string (Str.matched_group n s) in
+  let matched_group_t n s = let open T_bit in
+    match Str.matched_group n s with
+      | "\226\128\148" -> Tiret
+      | "0" -> Zero
+      | "1" -> One
+      | "1/0" -> One_Zero
+      | "Borrow" -> Borrow
+      | "Carry" -> Carry
+      | "LSB" -> LSB
+      | "MSB" -> MSB
+      | "Overflow" -> Overflow
+      | "Result of" -> Result_of_
+      | "Test" -> Test
+      | "Underflow" -> Underflow in
+
   let rec aux t =
     match S.input_instr t with 
       | None -> ()
@@ -260,24 +323,125 @@ let _ =
 	let l2, _, l = split_beg ((=) "Operation") l in (** [l2] contains the information between the line "Description" and the line "Operation" *)
 	let l3, n, l = split_end (fun x -> List.exists (fun r -> Str.string_match r x 0) [ accol_end; comment ]) l in (** [l3 @ [n]] contains the C program between the line "Operation" and some human language information we are not interested *)
 	begin
-	  Printf.printf "/* 9.%d */\n" (S.pos t);
-(*
-	  List.iter (fun s -> Printf.printf "%s\n" s) l1;
-	  Printf.printf "DDDDDDDDDDDDDDDDDDDDDDD \n%!" ;
 
-	  List.iter (fun s -> Printf.printf "%s\n" s) l2; 
-	  Printf.printf "OOOOOOOOOOOOOOOOOOOOOOO \n%!" ;
-*)
-	  List.iter (fun s -> Printf.printf "%s\n" s) l3; 
-	  Printf.printf "%s\n" n;
-(*
-	  Printf.printf "EEEEEEEEEEEEEEEEEEEEEEE\n%!" ;
-	  List.iter (fun s -> Printf.printf "%s\n" s) l; 
-*)	  aux t;
+	  if display_dec then
+	    begin 
+	      List.iter (fun s -> Printf.printf "%s\n" s) (
+
+		let x1 :: x2 :: l1, _, l2 = split_beg ((=) "") l1 in 
+		(** Example : [x1] and [x2] contains
+		    - "9.1 [whitespace] ADD [whitespace] ADD binary [whitespace] Arithmetic Instruction"
+		    - " [whitespace] Binary Addition"
+		*)
+
+		let m l = l_match (List.map (function x1, x2 -> Str.regexp x1, x2) l) in
+
+		let contains_instruction x = m [ "\\(.+\\) +\\([A-Z][a-z]+\\)-?\\([A-Z][a-z]+\\)* Instruction", x ] in
+
+		let l, inst_ty = match () with
+		  | _ when contains_instruction x1 -> 
+		    let inst_ty = Str.matched_group 2 x1 ^ try "-" ^ Str.matched_group 3 x1 with _ -> "" in
+		    let l = [Str.matched_group 1 x1 ; x2] in
+		    (** In this part, we detect if the sequence "Delayed Branch Instruction" is present. *)
+		    (* (* to be completed *) let _ = 
+		      match inst_ty with
+			| "Branch" -> 
+			  (if m [ "\\(.+\\) +Delayed Branch Instruction", x2 ] then
+			      Printf.printf "[[[[[\n%s\n]]]]]\n%!" (Str.matched_group 1 x2)
+			   else 
+			      ())
+			| _ -> () in*)
+		    l, inst_ty
+		  | _ when contains_instruction x2 -> 
+		    [x1 ; Str.matched_group 1 x2], Str.matched_group 2 x2 ^ try "-" ^ Str.matched_group 3 x2 with _ -> "" in 
+
+		let x_exe :: header :: l2 = (** suppress the block of eventually empty lines at the beginning and the end *)
+		  let f x = del_line (List.rev x) in
+		  f (f l2) in
+
+		let header = (** we rewrite correctly the title of the array *)
+		  let tab = [ "Format" ; "Summary of Operation" ; "Instruction Code" ; "Execution States" ; "T Bit" ] in
+		  match () with 
+		    | _ when m [ "^ *Execution *$", x_exe ] -> 
+		      (match Str.split (Str.regexp "  +") header with
+			| [ "Format" ; "Summary of Operation Instruction Code" ; "States" ; "T Bit" ] 
+			| [ "Format" ; "Summary of Operation" ; "Instruction Code" ; "States" ; "T Bit" ] 
+			| [ "Format" ; "Summary of Operation" ; "nstruction Code" ; "States" ; "T Bit" ] -> tab
+			| [ "PR Format" ; "Summary of Operation Instruction Code" ; "States" ; "T Bit" ] 
+			| [ "PR" ; "Format" ; "Summary of Operation Instruction Code" ; "States" ; "T Bit" ] 
+			| [ "PR" ; "Format" ; "Summary of Operation" ; "Instruction Code" ; "States" ; "T Bit" ] -> "PR" :: tab
+			| [ "No. PR Format" ; "Summary of Operation Instruction Code" ; "States" ; "T Bit" ] -> "No." :: "PR" :: tab)
+		    | _ when m [ "^ *Summary of +Execution *$", x_exe ] -> 
+		      (** This case only applies to 9.37 and 9.38. Hopefully, the number of fields and the type of the data of each column are the same in both cases. *)
+		      "No." :: (match String.sub (List.hd l) 0 4 with "9.37" -> "SZ" | "9.38" -> "PR") :: tab in
+
+		let l2 = (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
+		  let rec aux l = function 
+		    | x :: xs -> 
+		    
+		      let rec aux2 l_bl = function
+			| x :: xs when x.[0] = ' ' -> aux2 (x :: l_bl) xs
+			| xs -> List.rev l_bl, xs in
+		      let l_bl, xs = aux2 [] xs in
+		      if xs = [] then
+			List.rev ((x, l_bl) :: l)
+		      else
+			aux ((x, l_bl) :: l) xs in
+		  aux [] l2 in
+
+		let _ = 
+		  begin
+		    List.iter (fun (s, l2) -> 
+		      let info = 
+		        (match () with
+			  | _ when m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)? +\\(.+\\)", s ] ->
+			      Some { h = Some (Str.matched_group 1 s)
+				   ; inst_code = Some (Str.matched_group 2 s)
+				   ; states = (let open States in
+				       (match try Some (matched_group_i 5 s) with _ -> None with
+					 | None -> fun x -> States.Pos x
+					 | Some i_end -> fun i_beg -> States.Range (i_beg, i_end)) (matched_group_i 3 s))
+				   ; t_bit = Some (matched_group_t 6 s) }
+
+			  | _ when m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)?", s ] ->
+			      Some { h = Some (Str.matched_group 1 s)
+				   ; inst_code = Some (Str.matched_group 2 s) 
+  				   ; states = (let open States in 
+				       (match try Some (matched_group_i 5 s) with _ -> None with
+					 | None -> fun x -> Pos x
+					 | Some i_end -> fun i_beg -> Range (i_beg, i_end)) (matched_group_i 3 s))
+				   ; t_bit = None }
+
+			  | _ when Str.split (Str.regexp "  +") s = ["0"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
+			  | _ when Str.split (Str.regexp "  +") s = ["1"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
+			  | _ when Str.split (Str.regexp "  +") s = ["\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
+			  | _ when Str.split (Str.regexp "  +") s = ["\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None) in
+		      ()
+		      ) (match String.sub (List.hd l) 0 4 with
+			| "9.31" -> let x1 :: x2 :: _ = l2 in [x1; x2]
+			| "9.55" -> let x :: _ = l2 in [x]
+			| "9.64" -> let x :: _ = l2 in [x]
+			| "9.65" -> let x :: _ = l2 in [x]
+			| _ -> l2);
+		  end in
+		[]
+	      );
+	    end;
+
+	  if display_c then 
+	    begin
+	      Printf.printf "/* 9.%d */\n" (S.pos t);
+	      List.iter (fun s -> Printf.printf "%s\n" s) l3; 
+	      Printf.printf "%s\n" n; 
+	    end;
+	  aux t;
 	end in
+
   begin
-    List.iter (fun s -> Printf.printf "%s\n" s) (S.c_code t); 
+    if display_c then
+      begin 
+	List.iter (fun s -> Printf.printf "%s\n" s) (S.c_code t);
+      end; 
     aux t;
     Printf.printf "%!";
   end
-
