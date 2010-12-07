@@ -200,7 +200,7 @@ struct
     fun t ->
       let rec aux ll = 
 	match try Some (input_page t.ic) with Unknown_header -> None | Unknown_footer -> None with
-	  | None -> None
+	  | None -> some ll { t with next = None }
 	  | Some (l, tt) ->
 	    match l with 
 	      | x :: _ when Str.string_match r x 0 -> some ll { t with ic = tt ; next = Some l }
