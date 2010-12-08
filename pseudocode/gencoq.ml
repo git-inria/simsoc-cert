@@ -342,9 +342,9 @@ and inst_aux loc k b = function
   | Unpredictable -> string b "unpredictable EmptyMessage"
       (*FIXME: replace empty string by program name*)
 
-  | Block [] -> string b "block (fun loc => nil)"
+  | Block [] -> string b "block nil"
   | Block is ->
-      bprintf b "block (fun loc =>\n%a\n%anil)"
+      bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons loc (k+2))) is indent (k+2)
 
   | If (e, i1, None) ->

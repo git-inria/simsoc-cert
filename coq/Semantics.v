@@ -128,20 +128,16 @@ Definition seq (f1 f2 : semfun) (loc0 : local)
     | r => r
   end.
 
-Fixpoint block' (fs : list semfun) (loc0 : local) (b0 : bool) 
+Fixpoint block (fs : list semfun) (loc0 : local) (b0 : bool) 
   (s0 : state) : result :=
   match fs with
     | nil => Ok loc0 b0 s0
     | f :: fs' =>
       match f loc0 b0 s0 with
-        | Ok loc1 b1 s1 => block' fs' loc1 (andb b0 b1) s1
+        | Ok loc1 b1 s1 => block fs' loc1 (andb b0 b1) s1
         | r => r
       end
   end.
-
-Definition block (bs : local -> list semfun) (loc0 :local) (b0 : bool)
-  (s0 : state) : result :=
-  block' (bs loc0) loc0 b0 s0.
 
 Fixpoint loop_aux (p k : nat) (f : nat -> semfun) 
   (loc0 : list (string * word)) (b0 : bool) (s0 : state)
@@ -275,32 +271,16 @@ Definition ClearExclusiveLocal (pid : nat) (b : bool) (s : state) : result :=
 (****************************************************************************)
 (** Test LDM *)
 (****************************************************************************)
-(*
-Fixpoint block' (fs : list semfun) (loc0 : local) 
-  (b0 : bool) (s0 : state) : result :=
-  match fs with
-    | nil => Ok loc0 b0 s0
-    | f :: fs' =>
-      match f loc0 b0 s0 with
-        | Ok loc1 b1 s1 => block' fs' loc1 (andb b0 b1) s1
-        | r => r
-      end
-  end.
 
-Definition bl (bs : local -> list semfun) (loc0 :local) (b0 : bool) 
-  (s0 : state) : result :=
-  block' (bs loc0) loc0 b0 s0.
-
-Definition LDM2_step_test1 (s0 : state) (cond : opcode) (register_list : word) 
+(*Definition LDM2_step_test1 (s0 : state) (cond : opcode) (register_list : word) 
   (start_address : word) : result :=
+  let loc := nil in
   if_then (ConditionPassed s0 cond)
-    (bl (fun loc =>
+    (block (
       update_loc "address" start_address ::
       loop 0 14 (fun i => 
-        if_then (zeq (register_list[i]) 1)
-          (bl (fun loc =>
-            set_reg_mode usr i (read s0 (get_loc "address" loc) Word) ::
-            update_loc "address" (add (get_loc "address" loc) (repr 4)) ::
-            nil))) ::
-      nil)) nil true s0.
-*)
+        block (
+          set_reg_mode usr i (read s0 (get_loc "address" loc) Word) ::
+          update_loc "address" (repr 4) ::
+          nil)) ::
+      nil)) loc true s0.*)
