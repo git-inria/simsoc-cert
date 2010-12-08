@@ -201,28 +201,28 @@ let is_not_num = function
 
 (* add parentheses around complex expressions *)
 
-let rec pexp b = function
-  | Var s as e ->
-      if List.mem s local_vars then par loc_exp b e else exp b e
-  | Fun (f, []) as e when depend_on_config f -> exp b e 
-  | e -> par exp b e
+let rec pexp loc b = function
+  | Var s as e -> 
+      if (List.mem_assoc s loc) then par (loc_exp loc) b e else (exp loc) b e
+  | Fun (f, []) as e when depend_on_config f -> (exp loc) b e 
+  | e -> par (exp loc) b e
 
-and pexp_ad b = function
+(*and pexp b = function
   | Var _ as e -> exp b e
   | Fun (f, []) as e when depend_on_config f -> exp b e 
-  | e -> par exp b e
+  | e -> par exp b e*)
 
 (* like pexp but prints numbers as integers (not words) *)
-and num_exp b = function
+and num_exp loc b = function
   | Num s -> num b s
-  | e -> pexp b e
+  | e -> pexp loc b e
 
 (* convert an expression into a register number using the Coq function
    mk_regnum except if it is a number or a variable *)
-and regnum_exp b = function
+and regnum_exp loc b = function
   | Num s -> regnum b s
   | Var s -> string b s
-  | e -> bprintf b "(mk_regnum %a)" pexp e
+  | e -> bprintf b "(mk_regnum %a)" (pexp loc) e
 
 (* convert an expression into an address using the Coq function
    mk_address *)
@@ -230,13 +230,13 @@ and regnum_exp b = function
 
 (* convert an expression into a Coq natural number using the Coq
    function nat_of_Z *)
-and nat_exp b e = bprintf b "(nat_of_Z %a)" pexp e
+and nat_exp loc b e = bprintf b "(nat_of_Z %a)" (pexp loc) e
 
-and loc_exp b = function
+and loc_exp loc b = function
   | Var s -> bprintf b "get_loc \"%s\" loc" s
-  | e -> pexp b e
+  | e -> pexp loc b e
 
-and exp b = function
+and exp loc b = function
     (* convert numbers into Coq words *)
   | Bin s -> word bin b s
   | Hex s -> word hex b s
@@ -249,11 +249,11 @@ and exp b = function
   (* optimization: since, in SimSoC-Cert, everything is represented by
      words, zero-extension is always done (implicitly) and does not
      need to be applied explicitly *)
-  | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" pexp e
+  | Fun ("ZeroExtend", e :: _) -> bprintf b "(*ZeroExtend*)%a" (pexp loc) e
 
   (* Add a conversion from word to bool *)
   | Fun ("not", [Range _ as e]) ->
-      bprintf b "%a %a" fun_name "not" pexp (Fun ("bool_of_word", [e]))
+      bprintf b "%a %a" fun_name "not" (pexp loc) (Fun ("bool_of_word", [e]))
 
   (* system coprocessor register bits *)
   | Fun (f, _) when is_cp15_reg1 f ->
@@ -266,37 +266,37 @@ and exp b = function
      argument is not a number *)
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
 	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
-      bprintf b "%a %a %a" fun_name f pexp e1 nat_exp e2
+      bprintf b "%a %a %a" fun_name f (pexp loc) e1 (nat_exp loc) e2
   (* default printing of function calls *)
-  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
+  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc)) es
 
   (* optimization avoiding a call to repr *)
   | BinOp (e1, ("==" as f), Num n) ->
-      bprintf b "%a %a %a" binop f pexp e1 num n
+      bprintf b "%a %a %a" binop f (pexp loc) e1 num n
   (* default printing of binary operators (like function calls) *)
-  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f pexp e1 pexp e2
+  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f (pexp loc) e1 (pexp loc) e2
 
   | If_exp (e1, e2, e3) ->
-      bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
+      bprintf b "if %a then %a else %a" (exp loc) e1 (exp loc) e2 (exp loc) e3
   | CPSR -> string b "cpsr s0"
-  | Range (e, r) -> bprintf b "%a[%a]" pexp e range r
-  | Memory (e, n) -> bprintf b "read s0 %a %a" pexp e size n
+  | Range (e, r) -> bprintf b "%a[%a]" (pexp loc) e (range loc) r
+  | Memory (e, n) -> bprintf b "read s0 %a %a" (pexp loc) e size n
 
   | SPSR None -> string b "spsr s0 None"
   | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" exn_mode m
 
-  | Reg (e, None) -> bprintf b "reg_content s0 %a" regnum_exp e
+  | Reg (e, None) -> bprintf b "reg_content s0 %a" (regnum_exp loc) e
   | Reg (e, Some m) ->
-      bprintf b "reg_content_mode s0 %a %a" mode m regnum_exp e
+      bprintf b "reg_content_mode s0 %a %a" mode m (regnum_exp loc) e
 
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
-and range b = function
+and range loc b = function
   (* convert the flag named s into the pre-defined Coq constant sbit *)
   | Flag (s, _) -> bprintf b "%sbit" s
   (* add a cast to nat when the index is a complex expression *)
-  | Index (BinOp (_, "-", _) as e) -> nat_exp b e
-  | Index e -> num_exp b e
+  | Index (BinOp (_, "-", _) as e) -> (nat_exp loc) b e
+  | Index e -> (num_exp loc) b e
   (* convert a bit range into a Coq bit range *)
   | Bits (n1, n2) -> bprintf b "%a#%a" num n1 num n2;;
 
@@ -307,20 +307,30 @@ and range b = function
 (*REMOVE when finished! *)
 let todo s f b x = bprintf b "todo %s (* %a *)" s f x;;
 
-let case k b (n, i) =
+let case loc k b (n, i) =
   match i with
-    | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n exp e
+    | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc) e
     | _ -> raise Not_found;;
 
-let rec inst k b i = indent b k; inst_aux k b i
+let rec (*inst k b i = indent b k; inst_aux k b i
 
-and pinst k b i = indent b k; par (inst_aux k) b i
+and*) inst loc k b i = indent b k; inst_aux loc k b i
 
-and inst_cons k b = function
+and pinst loc k b i = indent b k; par (inst_aux loc k) b i
+
+and loc_v i = snd (V.vars i)
+
+(*and choose_pexp loc b = function
+  | Var s as e -> 
+      if not (List.mem_assoc s loc) then pexp_loc loc b e
+      else pexp b e
+  | e -> pexp b e*)
+
+and inst_cons loc k b = function
   (*| Affect (Var _, _) as i -> inst k b i*)
-  | i -> indent b k; postfix " ::" (inst_aux k) b i
+  | i -> indent b k; postfix " ::" (inst_aux loc k) b i
 
-and inst_aux k b = function
+and inst_aux loc k b = function
   (*FIXME: to be done*)
   | Proc ("Start_opcode_execution_at", _) as i ->
       todo "StartOpcodeExecutionAt" (Genpc.inst 0) b i
@@ -335,18 +345,18 @@ and inst_aux k b = function
   | Block [] -> string b "block nil"
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
-	(list "\n" (inst_cons (k+2))) is indent (k+2)
+	(list "\n" (inst_cons loc (k+2))) is indent (k+2)
 
   | If (e, i1, None) ->
-      bprintf b "if_then %a\n%a" pexp e (pinst (k+2)) i1
+      bprintf b "if_then %a\n%a" (pexp loc) e (pinst loc (k+2)) i1
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
-	pexp e (pinst (k+2)) i1 (pinst (k+2)) i2
+	(pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2
 
   (* try to generate the code of an affectation; in case of failure,
      output a "todo" *)
   | Affect (e, v) as i ->
-      begin try affect b v e
+      begin try affect' b v loc e
       with Not_found -> todo "Affect" (Genpc.inst 0) b i end
 
   (* adhoc treatment of case's: as case's are only used for defining
@@ -355,122 +365,44 @@ and inst_aux k b = function
   | Case (e, nis) as i ->
       begin try bprintf b
 	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
-	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
+	indent (k+2) (exp loc) e (list "" (case loc (k+4))) nis indent (k+4) indent (k+2)
       with Not_found -> todo "Case" (Genpc.inst 0) b i end
 
   | For (x, p, q, i) ->
-      bprintf b "loop %s %s (fun %s => \n%a)" p q x (inst (k+2)) i
+      bprintf b "loop %s %s (fun %s => \n%a)" p q x (inst loc (k+2)) i
         
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
   | Proc (f, []) -> fun_name b f
   (* default printing of function calls *)
-  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
+  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc)) es
 
-and affect b v = function
-  (* an affectation of a variable is converted into a Coq "let" *)
-  (*| Var s -> bprintf b "let %s := %a in" s exp v*)
-
+and affect' b v loc = function
   (* otherwise, we use some Coq update function *)
-  | Var s ->  bprintf b "update_loc \"%s\" %a" s pexp v
+  | Var s -> 
+      if List.mem_assoc s loc then  
+        bprintf b "update_loc \"%s\" %a" s (pexp loc) v
+      else bprintf b "let %s := %a in" s (pexp loc) v
   (* affectation of a CPSR bit requires a special case *)
-  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s pexp v
-  | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp v pexp e
-  | e -> bprintf b "%a %a" set e pexp v
+  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s (pexp loc) v
+  | Range (e, r) -> 
+      bprintf b "%a (%a %a %a)" (set' loc) e (range loc) r (pexp loc) v (pexp loc) e
+  | e -> bprintf b "%a %a" (set' loc) e (pexp loc) v
 
-and range b = function
-  | Flag (s, _) -> bprintf b "set_bit %sbit" s
-  | Index i -> bprintf b "set_bit %a" num_exp i
-  | Bits (p, q) -> bprintf b "set_bits %a %a" num p num q
-
-and set b = function
-  | Reg (e, None) -> bprintf b "set_reg %a" regnum_exp e
-  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m regnum_exp e
+and set' loc b = function
+  | Reg (e, None) -> bprintf b "set_reg %a" (regnum_exp loc) e
+  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m (regnum_exp loc) e
   | CPSR -> bprintf b "set_cpsr"
   | SPSR None -> bprintf b "set_spsr None"
   | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
-  | Memory (e, n) -> bprintf b "write %a %a" pexp e size n
-  | _ -> raise Not_found;;
+  | Memory (e, n) -> bprintf b "write %a %a" (pexp loc) e size n
+  | _ -> raise Not_found
 
-let rec inst_ad k b i = indent b k; inst_aux_ad k b i
-
-and pinst_ad k b i = indent b k; par (inst_aux_ad k) b i
-
-and inst_cons_ad k b = function
-  (*| Affect (Var _, _) as i -> inst k b i*)
-  | i -> indent b k; postfix " ::" (inst_aux_ad k) b i
-
-and inst_aux_ad k b = function
-  (*FIXME: to be done*)
-  | Proc ("Start_opcode_execution_at", _) as i ->
-      todo "StartOpcodeExecutionAt" (Genpc.inst 0) b i
-  | While _ as i -> todo "While" (Genpc.inst 0) b i
-  | Coproc _ as i -> todo "Coproc" (Genpc.inst 0) b i
-
-  | Assert _ -> invalid_arg "Gencoq.inst_aux"
-
-  | Unpredictable -> string b "unpredictable EmptyMessage"
-      (*FIXME: replace empty string by program name*)
-
-  | Block [] -> string b "block nil"
-  | Block is ->
-      bprintf b "block (\n%a\n%anil)"
-	(list "\n" (inst_cons_ad (k+2))) is indent (k+2)
-
-  | If (e, i1, None) ->
-      bprintf b "if_then %a\n%a" pexp_ad e (pinst_ad (k+2)) i1
-  | If (e, i1, Some i2) ->
-      bprintf b "if_then_else %a\n%a\n%a"
-	pexp_ad e (pinst_ad (k+2)) i1 (pinst_ad (k+2)) i2
-
-  (* try to generate the code of an affectation; in case of failure,
-     output a "todo" *)
-  | Affect (e, v) as i ->
-      begin try affect_ad b v e
-      with Not_found -> todo "Affect" (Genpc.inst 0) b i end
-
-  (* adhoc treatment of case's: as case's are only used for defining
-     the variable index, we convert a case which branches define index
-     into a let index := followed by a Coq match *)
-  | Case (e, nis) as i ->
-      begin try bprintf b
-	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
-	indent (k+2) exp e (list "" (case (k+4))) nis indent (k+4) indent (k+2)
-      with Not_found -> todo "Case" (Genpc.inst 0) b i end
-
-  | For (x, p, q, i) ->
-      bprintf b "loop %s %s (fun %s => \n%a)" p q x (inst_ad (k+2)) i
-        
-  (* print no parenthesis if there is no argument (functions are
-     curryfied in Coq) *)
-  | Proc (f, []) -> fun_name b f
-  (* default printing of function calls *)
-  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " num_exp) es
-
-and affect_ad b v = function
-  (* an affectation of a variable is converted into a Coq "let" *)
-  | Var s -> bprintf b "let %s := %a in" s exp v
-
-  (* otherwise, we use some Coq update function *)
-  (*| Var s ->  bprintf b "update_loc \"%s\" %a" s pexp v*)
-  (* affectation of a CPSR bit requires a special case *)
-  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s pexp_ad v
-  | Range (e, r) -> bprintf b "%a (%a %a %a)" set e range r pexp_ad v pexp_ad e
-  | e -> bprintf b "%a %a" set e pexp_ad v
-
-and range_ad b = function
+and range loc b = function
   | Flag (s, _) -> bprintf b "set_bit %sbit" s
-  | Index i -> bprintf b "set_bit %a" num_exp i
+  | Index i -> bprintf b "set_bit %a" (num_exp loc) i
   | Bits (p, q) -> bprintf b "set_bits %a %a" num p num q
-
-and set_ad b = function
-  | Reg (e, None) -> bprintf b "set_reg %a" regnum_exp e
-  | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m regnum_exp e
-  | CPSR -> bprintf b "set_cpsr"
-  | SPSR None -> bprintf b "set_spsr None"
-  | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
-  | Memory (e, n) -> bprintf b "write %a %a" pexp_ad e size n
-  | _ -> raise Not_found;;
+;;
 
 (*****************************************************************************)
 (** semantic function of a program *)
@@ -512,8 +444,8 @@ let split = function
 
 let block k b i =
   let is1, is2 = split i in
-    List.iter (endline (inst_ad k) b) is1;
-    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux_ad k) (Block is2);;
+    List.iter (endline (inst [] k) b) is1;
+    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux [] k) (Block is2);;
 
 (* default result component value *)
 let default b _ = string b ", repr 0";;
@@ -528,7 +460,7 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | InstARM -> bprintf b "%a loc true s0" (inst 2) p.pinst
+    | InstARM -> bprintf b "%a loc true s0" (inst (snd (V.vars p.pinst)) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
@@ -540,7 +472,7 @@ let pinst b p =
 	  match p.pinst with
 	    | If (e, i, None) ->
 		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
-		  exp e (block 4) i
+		  (exp []) e (block 4) i
 		  (list "" mode_var) ls (list "" default) ls
 	    | i ->
 		bprintf b "%a\n    (r%a)" (block 2) i
