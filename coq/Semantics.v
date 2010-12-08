@@ -158,7 +158,7 @@ Fixpoint update_loc_aux (s : string) (v : word) (loc : list (string * word))
   match loc with
     | nil => ((s, v) :: loc)
     | (s', v') :: locs => if string_dec s s' then (s, v) :: locs 
-      else update_loc_aux s v locs
+      else (s', v') :: update_loc_aux s v locs
   end.
 
 Definition update_loc (str : string) (v : word) (loc : list (string * word))
