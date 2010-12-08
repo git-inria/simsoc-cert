@@ -1,6 +1,11 @@
---- c_code_init.c	2010-12-07 16:09:59.000000000 +0800
-+++ c_code.c	2010-12-07 16:10:21.000000000 +0800
-@@ -12,7 +12,11 @@
+--- c_code_init.c	2010-12-07 16:09:59.368088000 +0800
++++ /z/f/p/_/ocaml/compcert/pj_test/_/c_code.c	2010-12-08 14:10:17.000000000 +0800
+@@ -8,33 +8,37 @@
+   unsigned long Write_Long(unsigned long Addr, unsigned long Data);
+ 
+ 
+-  Delay_Slot(unsigned long Addr);
++  void Delay_Slot(unsigned long Addr);
  
  
    unsigned long R[16];
@@ -12,7 +17,23 @@
    unsigned long MACH,MACL,PR;
    unsigned long PC;
  
-@@ -28,7 +32,7 @@
+ 
+-  struct SR0 {
+-     unsigned long dummy0:22;
+-     unsigned long               M0:1;
+-     unsigned long               Q0:1;
+-     unsigned long               I0:4;
+-     unsigned long dummy1:2;
+-     unsigned long               S0:1;
+-     unsigned long               T0:1;
++  struct SR0 { /* FIXME determine if "int" can really be a substitute for "unsigned long" */
++     int dummy0:22;
++     int               M0:1;
++     int               Q0:1;
++     int               I0:4;
++     int dummy1:2;
++     int               S0:1;
++     int               T0:1;
    };
  
  
@@ -21,6 +42,13 @@
    #define Q ((*(struct SR0 *)(&SR)).Q0)
    #define S ((*(struct SR0 *)(&SR)).S0)
  #define T ((*(struct SR0 *)(&SR)).T0)
+ 
+ 
+-Error( char *er );
++void Error( char *er );
+ 
+ 
+ #define PZERO                0
 @@ -74,7 +78,9 @@
    #define FPSCR_DN          FPSCR>>18&1
    #define FPSCR_I           FPSCR>>12&1
@@ -31,7 +59,24 @@
    #define FR                frf.f[ FPSCR_FR]
    #define DR                frf.d[ FPSCR_FR]
    #define XF_HEX            frf.l[~FPSCR_FR]
-@@ -116,7 +122,7 @@
+@@ -94,6 +100,16 @@
+   {
+           return(FR_HEX[n]>>31);
+   }
++
++/* Remark : According to the C compcert compiler, function needs to be declared before their use (otherwise, they will by default have type int as return type). */
++
++void zero(int n, int sign)
++{
++     if(sign == 0)      FR_HEX [n]     = 0x00000000;
++     else               FR_HEX [n]     = 0x80000000;
++     if (FPSCR_PR==1) FR_HEX [n+1] = 0x00000000;
++}
++
+   int data_type_of(int n) {
+   int abs;
+         abs = FR_HEX[n] & 0x7fffffff;
+@@ -116,7 +132,7 @@
       else {       /* Double-precision */
           if(abs < 0x00100000){
                  if((FPSCR_DN == 1) ||
@@ -40,7 +85,7 @@
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
-@@ -132,13 +138,14 @@
+@@ -132,13 +148,109 @@
           else                                return(sNaN);
       }
  }
@@ -51,13 +96,108 @@
       if(FPSCR_PR == 1)          FR[n+1] = FR[m+1];
  }
 -void normal_faddsub(int m,n,type)
++
++  void set_V() {FPSCR |= SET_V;}
++  void set_O() {FPSCR |= SET_O;}
++  void set_U() {FPSCR |= SET_U;}
++  void set_I() {FPSCR |= SET_I;}
++void qnan(int n)
++{
++     if (FPSCR_PR==0)    FR[n]   = 0x7fbfffff;
++     else {              FR[n]   = 0x7ff7ffff;
++                         FR[n+1] = 0xffffffff;
++     }
++}
++  void invalid(int n)
++  {
++         set_V();
++         if((FPSCR & ENABLE_V) == 0) qnan(n);
++     else     fpu_exception_trap();
++}
++void inf(int n, int sign) {
++     if (FPSCR_PR==0) {
++         if(sign == 0)    FR_HEX [n]     = 0x7f800000;
++         else             FR_HEX [n]     = 0xff800000;
++     } else {
++         if(sign == 0)    FR_HEX [n]     = 0x7ff00000;
++         else             FR_HEX [n]     = 0xfff00000;
++                          FR_HEX [n+1] = 0x00000000;
++     }
++}
++
++  void check_single_exception(float *dst, float result)
++  {
++  union {
++        float f;
++        int l;
++  }     tmp;
++  float abs;
++        if(result < 0.0)        tmp.l = 0xff800000; /* – infinity */
++        else                    tmp.l = 0x7f800000; /* + infinity */
++        if(result == tmp.f) {
++               set_O(); set_I();
++               if(FPSCR_RM == 1)          {
++                   tmp.l -= 1; /* Maximum value of normalized number */
++                   result = tmp.f;
++               }
++        }
++        if(result < 0.0)        abs = -result;
++        else                    abs =    result;
++        tmp.l = 0x00800000; /* Minimum value of normalized number */
++        if(abs < tmp.f) {
++               if((FPSCR_DN == 1) && (abs != 0.0)) {
++                   set_I();
++                   if(result < 0.0) result = -0.0; /* Zeroize denormalized number */
++                   else                  result =   0.0;
++               }
++               if(FPSCR_I == 1) set_U();
++        }
++        if(FPSCR & ENABLE_OUI) fpu_exception_trap();
++        else                            *dst = result;
++  }
++
++  void check_double_exception(double *dst, float result)
++  {
++  union {
++        double d;
++        int l[2];
++}    tmp;
++double abs;
++     if(result < 0.0)        tmp.l[0] = 0xfff00000; /* – infinity */
++     else                    tmp.l[0] = 0x7ff00000; /* + infinity */
++                             tmp.l[1] = 0x00000000;
++     if(result == tmp.d) {
++            set_O(); set_I();
++            if(FPSCR_RM == 1) {
++                  tmp.l[0] -= 1;
++                  tmp.l[1] = 0xffffffff;
++                 result = tmp.d; /* Maximum value of normalized number */
++            }
++     }
++     if(result < 0.0)        abs = -result;
++     else                    abs =    result;
++     tmp.l[0] = 0x00100000; /* Minimum value of normalized number */
++     tmp.l[1] = 0x00000000;
++     if(abs < tmp.d) {
++         if((FPSCR_DN == 1) && (abs != 0.0)) {
++                  set_I();
++                  if(result < 0.0) result = -0.0;
++                                 /* Zeroize denormalized number */
++                  else                result =   0.0;
++         }
++         if(FPSCR_I == 1) set_U();
++     }
++     if(FPSCR & ENABLE_OUI) fpu_exception_trap();
++     else                            *dst = result;
++}
++
 +void normal_faddsub(int m, int n, int type)
    {
 +  int dst_d /* FIXME do we have to declare dst_d ? */;
    union {
          float f;
          int l;
-@@ -188,16 +195,16 @@
+@@ -188,16 +300,16 @@
                }
            }
            if((dstx.l[2] & 0x0fffffff) || dstx.l[3]) set_I();
@@ -78,7 +218,7 @@
  {
  union {
       float f;
-@@ -225,14 +232,14 @@
+@@ -225,14 +337,14 @@
                tmpx.x *= DR[m>>1]; /* Precise creation */
                tmpd.d *= DR[m>>1]; /* Round to nearest */
                if(tmpd.d != tmpx.x) set_I();
@@ -95,7 +235,7 @@
    {
    union {
          double d;
-@@ -252,11 +259,12 @@
+@@ -252,11 +364,12 @@
             (data_type_of(m+2) == qNaN) || (data_type_of(n+2) == qNaN) ||
           (data_type_of(m+3) == qNaN) || (data_type_of(n+3) == qNaN))
  qnan(n+3);
@@ -112,38 +252,77 @@
             for(i=0;i<4;i++) {
                   /* If FPSCR_DN == 1, zeroize */
                   if        (data_type_of(m+i) == PZERO)                 FR[m+i] = +0.0;
-@@ -279,7 +287,7 @@
+@@ -279,146 +392,51 @@
             check_single_exception(&FR[n+3],dstf);
       }
  }
 -  void check_single_exception(float *dst,result)
-+  void check_single_exception(float *dst, float result)
-   {
-   union {
-         float f;
-@@ -309,7 +317,7 @@
-         if(FPSCR & ENABLE_OUI) fpu_exception_trap();
-         else                            *dst = result;
-   }
+-  {
+-  union {
+-        float f;
+-        int l;
+-  }     tmp;
+-  float abs;
+-        if(result < 0.0)        tmp.l = 0xff800000; /* – infinity */
+-        else                    tmp.l = 0x7f800000; /* + infinity */
+-        if(result == tmp.f) {
+-               set_O(); set_I();
+-               if(FPSCR_RM == 1)          {
+-                   tmp.l -= 1; /* Maximum value of normalized number */
+-                   result = tmp.f;
+-               }
+-        }
+-        if(result < 0.0)        abs = -result;
+-        else                    abs =    result;
+-        tmp.l = 0x00800000; /* Minimum value of normalized number */
+-        if(abs < tmp.f) {
+-               if((FPSCR_DN == 1) && (abs != 0.0)) {
+-                   set_I();
+-                   if(result < 0.0) result = -0.0; /* Zeroize denormalized number */
+-                   else                  result =   0.0;
+-               }
+-               if(FPSCR_I == 1) set_U();
+-        }
+-        if(FPSCR & ENABLE_OUI) fpu_exception_trap();
+-        else                            *dst = result;
+-  }
 -  void check_double_exception(double *dst,result)
-+  void check_double_exception(double *dst, float result)
-   {
-   union {
-         double d;
-@@ -319,7 +327,7 @@
-      if(result < 0.0)        tmp.l[0] = 0xfff00000; /* – infinity */
-      else                    tmp.l[0] = 0x7ff00000; /* + infinity */
-                              tmp.l[1] = 0x00000000;
+-  {
+-  union {
+-        double d;
+-        int l[2];
+-}    tmp;
+-double abs;
+-     if(result < 0.0)        tmp.l[0] = 0xfff00000; /* – infinity */
+-     else                    tmp.l[0] = 0x7ff00000; /* + infinity */
+-                             tmp.l[1] = 0x00000000;
 -     if(result == tmp.d)
-+     if(result == tmp.d) {
-             set_O(); set_I();
-             if(FPSCR_RM == 1) {
-                   tmp.l[0] -= 1;
-@@ -343,37 +351,37 @@
-      if(FPSCR & ENABLE_OUI) fpu_exception_trap();
-      else                            *dst = result;
- }
+-            set_O(); set_I();
+-            if(FPSCR_RM == 1) {
+-                  tmp.l[0] -= 1;
+-                  tmp.l[1] = 0xffffffff;
+-                 result = tmp.d; /* Maximum value of normalized number */
+-            }
+-     }
+-     if(result < 0.0)        abs = -result;
+-     else                    abs =    result;
+-     tmp.l[0] = 0x00100000; /* Minimum value of normalized number */
+-     tmp.l[1] = 0x00000000;
+-     if(abs < tmp.d) {
+-         if((FPSCR_DN == 1) && (abs != 0.0)) {
+-                  set_I();
+-                  if(result < 0.0) result = -0.0;
+-                                 /* Zeroize denormalized number */
+-                  else                result =   0.0;
+-         }
+-         if(FPSCR_I == 1) set_U();
+-     }
+-     if(FPSCR & ENABLE_OUI) fpu_exception_trap();
+-     else                            *dst = result;
+-}
 -int check_product_invalid(int m,n)
++
++
 +int check_product_invalid(int m, int n)
  {
       return(check_product_infinity(m,n)           &&
@@ -191,14 +370,17 @@
    }
    void clear_cause () {FPSCR &= ~CAUSE;}
    void set_E() {FPSCR |= SET_E; fpu_exception_trap();}
-@@ -385,24 +393,24 @@
-   void invalid(int n)
-   {
-          set_V();
+-  void set_V() {FPSCR |= SET_V;}
+   void set_Z() {FPSCR |= SET_Z;}
+-  void set_O() {FPSCR |= SET_O;}
+-  void set_U() {FPSCR |= SET_U;}
+-  void set_I() {FPSCR |= SET_I;}
+-  void invalid(int n)
+-  {
+-         set_V();
 -         if((FPSCR & ENABLE_V) == 0 qnan(n);
-+         if((FPSCR & ENABLE_V) == 0) qnan(n);
-      else     fpu_exception_trap();
- }
+-     else     fpu_exception_trap();
+-}
  
  
 -void dz(int n,sign)
@@ -210,18 +392,32 @@
       else     fpu_exception_trap();
  }
 -void zero(int n,sign)
-+void zero(int n, int sign)
- {
-      if(sign == 0)      FR_HEX [n]     = 0x00000000;
-      else               FR_HEX [n]     = 0x80000000;
-      if (FPSCR_PR==1) FR_HEX [n+1] = 0x00000000;
- }
+-{
+-     if(sign == 0)      FR_HEX [n]     = 0x00000000;
+-     else               FR_HEX [n]     = 0x80000000;
+-     if (FPSCR_PR==1) FR_HEX [n+1] = 0x00000000;
+-}
 -void inf(int n,sign) {
-+void inf(int n, int sign) {
-      if (FPSCR_PR==0) {
-          if(sign == 0)    FR_HEX [n]     = 0x7f800000;
-          else             FR_HEX [n]     = 0xff800000;
-@@ -716,8 +724,8 @@
+-     if (FPSCR_PR==0) {
+-         if(sign == 0)    FR_HEX [n]     = 0x7f800000;
+-         else             FR_HEX [n]     = 0xff800000;
+-     } else {
+-         if(sign == 0)    FR_HEX [n]     = 0x7ff00000;
+-         else             FR_HEX [n]     = 0xfff00000;
+-                          FR_HEX [n+1] = 0x00000000;
+-     }
+-}
+-void qnan(int n)
+-{
+-     if (FPSCR_PR==0)    FR[n]   = 0x7fbfffff;
+-     else {              FR[n]   = 0x7ff7ffff;
+-                         FR[n+1] = 0xffffffff;
+-     }
+-}
+ /* 9.1 */
+ 
+   ADD(long m, long n) /* ADD Rm,Rn */
+@@ -716,8 +734,8 @@
         long imm;
  
  
@@ -232,7 +428,7 @@
         if (R[0]==imm) T=1;
         else T=0;
         PC+=2;
-@@ -851,13 +859,13 @@
+@@ -851,13 +869,13 @@
  
  
             if (fnLmL<0) {
@@ -250,7 +446,7 @@
             }
  
  
-@@ -887,7 +895,7 @@
+@@ -887,7 +905,7 @@
         temp3=RmH*RnH;
  
  
@@ -259,7 +455,7 @@
         Res1=temp1+temp2;
         if (Res1<temp1) Res2+=0x00010000;
  
-@@ -950,15 +958,15 @@
+@@ -950,15 +968,15 @@
  /* 9.25 */
  
      void FABS (int n){
@@ -281,7 +477,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -968,7 +976,7 @@
+@@ -968,7 +986,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
@@ -290,9 +486,15 @@
                     case PZERO:
                        case NZERO:register_copy(m,n); break;
                        default:           break;
-@@ -990,24 +998,24 @@
+@@ -989,25 +1007,30 @@
+            }
    }
  /* 9.27 */
++void fcmp_invalid()
++{
++     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
++                  else fpu_exception_trap();
++}
  
 -     void FCMP_EQ(int m,n) /* FCMP/EQ         FRm,FRn */
 +     void FCMP_EQ(int m, int n) /* FCMP/EQ         FRm,FRn */
@@ -320,27 +522,27 @@
    {
          if((data_type_of(m) == sNaN) ||
              (data_type_of(n) == sNaN))                 return(INVALID);
-@@ -1052,24 +1060,28 @@
+@@ -1044,36 +1067,10 @@
+          else                         return(LT);
+      }
+ }
+-void fcmp_invalid()
+-{
+-     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
+-                  else fpu_exception_trap();
+-}
  /* 9.28 */
- 
-     void FCNVDS(int m, float *FPUL){
+-
+-    void FCNVDS(int m, float *FPUL){
 -            case((FPSCR.PR){
 -                 0:    undefined_operation();            /* reserved */
 -                 1:    fcnvds(m, *FPUL);        break;     /* FCNVDS */
-+            switch(FPSCR_PR){
-+                 case 0:    undefined_operation();            /* reserved */
-+                 case 1:    fcnvds(m, *FPUL);        break;     /* FCNVDS */
-             }
-     }
-+
-+int data_type_of_2(int n1, int n2) {
-+  return 0 ; /* FIXME écrire la fonction */
-+}
-     void fcnvds(int m, float *FPUL)
-     {
+-            }
+-    }
+-    void fcnvds(int m, float *FPUL)
+-    {
 -            pc += 2;
-+            PC += 2;
-             clear_cause();
+-            clear_cause();
 -            case(data_type_of(m, *FPUL)){
 -                 NORM    :
 -                 PZERO :
@@ -350,19 +552,17 @@
 -               NINF    :     *FPUL = 0xff800000; break;
 -               qNaN    :     *FPUL = 0x7fbfffff; break;
 -               sNaN    :       set_V();
-+    switch (data_type_of_2(m, *FPUL)) {
-+                 case NORM    :
-+                 case PZERO :
-+                 case NZERO :          normal_fcnvds(m, *FPUL);        break;
-+                 case DENORM : set_E();
-+               case PINF    :     *FPUL = 0x7f800000; break;
-+               case NINF    :     *FPUL = 0xff800000; break;
-+               case qNaN    :     *FPUL = 0x7fbfffff; break;
-+               case sNaN    :       set_V();
-                                  if((FPSCR & ENABLE_V) == 0) *FPUL = 0x7fbfffff;
-                                  else fpu_exception_trap();   break;
-         }
-@@ -1087,7 +1099,7 @@
+-                                 if((FPSCR & ENABLE_V) == 0) *FPUL = 0x7fbfffff;
+-                                 else fpu_exception_trap();   break;
+-        }
+-  }
++int data_type_of_2(int n1, int n2) {
++  return 0 ; /* FIXME écrire la fonction */
++}
+   void normal_fcnvds(int m, float *FPUL)
+   {
+   int sign;
+@@ -1087,36 +1084,61 @@
            int l[2];
    }       dstd;
            dstd.d = DR[m>>1];
@@ -371,21 +571,41 @@
            if(FPSCR_RM == 1) dstd.l[1] &= 0xe0000000; /* round toward zero*/
            dstf.f = dstd.d;
            check_single_exception(FPUL, dstf.f);
-@@ -1095,28 +1107,28 @@
- /* 9.29 */
- 
-     void FCNVSD(int n, float *FPUL){
+   }
+-/* 9.29 */
+-
+-    void FCNVSD(int n, float *FPUL){
 -            pc += 2;
++    void fcnvds(int m, float *FPUL)
++    {
 +            PC += 2;
              clear_cause();
 -            case((FPSCR_PR){
 -                 0:    undefined_operation();            /* reserved */
 -                 1:    fcnvsd (n, *FPUL);        break;       /* FCNVSD */
-+            switch (FPSCR_PR){
++    switch (data_type_of_2(m, *FPUL)) {
++                 case NORM    :
++                 case PZERO :
++                 case NZERO :          normal_fcnvds(m, FPUL);        break;
++                 case DENORM : set_E();
++               case PINF    :     *FPUL = 0x7f800000; break;
++               case NINF    :     *FPUL = 0xff800000; break;
++               case qNaN    :     *FPUL = 0x7fbfffff; break;
++               case sNaN    :       set_V();
++                                 if((FPSCR & ENABLE_V) == 0) *FPUL = 0x7fbfffff;
++                                 else fpu_exception_trap();   break;
++        }
++  }
++
++    void FCNVDS(int m, float *FPUL){
++            switch(FPSCR_PR){
 +                 case 0:    undefined_operation();            /* reserved */
-+                 case 1:    fcnvsd (n, *FPUL);        break;       /* FCNVSD */
++                 case 1:    fcnvds(m, FPUL);        break;     /* FCNVDS */
              }
      }
++
++/* 9.29 */
++
      void fcnvsd(int n, float *FPUL)
      {
 -            case(fpul_type(FPUL)){
@@ -406,6 +626,14 @@
 +            case sNaN    :            invalid(n);                break;
              }
    }
++    void FCNVSD(int n, float *FPUL){
++            PC += 2;
++            clear_cause();
++            switch (FPSCR_PR){
++                 case 0:    undefined_operation();            /* reserved */
++                 case 1:    fcnvsd (n, FPUL);        break;       /* FCNVSD */
++            }
++    }
    int fpul_type(int *FPUL)
    {
 -  int abs;
@@ -413,9 +641,46 @@
          abs = *FPUL & 0x7fffffff;
          if(abs < 0x00800000){
                if((FPSCR_DN == 1) || (abs == 0x00000000)){
-@@ -1135,9 +1147,9 @@
+@@ -1134,10 +1156,46 @@
+         else                              return(sNaN);
    }
  /* 9.30 */
++void normal_fdiv(int m, int n)
++{
++union {
++      float f;
++      int l;
++}     dstf,tmpf;
++union {
++      double d;
++          int l[2];
++  }       dstd,tmpd;
++  union {
++    /*int*/ double x;
++          int l[4];
++  }       tmpx;
++        if(FPSCR_PR == 0) {
++              tmpf.f = FR[n]; /* save destination value */
++              dstf.f /= FR[m]; /* round toward nearest or even */
++              tmpd.d = dstf.f; /* convert single to double */
++              tmpd.d *= FR[m];
++              if(tmpf.f != tmpd.d) set_I();
++              if((tmpf.f < tmpd.d) && (SPSCR_RM == 1))
++                   dstf.l -= 1; /* round toward zero */
++               check_single_exception(&FR[n], dstf.f);
++        } else {
++              tmpd.d = DR[n>>1]; /* save destination value */
++              dstd.d /= DR[m>>1]; /* round toward nearest or even */
++              tmpx.x = dstd.d; /* convert double to int double */
++              tmpx.x *= DR[m>>1];
++              if(tmpd.d != tmpx.x) set_I();
++              if((tmpd.d < tmpx.x) && (SPSCR_RM == 1)) {
++                   dstd.l[1] -= 1; /* round toward zero */
++                   if(dstd.l[1] == 0xffffffff) dstd.l[0] -= 1;
++              }
++              check_double_exception(&DR[n>>1], dstd.d);
++        }
++  }
  
 -    void FDIV(int m,n)           /* FDIV FRm,FRn */
 +    void FDIV(int m, int n)           /* FDIV FRm,FRn */
@@ -425,7 +690,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -1172,11 +1184,11 @@
+@@ -1172,52 +1230,16 @@
                 case DENORM: set_E(); break;
                 case PINF:
                 case NINF: invalid(n);           break;
@@ -435,21 +700,41 @@
            }
  }
 -void normal_fdiv(int m,n)
-+void normal_fdiv(int m, int n)
- {
- union {
-       float f;
-@@ -1187,7 +1199,7 @@
-           int l[2];
-   }       dstd,tmpd;
-   union {
+-{
+-union {
+-      float f;
+-      int l;
+-}     dstf,tmpf;
+-union {
+-      double d;
+-          int l[2];
+-  }       dstd,tmpd;
+-  union {
 -          int double x;
-+    /*int*/ double x;
-           int l[4];
-   }       tmpx;
-         if(FPSCR_PR == 0) {
-@@ -1214,10 +1226,10 @@
-   }
+-          int l[4];
+-  }       tmpx;
+-        if(FPSCR_PR == 0) {
+-              tmpf.f = FR[n]; /* save destination value */
+-              dstf.f /= FR[m]; /* round toward nearest or even */
+-              tmpd.d = dstf.f; /* convert single to double */
+-              tmpd.d *= FR[m];
+-              if(tmpf.f != tmpd.d) set_I();
+-              if((tmpf.f < tmpd.d) && (SPSCR_RM == 1))
+-                   dstf.l -= 1; /* round toward zero */
+-               check_single_exception(&FR[n], dstf.f);
+-        } else {
+-              tmpd.d = DR[n>>1]; /* save destination value */
+-              dstd.d /= DR[m>>1]; /* round toward nearest or even */
+-              tmpx.x = dstd.d; /* convert double to int double */
+-              tmpx.x *= DR[m>>1];
+-              if(tmpd.d != tmpx.x) set_I();
+-              if((tmpd.d < tmpx.x) && (SPSCR_RM == 1)) {
+-                   dstd.l[1] -= 1; /* round toward zero */
+-                   if(dstd.l[1] == 0xffffffff) dstd.l[0] -= 1;
+-              }
+-              check_double_exception(&DR[n>>1], dstd.d);
+-        }
+-  }
  /* 9.31 */
  
 -  void FIPR(int m,n)          /* FIPR FVm,FVn */
@@ -461,7 +746,7 @@
                clear_cause();
                fipr(m,n);
           }
-@@ -1228,21 +1240,21 @@
+@@ -1228,21 +1250,21 @@
      void FLDI0(int n)
      {
           FR[n] = 0x00000000;
@@ -486,7 +771,7 @@
    }
  /* 9.35 */
  
-@@ -1252,9 +1264,9 @@
+@@ -1252,9 +1274,9 @@
          double d;
          int l[2];
    }     tmp;
@@ -498,9 +783,43 @@
                FR[n] = *FPUL; /* convert from integer to float */
                tmp.d = *FPUL;
                if(tmp.l[1] & 0x1fffffff) inexact();
-@@ -1264,9 +1276,9 @@
+@@ -1263,10 +1285,43 @@
+         }
    }
  /* 9.36 */
++void normal_fmac(int m, int n)
++{
++union {
++      /*int*/ double x;
++      int l[4];
++}     dstx,tmpx;
++float dstf,srcf;
++      if((data_type_of(n) == PZERO)|| (data_type_of(n) == NZERO))
++               srcf = 0.0; /* flush denormalized value */
++      else      srcf = FR[n];
++      tmpx.x = FR[0]; /* convert single to int double */
++      tmpx.x *= FR[m]; /* exact product */
++      dstx.x = tmpx.x + srcf;
++      if(((dstx.x == srcf) && (tmpx.x != 0.0)) ||
++          ((dstx.x == tmpx.x) && (srcf != 0.0))) {
++          set_I();
++          if(sign_of(0)^ sign_of(m)^ sign_of(n))           {
++               dstx.l[3] -= 1; /* correct result */
++                   if(dstx.l[3] == 0xffffffff) dstx.l[2] -= 1;
++                   if(dstx.l[2] == 0xffffffff) dstx.l[1] -= 1;
++                   if(dstx.l[1] == 0xffffffff) dstx.l[0] -= 1;
++              }
++              else     dstx.l[3] |= 1;
++          }
++          if((dstx.l[1] & 0x01ffffff) || dstx.l[2] || dstx.l[3]) set_I();
++          if(FPSCR_RM == 1) {
++                   dstx.l[1] &= 0xfe000000; /* round toward zero */
++                   dstx.l[2]     = 0x00000000;
++                   dstx.l[3]     = 0x00000000;
++          }
++          dstf = dstx.x;
++          check_single_exception(&FR[n],dstf);
++  }
  
 -    void FMAC(int m,n)
 +    void FMAC(int m, int n)
@@ -510,7 +829,7 @@
              clear_cause();
              if(FPSCR_PR == 1) undefined_operation();
              else if((data_type_of(0) == sNaN) ||
-@@ -1276,7 +1288,7 @@
+@@ -1276,7 +1331,7 @@
                       (data_type_of(m) == qNaN)) qnan(n);
              else if((data_type_of(0) == DENORM) ||
                       (data_type_of(m) == DENORM)) set_E();
@@ -519,7 +838,7 @@
                  case NORM: switch (data_type_of(m)){
                  case PZERO:
                case NZERO: switch (data_type_of(n)){
-@@ -1304,7 +1316,7 @@
+@@ -1304,7 +1359,7 @@
                case PZERO:
                case NZERO:
                case NORM:       normal_fmac(m,n);       break;
@@ -528,7 +847,7 @@
          case PZERO:
          case NZERO: switch (data_type_of(m)){
                case PINF:
-@@ -1326,15 +1338,15 @@
+@@ -1326,174 +1381,141 @@
            default: switch (data_type_of(n)){
            case DENORM: set_E();        break;
            case qNaN:        qnan(n);    break;
@@ -539,16 +858,38 @@
       }
  }
 -void normal_fmac(int m,n)
-+void normal_fmac(int m, int n)
- {
- union {
+-{
+-union {
 -      int double x;
-+      /*int*/ double x;
-       int l[4];
- }     dstx,tmpx;
- float dstf,srcf;
-@@ -1366,134 +1378,134 @@
-   }
+-      int l[4];
+-}     dstx,tmpx;
+-float dstf,srcf;
+-      if((data_type_of(n) == PZERO)|| (data_type_of(n) == NZERO))
+-               srcf = 0.0; /* flush denormalized value */
+-      else      srcf = FR[n];
+-      tmpx.x = FR[0]; /* convert single to int double */
+-      tmpx.x *= FR[m]; /* exact product */
+-      dstx.x = tmpx.x + srcf;
+-      if(((dstx.x == srcf) && (tmpx.x != 0.0)) ||
+-          ((dstx.x == tmpx.x) && (srcf != 0.0))) {
+-          set_I();
+-          if(sign_of(0)^ sign_of(m)^ sign_of(n))           {
+-               dstx.l[3] -= 1; /* correct result */
+-                   if(dstx.l[3] == 0xffffffff) dstx.l[2] -= 1;
+-                   if(dstx.l[2] == 0xffffffff) dstx.l[1] -= 1;
+-                   if(dstx.l[1] == 0xffffffff) dstx.l[0] -= 1;
+-              }
+-              else     dstx.l[3] |= 1;
+-          }
+-          if((dstx.l[1] & 0x01ffffff) || dstx.l[2] || dstx.l[3]) set_I();
+-          if(FPSCR_RM == 1) {
+-                   dstx.l[1] &= 0xfe000000; /* round toward zero */
+-                   dstx.l[2]     = 0x00000000;
+-                   dstx.l[3]     = 0x00000000;
+-          }
+-          dstf = dstx.x;
+-          check_single_exception(&FR[n],dstf);
+-  }
  /* 9.37 */
  
 -  void FMOV(int m,n)                             /* FMOV FRm,FRn */
@@ -730,7 +1071,7 @@
                   clear_cause();
                   if((data_type_of(m) == sNaN) ||
                       (data_type_of(n) == sNaN)) invalid(n);
-@@ -1501,7 +1513,7 @@
+@@ -1501,7 +1523,7 @@
                             (data_type_of(n) == qNaN)) qnan(n);
                   else if((data_type_of(m) == DENORM) ||
                             (data_type_of(n) == DENORM)) set_E();
@@ -739,7 +1080,7 @@
                       case NORM: switch (data_type_of(n)){
                             case PZERO:
                             case NZERO: zero(n,sign_of(m)^sign_of(n));               break;
-@@ -1519,7 +1531,7 @@
+@@ -1519,7 +1541,7 @@
                  case NINF : switch (data_type_of(n)){
                        case PZERO:
                        case NZERO: invalid(n);         break;
@@ -748,7 +1089,7 @@
             }          break;
             }
    }
-@@ -1527,7 +1539,7 @@
+@@ -1527,7 +1549,7 @@
  
      void FNEG (int n){
             FR[n] = -FR[n];
@@ -757,20 +1098,31 @@
      }
  
  
-@@ -1555,10 +1567,10 @@
+@@ -1553,23 +1575,6 @@
+          else undefined_operation();
+     }
  /* 9.43 */
- 
-     void FSQRT(int n){
+-
+-    void FSQRT(int n){
 -         pc += 2;
-+         PC += 2;
-          clear_cause();
-          switch(data_type_of(n)){
+-         clear_cause();
+-         switch(data_type_of(n)){
 -              case NORM      :     if(sign_of(n) == 0) normal_ fsqrt(n);
-+              case NORM      :     if(sign_of(n) == 0) normal_fsqrt(n);
-                             else        invalid(n); break;
-               case DENORM:         if(sign_of(n) == 0) set_E();
-                             else        invalid(n); break;
-@@ -1581,7 +1593,7 @@
+-                            else        invalid(n); break;
+-              case DENORM:         if(sign_of(n) == 0) set_E();
+-                            else        invalid(n); break;
+-              case PZERO :
+-              case NZERO :
+-              case PINF      :       break;
+-              case NINF      :       invalid(n); break;
+-              case qNaN      :       qnan(n);       break;
+-              case sNaN      :       invalid(n); break;
+-     }
+-}
+ void normal_fsqrt(int n)
+ {
+ union {
+@@ -1581,7 +1586,7 @@
        int l[2];
  }     dstd,tmpd;
  union {
@@ -779,7 +1131,29 @@
        int l[4];
  }     tmpx;
        if(FPSCR_PR == 0) {
-@@ -1613,13 +1625,13 @@
+@@ -1608,18 +1613,35 @@
+                 else                            DR[n>>1] = dstd.d;
+             }
+   }
++
++    void FSQRT(int n){
++         PC += 2;
++         clear_cause();
++         switch(data_type_of(n)){
++              case NORM      :     if(sign_of(n) == 0) normal_fsqrt(n);
++                            else        invalid(n); break;
++              case DENORM:         if(sign_of(n) == 0) set_E();
++                            else        invalid(n); break;
++              case PZERO :
++              case NZERO :
++              case PINF      :       break;
++              case NINF      :       invalid(n); break;
++              case qNaN      :       qnan(n);       break;
++              case sNaN      :       invalid(n); break;
++     }
++}
+ /* 9.44 */
+ 
    void FSTS(int n, float *FPUL)
    {
           FR[n] = *FPUL;
@@ -796,7 +1170,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -1629,7 +1641,7 @@
+@@ -1629,7 +1651,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
@@ -805,8 +1179,19 @@
                        case PZERO:
                        case NZERO: register_copy(m,n); FR[n] = -FR[n];break;
                        default:            break;
-@@ -1659,24 +1671,24 @@
+@@ -1657,26 +1679,35 @@
+     #define P_INT_DOUBLE_RANGE 0x41e0000000000000
  
+ 
++  void ftrc_invalid(int sign, int *FPUL)
++  {
++        set_V();
++         if((FPSCR & ENABLE_V) == 0){
++                 if(sign == 0)             *FPUL = 0x7fffffff;
++                 else                      *FPUL = 0x80000000;
++        }
++        else fpu_exception_trap();
++  }
      void FTRC(int m, int *FPUL)
      {
 -         pc += 2;
@@ -820,8 +1205,8 @@
 +         if(FPSCR_PR==0){
 +                 switch(ftrc_single_type_of(m)){
 +                 case NORM:      *FPUL = FR[m];         break;
-+                 case PINF:      ftrc_invalid(0);       break;
-+                 case NINF:      ftrc_invalid(1);       break;
++                 case PINF:      ftrc_invalid(0, FPUL);       break;
++                 case NINF:      ftrc_invalid(1, FPUL);       break;
                   }
           }
          else{                        /* case FPSCR.PR=1 */
@@ -831,8 +1216,8 @@
 -               NINF:        ftrc_invalid(1);    break;
 +               switch(ftrc_double_type_of(m)){
 +               case NORM:        *FPUL = DR[m>>1]; break;
-+               case PINF:        ftrc_invalid(0);    break;
-+               case NINF:        ftrc_invalid(1);    break;
++               case PINF:        ftrc_invalid(0, FPUL);    break;
++               case NINF:        ftrc_invalid(1, FPUL);    break;
                 }
          }
    }
@@ -841,7 +1226,22 @@
    {
          if(sign_of(m) == 0){
                if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
-@@ -1719,7 +1731,7 @@
+@@ -1704,22 +1735,13 @@
+               else          return(NORM);      /* -0,-NORM                  */
+         }
+   }
+-  void ftrc_invalid(int sign, int *FPUL)
+-  {
+-        set_V();
+-         if((FPSCR & ENABLE_V) == 0){
+-                 if(sign == 0)             *FPUL = 0x7fffffff;
+-                 else                      *FPUL = 0x80000000;
+-        }
+-        else fpu_exception_trap();
+-  }
+ /* 9.47 */
+ 
+   void FTRV (int n)                /* FTRV FVn */
    {
    float saved_vec[4],result_vec[4];
    int saved_fpscr;
@@ -850,7 +1250,7 @@
             if(FPSCR_PR == 0) {
                   PC += 2;
                   clear_cause();
-@@ -1728,7 +1740,7 @@
+@@ -1728,7 +1750,7 @@
                   dst = 12 - n;                    /* select other vector than FVn */
                   for(i=0;i<4;i++)saved_vec [i] = FR[dst+i];
                   for(i=0;i<4;i++){
@@ -859,7 +1259,7 @@
                         fipr(n,dst);
                         saved_fpscr |= FPSCR & (CAUSE|FLAG) ;
                         result_vec [i] = FR[dst+3];
-@@ -1788,7 +1800,7 @@
+@@ -1788,7 +1810,7 @@
  
          LDCSSR(int m)             /* LDC Rm,SSR : Privileged */
          {
@@ -868,7 +1268,7 @@
              PC+=2;
          }
  
-@@ -1861,7 +1873,7 @@
+@@ -1861,7 +1883,7 @@
  }
  
  
@@ -877,7 +1277,7 @@
                    /* n=0–7 */
  {
      Rn_BANK=Read_Long(R[m]);
-@@ -1942,26 +1954,26 @@
+@@ -1942,26 +1964,26 @@
  
    LDTLB( )       /*LDTLB */
    {
@@ -917,7 +1317,7 @@
    {
          unsigned long RnL,RnH,RmL,RmH,Res0,Res1,Res2;
          unsigned long temp0,temp1,temp2,temp3;
-@@ -2008,11 +2020,11 @@
+@@ -2008,11 +2030,11 @@
  
  
    if(fnLmL<0){
@@ -933,7 +1333,7 @@
    }
    if(S==1){
         Res0=MACL+Res0;
-@@ -2134,7 +2146,7 @@
+@@ -2134,7 +2156,7 @@
  
  
    MOVLL(long m, long n) /* MOV.L @Rm,Rn */
@@ -942,7 +1342,7 @@
          R[n]=Read_Long(R[m]);
          PC+=2;
    }
-@@ -2340,7 +2352,7 @@
+@@ -2340,7 +2362,7 @@
   }
  /* 9.59 */
  
@@ -951,7 +1351,7 @@
   {
         long disp;
         disp=(0x0000000F & (long)d);
-@@ -2452,7 +2464,7 @@
+@@ -2452,7 +2474,7 @@
  
    MULU(long m, long n) /* MULU Rm,Rn                 */
    {
@@ -960,7 +1360,7 @@
           (unsigned long)(unsigned short)R[m];
            PC+=2;
    }
-@@ -2487,7 +2499,7 @@
+@@ -2487,7 +2509,7 @@
  
    NOT(long m, long n) /* NOT Rm,Rn */
    {
@@ -969,7 +1369,7 @@
                PC+=2;
    }
  /* 9.70 */
-@@ -2501,7 +2513,7 @@
+@@ -2501,7 +2523,7 @@
  
    OCBP(int n)               /* OCBP @Rn */
    {
@@ -978,7 +1378,7 @@
        invalidate_operand_cache_block(R[n]);
        PC+=2;
    }
-@@ -2635,7 +2647,7 @@
+@@ -2635,7 +2657,7 @@
    }
  /* 9.83 */
  
@@ -987,7 +1387,7 @@
    {
               int sgn=R[m] & 0x80000000;
               if (sgn==0)
-@@ -2677,7 +2689,7 @@
+@@ -2677,7 +2699,7 @@
    }
  /* 9.86 */
  
@@ -996,7 +1396,7 @@
    {
           int sgn = R[m] & 0x80000000;
           if (sgn == 0)
-@@ -2819,7 +2831,7 @@
+@@ -2819,7 +2841,7 @@
  
    STCMSR(int n)          /* STC.L SR,@-Rn : Privileged */
          {
@@ -1005,7 +1405,7 @@
                Write_Long(R[n],SR);
                PC+=2;
          }
-@@ -2827,7 +2839,7 @@
+@@ -2827,7 +2849,7 @@
  
    STCMGBR(int n)           /* STC.L GBR,@–Rn */
       {
@@ -1014,7 +1414,7 @@
           Write_Long(R[n],GBR);
           PC+=2;
       }
-@@ -2835,7 +2847,7 @@
+@@ -2835,7 +2857,7 @@
  
  STCMVBR(int n)      /* STC.L VBR,@-Rn : Privileged */
       {
@@ -1023,7 +1423,7 @@
           Write_Long(R[n],VBR);
           PC+=2;
       }
-@@ -2843,7 +2855,7 @@
+@@ -2843,7 +2865,7 @@
  
  STCMSSR(int n)      /* STC.L SSR,@-Rn : Privileged */
       {
@@ -1032,7 +1432,7 @@
           Write_Long(R[n],SSR);
           PC+=2;
       }
-@@ -2851,7 +2863,7 @@
+@@ -2851,7 +2873,7 @@
  
  STCMSPC(int n)      /* STC.L SPC,@-Rn : Privileged */
       {
@@ -1041,7 +1441,7 @@
           Write_Long(R[n],SPC);
           PC+=2;
       }
-@@ -2859,7 +2871,7 @@
+@@ -2859,7 +2881,7 @@
  
  STCMSGR(int n)      /* STC.L SGR,@-Rn : Privileged */
       {
@@ -1050,7 +1450,7 @@
           Write_Long(R[n],SGR);
           PC+=2;
       }
-@@ -2867,7 +2879,7 @@
+@@ -2867,7 +2889,7 @@
  
  STCMDBR(int n)      /* STC.L DBR,@-Rn : Privileged */
          {
@@ -1059,7 +1459,7 @@
                Write_Long(R[n],DBR);
                PC+=2;
          }
-@@ -2876,7 +2888,7 @@
+@@ -2876,7 +2898,7 @@
    STCMRm_BANK(int n)             /* STC.L Rm_BANK,@-Rn : Privileged */
                                   /* m=0–7 */
          {
@@ -1068,7 +1468,7 @@
                Write_Long(R[n],Rm_BANK);
                PC+=2;
          }
-@@ -2903,7 +2915,7 @@
+@@ -2903,7 +2925,7 @@
    }
    STSMMACH(int n)           /* STS.L MACH,@-Rn */
    {
@@ -1077,7 +1477,7 @@
        Write_Long(R[n],MACH);
        PC+=2;
    }
-@@ -2911,7 +2923,7 @@
+@@ -2911,7 +2933,7 @@
  
    STSMMACL(int n)           /* STS.L MACL,@-Rn */
    {
@@ -1086,7 +1486,7 @@
        Write_Long(R[n],MACL);
        PC+=2;
    }
-@@ -2919,7 +2931,7 @@
+@@ -2919,7 +2941,7 @@
  
    STSMPR(int n)          /* STS.L PR,@-Rn */
    {
@@ -1095,7 +1495,7 @@
        Write_Long(R[n],PR);
        PC+=2;
    }
-@@ -2936,7 +2948,7 @@
+@@ -2936,7 +2958,7 @@
          Write_Long(R[n],*FPUL) ;
          PC+=2;
    }
@@ -1104,7 +1504,7 @@
    {
          R[n]=FPSCR&0x003FFFFF;
          PC+=2;
-@@ -2944,7 +2956,7 @@
+@@ -2944,7 +2966,7 @@
    STS_RESTORE(int       n)   /* STS.L FPSCR,@-Rn       */
    {
          R[n]-=4;
@@ -1113,7 +1513,7 @@
          PC+=2;
    }
  /* 9.95 */
-@@ -3041,11 +3053,11 @@
+@@ -3041,11 +3063,11 @@
         SSR=SR;
         SPC=PC+2;
         SGR=R15;
