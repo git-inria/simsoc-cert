@@ -342,9 +342,9 @@ and inst_aux loc k b = function
   | Unpredictable -> string b "unpredictable EmptyMessage"
       (*FIXME: replace empty string by program name*)
 
-  | Block [] -> string b "block nil"
+  | Block [] -> string b "block (fun loc => nil)"
   | Block is ->
-      bprintf b "block (\n%a\n%anil)"
+      bprintf b "block (fun loc =>\n%a\n%anil)"
 	(list "\n" (inst_cons loc (k+2))) is indent (k+2)
 
   | If (e, i1, None) ->
@@ -460,7 +460,7 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | InstARM -> bprintf b "%a loc true s0" (inst (snd (V.vars p.pinst)) 2) p.pinst
+    | InstARM -> bprintf b "%a nil true s0" (inst (snd (V.vars p.pinst)) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
@@ -480,18 +480,9 @@ let pinst b p =
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
-let init_loc b p = 
-  match p.pkind with
-    | InstARM -> bprintf b "let loc := nil in\n"
-    | _ -> ();;
-
 let semfun b p gs =
   match p.pkind with
-    | InstARM ->
-        bprintf b
-          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a%a.\n\n"
-          p.pref Genpc.name p name p (list "" arg_typ) gs result p init_loc p pinst p
-    | Mode _ ->
+    | InstARM | Mode _ ->
         bprintf b
           "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
           p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p

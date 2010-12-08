@@ -17,7 +17,7 @@ Module InstSem (Import C : CONFIG).
 
 (* A2.6.2 Reset *)
 Definition Reset_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn svc) LR (repr 0) ::
     let SPSR_svc := repr 0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~0~1~1)) (cpsr s0)) ::
@@ -33,7 +33,7 @@ Definition Reset_step (s0 : state) : result :=
 
 (* A2.6.3 UndIns *)
 Definition UndIns_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn und) LR (address_of_next_instruction s0) ::
     let SPSR_und := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~1~0~1~1)) (cpsr s0)) ::
@@ -47,7 +47,7 @@ Definition UndIns_step (s0 : state) : result :=
 
 (* A2.6.4 SoftInt *)
 Definition SoftInt_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn svc) LR (address_of_next_instruction s0) ::
     let SPSR_svc := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~0~1~1)) (cpsr s0)) ::
@@ -61,7 +61,7 @@ Definition SoftInt_step (s0 : state) : result :=
 
 (* A2.6.5 PFAbort *)
 Definition PFAbort_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn abt) LR (add (address_of_current_instruction s0) (repr 4)) ::
     let SPSR_abt := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~1~1~1)) (cpsr s0)) ::
@@ -76,7 +76,7 @@ Definition PFAbort_step (s0 : state) : result :=
 
 (* A2.6.6 DataAbort *)
 Definition DataAbort_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn abt) LR (add (address_of_current_instruction s0) (repr 8)) ::
     let SPSR_abt := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~1~1~1)) (cpsr s0)) ::
@@ -91,7 +91,7 @@ Definition DataAbort_step (s0 : state) : result :=
 
 (* A2.6.8 IRQ *)
 Definition IRQ_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn irq) LR (add (address_of_next_instruction s0) (repr 4)) ::
     let SPSR_irq := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~0~1~0)) (cpsr s0)) ::
@@ -108,7 +108,7 @@ Definition IRQ_step (s0 : state) : result :=
 
 (* A2.6.9 FIQ *)
 Definition FIQ_step (s0 : state) : result :=
-  block (
+  block (fun loc =>
     set_reg_mode (exn fiq) LR (add (address_of_next_instruction s0) (repr 4)) ::
     let SPSR_fiq := cpsr s0 in
     set_cpsr (set_bits 4 0 (repr (Zpos 1~0~0~0~1)) (cpsr s0)) ::
