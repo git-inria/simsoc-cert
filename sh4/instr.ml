@@ -242,13 +242,14 @@ module T_bit = struct
     | Result_of_
     | Test
     | Underflow
+    | Empty
 end
 
 type decoder = 
     { h : string option
     ; inst_code : string option
     ; states : States.t
-    ; t_bit : T_bit.t option } 
+    ; t_bit : T_bit.t } 
 
 let _ = 
   let module S = SH4_section9 in
@@ -312,7 +313,8 @@ let _ =
       | "Overflow" -> Overflow
       | "Result of" -> Result_of_
       | "Test" -> Test
-      | "Underflow" -> Underflow in
+      | "Underflow" -> Underflow 
+      | "" -> Empty in
 
   let rec aux t =
     match S.input_instr t with 
@@ -394,29 +396,26 @@ let _ =
 		    List.iter (fun (s, l2) -> 
 		      let info = 
 		        (match () with
-			  | _ when m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)? +\\(.+\\)", s ] ->
-			      Some { h = Some (Str.matched_group 1 s)
-				   ; inst_code = Some (Str.matched_group 2 s)
-				   ; states = (let open States in
-				       (match try Some (matched_group_i 5 s) with _ -> None with
-					 | None -> fun x -> States.Pos x
-					 | Some i_end -> fun i_beg -> States.Range (i_beg, i_end)) (matched_group_i 3 s))
-				   ; t_bit = Some (matched_group_t 6 s) }
-
-			  | _ when m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)?", s ] ->
-			      Some { h = Some (Str.matched_group 1 s)
-				   ; inst_code = Some (Str.matched_group 2 s) 
-  				   ; states = (let open States in 
-				       (match try Some (matched_group_i 5 s) with _ -> None with
-					 | None -> fun x -> Pos x
-					 | Some i_end -> fun i_beg -> Range (i_beg, i_end)) (matched_group_i 3 s))
-				   ; t_bit = None }
-
-			  | _ when Str.split (Str.regexp "  +") s = ["0"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
-			  | _ when Str.split (Str.regexp "  +") s = ["1"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
-			  | _ when Str.split (Str.regexp "  +") s = ["\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None
-			  | _ when Str.split (Str.regexp "  +") s = ["\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"; "\226\128\148"] -> None) in
-		      ()
+			  | _ when m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)? *\\(.*\\)", s ] ->
+			    Some { h = Some (Str.matched_group 1 s)
+				 ; inst_code = Some (Str.matched_group 2 s)
+				 ; states = (let open States in
+						 (match try Some (matched_group_i 5 s) with _ -> None with
+						   | None -> fun x -> Pos x
+						       | Some i_end -> fun i_beg -> Range (i_beg, i_end)) (matched_group_i 3 s))
+				 ; t_bit = matched_group_t 6 s }
+			  | _ when List.for_all ((=) "\226\128\148") (match Str.split (Str.regexp "  +") s with ("0" | "1") :: xs -> xs | xs -> xs) -> 
+			    (** Remark: This branch had been run at least one time without a "Match_failure". If we suppose this code will only be used with the same reference manual, we can delete this guard condition. *)
+			    None) in
+		      match info with
+			| Some { h = Some s1 } -> 
+			  begin
+			    Printf.printf "#%s#\n%!" header;
+			    Printf.printf "|%s|\n%!" s1 ;
+			    List.iter (fun s -> Printf.printf "|%s|\n%!" s) l2;
+			    Printf.printf "\n%!";
+			  end
+			| _ -> ()
 		      ) (match String.sub (List.hd l) 0 4 with
 			| "9.31" -> let x1 :: x2 :: _ = l2 in [x1; x2]
 			| "9.55" -> let x :: _ = l2 in [x]
