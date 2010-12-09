@@ -1,6 +1,5 @@
 #directory "../extract/tmp";;
 #load "extract.cma";;
-#load "sum_recursive.cmo";;
 
 open Arm
 open BinInt
@@ -14,7 +13,10 @@ open Simul
 open State
 open Util
 open Arm6
-open Sum_recursive
+open Ascii
+open String0
+open Semantics
+open Functions
 
 exception SimKO;;
 
@@ -37,8 +39,8 @@ let coq_Z = function
  | x when x < 0 -> Zneg (positive (-x))
  | x -> Zpos (positive x);;
 
-let compute_state n =
-  let _, r = S.simul initial_state (nat n) in
+let simul s n =
+  let _, r = S.simul s (nat n) in
     match r with
       | SimOk s -> s
       | _ -> raise SimKO;;
@@ -80,3 +82,34 @@ let stack s =
     else read_words s sp ((stack_top-sp)/4);;
 
 let fp=11 and sp=13 and lr=14 and pc=15;;
+
+let data_coqstr = (String ((Ascii (false, false, true, false, false,
+              true, true, false)), (String ((Ascii (true, false, false,
+              false, false, true, true, false)), (String ((Ascii (false,
+              false, true, false, true, true, true, false)), (String ((Ascii
+              (true, false, false, false, false, true, true, false)),
+              EmptyString))))))));;
+
+let check state steps expected name =
+  let s = simul state steps in
+    if get_reg s 0 = expected then print_endline (name^" OK.")
+    else (
+      print_string ("Error in "^name^", r0 = ");
+      print_int (get_reg s 0); print_string " instead of ";
+      print_int expected; print_endline "."
+    );;
+
+#load "sum_iterative_a.cmo";;
+check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
+
+#load "sum_recursive_a.cmo";;
+check Sum_recursive_a.initial_state 740 903 "sum_recursive";;
+
+#load "sum_direct_a.cmo";;
+check Sum_direct_a.initial_state 18 903 "sum_direct";;
+
+#load "arm_blx2_a.cmo";;
+check Arm_blx2_a.initial_state 26 3 "arm_blx2";;
+
+#load "arm_cflag_a.cmo";;
+check Arm_cflag_a.initial_state 100 15 "arm_cflag";;
