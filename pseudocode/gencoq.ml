@@ -312,23 +312,19 @@ let case loc k b (n, i) =
     | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc) e
     | _ -> raise Not_found;;
 
-let rec (*inst k b i = indent b k; inst_aux k b i
+let rec inst loc k b i = indent b k; inst_aux loc k b i
 
-and*) inst loc k b i = indent b k; inst_aux loc k b i
+and decl_loc f b x = bprintf b "(fun loc => %a loc)" f x
 
-and pinst loc k b i = indent b k; par (inst_aux loc k) b i
+and decl_loc_postfix f b x = bprintf b "(fun loc => %a loc) ::" f x
+
+and pinst loc k b i = indent b k; decl_loc (inst_aux loc k) b i
 
 and loc_v i = snd (V.vars i)
 
-(*and choose_pexp loc b = function
-  | Var s as e -> 
-      if not (List.mem_assoc s loc) then pexp_loc loc b e
-      else pexp b e
-  | e -> pexp b e*)
-
 and inst_cons loc k b = function
   (*| Affect (Var _, _) as i -> inst k b i*)
-  | i -> indent b k; postfix " ::" (inst_aux loc k) b i
+  | i -> indent b k; decl_loc_postfix (inst_aux loc k) b i
 
 and inst_aux loc k b = function
   (*FIXME: to be done*)
@@ -349,6 +345,7 @@ and inst_aux loc k b = function
 
   | If (e, i1, None) ->
       bprintf b "if_then %a\n%a" (pexp loc) e (pinst loc (k+2)) i1
+
   | If (e, i1, Some i2) ->
       bprintf b "if_then_else %a\n%a\n%a"
 	(pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2

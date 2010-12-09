@@ -94,12 +94,12 @@ Definition loop_LDMSTM (p q : nat) (address : word) (f : nat -> word -> semfun)
  ** with a list of variables*)
 (****************************************************************************)
 
+Definition local := list (string * word).
+
 Inductive result : Type :=
-| Ok (loc : list (string * word)) (b : bool) (s : state)
+| Ok (loc : local) (b : bool) (s : state)
 | Ko (m : message)
 | Todo (m : message).
-
-Definition local := list (string * word).
 
 Definition semfun := local -> bool -> state -> result.
 
@@ -127,6 +127,17 @@ Definition seq (f1 f2 : semfun) (loc0 : local)
       end
     | r => r
   end.
+
+(*Fixpoint block (fs : list (local -> semfun)) (loc0 : local) (b0 : bool) 
+  (s0 : state) : result :=
+  match fs with
+    | nil => Ok loc0 b0 s0
+    | f :: fs' =>
+      match f loc0 loc0 b0 s0 with
+        | Ok loc1 b1 s1 => block fs' loc1 (andb b0 b1) s1
+        | r => r
+      end
+  end.*)
 
 Fixpoint block (fs : list semfun) (loc0 : local) (b0 : bool) 
   (s0 : state) : result :=
@@ -272,15 +283,14 @@ Definition ClearExclusiveLocal (pid : nat) (b : bool) (s : state) : result :=
 (** Test LDM *)
 (****************************************************************************)
 
-(*Definition LDM2_step_test1 (s0 : state) (cond : opcode) (register_list : word) 
+Definition LDM2_step_test1 (s0 : state) (cond : opcode) (register_list : word) 
   (start_address : word) : result :=
-  let loc := nil in
   if_then (ConditionPassed s0 cond)
-    (block (
-      update_loc "address" start_address ::
-      loop 0 14 (fun i => 
-        block (
-          set_reg_mode usr i (read s0 (get_loc "address" loc) Word) ::
-          update_loc "address" (repr 4) ::
-          nil)) ::
-      nil)) loc true s0.*)
+  (block (
+    (update_loc "address" start_address) ::
+    (loop 0 14 (fun i => 
+      block (
+        (fun loc => set_reg_mode usr i (read s0 (get_loc "address" loc) Word) loc) ::
+        (fun loc => update_loc "address" (repr 4) loc) ::
+        nil))) ::
+    nil)) nil true s0.
