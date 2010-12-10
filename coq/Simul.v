@@ -24,10 +24,12 @@ Section decoder_result.
  Variable inst : Type.
 
  Inductive decoder_result : Type :=
- | DecUndefined : decoder_result
+ | DecUndefined_with_num : nat -> decoder_result
  | DecUnpredictable : decoder_result
  | DecInst : inst -> decoder_result
  | DecError : message -> decoder_result.
+
+Definition DecUndefined := DecUndefined_with_num 0%nat.
 
 End decoder_result.
 
@@ -35,7 +37,7 @@ Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
   decoder_result inst :=
   match condition w with
     | Some oc => DecInst (g oc)
-    | None => @DecUndefined inst
+    | None => @DecUndefined_with_num inst 1
   end.
 
 Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
@@ -46,10 +48,10 @@ Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
       match f w with
         | DecInst i => DecInst (g i oc)
         | DecError m => @DecError inst m
-        | DecUndefined => @DecUndefined inst
         | DecUnpredictable => @DecUnpredictable inst
+        | DecUndefined => @DecUndefined_with_num inst 2
       end
-    | None => @DecUndefined inst
+    | None => @DecUndefined_with_num inst 3
   end.
 
 (****************************************************************************)
@@ -98,7 +100,7 @@ Module Make (Import I : INST).
           match decode w with
             | DecError m => SimKo s m
             | DecUnpredictable => SimKo s DecodingReturnsUnpredictable
-            | DecUndefined => handle_exception (add_exn s UndIns)
+            | DecUndefined_with_num fake => handle_exception (add_exn s UndIns)
             | DecInst i =>
               match step s i with
                 | Ok _ b s' => handle_exception (incr_PC_ARM b s')
@@ -109,7 +111,7 @@ Module Make (Import I : INST).
 
   Fixpoint simul (s : state) (n : nat) : nat * simul_result :=
     match n with
-      | 0 => (n, SimOk s)
+      | 0%nat => (n, SimOk s)
       | S n' =>
         match next s with
           | SimOk s' => simul s' n'
