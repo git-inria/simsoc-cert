@@ -95,7 +95,7 @@ let gen_pattern x =
   in
   let aux b =
     let lst = Array.to_list x in
-      (list " '" dec) b (List.rev lst)
+      (list " " dec) b (List.rev lst)
   in aux;;
 
 (*****************************************************************************)
@@ -338,18 +338,18 @@ let dec_inst b (lh, ls) =
     let md = add_mode lh in
       match md with
 	| DecInstARM ->
-	    bprintf b "    %a\n    | %t =>\n      %t\n"
+	    bprintf b "    %a\n    | word32 %t =>\n      %t\n"
 	      comment lh (gen_pattern dbits) (mode_tst (lh, ls))
         | DecInstThumb -> () (* TODO: Thumb mode *)
 	| DecEncoding -> ()
 	| DecMode i ->
 	    (*FIXME*)
 	    if i = 1 || (i = 2 && false) || (i = 3 && false) then
-	      bprintf b "    %a\n    | %t =>\n      DecInst (%s %t)\n"
+	      bprintf b "    %a\n    | word32 %t =>\n      DecInst (%s %t)\n"
 		comment lh (gen_pattern dbits)
 		(id_addr_mode (lh, ls)) (params string (lh, ls))
 	    else
-	      bprintf b "    %a\n    | %t =>\n      decode_cond w (fun condition => %s %t)\n"
+	      bprintf b "    %a\n    | word32 %t =>\n      decode_cond w (fun condition => %s %t)\n"
 		comment lh (gen_pattern dbits)
 		(id_addr_mode (lh, ls)) (params string (lh, ls))
 ;;
@@ -402,13 +402,13 @@ let decode b ps =
 
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
-    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match bools_of_word w with\n" i i;
+    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w32_of_word w with\n" i i;
     (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
     bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
   done;
 
   (*print the instruction decoder*)
-  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match bools_of_word w with\n";
+  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match w32_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_inst) ps));
   bprintf b "    | _ => DecUndefined inst\n  end."
 ;;
