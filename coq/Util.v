@@ -101,7 +101,7 @@ Fixpoint clist (k : nat) : list A :=
 End clist.
 
 (****************************************************************************)
-(** convert a word into a list of booleans *)
+(** convert a word into a list of booleans of length 32 *)
 (****************************************************************************)
 
 Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
@@ -113,7 +113,8 @@ Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
 
 Definition bools_of_word (w : int) : list bool :=
   match unsigned w with
-    | Zpos p => bools_of_positive p nil
+    | Zpos p => let l := bools_of_positive p nil in
+      clist false (wordsize - length l) ++ l
     | _ => clist false wordsize
   end.
 
