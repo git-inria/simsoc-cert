@@ -91,13 +91,16 @@ let data_coqstr = (String ((Ascii (false, false, true, false, false,
               EmptyString))))))));;
 
 let check state steps expected name =
-  let s = simul state steps in
-    if get_reg s 0 = expected then print_endline (name^" OK.")
-    else (
-      print_string ("Error in "^name^", r0 = ");
-      print_int (get_reg s 0); print_string " instead of ";
-      print_int expected; print_endline "."
-    );;
+  try
+    let s = simul state steps in
+      if get_reg s 0 = expected then print_endline (name^" OK.")
+      else (
+        print_string ("Error in "^name^", r0 = ");
+        print_int (get_reg s 0); print_string " instead of ";
+        print_int expected; print_endline "."
+      )
+  with SimKO -> print_endline ("Error in "^name^": exception raised.");
+;;
 
 #load "sum_iterative_a.cmo";;
 check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
@@ -113,3 +116,45 @@ check Arm_blx2_a.initial_state 26 3 "arm_blx2";;
 
 #load "arm_cflag_a.cmo";;
 check Arm_cflag_a.initial_state 100 15 "arm_cflag";;
+
+#load "arm_dpi_a.cmo";;
+check Arm_dpi_a.initial_state 964 524287 "arm_dpi";;
+
+#load "arm_edsp_a.cmo";;
+check Arm_edsp_a.initial_state 679 8388607 "arm_edsp";;
+
+#load "arm_ldmstm_a.cmo";;
+check Arm_ldmstm_a.initial_state 115 7 "arm_ldmstm";;
+
+#load "arm_ldrd_strd_a.cmo";;
+check Arm_ldrd_strd_a.initial_state 181 255 "arm_ldrd_strd";;
+
+#load "arm_ldrstr_a.cmo";;
+check Arm_ldrstr_a.initial_state 486 0x7ffffff "arm_ldrstr";;
+
+#load "arm_mrs_a.cmo";;
+check Arm_mrs_a.initial_state 727 0x7ffff "arm_mrs";;
+
+#load "arm_msr_a.cmo";;
+check Arm_msr_a.initial_state 639 0x1ffff "arm_msr";;
+
+#load "arm_multiple_a.cmo";;
+check Arm_multiple_a.initial_state 212 63 "arm_multiple";;
+
+#load "arm_swi_a.cmo";;
+check Arm_swi_a.initial_state 45 3 "arm_swi";;
+
+#load "endian_a.cmo";;
+check Endian_a.initial_state 96 7 "endian";;
+
+#load "multiply_a.cmo";;
+check Multiply_a.initial_state 130 15 "multiply";;
+
+#load "test_mem_a.cmo";;
+check Test_mem_a.initial_state 313 3 "test_mem";;
+
+(* #load "simsoc_new1_a.cmo";; *)
+(* check Simsoc_new1_a.initial_state 190505 255 "simsoc_new1";; *)
+
+(* #load "sorting_a.cmo";; *)
+(* check Sorting_a.initial_state 2487176 63 "sorting";; *)
