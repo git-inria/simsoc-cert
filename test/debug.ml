@@ -18,7 +18,24 @@ open String0
 open Semantics
 open Functions
 
-exception SimKO;;
+let str_of_msg = function
+  | Message.EmptyMessage -> "EmptyMessage"
+  | Message.ImpreciseDataAbort -> "ImpreciseDataAbort"
+  | Message.InvalidInstructionSet -> "InvalidInstructionSet"
+  | Message.JazelleInstructionSetNotImplemented -> "JazelleInstructionSetNotImplemented"
+  | Message.ThumbInstructionSetNotImplemented -> "ThumbInstructionSetNotImplemented"
+  | Message.DecodingReturnsUnpredictable -> "DecodingReturnsUnpredictable"
+  | Message.StartOpcodeExecutionAt -> "StartOpcodeExecutionAt"
+  | Message.While -> "While"
+  | Message.Coproc -> "Coproc"
+  | Message.Affect -> "Affect"
+  | Message.Case -> "Case"
+  | Message.ComplexSemantics -> "ComplexSemantics"
+  | Message.NotAnAddressingMode1 -> "NotAnAddressingMode1"
+  | Message.NotAnAddressingMode2 -> "NotAnAddressingMode2"
+  | Message.NotAnAddressingMode3 -> "NotAnAddressingMode3"
+  | Message.NotAnAddressingMode4 -> "NotAnAddressingMode4"
+  | Message.NotAnAddressingMode5 -> "NotAnAddressingMode5";;
 
 let nat =
  let rec aux = function
@@ -43,13 +60,9 @@ let simul s n =
   let _, r = S.simul s (nat n) in
     match r with
       | SimOk s -> s
-      | _ -> raise SimKO;;
+      | SimKo (_s, m) -> raise (Failure ("SimKo: " ^ str_of_msg m));;
 
-let next_state s =
-  let _, r = S.simul s (nat 1) in
-    match r with
-      | SimOk s' -> s'
-      | _ -> raise SimKO;;
+let next s = simul s 1;;
 
 let rec positive_to_int = function
   | Coq_xH -> 1
@@ -61,7 +74,7 @@ let coq_Z_to_int = function
   | Zneg p -> -(positive_to_int p)
   | Zpos p -> positive_to_int p;;
 
-let get_reg s n = coq_Z_to_int ((Proc.reg (State.proc s)) (R (coq_Z n)));;
+let reg s n = coq_Z_to_int ((Proc.reg (State.proc s)) (R (coq_Z n)));;
 
 let read_word s a =
   coq_Z_to_int (read s (coq_Z a) Bitvec.Word);;
@@ -77,11 +90,9 @@ let instr s =
 (* display the stack *)
 let stack s =
   let stack_top = 0xff000 in (* value given in common.h*)
-  let sp = get_reg s 13 in
-    if (sp>stack_top) then raise SimKO
+  let sp = reg s 13 in
+    if (sp>stack_top) then raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4);;
-
-let fp=11 and sp=13 and lr=14 and pc=15;;
 
 let data_coqstr = (String ((Ascii (false, false, true, false, false,
               true, true, false)), (String ((Ascii (true, false, false,
@@ -93,14 +104,19 @@ let data_coqstr = (String ((Ascii (false, false, true, false, false,
 let check state steps expected name =
   try
     let s = simul state steps in
-      if get_reg s 0 = expected then print_endline (name^" OK.")
+      if reg s 0 = expected then print_endline (name^" OK.")
       else (
         print_string ("Error in "^name^", r0 = ");
-        print_int (get_reg s 0); print_string " instead of ";
+        print_int (reg s 0); print_string " instead of ";
         print_int expected; print_endline "."
       )
-  with SimKO -> print_endline ("Error in "^name^": exception raised.");
+  with Failure s -> print_endline ("Error in "^name^": "^s^".");
 ;;
+
+let pc s = Printf.printf "%x" ((reg s 15) - 8);;
+
+let print_coq_Z f n = Format.fprintf f "%d (0x%x)" (coq_Z_to_int n) (coq_Z_to_int n);;
+#install_printer print_coq_Z;;
 
 #load "sum_iterative_a.cmo";;
 check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
@@ -124,7 +140,7 @@ check Arm_dpi_a.initial_state 964 524287 "arm_dpi";;
 check Arm_edsp_a.initial_state 679 8388607 "arm_edsp";;
 
 #load "arm_ldmstm_a.cmo";;
-check Arm_ldmstm_a.initial_state 115 7 "arm_ldmstm";;
+check Arm_ldmstm_a.initial_state 119 7 "arm_ldmstm";;
 
 #load "arm_ldrd_strd_a.cmo";;
 check Arm_ldrd_strd_a.initial_state 181 255 "arm_ldrd_strd";;
