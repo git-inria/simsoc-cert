@@ -120,7 +120,7 @@ Require Import NaryFunctions Util.
 Inductive w32 : Type := word32 : bool^^32 --> w32.
 
 Definition w32_of_word (w : int) : w32 :=
-  nary_iter (bits_of_Z 32 (unsigned w)) 32 0 word32.
+  nary_iter_decr (bits_of_Z 32 (unsigned w)) 32 31 word32.
 (*REMOVE: word32 (is_set 31 w) (is_set 30 w) (is_set 29 w) (is_set 28 w)
  (is_set 27 w) (is_set 26 w) (is_set 25 w) (is_set 24 w)
  (is_set 23 w) (is_set 22 w) (is_set 21 w) (is_set 20 w)
