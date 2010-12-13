@@ -111,8 +111,7 @@ Definition set_bits (p n : nat) (v w : word) : word :=
   set_bits_aux p (p-n) v w.
 
 (****************************************************************************)
-(** convert word to type w32 *)
-(** this type makes the decoder faster*)
+(** convert word to type w32 to make the decoder faster *)
 (****************************************************************************)
 
 Require Import NaryFunctions Util.
@@ -121,16 +120,6 @@ Inductive w32 : Type := word32 : bool^^32 --> w32.
 
 Definition w32_of_word (w : int) : w32 :=
   nary_iter_decr (bits_of_Z 32 (unsigned w)) 32 31 word32.
-(*REMOVE: word32 (is_set 31 w) (is_set 30 w) (is_set 29 w) (is_set 28 w)
- (is_set 27 w) (is_set 26 w) (is_set 25 w) (is_set 24 w)
- (is_set 23 w) (is_set 22 w) (is_set 21 w) (is_set 20 w)
- (is_set 19 w) (is_set 18 w) (is_set 17 w) (is_set 16 w)
- (is_set 15 w) (is_set 14 w) (is_set 13 w) (is_set 12 w)
- (is_set 11 w) (is_set 10 w) (is_set 9 w) (is_set 8 w)
- (is_set 7 w) (is_set 6 w) (is_set 5 w) (is_set 4 w)
- (is_set 3 w) (is_set 2 w) (is_set 1 w) (is_set 0 w).*)
-
-(*REMOVE: Fixpoint word_of_w32 (w32: w32) : word := w0.*)
 
 (****************************************************************************)
 (** bytes (8-bits words) *)
@@ -240,6 +229,7 @@ Notation mk_address := Address.repr.
 
 (*IMPROVE*)
 Definition word_of_address (x : address) : word := repr (Address.intval x).
+
 (*REMOVE: Coercion word_of_address : address >-> word. *)
 
 (*REMOVE:Definition address_eqdec := @bitvec_eqdec address_size.*)
