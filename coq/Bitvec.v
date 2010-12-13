@@ -112,38 +112,32 @@ Definition set_bits (p n : nat) (v w : word) : word :=
 
 (****************************************************************************)
 (** convert word to type w32 *)
-(** this type make the decoder run much faster*)
+(** this type makes the decoder faster*)
 (****************************************************************************)
-Local Notation "0" := false.
-Local Notation "1" := true.
 
-Inductive w32 : Type :=
-  word32 (b1 : bool) (b2 : bool) (b3 : bool) (b4 : bool)
-  (b5 : bool) (b6 : bool) (b7 : bool) (b8 : bool)
-  (b9 : bool) (b10 : bool) (b11 : bool) (b12 : bool)
-  (b13 : bool) (b14 : bool) (b15 : bool) (b16 : bool)
-  (b17 : bool) (b18 : bool) (b19 : bool) (b20 : bool)
-  (b21 : bool) (b22 : bool) (b23 : bool) (b24 : bool)
-  (b25 : bool) (b26 : bool) (b27 : bool) (b28 : bool)
-  (b29 : bool) (b30 : bool) (b31 : bool) (b32 : bool).
+Require Import NaryFunctions Util.
 
-Fixpoint w32_of_word (w : int) : w32 :=
-  word32 (is_set 31 w) (is_set 30 w) (is_set 29 w) (is_set 28 w)
+Inductive w32 : Type := word32 : bool^^32 --> w32.
+
+Definition w32_of_word (w : int) : w32 :=
+  nary_iter (bits_of_Z 32 (unsigned w)) 32 0 word32.
+(*REMOVE: word32 (is_set 31 w) (is_set 30 w) (is_set 29 w) (is_set 28 w)
  (is_set 27 w) (is_set 26 w) (is_set 25 w) (is_set 24 w)
  (is_set 23 w) (is_set 22 w) (is_set 21 w) (is_set 20 w)
  (is_set 19 w) (is_set 18 w) (is_set 17 w) (is_set 16 w)
  (is_set 15 w) (is_set 14 w) (is_set 13 w) (is_set 12 w)
  (is_set 11 w) (is_set 10 w) (is_set 9 w) (is_set 8 w)
  (is_set 7 w) (is_set 6 w) (is_set 5 w) (is_set 4 w)
- (is_set 3 w) (is_set 2 w) (is_set 1 w) (is_set 0 w).
+ (is_set 3 w) (is_set 2 w) (is_set 1 w) (is_set 0 w).*)
 
-Fixpoint word_of_w32 (w32: w32) : word := w0.
+(*REMOVE: Fixpoint word_of_w32 (w32: w32) : word := w0.*)
 
 (****************************************************************************)
 (** bytes (8-bits words) *)
 (****************************************************************************)
 
 Notation mk_byte := Byte.repr.
+
 Coercion Byte.intval : byte >-> Z.
 
 (*FIXME: uncomment when Util.two_power_nat_monotone is proved
@@ -159,6 +153,7 @@ Qed.
 Definition word_of_byte (x : byte) : word := mkint (byte_in_range x).*)
 
 Definition word_of_byte (x : byte) : word := repr x.
+
 Coercion word_of_byte : byte >-> word.
 
 Definition get_byte0 w := mk_byte (w[7#0]).
@@ -185,6 +180,7 @@ Coercion Half.intval : half >-> Z.
 
 (*IMPROVE*)
 Definition word_of_half (x : half) : word := repr x.
+
 Coercion word_of_half : half >-> word.
 
 Definition get_half0 w := mk_half (w[15#0]).
@@ -209,6 +205,7 @@ Coercion Regnum.intval : regnum >-> Z.
 
 (*IMPROVE*)
 Definition word_of_regnum (x : regnum) : word := repr x.
+
 Coercion word_of_regnum : regnum >-> word.
 
 Definition PC := mk_regnum 15.
@@ -270,4 +267,5 @@ Coercion Long.intval : long >-> Z.
 
 (*IMPROVE*)
 Definition long_of_word (x : word) : long := mk_long x.
+
 Coercion long_of_word : word >-> long.
