@@ -7,8 +7,9 @@ Miscellaneous definitions and lemmas extending the Coq standard library.
 
 Set Implicit Arguments.
 
-Require Import Bool List ZArith.
-Require Import Integers. Import Int.
+Require Import Bool List ZArith Integers NaryFunctions.
+Import Int.
+
 Open Scope Z_scope.
 
 (****************************************************************************)
@@ -118,3 +119,22 @@ Definition bools_of_word (w : int) : list bool :=
     | _ => clist false wordsize
   end.
 
+(****************************************************************************)
+(** build an nary-application by iterating some function:
+
+nary_iter f n k x = x (f k) (f (k+1)) .. (f (k+n-1)) *)
+(****************************************************************************)
+
+Section nary.
+
+  Variables (A : Type) (f : Z -> A) (B : Type).
+
+  Fixpoint nary_iter n k : A^^n --> B -> B :=
+    match n as n return A^^n --> B -> B with
+      | O => fun x => x
+      | S n' => fun x => nary_iter n' (k+1) (x (f k))
+    end.
+
+End nary.
+
+Implicit Arguments nary_iter [A B].
