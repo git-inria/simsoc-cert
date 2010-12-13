@@ -152,7 +152,7 @@ let string_of_fun_name = function
   | "NOT" -> "not"
   | "not" -> "negb"
   | s when depend_on_config s -> "C." ^ s
-  | s when depend_on_state s -> s ^ " s0"
+  | s when depend_on_state s -> s ^ " st"
   | s -> s;;
 
 let fun_name b s = string b (string_of_fun_name s);;
@@ -182,12 +182,6 @@ let is_cp15_reg1 s =
 (** expressions *)
 (*****************************************************************************)
 
-let local_vars =
-  ["target";"jpc";"invalidhandler";"alu_out";"address";"value";"data";
-   "physical_address";"processor_id";"operand";"byte_mask";"mask";"sum";
-   "diff";"operand1";"operand2";"product1";"product2";"accvalue";
-   "diffofproducts";"result";"temp";"diff1";"diff2";"diff3";"diff4"];;
-
 (*FIXME: raise an exception instead of use a todo for the instruction
   containing this expression*)
 
@@ -206,11 +200,6 @@ let rec pexp loc b = function
       if (List.mem_assoc s loc) then par (loc_exp loc) b e else (exp loc) b e
   | Fun (f, []) as e when depend_on_config f -> (exp loc) b e 
   | e -> par (exp loc) b e
-
-(*and pexp b = function
-  | Var _ as e -> exp b e
-  | Fun (f, []) as e when depend_on_config f -> exp b e 
-  | e -> par exp b e*)
 
 (* like pexp but prints numbers as integers (not words) *)
 and num_exp loc b = function
@@ -257,7 +246,7 @@ and exp loc b = function
 
   (* system coprocessor register bits *)
   | Fun (f, _) when is_cp15_reg1 f ->
-      bprintf b "(CP15_reg1 s0)[%s]" (String.sub f 10 (String.length f - 10))
+      bprintf b "(CP15_reg1 st)[%s]" (String.sub f 10 (String.length f - 10))
 
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
@@ -278,16 +267,16 @@ and exp loc b = function
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" (exp loc) e1 (exp loc) e2 (exp loc) e3
-  | CPSR -> string b "cpsr s0"
+  | CPSR -> string b "cpsr st"
   | Range (e, r) -> bprintf b "%a[%a]" (pexp loc) e (range loc) r
-  | Memory (e, n) -> bprintf b "read s0 %a %a" (pexp loc) e size n
+  | Memory (e, n) -> bprintf b "read st %a %a" (pexp loc) e size n
 
-  | SPSR None -> string b "spsr s0 None"
-  | SPSR (Some m) -> bprintf b "spsr s0 (Some %a)" exn_mode m
+  | SPSR None -> string b "spsr st None"
+  | SPSR (Some m) -> bprintf b "spsr st (Some %a)" exn_mode m
 
-  | Reg (e, None) -> bprintf b "reg_content s0 %a" (regnum_exp loc) e
+  | Reg (e, None) -> bprintf b "reg_content st %a" (regnum_exp loc) e
   | Reg (e, Some m) ->
-      bprintf b "reg_content_mode s0 %a %a" mode m (regnum_exp loc) e
+      bprintf b "reg_content_mode st %a %a" mode m (regnum_exp loc) e
 
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
@@ -314,11 +303,17 @@ let case loc k b (n, i) =
 
 let rec inst loc k b i = indent b k; inst_aux loc k b i
 
-and decl_loc f b x = bprintf b "(fun loc => %a loc)" f x
+and decl_loc f b x = bprintf b "(fun loc b st => %a loc b st)" f x
 
-and decl_loc_postfix f b x = bprintf b "(fun loc => %a loc) ::" f x
+and decl_loc_postfix f b x = bprintf b "(fun loc b st => %a loc b st) ::" f x
 
 and pinst loc k b i = indent b k; decl_loc (inst_aux loc k) b i
+
+and decl k b i loc = function
+  | Var s -> if List.mem_assoc s loc then 
+      decl_loc (inst_aux loc k)  b i
+    else inst_aux loc k b i
+  | _ -> inst_aux loc k b i
 
 and loc_v i = snd (V.vars i)
 
@@ -442,7 +437,7 @@ let split = function
 let block k b i =
   let is1, is2 = split i in
     List.iter (endline (inst [] k) b) is1;
-    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux [] k) (Block is2);;
+    bprintf b "%alet r := %a nil true st in" indent k (inst_aux [] k) (Block is2);;
 
 (* default result component value *)
 let default b _ = string b ", repr 0";;
@@ -457,18 +452,22 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | InstARM -> bprintf b "%a nil true s0" (inst (snd (V.vars p.pinst)) 2) p.pinst
+    | InstARM -> (*begin match p.pident.iname with
+        | "SETEND" -> decl_loc (inst (snd (V.vars p.pinst)) 2) b p.pinst; 
+            bprintf b " nil true st"
+        | _ ->*)
+            bprintf b "%a nil true st" (inst (snd (V.vars p.pinst)) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
 	  if StrSet.mem p.pref problems then
-	    bprintf b "  let r := %a nil true s0 in\n    (r%a)"
+	    bprintf b "  let r := %a nil true st in\n    (r%a)"
 	      (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
 	      (list "" default) ls
 	else
 	  match p.pinst with
 	    | If (e, i, None) ->
-		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false s0%a)"
+		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
 		  (exp []) e (block 4) i
 		  (list "" mode_var) ls (list "" default) ls
 	    | i ->
@@ -481,7 +480,7 @@ let semfun b p gs =
   match p.pkind with
     | InstARM | Mode _ ->
         bprintf b
-          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
+          "(* %s %a *)\nDefinition %a_step (st : state)%a : result%a :=\n%a.\n\n"
           p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p
     | InstThumb -> ();; (* TODO: Thumb mode *)
 
@@ -524,11 +523,11 @@ let call bcall_inst bcall_mode p gs =
 	begin match addr_mode_of_prog p gs with
 	  | None ->
 	      bprintf b "    | %a%a =>" name p args gs;
-	      bprintf b " %a_step s0%a\n" name p args gs
+	      bprintf b " %a_step st%a\n" name p args gs
 	  | Some k ->
 	      bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
 	      bprintf b
-		"\n      match mode%d_step s0 m_ with (r%a) =>\n"
+		"\n      match mode%d_step st m_ with (r%a) =>\n"
 		k (list "" mode_var) (mode_vars k);
               bprintf b "        match r with\n";
               bprintf b "          | Ok _ _ s1 =>";
@@ -538,7 +537,7 @@ let call bcall_inst bcall_mode p gs =
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
 	bprintf b "    | %a%a =>" name p args gs;
-	bprintf b " %a_step s0%a\n" name p args gs;;
+	bprintf b " %a_step st%a\n" name p args gs;;
 
 (*****************************************************************************)
 (** Main coq generation function.
@@ -575,7 +574,7 @@ let lib b ps =
     bprintf b "(* Semantic functions of addressing modes and instructions *)\nModule InstSem (Import C : CONFIG).\n\n";
     Buffer.add_buffer b bsem;
     for k = 1 to 5 do
-      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
+      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (st : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
     done;
-    bprintf b "(* Semantic function for instructions *)\nDefinition step (s0 : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+    bprintf b "(* Semantic function for instructions *)\nDefinition step (st : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
     bprintf b "End InstSem.\n";;
