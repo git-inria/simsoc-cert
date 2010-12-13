@@ -1,11 +1,42 @@
---- c_code_init.c	2010-12-07 16:09:59.368088000 +0800
-+++ /z/f/p/_/ocaml/compcert/pj_test/_/c_code.c	2010-12-08 14:10:17.000000000 +0800
-@@ -8,33 +8,37 @@
-   unsigned long Write_Long(unsigned long Addr, unsigned long Data);
+--- sh4.txt	2010-12-07 16:05:52.318088001 +0800
++++ sh4_mod.txt	2010-12-13 19:14:49.407332001 +0800
+@@ -9153,6 +9153,29 @@
+                                                             Rev. 6.00 Sep 13, 2006 page 193 of 424
+                                                                                  REJ09B0318-0600
+ Section 9 Instruction Descriptions
++void Sleep_standby(void);
++void allocate_operand_cache_block(int);
++//int check_negative_infinity(void);
++//int check_positive_infinity(void);
++int check_product_infinity(int, int);
++int check_product_invalid(int, int);
++int fcmp_chk(int, int);
++void fpu_exception_trap(void);
++//int fpul_type(float *);
++int ftrc_double_type_of(int);
++int ftrc_single_type_of(int);
++void inexact(void);
++void invalidate_operand_cache_block(int);
++int is_dirty_block(int);
++int is_write_back_memory(int);
++void load_int(int, int);
++void load_quad(int, int);
++int look_up_in_operand_cache(int);
++float sqrt(float);
++void store_int(int, int);
++void store_quad(int, int);
++void undefined_operation(void);
++void write_back(int);
+ 
+   unsigned char          Read_Byte(unsigned long Addr);
+   unsigned short Read_Word(unsigned long Addr);
+@@ -9168,30 +9191,34 @@
+   or a longword write to other than a 4n address, will be detected as an address error.
  
  
 -  Delay_Slot(unsigned long Addr);
 +  void Delay_Slot(unsigned long Addr);
+   Shifts to execution of the slot instruction at address (Addr).
  
  
    unsigned long R[16];
@@ -16,6 +47,7 @@
 +  unsigned long SSR, SPC, DBR, Rn_BANK, PTEH, PTEL, PTEA, MISS, SGR, Rm_BANK, TRA, R15, SR_MD, SR_BL, SR_RB, EXPEVT, H_00000100; /* FIXME existence */
    unsigned long MACH,MACL,PR;
    unsigned long PC;
+   Registers
  
  
 -  struct SR0 {
@@ -35,21 +67,24 @@
 +     int               S0:1;
 +     int               T0:1;
    };
+   SR structure definitions
  
  
 -  define M ((*(struct SR0 *)(&SR)).M0)
 +  #define M ((*(struct SR0 *)(&SR)).M0)
    #define Q ((*(struct SR0 *)(&SR)).Q0)
    #define S ((*(struct SR0 *)(&SR)).S0)
- #define T ((*(struct SR0 *)(&SR)).T0)
+ 
+@@ -9204,7 +9231,7 @@
+ Definitions of bits in SR
  
  
 -Error( char *er );
 +void Error( char *er );
+ Error display function
  
  
- #define PZERO                0
-@@ -74,7 +78,9 @@
+@@ -9253,7 +9280,9 @@
    #define FPSCR_DN          FPSCR>>18&1
    #define FPSCR_I           FPSCR>>12&1
    #define FPSCR_RM          FPSCR&1
@@ -59,7 +94,7 @@
    #define FR                frf.f[ FPSCR_FR]
    #define DR                frf.d[ FPSCR_FR]
    #define XF_HEX            frf.l[~FPSCR_FR]
-@@ -94,6 +100,16 @@
+@@ -9273,6 +9302,16 @@
    {
            return(FR_HEX[n]>>31);
    }
@@ -76,7 +111,7 @@
    int data_type_of(int n) {
    int abs;
          abs = FR_HEX[n] & 0x7fffffff;
-@@ -116,7 +132,7 @@
+@@ -9300,7 +9339,7 @@
       else {       /* Double-precision */
           if(abs < 0x00100000){
                  if((FPSCR_DN == 1) ||
@@ -85,7 +120,7 @@
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
-@@ -132,13 +148,109 @@
+@@ -9316,19 +9355,115 @@
           else                                return(sNaN);
       }
  }
@@ -97,6 +132,11 @@
  }
 -void normal_faddsub(int m,n,type)
 +
+ 
+                                                   Rev. 6.00 Sep 13, 2006 page 197 of 424
+                                                                        REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
 +  void set_V() {FPSCR |= SET_V;}
 +  void set_O() {FPSCR |= SET_O;}
 +  void set_U() {FPSCR |= SET_U;}
@@ -157,8 +197,8 @@
 +  }
 +
 +  void check_double_exception(double *dst, float result)
-+  {
-+  union {
+   {
+   union {
 +        double d;
 +        int l[2];
 +}    tmp;
@@ -192,12 +232,22 @@
 +}
 +
 +void normal_faddsub(int m, int n, int type)
-   {
++  {
 +  int dst_d /* FIXME do we have to declare dst_d ? */;
-   union {
++  union {
          float f;
          int l;
-@@ -188,16 +300,16 @@
+   }     dstf,srcf;
+@@ -9337,7 +9472,7 @@
+         int l[2];
+   }     dstd,srcd;
+   union {                      /* “long double” format:      */
+-        long double x;         /*    1-bit sign         */
++        /*long*/ double x; /* FIXME long double unsupported by compcert */        /*    1-bit sign         */
+         int l[4];              /*    15-bit exponent    */
+   }     dstx;                  /*    112-bit mantissa */
+         if(FPSCR_PR == 0) {
+@@ -9382,16 +9517,16 @@
                }
            }
            if((dstx.l[2] & 0x0fffffff) || dstx.l[3]) set_I();
@@ -218,7 +268,16 @@
  {
  union {
       float f;
-@@ -225,14 +337,14 @@
+@@ -9407,7 +9542,7 @@
+                                                                         REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
+-        long double x;
++        /*long*/ double x; /* FIXME long double unsupported by compcert */
+         int l[4];
+   }     tmpx;
+         if(FPSCR_PR == 0) {
+@@ -9424,14 +9559,36 @@
                tmpx.x *= DR[m>>1]; /* Precise creation */
                tmpd.d *= DR[m>>1]; /* Round to nearest */
                if(tmpd.d != tmpx.x) set_I();
@@ -231,11 +290,33 @@
          }
    }
 -  void fipr(int m,n)
++  int check_negative_infinity(int m, int n)
++  {
++    return((check_product_infinity(m,n) && (sign_of(m)^ sign_of(n))) ||
++       (check_product_infinity(m+1,n+1) && (sign_of(m+1)^
++  sign_of(n+1))) ||
++       (check_product_infinity(m+2,n+2) && (sign_of(m+2)^
++  sign_of(n+2))) ||
++       (check_product_infinity(m+3,n+3) && (sign_of(m+3)^
++					    sign_of(n+3))));
++  }
++  int check_positive_infinity(int m, int n)
++  {
++    return((check_product_infinity(m,n) && (~sign_of(m)^
++  sign_of(n))) ||
++       (check_product_infinity(m+1,n+1) && (~sign_of(m+1)^
++  sign_of(n+1))) ||
++       (check_product_infinity(m+2,n+2) && (~sign_of(m+2)^
++  sign_of(n+2))) ||
++       (check_product_infinity(m+3,n+3) && (~sign_of(m+3)^
++					    sign_of(n+3))));
++  }
++
 +  void fipr(int m, int n)
    {
    union {
          double d;
-@@ -252,11 +364,12 @@
+@@ -9456,11 +9613,12 @@
             (data_type_of(m+2) == qNaN) || (data_type_of(n+2) == qNaN) ||
           (data_type_of(m+3) == qNaN) || (data_type_of(n+3) == qNaN))
  qnan(n+3);
@@ -243,19 +324,19 @@
 -                 (check_ negative_infinity())                        invalid(n+3);
 -     else if (check_ positive_infinity())                              inf(n+3,0);
 -     else if (check_ negative_infinity())                              inf(n+3,1);
-+     else if (check_positive_infinity() &&
-+                 check_negative_infinity())                        invalid(n+3);
-+     else if (check_positive_infinity())                              inf(n+3,0);
-+     else if (check_negative_infinity())                              inf(n+3,1);
++     else if (check_positive_infinity(m, n) /* FIXME m or n ? */ &&
++                 check_negative_infinity(m, n) /* FIXME m or n ? */)                        invalid(n+3);
++     else if (check_positive_infinity(m, n) /* FIXME m or n ? */)                              inf(n+3,0);
++     else if (check_negative_infinity(m, n) /* FIXME m or n ? */)                              inf(n+3,1);
       else {
 +           int i;
             for(i=0;i<4;i++) {
                   /* If FPSCR_DN == 1, zeroize */
                   if        (data_type_of(m+i) == PZERO)                 FR[m+i] = +0.0;
-@@ -279,146 +392,51 @@
-            check_single_exception(&FR[n+3],dstf);
-      }
- }
+@@ -9489,76 +9647,12 @@
+                                                                                  REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
 -  void check_single_exception(float *dst,result)
 -  {
 -  union {
@@ -291,6 +372,11 @@
 -  union {
 -        double d;
 -        int l[2];
+ 
+ Rev. 6.00 Sep 13, 2006 page 202 of 424
+ REJ09B0318-0600
+                                                         Section 9 Instruction Descriptions
+ 
 -}    tmp;
 -double abs;
 -     if(result < 0.0)        tmp.l[0] = 0xfff00000; /* – infinity */
@@ -321,14 +407,14 @@
 -     else                            *dst = result;
 -}
 -int check_product_invalid(int m,n)
-+
-+
 +int check_product_invalid(int m, int n)
  {
       return(check_product_infinity(m,n)           &&
                  ((data_type_of(m) == PZERO) || (data_type_of(n) == PZERO) ||
-                  (data_type_of(m) == NZERO) || (data_type_of(n) == NZERO)));
- }
+@@ -9569,81 +9663,25 @@
+                                                                        REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
 -  int check_ product_infinity(int m,n)
 +  int check_product_infinity(int m, int n)
    {
@@ -336,38 +422,26 @@
                   (data_type_of(m) == NINF) || (data_type_of(n) == NINF));
    }
 -  int check_ positive_infinity(int m,n)
-+  int check_positive_infinity(int m, int n)
-   {
+-  {
 -       return(((check_ product_infinity(m,n) && (~sign_of(m)^
-+    return((check_product_infinity(m,n) && (~sign_of(m)^
-   sign_of(n))) ||
+-  sign_of(n))) ||
 -       ((check_ product_infinity(m+1,n+1) && (~sign_of(m+1)^
-+       (check_product_infinity(m+1,n+1) && (~sign_of(m+1)^
-   sign_of(n+1))) ||
+-  sign_of(n+1))) ||
 -       ((check_ product_infinity(m+2,n+2) && (~sign_of(m+2)^
-+       (check_product_infinity(m+2,n+2) && (~sign_of(m+2)^
-   sign_of(n+2))) ||
+-  sign_of(n+2))) ||
 -       ((check_ product_infinity(m+3,n+3) && (~sign_of(m+3)^
 -  sign_of(n+3))));
-+       (check_product_infinity(m+3,n+3) && (~sign_of(m+3)^
-+					    sign_of(n+3))));
-   }
+-  }
 -  int check_ negative_infinity(int m,n)
-+  int check_negative_infinity(int m, int n)
-   {
+-  {
 -      return(((check_ product_infinity(m,n) && (sign_of(m)^ sign_of(n))) ||
 -       ((check_ product_infinity(m+1,n+1) && (sign_of(m+1)^
-+    return((check_product_infinity(m,n) && (sign_of(m)^ sign_of(n))) ||
-+       (check_product_infinity(m+1,n+1) && (sign_of(m+1)^
-   sign_of(n+1))) ||
+-  sign_of(n+1))) ||
 -       ((check_ product_infinity(m+2,n+2) && (sign_of(m+2)^
-+       (check_product_infinity(m+2,n+2) && (sign_of(m+2)^
-   sign_of(n+2))) ||
+-  sign_of(n+2))) ||
 -       ((check_ product_infinity(m+3,n+3) && (sign_of(m+3)^
 -  sign_of(n+3))));
-+       (check_product_infinity(m+3,n+3) && (sign_of(m+3)^
-+					    sign_of(n+3))));
-   }
+-  }
    void clear_cause () {FPSCR &= ~CAUSE;}
    void set_E() {FPSCR |= SET_E; fpu_exception_trap();}
 -  void set_V() {FPSCR |= SET_V;}
@@ -379,10 +453,15 @@
 -  {
 -         set_V();
 -         if((FPSCR & ENABLE_V) == 0 qnan(n);
+ 
+ Rev. 6.00 Sep 13, 2006 page 204 of 424
+ REJ09B0318-0600
+                                                   Section 9 Instruction Descriptions
+ 
 -     else     fpu_exception_trap();
 -}
- 
- 
+-
+-
 -void dz(int n,sign)
 +void dz(int n, int sign)
  {
@@ -414,10 +493,10 @@
 -                         FR[n+1] = 0xffffffff;
 -     }
 -}
- /* 9.1 */
  
-   ADD(long m, long n) /* ADD Rm,Rn */
-@@ -716,8 +734,8 @@
+ 
+ 
+@@ -10674,8 +10712,8 @@
         long imm;
  
  
@@ -428,7 +507,7 @@
         if (R[0]==imm) T=1;
         else T=0;
         PC+=2;
-@@ -851,13 +869,13 @@
+@@ -11031,13 +11069,13 @@
  
  
             if (fnLmL<0) {
@@ -446,17 +525,17 @@
             }
  
  
-@@ -887,7 +905,7 @@
+@@ -11099,7 +11137,7 @@
         temp3=RmH*RnH;
  
  
 -       Res2=0
 +       Res2=0;
         Res1=temp1+temp2;
-        if (Res1<temp1) Res2+=0x00010000;
  
-@@ -950,15 +968,15 @@
- /* 9.25 */
+ 
+@@ -11311,9 +11349,9 @@
+ Operation
  
      void FABS (int n){
 -           FR[n] = FR[n] & 0x7fffffff;
@@ -466,7 +545,11 @@
 +           PC += 2;
 +    } 
      /* Same operation is performed regardless of precision. */
- /* 9.26 */
+ 
+ Possible Exceptions:
+@@ -11351,9 +11389,9 @@
+ 
+ Operation
  
 -    void FADD (int m,n)
 -    {
@@ -477,26 +560,26 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -968,7 +986,7 @@
+@@ -11363,7 +11401,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
 -                   case NORM:         normal_faddsub(m,n,ADD); break;
 +                   case NORM:         normal_faddsub(m,n,FADD); break;
                     case PZERO:
-                       case NZERO:register_copy(m,n); break;
-                       default:           break;
-@@ -989,25 +1007,30 @@
-            }
-   }
- /* 9.27 */
+ 
+ 
+@@ -11451,17 +11489,23 @@
+ 
+ Operation
+ 
+-     void FCMP_EQ(int m,n) /* FCMP/EQ         FRm,FRn */
 +void fcmp_invalid()
 +{
 +     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
 +                  else fpu_exception_trap();
 +}
- 
--     void FCMP_EQ(int m,n) /* FCMP/EQ         FRm,FRn */
++
 +     void FCMP_EQ(int m, int n) /* FCMP/EQ         FRm,FRn */
       {
 -             pc += 2;
@@ -513,7 +596,8 @@
 +             PC += 2;
               clear_cause();
               if ((fcmp_chk (m,n) == INVALID) ||
-                (fcmp_chk (m,n) == UO)) fcmp_invalid();
+ 
+@@ -11473,7 +11517,7 @@
          else if(fcmp_chk (m,n) == GT)          T = 1;
          else                                   T = 0;
    }
@@ -522,7 +606,7 @@
    {
          if((data_type_of(m) == sNaN) ||
              (data_type_of(n) == sNaN))                 return(INVALID);
-@@ -1044,36 +1067,10 @@
+@@ -11515,14 +11559,6 @@
           else                         return(LT);
       }
  }
@@ -531,8 +615,16 @@
 -     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
 -                  else fpu_exception_trap();
 -}
- /* 9.28 */
 -
+-
+-
+ 
+                                         Rev. 6.00 Sep 13, 2006 page 259 of 424
+                                                              REJ09B0318-0600
+@@ -11591,34 +11627,9 @@
+ 
+ Operation
+ 
 -    void FCNVDS(int m, float *FPUL){
 -            case((FPSCR.PR){
 -                 0:    undefined_operation();            /* reserved */
@@ -548,6 +640,11 @@
 -                 PZERO :
 -                 NZERO :          normal_ fcnvds(m, *FPUL);        break;
 -                 DENORM : set_E();
+-
+-                                                          Rev. 6.00 Sep 13, 2006 page 261 of 424
+-                                                                               REJ09B0318-0600
+-Section 9 Instruction Descriptions
+-
 -               PINF    :     *FPUL = 0x7f800000; break;
 -               NINF    :     *FPUL = 0xff800000; break;
 -               qNaN    :     *FPUL = 0x7fbfffff; break;
@@ -562,7 +659,7 @@
    void normal_fcnvds(int m, float *FPUL)
    {
    int sign;
-@@ -1087,36 +1084,61 @@
+@@ -11632,13 +11643,38 @@
            int l[2];
    }       dstd;
            dstd.d = DR[m>>1];
@@ -572,17 +669,10 @@
            dstf.f = dstd.d;
            check_single_exception(FPUL, dstf.f);
    }
--/* 9.29 */
--
--    void FCNVSD(int n, float *FPUL){
--            pc += 2;
 +    void fcnvds(int m, float *FPUL)
 +    {
 +            PC += 2;
-             clear_cause();
--            case((FPSCR_PR){
--                 0:    undefined_operation();            /* reserved */
--                 1:    fcnvsd (n, *FPUL);        break;       /* FCNVSD */
++            clear_cause();
 +    switch (data_type_of_2(m, *FPUL)) {
 +                 case NORM    :
 +                 case PZERO :
@@ -596,18 +686,34 @@
 +                                 else fpu_exception_trap();   break;
 +        }
 +  }
-+
+ 
+-
 +    void FCNVDS(int m, float *FPUL){
 +            switch(FPSCR_PR){
 +                 case 0:    undefined_operation();            /* reserved */
 +                 case 1:    fcnvds(m, FPUL);        break;     /* FCNVDS */
-             }
-     }
-+
-+/* 9.29 */
-+
-     void fcnvsd(int n, float *FPUL)
-     {
++            }
++    }
++                                                          Rev. 6.00 Sep 13, 2006 page 261 of 424
++                                                                               REJ09B0318-0600
++Section 9 Instruction Descriptions
+ 
+ 
+ Rev. 6.00 Sep 13, 2006 page 262 of 424
+@@ -11685,34 +11721,9 @@
+ 
+ Operation
+ 
+-    void FCNVSD(int n, float *FPUL){
+-            pc += 2;
+-            clear_cause();
+-            case((FPSCR_PR){
+-                 0:    undefined_operation();            /* reserved */
+-                 1:    fcnvsd (n, *FPUL);        break;       /* FCNVSD */
+-            }
+-    }
+-    void fcnvsd(int n, float *FPUL)
+-    {
 -            case(fpul_type(FPUL)){
 -                 PZERO :
 -                 NZERO :
@@ -616,6 +722,26 @@
 -                 DENORM :     set_E();                  break;
 -                 qNaN    :            qnan(n);          break;
 -                 sNaN    :            invalid(n);                break;
+-            }
+-
+-Rev. 6.00 Sep 13, 2006 page 264 of 424
+-REJ09B0318-0600
+-                                                              Section 9 Instruction Descriptions
+-
+-  }
+   int fpul_type(int *FPUL)
+   {
+-  int abs;
++    int abs, src;
+         abs = *FPUL & 0x7fffffff;
+         if(abs < 0x00800000){
+               if((FPSCR_DN == 1) || (abs == 0x00000000)){
+@@ -11730,6 +11741,31 @@
+         else                              return(sNaN);
+   }
+ 
++    void fcnvsd(int n, float *FPUL)
++    {
 +            switch(fpul_type(FPUL)){
 +                 case PZERO :
 +                 case NZERO :
@@ -624,8 +750,8 @@
 +            case DENORM :     set_E();                  break;
 +            case qNaN    :            qnan(n);          break;
 +            case sNaN    :            invalid(n);                break;
-             }
-   }
++            }
++  }
 +    void FCNVSD(int n, float *FPUL){
 +            PC += 2;
 +            clear_cause();
@@ -634,17 +760,18 @@
 +                 case 1:    fcnvsd (n, FPUL);        break;       /* FCNVSD */
 +            }
 +    }
-   int fpul_type(int *FPUL)
-   {
--  int abs;
-+    int abs, src;
-         abs = *FPUL & 0x7fffffff;
-         if(abs < 0x00800000){
-               if((FPSCR_DN == 1) || (abs == 0x00000000)){
-@@ -1134,10 +1156,46 @@
-         else                              return(sNaN);
-   }
- /* 9.30 */
++ 
++Rev. 6.00 Sep 13, 2006 page 264 of 424
++REJ09B0318-0600
++                                                              Section 9 Instruction Descriptions
++
+ FCNVSD Special Cases
+ 
+         FRn            +NORM      –NORM       +0    –0       +INF     –INF     qNaN     sNaN
+@@ -11772,10 +11808,46 @@
+ therefore be performed by software.
+ 
+ Operation
 +void normal_fdiv(int m, int n)
 +{
 +union {
@@ -690,7 +817,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -1172,52 +1230,16 @@
+@@ -11816,54 +11888,15 @@
                 case DENORM: set_E(); break;
                 case PINF:
                 case NINF: invalid(n);           break;
@@ -707,6 +834,11 @@
 -}     dstf,tmpf;
 -union {
 -      double d;
+ 
+                                                 Rev. 6.00 Sep 13, 2006 page 267 of 424
+                                                                      REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
 -          int l[2];
 -  }       dstd,tmpd;
 -  union {
@@ -735,7 +867,15 @@
 -              check_double_exception(&DR[n>>1], dstd.d);
 -        }
 -  }
- /* 9.31 */
+-
+-
+-
+ 
+ Rev. 6.00 Sep 13, 2006 page 268 of 424
+ REJ09B0318-0600
+@@ -11954,10 +11987,10 @@
+ 
+ Operation
  
 -  void FIPR(int m,n)          /* FIPR FVm,FVn */
 +  void FIPR(int m, int n)          /* FIPR FVm,FVn */
@@ -746,32 +886,34 @@
                clear_cause();
                fipr(m,n);
           }
-@@ -1228,21 +1250,21 @@
+@@ -11996,7 +12029,7 @@
      void FLDI0(int n)
      {
           FR[n] = 0x00000000;
 -         pc += 2;
 +         PC += 2;
      }
- /* 9.33 */
  
+ Possible Exceptions:
+@@ -12028,7 +12061,7 @@
    void FLDI1(int n)
    {
           FR[n] = 0x3F800000;
 -         pc += 2;
 +         PC += 2;
    }
- /* 9.34 */
  
+ Possible Exceptions:
+@@ -12060,7 +12093,7 @@
    void FLDS(int m, float *FPUL)
    {
           *FPUL = FR[m];
 -         pc += 2;
 +         PC += 2;
    }
- /* 9.35 */
  
-@@ -1252,9 +1274,9 @@
+ Possible Exceptions:
+@@ -12112,9 +12145,9 @@
          double d;
          int l[2];
    }     tmp;
@@ -783,10 +925,11 @@
                FR[n] = *FPUL; /* convert from integer to float */
                tmp.d = *FPUL;
                if(tmp.l[1] & 0x1fffffff) inexact();
-@@ -1263,10 +1285,43 @@
-         }
-   }
- /* 9.36 */
+@@ -12157,9 +12190,43 @@
+ 
+ Operation
+ 
+-    void FMAC(int m,n)
 +void normal_fmac(int m, int n)
 +{
 +union {
@@ -820,8 +963,7 @@
 +          dstf = dstx.x;
 +          check_single_exception(&FR[n],dstf);
 +  }
- 
--    void FMAC(int m,n)
++
 +    void FMAC(int m, int n)
      {
 -            pc += 2;
@@ -829,7 +971,7 @@
              clear_cause();
              if(FPSCR_PR == 1) undefined_operation();
              else if((data_type_of(0) == sNaN) ||
-@@ -1276,7 +1331,7 @@
+@@ -12169,7 +12236,7 @@
                       (data_type_of(m) == qNaN)) qnan(n);
              else if((data_type_of(0) == DENORM) ||
                       (data_type_of(m) == DENORM)) set_E();
@@ -837,8 +979,8 @@
 +            else switch (data_type_of(0)){
                  case NORM: switch (data_type_of(m)){
                  case PZERO:
-               case NZERO: switch (data_type_of(n)){
-@@ -1304,7 +1359,7 @@
+ 
+@@ -12202,7 +12269,7 @@
                case PZERO:
                case NZERO:
                case NORM:       normal_fmac(m,n);       break;
@@ -847,7 +989,7 @@
          case PZERO:
          case NZERO: switch (data_type_of(m)){
                case PINF:
-@@ -1326,174 +1381,141 @@
+@@ -12230,52 +12297,16 @@
            default: switch (data_type_of(n)){
            case DENORM: set_E();        break;
            case qNaN:        qnan(n);    break;
@@ -875,6 +1017,11 @@
 -          set_I();
 -          if(sign_of(0)^ sign_of(m)^ sign_of(n))           {
 -               dstx.l[3] -= 1; /* correct result */
+ 
+                                                  Rev. 6.00 Sep 13, 2006 page 279 of 424
+                                                                       REJ09B0318-0600
+ Section 9 Instruction Descriptions
+ 
 -                   if(dstx.l[3] == 0xffffffff) dstx.l[2] -= 1;
 -                   if(dstx.l[2] == 0xffffffff) dstx.l[1] -= 1;
 -                   if(dstx.l[1] == 0xffffffff) dstx.l[0] -= 1;
@@ -890,7 +1037,15 @@
 -          dstf = dstx.x;
 -          check_single_exception(&FR[n],dstf);
 -  }
- /* 9.37 */
+-
+-
+-
+ 
+ Rev. 6.00 Sep 13, 2006 page 280 of 424
+ REJ09B0318-0600
+@@ -12392,30 +12423,30 @@
+ 
+ Operation
  
 -  void FMOV(int m,n)                             /* FMOV FRm,FRn */
 +  void FMOV(int m, int n)                             /* FMOV FRm,FRn */
@@ -927,6 +1082,12 @@
 -        pc += 2;
 +        PC += 2;
    }
+ 
+ 
+@@ -12423,41 +12454,41 @@
+ REJ09B0318-0600
+                                                 Section 9 Instruction Descriptions
+ 
 -void FMOV_LOAD_DR(int m,n)      /* FMOV @Rm,DRn */
 +void FMOV_LOAD_DR(int m, int n)      /* FMOV @Rm,DRn */
  {
@@ -975,6 +1136,11 @@
  }
 -void FMOV_INDEX_LOAD_DR(int m,n) /*FMOV @(R0,Rm),DRn */
 +void FMOV_INDEX_LOAD_DR(int m, int n) /*FMOV @(R0,Rm),DRn */
+ 
+                                           Rev. 6.00 Sep 13, 2006 page 285 of 424
+                                                                REJ09B0318-0600
+@@ -12465,17 +12496,17 @@
+ 
    {
          load_quad(R[0] + R[m],DR[n>>1]);
 -        pc += 2;
@@ -994,7 +1160,11 @@
 -        pc += 2;
 +        PC += 2;
    }
- /* 9.38 */
+ 
+ Possible Exceptions:
+@@ -12533,56 +12564,56 @@
+ 
+ Operation
  
 -  void FMOV_STORE_XD(int m,n)             /* FMOV XDm,@Rn */
 +  void FMOV_STORE_XD(int m, int n)             /* FMOV XDm,@Rn */
@@ -1043,6 +1213,10 @@
 -   void FMOV_XDXD(int m,n)               /* FMOV XDm,XDn */
 +   void FMOV_XDXD(int m, int n)               /* FMOV XDm,XDn */
    {
+ Rev. 6.00 Sep 13, 2006 page 288 of 424
+ REJ09B0318-0600
+                                                        Section 9 Instruction Descriptions
+ 
          XD[n>>1] = XD[m>>1];
 -        pc += 2;
 +        PC += 2;
@@ -1061,7 +1235,11 @@
 -        pc += 2;
 +        PC += 2;
    }
- /* 9.39 */
+ 
+ Possible Exceptions:
+@@ -12623,9 +12654,9 @@
+ 
+ Operation
  
 -    void FMUL(int m,n)
 +    void FMUL(int m, int n)
@@ -1071,7 +1249,7 @@
                   clear_cause();
                   if((data_type_of(m) == sNaN) ||
                       (data_type_of(n) == sNaN)) invalid(n);
-@@ -1501,7 +1523,7 @@
+@@ -12633,7 +12664,7 @@
                             (data_type_of(n) == qNaN)) qnan(n);
                   else if((data_type_of(m) == DENORM) ||
                             (data_type_of(n) == DENORM)) set_E();
@@ -1080,7 +1258,7 @@
                       case NORM: switch (data_type_of(n)){
                             case PZERO:
                             case NZERO: zero(n,sign_of(m)^sign_of(n));               break;
-@@ -1519,7 +1541,7 @@
+@@ -12657,7 +12688,7 @@
                  case NINF : switch (data_type_of(n)){
                        case PZERO:
                        case NZERO: invalid(n);         break;
@@ -1089,7 +1267,7 @@
             }          break;
             }
    }
-@@ -1527,7 +1549,7 @@
+@@ -12718,7 +12749,7 @@
  
      void FNEG (int n){
             FR[n] = -FR[n];
@@ -1098,11 +1276,10 @@
      }
  
  
-@@ -1553,23 +1575,6 @@
-          else undefined_operation();
-     }
- /* 9.43 */
--
+@@ -12838,28 +12869,13 @@
+ 
+ Operation
+ 
 -    void FSQRT(int n){
 -         pc += 2;
 -         clear_cause();
@@ -1117,12 +1294,19 @@
 -              case NINF      :       invalid(n); break;
 -              case qNaN      :       qnan(n);       break;
 -              case sNaN      :       invalid(n); break;
+ 
+ 
+ Rev. 6.00 Sep 13, 2006 page 296 of 424
+ REJ09B0318-0600
+                                                 Section 9 Instruction Descriptions
+ 
 -     }
 -}
++
  void normal_fsqrt(int n)
  {
  union {
-@@ -1581,7 +1586,7 @@
+@@ -12871,7 +12887,7 @@
        int l[2];
  }     dstd,tmpd;
  union {
@@ -1131,11 +1315,10 @@
        int l[4];
  }     tmpx;
        if(FPSCR_PR == 0) {
-@@ -1608,18 +1613,35 @@
-                 else                            DR[n>>1] = dstd.d;
+@@ -12904,6 +12920,22 @@
              }
    }
-+
+ 
 +    void FSQRT(int n){
 +         PC += 2;
 +         clear_cause();
@@ -1152,15 +1335,21 @@
 +              case sNaN      :       invalid(n); break;
 +     }
 +}
- /* 9.44 */
+ FSQRT Special Cases
  
+       FRn           +NORM    –NORM         +0        –0     +INF     –INF     qNaN     sNaN
+@@ -12942,7 +12974,7 @@
    void FSTS(int n, float *FPUL)
    {
           FR[n] = *FPUL;
 -         pc += 2;
 +         PC += 2;
    }
- /* 9.45 */
+ 
+ Possible Exceptions:
+@@ -12981,9 +13013,9 @@
+ 
+ Operation
  
 -    void FSUB (int m,n)
 +    void FSUB_ (int m, int n) /* FSUB is a "#define" symbol, so we have to rename the name of this function */
@@ -1170,16 +1359,16 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -1629,7 +1651,7 @@
+@@ -12993,7 +13025,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
 -                   case NORM:        normal_faddsub(m,n,SUB); break;
 +                   case NORM:        normal_faddsub(m,n,FSUB); break;
-                       case PZERO:
-                       case NZERO: register_copy(m,n); FR[n] = -FR[n];break;
-                       default:            break;
-@@ -1657,26 +1679,35 @@
+ 
+ 
+ Rev. 6.00 Sep 13, 2006 page 300 of 424
+@@ -13084,15 +13116,24 @@
      #define P_INT_DOUBLE_RANGE 0x41e0000000000000
  
  
@@ -1209,6 +1398,10 @@
 +                 case NINF:      ftrc_invalid(1, FPUL);       break;
                   }
           }
+ 
+@@ -13101,14 +13142,14 @@
+ Section 9 Instruction Descriptions
+ 
          else{                        /* case FPSCR.PR=1 */
 -               case(ftrc_double_type_of(m)){
 -               NORM:        *FPUL = DR[m>>1]; break;
@@ -1226,9 +1419,9 @@
    {
          if(sign_of(m) == 0){
                if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
-@@ -1704,22 +1735,13 @@
-               else          return(NORM);      /* -0,-NORM                  */
-         }
+@@ -13141,15 +13182,6 @@
+                                                                 Section 9 Instruction Descriptions
+ 
    }
 -  void ftrc_invalid(int sign, int *FPUL)
 -  {
@@ -1239,9 +1432,10 @@
 -        }
 -        else fpu_exception_trap();
 -  }
- /* 9.47 */
  
-   void FTRV (int n)                /* FTRV FVn */
+ FTRC Special Cases
+ 
+@@ -13235,7 +13267,7 @@
    {
    float saved_vec[4],result_vec[4];
    int saved_fpscr;
@@ -1250,7 +1444,7 @@
             if(FPSCR_PR == 0) {
                   PC += 2;
                   clear_cause();
-@@ -1728,7 +1750,7 @@
+@@ -13244,7 +13276,7 @@
                   dst = 12 - n;                    /* select other vector than FVn */
                   for(i=0;i<4;i++)saved_vec [i] = FR[dst+i];
                   for(i=0;i<4;i++){
@@ -1259,16 +1453,16 @@
                         fipr(n,dst);
                         saved_fpscr |= FPSCR & (CAUSE|FLAG) ;
                         result_vec [i] = FR[dst+3];
-@@ -1788,7 +1810,7 @@
+@@ -13468,7 +13500,7 @@
  
          LDCSSR(int m)             /* LDC Rm,SSR : Privileged */
          {
 -            SSR=R[m],
 +            SSR=R[m];
              PC+=2;
-         }
- 
-@@ -1861,7 +1883,7 @@
+                                                         Rev. 6.00 Sep 13, 2006 page 313 of 424
+                                                                              REJ09B0318-0600
+@@ -13552,7 +13584,7 @@
  }
  
  
@@ -1277,7 +1471,7 @@
                    /* n=0–7 */
  {
      Rn_BANK=Read_Long(R[m]);
-@@ -1942,26 +1964,26 @@
+@@ -13759,19 +13791,19 @@
  
    LDTLB( )       /*LDTLB */
    {
@@ -1309,15 +1503,16 @@
  
  
          PC+=2;
-   }
- /* 9.54 */
+@@ -13819,7 +13851,7 @@
+ 
+ Operation
  
 -  MACL(long m, long n)            /* MAC.L @Rm+,@Rn+ */
 +  MACL_(long m, long n)            /* MAC.L @Rm+,@Rn+ */ /* MACL is defined, so we have to rename the name of this function */
    {
          unsigned long RnL,RnH,RmL,RmH,Res0,Res1,Res2;
          unsigned long temp0,temp1,temp2,temp3;
-@@ -2008,11 +2030,11 @@
+@@ -13873,11 +13905,11 @@
  
  
    if(fnLmL<0){
@@ -1333,7 +1528,7 @@
    }
    if(S==1){
         Res0=MACL+Res0;
-@@ -2134,7 +2156,7 @@
+@@ -14152,7 +14184,7 @@
  
  
    MOVLL(long m, long n) /* MOV.L @Rm,Rn */
@@ -1342,16 +1537,16 @@
          R[n]=Read_Long(R[m]);
          PC+=2;
    }
-@@ -2340,7 +2362,7 @@
-  }
- /* 9.59 */
+@@ -14576,7 +14608,7 @@
+ 
+ Operation
  
 - MOVBS4(long d, long n    /* MOV.B R0,@(disp,Rn) */
 + MOVBS4(long d, long n)    /* MOV.B R0,@(disp,Rn) */
   {
         long disp;
         disp=(0x0000000F & (long)d);
-@@ -2452,7 +2474,7 @@
+@@ -14877,7 +14909,7 @@
  
    MULU(long m, long n) /* MULU Rm,Rn                 */
    {
@@ -1360,7 +1555,7 @@
           (unsigned long)(unsigned short)R[m];
            PC+=2;
    }
-@@ -2487,7 +2509,7 @@
+@@ -15021,7 +15053,7 @@
  
    NOT(long m, long n) /* NOT Rm,Rn */
    {
@@ -1368,8 +1563,8 @@
 +              R[n]=~R[m];
                PC+=2;
    }
- /* 9.70 */
-@@ -2501,7 +2523,7 @@
+ 
+@@ -15099,7 +15131,7 @@
  
    OCBP(int n)               /* OCBP @Rn */
    {
@@ -1378,25 +1573,25 @@
        invalidate_operand_cache_block(R[n]);
        PC+=2;
    }
-@@ -2635,7 +2657,7 @@
-   }
- /* 9.83 */
+@@ -15700,7 +15732,7 @@
+ 
+ Operation
  
 -  SHAD(int m,n) /*SHAD Rm,Rn */
 +  SHAD(int m, int n) /*SHAD Rm,Rn */
    {
               int sgn=R[m] & 0x80000000;
               if (sgn==0)
-@@ -2677,7 +2699,7 @@
-   }
- /* 9.86 */
+@@ -15866,7 +15898,7 @@
+ 
+ Operation
  
 -  SHLD(int m,n)/*SHLD Rm,Rn */
 +  SHLD(int m, int n)/*SHLD Rm,Rn */
    {
           int sgn = R[m] & 0x80000000;
           if (sgn == 0)
-@@ -2819,7 +2841,7 @@
+@@ -16310,7 +16342,7 @@
  
    STCMSR(int n)          /* STC.L SR,@-Rn : Privileged */
          {
@@ -1405,16 +1600,16 @@
                Write_Long(R[n],SR);
                PC+=2;
          }
-@@ -2827,7 +2849,7 @@
+@@ -16323,7 +16355,7 @@
+                                                Section 9 Instruction Descriptions
  
-   STCMGBR(int n)           /* STC.L GBR,@–Rn */
       {
 -         R[n]–=4;
 +         R[n]-=4;
           Write_Long(R[n],GBR);
           PC+=2;
       }
-@@ -2835,7 +2857,7 @@
+@@ -16331,7 +16363,7 @@
  
  STCMVBR(int n)      /* STC.L VBR,@-Rn : Privileged */
       {
@@ -1423,7 +1618,7 @@
           Write_Long(R[n],VBR);
           PC+=2;
       }
-@@ -2843,7 +2865,7 @@
+@@ -16339,7 +16371,7 @@
  
  STCMSSR(int n)      /* STC.L SSR,@-Rn : Privileged */
       {
@@ -1432,7 +1627,7 @@
           Write_Long(R[n],SSR);
           PC+=2;
       }
-@@ -2851,7 +2873,7 @@
+@@ -16347,7 +16379,7 @@
  
  STCMSPC(int n)      /* STC.L SPC,@-Rn : Privileged */
       {
@@ -1441,7 +1636,7 @@
           Write_Long(R[n],SPC);
           PC+=2;
       }
-@@ -2859,7 +2881,7 @@
+@@ -16355,7 +16387,7 @@
  
  STCMSGR(int n)      /* STC.L SGR,@-Rn : Privileged */
       {
@@ -1450,16 +1645,16 @@
           Write_Long(R[n],SGR);
           PC+=2;
       }
-@@ -2867,7 +2889,7 @@
+@@ -16368,7 +16400,7 @@
+ Section 9 Instruction Descriptions
  
- STCMDBR(int n)      /* STC.L DBR,@-Rn : Privileged */
          {
 -              R[n]–=4;
 +              R[n]-=4;
                Write_Long(R[n],DBR);
                PC+=2;
          }
-@@ -2876,7 +2898,7 @@
+@@ -16377,7 +16409,7 @@
    STCMRm_BANK(int n)             /* STC.L Rm_BANK,@-Rn : Privileged */
                                   /* m=0–7 */
          {
@@ -1468,8 +1663,8 @@
                Write_Long(R[n],Rm_BANK);
                PC+=2;
          }
-@@ -2903,7 +2925,7 @@
-   }
+@@ -16444,7 +16476,7 @@
+ 
    STSMMACH(int n)           /* STS.L MACH,@-Rn */
    {
 -      R[n]–=4;
@@ -1477,7 +1672,7 @@
        Write_Long(R[n],MACH);
        PC+=2;
    }
-@@ -2911,7 +2933,7 @@
+@@ -16452,7 +16484,7 @@
  
    STSMMACL(int n)           /* STS.L MACL,@-Rn */
    {
@@ -1486,7 +1681,7 @@
        Write_Long(R[n],MACL);
        PC+=2;
    }
-@@ -2919,7 +2941,7 @@
+@@ -16460,7 +16492,7 @@
  
    STSMPR(int n)          /* STS.L PR,@-Rn */
    {
@@ -1495,7 +1690,7 @@
        Write_Long(R[n],PR);
        PC+=2;
    }
-@@ -2936,7 +2958,7 @@
+@@ -16521,7 +16553,7 @@
          Write_Long(R[n],*FPUL) ;
          PC+=2;
    }
@@ -1504,7 +1699,7 @@
    {
          R[n]=FPSCR&0x003FFFFF;
          PC+=2;
-@@ -2944,7 +2966,7 @@
+@@ -16529,7 +16561,7 @@
    STS_RESTORE(int       n)   /* STS.L FPSCR,@-Rn       */
    {
          R[n]-=4;
@@ -1512,8 +1707,8 @@
 +        Write_Long(R[n],FPSCR&0x003FFFFF);
          PC+=2;
    }
- /* 9.95 */
-@@ -3041,11 +3063,11 @@
+ 
+@@ -16895,11 +16927,11 @@
         SSR=SR;
         SPC=PC+2;
         SGR=R15;
@@ -1527,5 +1722,12 @@
 -       PC=VBR+H'00000100;
 +       PC=VBR+H_00000100;
   }
- /* 9.101 */
  
+ 
+@@ -17786,4 +17818,4 @@
+ 
+ 
+ 1753, Shimonumabe, Nakahara-ku, Kawasaki-shi, Kanagawa 211-8668 Japan   REJ09B0318-0600
+-
+\ Pas de fin de ligne à la fin du fichier.
++

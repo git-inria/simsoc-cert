@@ -167,7 +167,7 @@ struct
         
   (** We describe above the lines written in human language we don't want to keep *)
   (** Remark that the program had been run (and tested) with increasing list and valid position only *)
-  let comment_c_code1 = [3; 4; 10; 11; 15; 22; 34]
+  let comment_c_code1 = [27; 28; 34; 35; 39; 50; 62]
   let comment_c_code2 = [1; 5; 8]
 
   (** [dont_keep l_num l] returns [l] but all the element figuring at position specified by [l_num] are discarded.

@@ -14,5 +14,5 @@ instr:
 clean:
 	rm -f *~
 
-c_code.patch:
-	diff -u c_code_init.c c_code.c > c_code.patch || exit 0
+sh4_mod.txt:
+	patch sh4.txt sh4.patch -o $@
