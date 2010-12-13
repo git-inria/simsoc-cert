@@ -39,7 +39,7 @@ int main(int argc, const char *argv[]) {
     "Definition initial_cpsr : word := "
     "repr (Zpos 1~1~1~" <<(thumb ? 1 : 0) <<"~1~1~1~1~1).\n"
     "\n"
-    "Definition initial_spsr (m : option exn_mode) : word := w0.\n"
+    "Definition initial_spsr (m : exn_mode) : word := w0.\n"
     "\n"
     "(* Initial registers: only PC value is significant *)\n"
     "Definition initial_reg (r : register) : word :=\n"
