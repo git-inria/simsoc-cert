@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the LSM instructions
- * After 115 instructions executed, r0 should contain 0x7 */
+ * After 119 instructions executed, r0 should contain 0x7 */
 
 #include "common.h"
 
@@ -62,7 +62,7 @@ void test_ldm_2() {
 }
 
 const int *ldm3_id = NULL;
-const int ID = 4;
+const int ID = 421;
 
 void set_ldm3_id() {
   ldm3_id = &ID;
@@ -80,7 +80,9 @@ void test_ldm_3() {
                 :
                 :"r" ((uint32_t)&p), "m" (p) // pc = MEM[&p] = p = set_ldm3_str
                 :"lr","r0","r1");
-  if (ldm3_id) count += *ldm3_id; // LDM_3 test
+  if (ldm3_id) {
+    CHECK(4,*ldm3_id,421); // LDM_3 test
+  }
 }
 
 int main() {
