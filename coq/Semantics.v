@@ -117,6 +117,13 @@ Definition if_then_else (c : bool) (f1 f2 : semfun)
   (loc : local) (b : bool) (s : state)
   : result := if c then f1 loc b s else f2 loc b s.
 
+Definition if_CurrentModeHasSPSR (c : bool) (f : exn_mode -> semfun)
+  (loc : local) (b : bool) (s : state) : result :=
+  match mode s with
+    | usr | sys => unpredictable EmptyMessage loc b s
+    | exn em => f em loc b s
+  end.
+
 Definition seq (f1 f2 : semfun) (loc0 : local) 
   (b0 : bool) (s0 : state) : result :=
   match f1 loc0 b0 s0 with
