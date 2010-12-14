@@ -45,6 +45,10 @@ let nat =
    if k < 0 then invalid_arg "not a nat"
    else aux k;;
 
+let rec nat_to_int = function
+  | O -> 0
+  | S n -> 1 + nat_to_int n;; 
+
 let rec positive = function
  | x when x <= 0 -> invalid_arg "not a positive"
  | 1 -> Coq_xH
@@ -57,10 +61,12 @@ let coq_Z = function
  | x -> Zpos (positive x);;
 
 let simul s n =
-  let _, r = S.simul s (nat n) in
+  let num, r = S.simul s (nat n) in
+  let step = string_of_int (n - nat_to_int num) in
     match r with
       | SimOk s -> s
-      | SimKo (_s, m) -> raise (Failure ("SimKo: " ^ str_of_msg m));;
+      | SimKo (_s, m) ->
+          raise (Failure ("SimKo: " ^ str_of_msg m ^ " at step " ^ step));;
 
 let next s = simul s 1;;
 
