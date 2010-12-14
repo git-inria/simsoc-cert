@@ -35,9 +35,9 @@ Definition set_cpsr (s : state) (w : word) : state :=
 Definition set_cpsr_bit (s : state) (n : nat) (w : word) : state :=
   mk_state (set_cpsr_bit (proc s) n w) (scc s).
 
-Definition spsr (s : state) (o : option exn_mode) : word := spsr (proc s) o.
+Definition spsr (s : state) (o : exn_mode) : word := spsr (proc s) o.
 
-Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
+Definition set_spsr (s : state) (o : exn_mode) (w : word) : state :=
   mk_state (set_spsr (proc s) o w) (scc s).
 
 Definition reg_content_mode (s : state) (m : proc_mode) (k : regnum) : word

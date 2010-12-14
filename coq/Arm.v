@@ -25,6 +25,10 @@ Lemma opt_exn_mode_eqdec : forall x y : option exn_mode, {x=y}+{~x=y}.
 
 Proof. decide equality. decide equality. Qed.
 
+Lemma exn_mode_eqdec : forall x y : exn_mode, {x=y}+{~x=y}.
+
+Proof. decide equality. Qed.
+
 Inductive proc_mode : Type := usr | exn (m : exn_mode) | sys.
 
 Definition word_of_proc_mode (m : proc_mode) : word := repr (Zpos

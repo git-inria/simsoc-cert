@@ -271,8 +271,8 @@ and exp loc b = function
   | Range (e, r) -> bprintf b "%a[%a]" (pexp loc) e (range loc) r
   | Memory (e, n) -> bprintf b "read st %a %a" (pexp loc) e size n
 
-  | SPSR None -> string b "spsr st None"
-  | SPSR (Some m) -> bprintf b "spsr st (Some %a)" exn_mode m
+  | SPSR None -> string b "spsr st em"
+  | SPSR (Some m) -> bprintf b "spsr st %a" exn_mode m
 
   | Reg (e, None) -> bprintf b "reg_content st %a" (regnum_exp loc) e
   | Reg (e, Some m) ->
@@ -342,8 +342,14 @@ and inst_aux loc k b = function
       bprintf b "if_then %a\n%a" (pexp loc) e (pinst loc (k+2)) i1
 
   | If (e, i1, Some i2) ->
-      bprintf b "if_then_else %a\n%a\n%a"
-	(pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2
+      begin match e, i1 with
+        | Fun ("CurrentModeHasSPSR", _), _ | _, Affect (_, SPSR None) -> 
+            bprintf b "if_CurrentModeHasSPSR (fun em => \n%a)"
+              (pinst loc (k+2)) i1
+        | _ ->
+            bprintf b "if_then_else %a\n%a\n%a"
+	      (pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2
+      end
 
   (* try to generate the code of an affectation; in case of failure,
      output a "todo" *)
@@ -376,17 +382,20 @@ and affect' b v loc = function
         bprintf b "update_loc \"%s\" %a" s (pexp loc) v
       else bprintf b "let %s := %a in" s (pexp loc) v
   (* affectation of a CPSR bit requires a special case *)
-  | Range (CPSR, Flag (s, _)) -> bprintf b "set_cpsr_bit %sbit %a" s (pexp loc) v
+  | Range (CPSR, Flag (s, _)) -> 
+      bprintf b "set_cpsr_bit %sbit %a" s (pexp loc) v
   | Range (e, r) -> 
-      bprintf b "%a (%a %a %a)" (set' loc) e (range loc) r (pexp loc) v (pexp loc) e
+      bprintf b "%a (%a %a %a)" 
+        (set' loc) e (range loc) r (pexp loc) v (pexp loc) e
   | e -> bprintf b "%a %a" (set' loc) e (pexp loc) v
 
 and set' loc b = function
-  | Reg (e, None) -> bprintf b "set_reg %a" (regnum_exp loc) e
+  | Reg (e, None) -> bprintf b "set_reg %a" 
+      (regnum_exp loc) e
   | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m (regnum_exp loc) e
   | CPSR -> bprintf b "set_cpsr"
-  | SPSR None -> bprintf b "set_spsr None"
-  | SPSR (Some m) -> bprintf b "set_spsr (Some %a)" exn_mode m
+  | SPSR None -> bprintf b "set_spsr em"
+  | SPSR (Some m) -> bprintf b "set_spsr %a" exn_mode m
   | Memory (e, n) -> bprintf b "write %a %a" (pexp loc) e size n
   | _ -> raise Not_found
 
@@ -452,11 +461,8 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
 let pinst b p =
   match p.pkind with
-    | InstARM -> (*begin match p.pident.iname with
-        | "SETEND" -> decl_loc (inst (snd (V.vars p.pinst)) 2) b p.pinst; 
-            bprintf b " nil true st"
-        | _ ->*)
-            bprintf b "%a nil true st" (inst (snd (V.vars p.pinst)) 2) p.pinst
+    | InstARM -> 
+        bprintf b "%a nil true st" (inst (snd (V.vars p.pinst)) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in

@@ -26,7 +26,7 @@ Record state : Type := mk_state {
   (* Current program status register *)
   cpsr : word;
   (* Saved program status registers *)
-  spsr : option exn_mode -> word;
+  spsr : exn_mode -> word;
   (* Registers *)
   reg : register -> word;
   (* Raised exceptions *)
@@ -44,9 +44,9 @@ Definition set_cpsr (s : state) (w : word) : state :=
 Definition set_cpsr_bit (s : state) (n : nat) (w : word) : state :=
   set_cpsr s (set_bit n w (cpsr s)).
 
-Definition set_spsr (s : state) (o : option exn_mode) (w : word) : state :=
+Definition set_spsr (s : state) (o : exn_mode) (w : word) : state :=
   mk_state (cpsr s)
-  (update_map opt_exn_mode_eqdec (spsr s) o w)
+  (update_map exn_mode_eqdec (spsr s) o w)
   (reg s) (exns s) (mode s).
 
 Definition reg_content_mode (s : state) (m : proc_mode) (k : regnum) : word :=
