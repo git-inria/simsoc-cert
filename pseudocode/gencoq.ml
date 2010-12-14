@@ -270,13 +270,13 @@ and exp loc b = function
       bprintf b "if %a then %a else %a" (exp loc) e1 (exp loc) e2 (exp loc) e3
   | CPSR -> string b "cpsr st"
   | Range (e, r) -> 
-      (*begin match e, r with
+      begin match e, r with
         | BinOp (e1, "*", e2) , Bits (n1, n2) ->
-            bprintf b "mul64 %a %a %a %a" 
+            bprintf b "bits_of_mul64 %a %a %a %a" 
               (pexp loc) e1 (pexp loc) e2 num n1 num n2
-        | _ ->  *)
+        | _ ->
             bprintf b "%a[%a]" (pexp loc) e (range loc) r
-      (*end*)
+      end
   | Memory (e, n) -> bprintf b "read st %a %a" (pexp loc) e size n
 
   | SPSR None -> string b "spsr st em"

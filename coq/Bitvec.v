@@ -72,6 +72,7 @@ Definition anti_mask n := anti_masks n n.
 (* word made of the bits p to n of w (p>=n) *)
 Definition bits_val (p n : nat) (w : word) : Z :=
   and (masks p n) w / two_power_nat n.
+
 Definition bits (p n : nat) (w : word) : word := repr (bits_val p n w).
 Notation "w [ p # n ]" := (bits p n w) (at level 8).
 
@@ -259,3 +260,33 @@ Coercion Long.intval : long >-> Z.
 Definition long_of_word (x : word) : long := mk_long x.
 
 Coercion long_of_word : word >-> long.
+
+Definition bitwise_binop64 (f: bool -> bool -> bool) (x y: long) :=
+  let fx := bits_of_Z 64 x in
+  let fy := bits_of_Z 64 y in
+  mk_long (Z_of_bits 64 (fun i => f (fx i) (fy i))).
+
+Definition and64 (x y: long): long := bitwise_binop64 andb x y.
+
+(* mask made of the bits n to n+k *)
+Fixpoint masks_aux64 (n k : nat) : Z :=
+  match k with
+    | O => two_power_nat n
+    | S k' => two_power_nat n + masks_aux (S n) k'
+  end.
+
+(* mask made of the bits n to n+(p-n) (p>=n) *)
+Definition masks64 (p n : nat) : long := mk_long (masks_aux n (p-n)).
+
+Definition bits_val64 (p n : nat) (w : long) : Z :=
+  and64 (masks64 p n) w / two_power_nat n.
+
+Definition bits64 (p n : nat) (w : long) : Z := bits_val64 p n w.
+
+Definition mul64 (w1 w2 : long) : long :=
+  mk_long (w1 * w2).
+
+Definition bits_of_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
+  repr (bits64 n1 n2 (mul64 w1 w2)).
+
+(*Eval compute in (bits_of_mul64 (mk_long 1) (mk_long 263947215175935) 35 32).*)
