@@ -381,8 +381,9 @@ let order_inst p =
     | 84|85|86|87|88|89|129|113|114|115|146|147|148 -> -1 (* instructions without accumulator *)
     | 38|9|10|11|13|39|40 -> 1 (* v5 instructions with SBO or SBZ can hide other v6 instructions *)
     | 25|105|31|101 -> 2 (* loadstore instructions with a 'T' *)
-    | 19|20|21|22|26|28|29|30|96|97|98|102|104|35|106|116|117|99|100|23|24|41
-        |42|65|18|60|61|2|3|4|6|14|15 -> 3 (* other instuctions with a mode*)
+    | 28|102|104 -> 3
+    | 19|20|21|22|26|29|30|96|97|98|35|106|116|117|99|100|23|24|41
+        |42|65|18|60|61|2|3|4|6|14|15 -> 4 (* other instuctions with a mode*)
     | _ -> 0;;
 
 (*separate the instruction and address mode data*)
