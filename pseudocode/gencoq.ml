@@ -263,12 +263,20 @@ and exp loc b = function
   | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f (pexp loc) e1 num n
   (* default printing of binary operators (like function calls) *)
-  | BinOp (e1, f, e2) -> bprintf b "%a %a %a" binop f (pexp loc) e1 (pexp loc) e2
+  | BinOp (e1, f, e2) -> 
+      bprintf b "%a %a %a" binop f (pexp loc) e1 (pexp loc) e2
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" (exp loc) e1 (exp loc) e2 (exp loc) e3
   | CPSR -> string b "cpsr st"
-  | Range (e, r) -> bprintf b "%a[%a]" (pexp loc) e (range loc) r
+  | Range (e, r) -> 
+      (*begin match e, r with
+        | BinOp (e1, "*", e2) , Bits (n1, n2) ->
+            bprintf b "mul64 %a %a %a %a" 
+              (pexp loc) e1 (pexp loc) e2 num n1 num n2
+        | _ ->  *)
+            bprintf b "%a[%a]" (pexp loc) e (range loc) r
+      (*end*)
   | Memory (e, n) -> bprintf b "read st %a %a" (pexp loc) e size n
 
   | SPSR None -> string b "spsr st em"
@@ -343,9 +351,12 @@ and inst_aux loc k b = function
 
   | If (e, i1, Some i2) ->
       begin match e, i1 with
-        | Fun ("CurrentModeHasSPSR", _), _ | _, Affect (_, SPSR None) -> 
-            bprintf b "if_CurrentModeHasSPSR (fun em => \n%a)"
+        | Fun ("CurrentModeHasSPSR", _), _ -> 
+            bprintf b "if_CurrentModeHasSPSR (fun em =>\n%a)"
               (pinst loc (k+2)) i1
+        | _, Affect (_, SPSR None) -> 
+            bprintf b "if_then_else %a (if_CurrentModeHasSPSR (fun em =>\n%a))\n%a"
+              (pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2
         | _ ->
             bprintf b "if_then_else %a\n%a\n%a"
 	      (pexp loc) e (pinst loc (k+2)) i1 (pinst loc (k+2)) i2
