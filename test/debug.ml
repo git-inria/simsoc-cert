@@ -119,7 +119,7 @@ let check state steps expected name =
   with Failure s -> print_endline ("Error in "^name^": "^s^".");
 ;;
 
-let pc s = Printf.printf "%x" ((reg s 15) - 8);;
+let pc s = Printf.printf "address of current instruction = 0x%x\n" ((reg s 15) - 8);;
 
 let print_coq_Z f n = Format.fprintf f "%d (0x%x)" (coq_Z_to_int n) (coq_Z_to_int n);;
 #install_printer print_coq_Z;;
