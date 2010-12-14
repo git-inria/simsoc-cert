@@ -297,8 +297,10 @@ let importation_error = "We encounter an unknown string to import from the manua
 let _ = 
   let module S = SH4_section9 in
 
- (* let t = S.init_channel stdin in*)
-  let t = S.init Sys.argv.(1) in
+  let t = 
+    match try Some Sys.argv.(1) with _ -> None with
+      | Some s -> S.init s
+      | None -> S.init_channel stdin in
 
   (** [split_from_beg_at f l] returns [l1, x, l2] where the following conditions hold :
   - [l] is equal to [l1 @ [x] @ l2]
