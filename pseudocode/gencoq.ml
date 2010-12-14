@@ -67,7 +67,7 @@ let bin b s =
   let n = String.length s in
     if n <= 2 || String.sub s 0 2 <> "0b" then invalid_arg "Gencoq.bin";
     let i = ref 2 in
-      while s.[!i] = '0' && !i < n do incr i done;
+      while !i < n && s.[!i] = '0' do incr i done;
       if !i >= n then string b "Z0"
       else begin
 	string b "Zpos 1";
