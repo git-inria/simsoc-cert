@@ -100,12 +100,12 @@ let stack s =
     if (sp>stack_top) then raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4);;
 
-let data_coqstr = (String ((Ascii (false, false, true, false, false,
-              true, true, false)), (String ((Ascii (true, false, false,
-              false, false, true, true, false)), (String ((Ascii (false,
-              false, true, false, true, true, true, false)), (String ((Ascii
-              (true, false, false, false, false, true, true, false)),
-              EmptyString))))))));;
+(* let data_coqstr = (String ((Ascii (false, false, true, false, false, *)
+(*               true, true, false)), (String ((Ascii (true, false, false, *)
+(*               false, false, true, true, false)), (String ((Ascii (false, *)
+(*               false, true, false, true, true, true, false)), (String ((Ascii *)
+(*               (true, false, false, false, false, true, true, false)), *)
+(*               EmptyString))))))));; *)
 
 let check state steps expected name =
   try
@@ -123,6 +123,23 @@ let pc s = Printf.printf "address of current instruction = 0x%x\n" ((reg s 15) -
 
 let print_coq_Z f n = Format.fprintf f "%d (0x%x)" (coq_Z_to_int n) (coq_Z_to_int n);;
 #install_printer print_coq_Z;;
+
+type hexa = Ox of int;;
+let print_hexa f = function Ox n -> Format.fprintf f "0x%x" n;;
+#install_printer print_hexa;;
+
+let run (s0: State.state) : BinInt.coq_Z * (int * hexa) list =
+  let rec aux (s: State.state) (l: (int * hexa) list) : State.state * (int * hexa) list =
+    match l with
+      | (step, Ox pc) :: l' ->
+          let s' = next s in
+          let pc' = (reg s' 15) - 8 in
+            if pc' = pc then s', (step+1, Ox pc) :: l'
+            else if pc' = pc+4 then aux s' ((step+1, Ox pc') :: l')
+            else aux s' ((step+1, Ox pc') :: (step+1, Ox pc') :: l')
+      | _ -> raise (Failure "inside run function")
+  in let sn, l = aux s0 [(0, Ox ((reg s0 15) - 8)); (0, Ox ((reg s0 15) - 8))]
+  in Proc.reg (State.proc sn) (R (coq_Z 0)), l;;
 
 #load "sum_iterative_a.cmo";;
 check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
