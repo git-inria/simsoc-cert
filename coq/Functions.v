@@ -297,8 +297,8 @@ x         if –2^(n–1) <= x <= 2^(n–1)–1
 
 Definition SignedSatZ (x : Z) (n : nat) : word :=
   let k := two_power_nat (n-1) in
-    if zlt (-k) x then repr (-k)
-      else if zle x (k-1) then repr x
+    if zlt x (-k) then repr (-k)
+      else if zle (-k) x && zle x (k-1) then repr x
         else repr (k-1).
 
 Definition SignedSat (x : word) (n : nat) : word :=
