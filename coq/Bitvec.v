@@ -261,32 +261,32 @@ Definition long_of_word (x : word) : long := mk_long x.
 
 Coercion long_of_word : word >-> long.
 
-Definition bitwise_binop64 (f: bool -> bool -> bool) (x y: long) :=
-  let fx := bits_of_Z 64 x in
-  let fy := bits_of_Z 64 y in
-  mk_long (Z_of_bits 64 (fun i => f (fx i) (fy i))).
-
-Definition and64 (x y: long): long := bitwise_binop64 andb x y.
-
-(* mask made of the bits n to n+k *)
-Fixpoint masks_aux64 (n k : nat) : Z :=
-  match k with
-    | O => two_power_nat n
-    | S k' => two_power_nat n + masks_aux (S n) k'
-  end.
-
 (* mask made of the bits n to n+(p-n) (p>=n) *)
 Definition masks64 (p n : nat) : long := mk_long (masks_aux n (p-n)).
 
 Definition bits_val64 (p n : nat) (w : long) : Z :=
-  and64 (masks64 p n) w / two_power_nat n.
+  Long.and (masks64 p n) w / two_power_nat n.
 
-Definition bits64 (p n : nat) (w : long) : Z := bits_val64 p n w.
+Definition sbits64 (p n : nat) (w : long) : Z := Word.signed (repr (bits_val64 p n w)).
 
-Definition mul64 (w1 w2 : long) : long :=
-  mk_long (w1 * w2).
+Definition unsbits64 (p n : nat) (w : long) : Z := Word.unsigned (repr (bits_val64 p n w)).
 
-Definition bits_of_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
-  repr (bits64 n1 n2 (mul64 w1 w2)).
+Definition unsigned_mul64 (w1 w2 : long) : long :=
+  Long.mul w1 w2.
 
-(*Eval compute in (bits_of_mul64 (mk_long 1) (mk_long 263947215175935) 35 32).*)
+Definition signed_mul64 (w1 w2 : long) : long :=
+  match Long.signed w1, Long.signed w2 with
+    | Z0, _ | _, Z0 => mk_long Z0
+    | Zpos w1', Zpos w2' | Zneg w1', Zneg w2' => 
+      mk_long (Zpos (w1' * w2'))
+    | Zpos w1', Zneg w2' | Zneg w1', Zpos w2' =>
+      mk_long (Zneg (w1' * w2'))
+  end.
+
+Definition bits_of_unsigned_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
+  repr (unsbits64 n1 n2 (unsigned_mul64 w1 w2)).
+
+Definition bits_of_signed_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
+  repr (sbits64 n1 n2 (signed_mul64 w1 w2)).
+
+Eval compute in (bits_of_signed_mul64 (mk_long 1) (mk_long 9223372036854775808) 63 32).
