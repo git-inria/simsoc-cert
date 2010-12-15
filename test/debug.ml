@@ -83,8 +83,9 @@ let coq_Z_to_int = function
 let regz s n = (Proc.reg (State.proc s)) (R (coq_Z n));;
 let reg s n = coq_Z_to_int (regz s n);;
 
-let read_word s a =
-  coq_Z_to_int (read s (coq_Z a) Bitvec.Word);;
+let read_z s a = read s (coq_Z a) Bitvec.Word;;
+
+let read_word s a = coq_Z_to_int (read_z s a);;
 
 let rec read_words s a n =
   if n = 0 then []

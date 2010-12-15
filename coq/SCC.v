@@ -62,8 +62,8 @@ Definition read (s : state) (a : word) (n : size) : word :=
 Definition write_bits (n : size) (a v w : word) :=
   match n with
     | Word => v
-    | Half => let f := first_bit a in set_bits (f+15) f (shl v f) w
-    | Byte => let f := first_bit a in set_bits (f+7) f (shl v f) w
+    | Half => let f := first_bit a in set_bits (f+15) f v w
+    | Byte => let f := first_bit a in set_bits (f+7) f v w
   end.
 
 Definition write (s : state) (a : word) (n : size) (v : word) : state :=
