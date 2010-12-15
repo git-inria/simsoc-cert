@@ -379,11 +379,12 @@ let order_inst p =
   match num p with
     | 45|8|59|67|16|90 -> -6 (* instruction without condition *)
     | 84|85|86|87|88|89|129|113|114|115|146|147|148 -> -1 (* instructions without accumulator *)
-    | 38|9|10|11|13|39|40 -> 1 (* v5 instructions with SBO or SBZ can hide other v6 instructions *)
+    | 9|10|11|13|39|40 -> 1 (* v5 instructions with SBO or SBZ can hide other v6 instructions *)
     | 25|105|31|101 -> 2 (* loadstore instructions with a 'T' *)
-    | 28|102|104|30 -> 3
-    | 19|20|21|22|26|29|96|97|98|35|106|116|117|99|100|23|24|41
-        |42|65|18|60|61|2|3|4|6|14|15 -> 4 (* other instuctions with a mode*)
+    | 28|102|104|30|26|29 -> 3
+    | 38 -> 4
+    | 19|20|21|22|96|97|98|35|106|116|117|99|100|23|24|41
+        |42|65|18|60|61|2|3|4|6|14|15 -> 5 (* other instuctions with a mode*)
     | _ -> 0;;
 
 (*separate the instruction and address mode data*)
