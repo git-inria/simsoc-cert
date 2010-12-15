@@ -80,7 +80,8 @@ let coq_Z_to_int = function
   | Zneg p -> -(positive_to_int p)
   | Zpos p -> positive_to_int p;;
 
-let reg s n = coq_Z_to_int ((Proc.reg (State.proc s)) (R (coq_Z n)));;
+let regz s n = (Proc.reg (State.proc s)) (R (coq_Z n));;
+let reg s n = coq_Z_to_int (regz s n);;
 
 let read_word s a =
   coq_Z_to_int (read s (coq_Z a) Bitvec.Word);;
@@ -113,11 +114,10 @@ let check state steps expected name =
       if reg s 0 = expected then print_endline (name^" OK.")
       else (
         print_string ("Error in "^name^", r0 = ");
-        print_int (reg s 0); print_string " instead of ";
-        print_int expected; print_endline "."
+        Printf.printf "%d (0x%x)" (reg s 0) (reg s 0); print_string " instead of ";
+        Printf.printf "%d (0x%x)" expected expected; print_endline "."
       )
-  with Failure s -> print_endline ("Error in "^name^": "^s^".");
-;;
+  with Failure s -> print_endline ("Error in "^name^": "^s^".");;
 
 let pc s = Printf.printf "address of current instruction = 0x%x\n" ((reg s 15) - 8);;
 
@@ -139,7 +139,7 @@ let run (s0: State.state) : BinInt.coq_Z * (int * hexa) list =
             else aux s' ((step+1, Ox pc') :: (step+1, Ox pc') :: l')
       | _ -> raise (Failure "inside run function")
   in let sn, l = aux s0 [(0, Ox ((reg s0 15) - 8)); (0, Ox ((reg s0 15) - 8))]
-  in Proc.reg (State.proc sn) (R (coq_Z 0)), l;;
+  in regz sn 0, l;;
 
 #load "sum_iterative_a.cmo";;
 check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
