@@ -271,11 +271,11 @@ Definition sbits64 (p n : nat) (w : long) : Z := Word.signed (repr (bits_val64 p
 
 Definition unsbits64 (p n : nat) (w : long) : Z := Word.unsigned (repr (bits_val64 p n w)).
 
-Definition unsigned_mul64 (w1 w2 : long) : long :=
+Definition unsigned_mul64 (w1 w2 : word) : long :=
   Long.mul w1 w2.
 
-Definition signed_mul64 (w1 w2 : long) : long :=
-  match Long.signed w1, Long.signed w2 with
+Definition signed_mul64 (w1 w2 : word) : long :=
+  match Word.signed w1, Word.signed w2 with
     | Z0, _ | _, Z0 => mk_long Z0
     | Zpos w1', Zpos w2' | Zneg w1', Zneg w2' => 
       mk_long (Zpos (w1' * w2'))
@@ -283,10 +283,10 @@ Definition signed_mul64 (w1 w2 : long) : long :=
       mk_long (Zneg (w1' * w2'))
   end.
 
-Definition bits_of_unsigned_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
+Definition bits_of_unsigned_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
   repr (unsbits64 n1 n2 (unsigned_mul64 w1 w2)).
 
-Definition bits_of_signed_mul64 (w1 w2 : long) (n1 n2 : nat) : word :=
+Definition bits_of_signed_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
   repr (sbits64 n1 n2 (signed_mul64 w1 w2)).
 
-Eval compute in (bits_of_signed_mul64 (mk_long 1) (mk_long 9223372036854775808) 63 32).
+(*Eval compute in (bits_of_signed_mul64 (repr (1)) (repr (-1)) 63 32).*)
