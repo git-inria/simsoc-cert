@@ -129,18 +129,29 @@ type hexa = Ox of int;;
 let print_hexa f = function Ox n -> Format.fprintf f "0x%x" n;;
 #install_printer print_hexa;;
 
-let run (s0: State.state) : BinInt.coq_Z * (int * hexa) list =
+let run_opt (s0: State.state) (max: int option): BinInt.coq_Z * (int * hexa) list =
   let rec aux (s: State.state) (l: (int * hexa) list) : State.state * (int * hexa) list =
     match l with
       | (step, Ox pc) :: l' ->
-          let s' = next s in
-          let pc' = (reg s' 15) - 8 in
-            if pc' = pc then s', (step+1, Ox pc) :: l'
-            else if pc' = pc+4 then aux s' ((step+1, Ox pc') :: l')
-            else aux s' ((step+1, Ox pc') :: (step+1, Ox pc') :: l')
+          if Some step = max then s, l
+          else
+            let s' = next s in
+            let pc' = (reg s' 15) - 8 in
+              if pc' = pc then s', (step+1, Ox pc) :: l'
+              else if pc' = pc+4 then aux s' ((step+1, Ox pc') :: l')
+              else aux s' ((step+1, Ox pc') :: (step+1, Ox pc') :: l')
       | _ -> raise (Failure "inside run function")
   in let sn, l = aux s0 [(0, Ox ((reg s0 15) - 8)); (0, Ox ((reg s0 15) - 8))]
   in regz sn 0, l;;
+
+let run s0 = run_opt s0 None;;
+let runmax s0 max = run_opt s0 (Some max);;
+
+#load "arm_multiple_a.cmo";;
+check Arm_multiple_a.initial_state 212 63 "arm_multiple";;
+
+#load "arm_edsp_a.cmo";;
+check Arm_edsp_a.initial_state 679 8388607 "arm_edsp";;
 
 #load "sum_iterative_a.cmo";;
 check Sum_iterative_a.initial_state 264 903 "sum_iterative";;
@@ -160,9 +171,6 @@ check Arm_cflag_a.initial_state 100 15 "arm_cflag";;
 #load "arm_dpi_a.cmo";;
 check Arm_dpi_a.initial_state 964 524287 "arm_dpi";;
 
-#load "arm_edsp_a.cmo";;
-check Arm_edsp_a.initial_state 679 8388607 "arm_edsp";;
-
 #load "arm_ldmstm_a.cmo";;
 check Arm_ldmstm_a.initial_state 119 7 "arm_ldmstm";;
 
@@ -177,9 +185,6 @@ check Arm_mrs_a.initial_state 727 0x7ffff "arm_mrs";;
 
 #load "arm_msr_a.cmo";;
 check Arm_msr_a.initial_state 639 0x1ffff "arm_msr";;
-
-#load "arm_multiple_a.cmo";;
-check Arm_multiple_a.initial_state 212 63 "arm_multiple";;
 
 #load "arm_swi_a.cmo";;
 check Arm_swi_a.initial_state 45 3 "arm_swi";;
