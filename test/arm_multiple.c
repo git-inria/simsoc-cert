@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some multiplication instructions
- * After 212 instructions executed, r0 should contain 0x3f = 63 */
+ * After 227 instructions executed, r0 should contain 0x1ff = 511 */
 
 #include "common.h"
 
@@ -72,17 +72,17 @@ void test_SMULLS() {
 }
 
 void test_SMLALS() {
-  uint32_t x, y, f;
+  uint32_t x, y, cpsr;
   x = 1;
   y = 2;
   asm("smlals %0, %1, %3, %4\n\t"
       "mrs %2, CPSR"
-      : "+&r" (x), "+&r" (y), "=r" (f)
+      : "+&r" (x), "+&r" (y), "=r" (cpsr)
       : "r" (5), "r" (0xffffffff));
-  CHECK(32,(x == 0xfffffffc)&&
-        (y == 0x1)&&
-        !(f&(1<<31))&&
-        !(f&(1<<30)));
+  CHECK(32,x == 0xfffffffc);
+  CHECK(64,y == 0x1);
+  CHECK(128, !(cpsr&(1<<31)));
+  CHECK(256, !(cpsr&(1<<30)));
 }
 
 int main(){
