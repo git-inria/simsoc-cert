@@ -35,7 +35,8 @@ let str_to_lst s =
 (*organise the input data with different types*)
 type kind =
   | DecMode of int
-  | DecInstARM
+  | DecInstARMCond
+  | DecInstARMUncond
   | DecInstThumb
   | DecEncoding;;
 
@@ -50,7 +51,8 @@ let lightheader_to_string lh =
 (* the kind of an element *)
 let add_mode (lh: lightheader) =
   match lh with
-    | LH ((4 :: _ :: _ :: _), _) -> DecInstARM
+    | LH ((4 :: 1 :: (8|16|45|59|67|90) :: _), _) -> DecInstARMUncond
+    | LH ((4 :: _ :: _ :: _), _) -> DecInstARMCond
     | LH ((5 :: _ :: 1 :: _), _) -> DecEncoding
     | LH ([5; n; _], _) -> DecMode n
     | LH ([7; _; _], _) -> DecInstThumb
