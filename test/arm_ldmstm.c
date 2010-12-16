@@ -71,15 +71,16 @@ void set_ldm3_id() {
 void test_ldm_3() {
   uint32_t p = (uint32_t) set_ldm3_id;
   asm volatile ("mov r1, %0\n\t"
-                "add lr,pc,#16\n\t"
-                "mrs r0,CPSR\n\t"
-                "bic r0,r0,#0x1f\n\t"
+                "add lr,pc,#20\n\t"
+                "mrs r2,CPSR\n\t"
+                "bic r0,r2,#0x1f\n\t"
                 "orr r0,r0,#0x13\n\t"
                 "msr CPSR_c,r0\n\t"
+                "msr SPSR,r2\n\t"
                 "ldmda r1!,{r15}^"
                 :
                 :"r" ((uint32_t)&p), "m" (p) // pc = MEM[&p] = p = set_ldm3_str
-                :"lr","r0","r1");
+                :"lr","r0","r1","r2");
   if (ldm3_id) {
     CHECK(4,*ldm3_id,421); // LDM_3 test
   }
