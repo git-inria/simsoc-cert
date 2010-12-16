@@ -59,46 +59,6 @@ let id_inst (ps: maplist_element) =
     concatenate (name ps);;
 
 (*****************************************************************************)
-(** binary list *)
-(*****************************************************************************)
-
-
-(*add the position of element in the array*)
-let pos_info (_, pc) =
-  let ar = Array.create (Array.length pc) (Nothing, 0) in
-    for i = 0 to Array.length pc - 1 do
-      ar.(i) <- (pc.(i), i)
-    done;
-    ar;;
-
-(*translate array content to binary and variable.
- * That is to say, we generate the "pattern"
-(* The bits are separated by ' *)
- *)
-let gen_pattern x =
-  let dec b ls =
-    match ls with
-      | (Value s, _) ->
-	  begin match s with
-	    | true -> string b "1"
-	    | false -> string b "0"
-	  end
-      | (Shouldbe s, i) ->
-	  begin match s with
-	    | true -> bprintf b "SBO%d" i
-	    | false -> bprintf b "SBZ%d" i
-	  end
-      | (Param1 c, _) -> bprintf b "%c_" c (*REMOVE: (Char.escaped c)*)
-      | (Param1s s, _) -> bprintf b "%s" s
-      | (Range _, _) -> string b "_"
-      | (Nothing, _) -> ()
-  in
-  let aux b =
-    let lst = Array.to_list x in
-      (list " " dec) b (List.rev lst)
-  in aux;;
-
-(*****************************************************************************)
 (** add addressing mode parameter to instructions *)
 (*****************************************************************************)
 
@@ -123,11 +83,64 @@ let mode_of_inst (m: string list) (lst: (string*int*int) list) =
 (* 'n' is the name of an instruction, represented by a string list *)
 let add_mode_param (md: kind) (n: string list) lst =
   match md with
-    | DecInstARM ->
+    | DecInstARMCond | DecInstARMUncond ->
 	if (mode_of_inst n lst != 0) then
 	  List.append [("add_mode", 0, 0)] lst
 	else lst
     | DecInstThumb | DecMode _ | DecEncoding -> lst;;
+
+
+(*****************************************************************************)
+(** binary list *)
+(*****************************************************************************)
+
+(*add the position of element in the array*)
+let pos_info (_, pc) =
+  let ar = Array.create (Array.length pc) (Nothing, 0) in
+    for i = 0 to Array.length pc - 1 do
+      ar.(i) <- (pc.(i), i)
+    done;
+    ar;;
+
+(*translate array content to binary and variable.
+ * That is to say, we generate the "pattern"
+(* The bits are separated by ' *)
+ *)
+let gen_pattern (lh ,ls) =
+  let x = pos_info (lh, ls) in
+  let dec b ls =
+    match ls with
+      | (Value s, _) ->
+	  begin match s with
+	    | true -> string b "1 "
+	    | false -> string b "0 "
+	  end
+      | (Shouldbe s, i) ->
+	  begin match s with
+	    | true -> bprintf b "SBO%d " i
+	    | false -> bprintf b "SBZ%d " i
+	  end
+      | (Param1 c, _) -> bprintf b "%c_ " c (*REMOVE: (Char.escaped c)*)
+      | (Param1s s, _) -> bprintf b "%s " s
+      | (Range ("cond", _, _), _) -> ()
+      | (Range _, _) -> string b "_ "
+      | (Nothing, _) -> ()
+  in
+  let aux b =
+    match add_mode lh with
+      | DecInstARMUncond -> 
+          let lst = Array.to_list (Array.sub x 0 28) in
+            (list "" dec) b (List.rev lst)
+      | DecInstARMCond -> begin match name (lh ,ls) with
+          | "BKPT" :: _ -> let lst = Array.to_list (Array.sub x 0 28) in
+              (list "" dec) b (List.rev lst)
+          | _ -> let lst = Array.to_list x in
+              (list "" dec) b (List.rev lst)
+        end
+      | DecMode _ | DecInstThumb | DecEncoding ->
+          let lst = Array.to_list x in
+            (list "" dec) b (List.rev lst)
+  in aux;;
 
 (*****************************************************************************)
 (** remove unused parameters from instructions and addressing mode cases *)
@@ -172,7 +185,7 @@ let remove_params (md: kind) n lst =
     List.map (fun s -> if (
 		match md with
 		  | DecMode i -> is_not_param_add_mode i s
-		  | DecInstARM ->
+		  | DecInstARMCond | DecInstARMUncond ->
 		      let im = mode_of_inst n lst in
 			is_not_param_inst im s
                   | DecInstThumb -> false (* TODO: Thumb mode *)
@@ -333,25 +346,27 @@ let mode_tst (lh, ls) =
 (** constructor for instructions and addressing mode *)
 (*****************************************************************************)
 
+let unconditional_instr =
+ ["BLX1"; "CPS"; "PLD"; "RFE"; "SETEND"; "SRS"];;
+
 let dec_inst b (lh, ls) =
-  let dbits = pos_info (lh,ls) in
-    let md = add_mode lh in
-      match md with
-	| DecInstARM ->
-	    bprintf b "    %a\n    | word32 %t =>\n      %t\n"
-	      comment lh (gen_pattern dbits) (mode_tst (lh, ls))
-        | DecInstThumb -> () (* TODO: Thumb mode *)
-	| DecEncoding -> ()
-	| DecMode i ->
-	    (*FIXME*)
-	    if i = 1 || (i = 2 && false) || (i = 3 && false) then
-	      bprintf b "    %a\n    | word32 %t =>\n      DecInst (%s %t)\n"
-		comment lh (gen_pattern dbits)
-		(id_addr_mode (lh, ls)) (params string (lh, ls))
-	    else
-	      bprintf b "    %a\n    | word32 %t =>\n      decode_cond w (fun condition => %s %t)\n"
-		comment lh (gen_pattern dbits)
-		(id_addr_mode (lh, ls)) (params string (lh, ls))
+  let md = add_mode lh in
+    match md with
+      | DecInstARMCond | DecInstARMUncond 
+          -> bprintf b "    %a\n    | word28 %t=>\n      %t\n"
+	  comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls))
+      | DecInstThumb -> () (* TODO: Thumb mode *)
+      | DecEncoding -> ()
+      | DecMode i ->
+	  (*FIXME*)
+	  if i = 1 || (i = 2 && false) || (i = 3 && false) then
+	    bprintf b "    %a\n    | word28 %t=>\n      DecInst (%s %t)\n"
+	      comment lh (gen_pattern (lh, ls))
+	      (id_addr_mode (lh, ls)) (params string (lh, ls))
+	  else
+	    bprintf b "    %a\n    | word28 %t=>\n      decode_cond w (fun condition => %s %t)\n"
+	      comment lh (gen_pattern (lh ,ls))
+	      (id_addr_mode (lh, ls)) (params string (lh, ls))
 ;;
 
 (*****************************************************************************)
@@ -388,9 +403,13 @@ let order_inst p =
     | _ -> 0;;
 
 (*separate the instruction and address mode data*)
-let is_inst (lh, _) = match add_mode lh with
-  | DecInstARM | DecInstThumb -> true
-  | DecEncoding | DecMode _ -> false;;
+let is_cond_inst (lh, _) = match add_mode lh with
+  | DecInstARMCond | DecInstThumb -> true
+  | DecEncoding | DecMode _ | DecInstARMUncond-> false;;
+
+let is_uncond_inst (lh, _) = match add_mode lh with
+  | DecInstARMUncond | DecInstThumb -> true
+  | DecEncoding | DecMode _ | DecInstARMCond-> false;;
 
 let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
@@ -404,14 +423,25 @@ let decode b ps =
 
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
-    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w32_of_word w with\n" i i;
+    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w28_of_word w with\n" i i;
     (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
     bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
   done;
 
   (*print the instruction decoder*)
-  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n  match w32_of_word w with\n";
-  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_inst) ps));
-  bprintf b "    | _ => DecUndefined inst\n  end."
+  bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
+  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
+  bprintf b "    | _ => DecUndefined inst\n  end.";
+
+  bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
+  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
+  bprintf b "    | _ => DecUndefined inst\n  end.";
+
+  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=
+  match w32_of_word w with
+    | word32 1 1 1 1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>
+      decode_unconditional w
+    | _ => decode_conditional w
+  end.\n"
 ;;
 
