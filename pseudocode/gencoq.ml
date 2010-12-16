@@ -266,6 +266,7 @@ and exp loc nm b = function
   (* default printing of function calls *)
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
 
+  | BinOp (e1, "<", Num "0") -> bprintf b "lt_0 %a" (pexp loc nm) e1
   (* optimization avoiding a call to repr *)
   | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f (pexp loc nm) e1 num n

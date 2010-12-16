@@ -294,4 +294,13 @@ Definition bits_of_unsigned_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
 Definition bits_of_signed_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
   repr (sbits64 n1 n2 (signed_mul64 w1 w2)).
 
+Definition lt_0 (x: word) : bool :=
+  match Word.signed x with
+    | Z0 => false
+    | Zpos x' => false
+    | Zneg x' => true
+  end.
+
+Eval compute in (lt_0 (repr (-1))).
+
 (*Eval compute in (bits_of_signed_mul64 (repr (1)) (repr (-1)) 63 32).*)
