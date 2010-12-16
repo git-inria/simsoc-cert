@@ -105,6 +105,8 @@ let string_of_regnum = function
 
 let regnum b s = string b (string_of_regnum s);;
 
+let input_registers = ["n"; "m"; "s"; "dLo"];;
+
 (*****************************************************************************)
 (** memory size *)
 (*****************************************************************************)
@@ -137,9 +139,13 @@ let addr_mode b m = bprintf b "M%d" m;;
 
 let depend_on_state = function
   | "address_of_next_instruction" | "address_of_current_instruction"
-  | "CurrentModeHasSPSR" | "InAPrivilegedMode" | "ConditionPassed"
+  | "CurrentModeHasSPSR" 
   | "ExecutingProcessor" | "IsExclusiveGlobal" | "IsExclusiveLocal"
   | "TLB" | "Shared" | "high_vectors_configured" -> true
+  | _ -> false;;
+
+let depend_on_init_state = function
+  | "ConditionPassed" |"InAPrivilegedMode"  -> true
   | _ -> false;;
 
 let depend_on_config = function
@@ -152,6 +158,7 @@ let string_of_fun_name = function
   | "NOT" -> "not"
   | "not" -> "negb"
   | s when depend_on_config s -> "C." ^ s
+  | s when depend_on_init_state s -> s ^ " s0"
   | s when depend_on_state s -> s ^ " st"
   | s -> s;;
 
@@ -268,7 +275,15 @@ and exp loc nm b = function
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" (exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
-  | CPSR -> string b "cpsr st"
+  | CPSR -> begin match nm with
+      | "SETEND"|"Immediate"|"Register"|"Logical_shift_left_by_immediate"
+      | "Logical_shift_right_by_register"|"Rotate_right_by_immediate"
+      | "Logical_shift_left_by_register"|"Arithmetic_shift_right_by_immediate"
+      | "Arithmetic_shift_right_by_register"|"Rotate_right_by_register"
+      | "Rotate_right_with_extend"| "Scaled_register_offset" 
+      | "Scaled_register_pre_indexed"|"Scaled_register_post_indexed"-> string b "cpsr s0"
+      | _ -> string b "cpsr st"
+    end
   | Range (e, r) -> 
       begin match e, r with
         | BinOp (e1, "*", e2) , Bits (n1, n2) ->
@@ -287,8 +302,12 @@ and exp loc nm b = function
 
   | SPSR None -> string b "spsr st em"
   | SPSR (Some m) -> bprintf b "spsr st %a" exn_mode m
-
-  | Reg (e, None) -> bprintf b "reg_content st %a" (regnum_exp loc nm) e
+  | Reg (Var s, None) -> 
+      if List.mem s input_registers
+      then bprintf b "reg_content s0 %s" s
+      else bprintf b "reg_content st %s" s
+  | Reg (e, None) -> 
+      bprintf b "reg_content st %a" (regnum_exp loc nm) e
   | Reg (e, Some m) ->
       bprintf b "reg_content_mode st %a %a" mode m (regnum_exp loc nm) e
 
@@ -464,7 +483,7 @@ let split = function
 let block nm k b i =
   let is1, is2 = split i in
     List.iter (endline (inst [] nm k) b) is1;
-    bprintf b "%alet r := %a nil true st in" indent k (inst_aux [] nm k) (Block is2);;
+    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux [] nm k) (Block is2);;
 
 (* default result component value *)
 let default b _ = string b ", repr 0";;
@@ -480,12 +499,12 @@ let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 let pinst b p =
   match p.pkind with
     | InstARM -> 
-        bprintf b "%a nil true st" (inst (snd (V.vars p.pinst)) (p.pident.iname) 2) p.pinst
+        bprintf b "%a nil true s0" (inst (snd (V.vars p.pinst)) (p.pident.iname) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in
 	  if StrSet.mem p.pref problems then
-	    bprintf b "  let r := %a nil true st in\n    (r%a)"
+	    bprintf b "  let r := %a nil true s0 in\n    (r%a)"
 	      (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
 	      (list "" default) ls
 	else
@@ -504,7 +523,7 @@ let semfun b p gs =
   match p.pkind with
     | InstARM | Mode _ ->
         bprintf b
-          "(* %s %a *)\nDefinition %a_step (st : state)%a : result%a :=\n%a.\n\n"
+          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
           p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p
     | InstThumb -> ();; (* TODO: Thumb mode *)
 
@@ -547,11 +566,11 @@ let call bcall_inst bcall_mode p gs =
 	begin match addr_mode_of_prog p gs with
 	  | None ->
 	      bprintf b "    | %a%a =>" name p args gs;
-	      bprintf b " %a_step st%a\n" name p args gs
+	      bprintf b " %a_step s0%a\n" name p args gs
 	  | Some k ->
 	      bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
 	      bprintf b
-		"\n      match mode%d_step st m_ with (r%a) =>\n"
+		"\n      match mode%d_step s0 m_ with (r%a) =>\n"
 		k (list "" mode_var) (mode_vars k);
               bprintf b "        match r with\n";
               bprintf b "          | Ok _ _ s1 =>";
@@ -561,7 +580,7 @@ let call bcall_inst bcall_mode p gs =
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
 	bprintf b "    | %a%a =>" name p args gs;
-	bprintf b " %a_step st%a\n" name p args gs;;
+	bprintf b " %a_step s0%a\n" name p args gs;;
 
 (*****************************************************************************)
 (** Main coq generation function.
@@ -598,7 +617,7 @@ let lib b ps =
     bprintf b "(* Semantic functions of addressing modes and instructions *)\nModule InstSem (Import C : CONFIG).\n\n";
     Buffer.add_buffer b bsem;
     for k = 1 to 5 do
-      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (st : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
+      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
     done;
-    bprintf b "(* Semantic function for instructions *)\nDefinition step (st : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+    bprintf b "(* Semantic function for instructions *)\nDefinition step (s0 : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
     bprintf b "End InstSem.\n";;
