@@ -262,7 +262,7 @@ Any operations used to calculate x or n are not repeated. *)
 
 Definition SignedDoesSatZ (x : Z) (n : nat) : bool :=
   let k := two_power_nat (n-1) in
-    zle (-k) x && zle x (k-1).
+    negb (zle (-k) x && zle x (k-1)).
 
 Definition SignedDoesSat (x : word) (n : nat) : bool :=
   SignedDoesSatZ (signed x) n.
