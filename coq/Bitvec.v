@@ -305,7 +305,3 @@ Definition lt_0 (x: word) : bool :=
     | Zpos x' => false
     | Zneg x' => true
   end.
-
-Eval compute in (lt_0 (repr (-1))).
-
-(*Eval compute in (bits_of_signed_mul64 (repr (1)) (repr (-1)) 63 32).*)
