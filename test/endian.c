@@ -40,7 +40,7 @@ int main()
           d.byte.b2==0xc0&&
           d.byte.b3==0xd0)) {
       bad+=1; //print_str("=> error!\n");
-      return 1;
+      return (bad<<16)|good;
     }
     bad+=2; //print_str("=> big endian\n");
     big_endian = 1;
@@ -54,7 +54,7 @@ int main()
     big_endian = 0;
   } else {
     bad+=4; /* print_str("=> error!\n"); */
-    return 1;
+    return (bad<<16)|good;
   }
 
   Data a;
@@ -67,27 +67,27 @@ int main()
       a.half.h1==0xc0d0) {
     if (a.word!=0xa0b0c0d0) {
       bad+=8; /* print_str("=> error!\n"); */
-      return 1;
+      return (bad<<16)|good;
     }
     bad+=16; /* print_str("=> big endian\n"); */
     if (!big_endian) {
       bad+=32; /* print_str("=> error!\n"); */
-      return 1;
+      return (bad<<16)|good;
     }
   } else if (a.half.h0==0xb0a0&&
              a.half.h1==0xd0c0){
     if(a.word!=0xd0c0b0a0) {
       bad+=64; /* print_str("=> error!\n"); */
-      return 1;
+      return (bad<<16)|good;
     }
     good+=2; /* print_str("=> little endian\n"); */
     if (big_endian) {
       bad+=128; /* print_str("=> error!\n"); */
-      return 1;
+      return (bad<<16)|good;
     }
   } else {
     bad+=256; /* print_str("=> error!\n"); */
-    return 1;
+    return (bad<<16)|good;
   }
   good+=4; /* print_str("End of Test.\n"); */
   return (bad<<16)|good;
