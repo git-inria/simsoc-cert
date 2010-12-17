@@ -89,8 +89,8 @@ Definition loop (p q : nat) (f : nat -> semfun) (loc0 : local)
 Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
   : local :=
   match loc with
-    | nil => ((List.length loc +1, v) :: loc)
-    | (nb', v') :: locs => if eq nb nb' then (nb, v) :: locs 
+    | nil => ((nb, v) :: loc)
+    | (nb', v') :: locs => if beq_nat nb nb' then (nb, v) :: locs 
       else (nb', v') :: update_loc_aux nb v locs
   end.
 
@@ -107,7 +107,7 @@ Definition update_loc (nb : nat) (v : word) (loc : local)
 Fixpoint get_loc (nb : nat) (loc : local) : word :=
   match loc with
     | nil => zero
-    | (nb', v) :: locs => if eq nb nb' then v else get_loc nb locs
+    | (nb', v) :: locs => if beq_nat nb nb' then v else get_loc nb locs
   end.
 
 Definition set_cpsr (v : word) (loc : local) (b : bool) 
