@@ -35,10 +35,10 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	../testgen/elf2coq $< $@
 
 %_a.elf: %.c common.h
-	arm-elf-gcc $< -nostdlib -lc -lnosys -o $@
+	arm-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
 
 %_t.elf: %.c common.h
-	arm-elf-gcc -mthumb $< -nostdlib -lc -lnosys -lgcc -o $@
+	arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
 ../testgen/elf2coq: FORCE
 	cd ../testgen/ && $(MAKE)
