@@ -76,6 +76,11 @@ Definition bits_val (p n : nat) (w : word) : Z :=
 Definition bits (p n : nat) (w : word) : word := repr (bits_val p n w).
 Notation "w [ p # n ]" := (bits p n w) (at level 8).
 
+Definition byte0 (w : word) : word := bits 7 0 w.
+Definition byte1 (w : word) : word := bits 15 8 w.
+Definition byte2 (w : word) : word := bits 23 16 w.
+Definition byte3 (w : word) : word := bits 31 24 w.
+
 (* n-th bit of w *)
 Definition bit (n : nat) (w : word) : word := bits n n w.
 Notation get := bit.

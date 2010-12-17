@@ -189,6 +189,21 @@ let is_cp15_reg1 s =
 (** expressions *)
 (*****************************************************************************)
 
+let rec update_lst s lst =
+  match lst with
+    | [] -> [s]
+    | h :: t -> 
+        if s = h then lst else update_lst s t
+;;
+
+let rec string_to_nb s lst =
+  match lst with
+    | [] -> List.length lst
+    | h :: t -> 
+        if s = h then List.length lst - List.length t
+        else string_to_nb s t
+;;
+
 (*FIXME: raise an exception instead of use a todo for the instruction
   containing this expression*)
 
@@ -202,9 +217,10 @@ let is_not_num = function
 
 (* add parentheses around complex expressions *)
 
-let rec pexp loc nm b = function
+let rec pexp (loc: (string*string*int) list) nm b = function
   | Var s as e -> 
-      if (List.mem_assoc s loc) then par (loc_exp loc nm) b e else (exp loc nm) b e
+      if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm) b e 
+      else (exp loc nm) b e
   | Fun (f, []) as e when depend_on_config f -> (exp loc nm) b e 
   | e -> par (exp loc nm) b e
 
@@ -229,7 +245,13 @@ and regnum_exp loc nm b = function
 and nat_exp loc nm b e = bprintf b "(nat_of_Z %a)" (pexp loc nm) e
 
 and loc_exp loc nm b = function
-  | Var s -> bprintf b "get_loc \"%s\" loc" s
+  | Var s ->
+      begin
+        try 
+          let name, _type, id = List.find (fun (s',_,_) -> s'=s) loc in
+            bprintf b "get_loc %d (*%s*) loc" id name
+        with Not_found -> raise (Failure "inside loc_exp")
+      end
   | e -> pexp loc nm b e
 
 and exp loc nm b = function
@@ -296,6 +318,10 @@ and exp loc nm b = function
               | _ -> bprintf b "(mul %a %a)[%a]"
                   (pexp loc nm) e1 (pexp loc nm) e2 (range loc nm) r
             end
+        | e, Bits ("7","0") -> bprintf b "(byte0 %a)" (pexp loc nm) e
+        | e, Bits ("15","8") -> bprintf b "(byte1 %a)" (pexp loc nm) e
+        | e, Bits ("23","16") -> bprintf b "(byte2 %a)" (pexp loc nm) e
+        | e, Bits ("31","24") -> bprintf b "(byte3 %a)" (pexp loc nm) e
         | _ ->
             bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
       end
@@ -342,12 +368,6 @@ and decl_loc f b x = bprintf b "(fun loc b st => %a loc b st)" f x
 and decl_loc_postfix f b x = bprintf b "(fun loc b st => %a loc b st) ::" f x
 
 and pinst loc nm k b i = indent b k; decl_loc (inst_aux loc nm k) b i
-
-(*and decl k b i loc = function
-  | Var s -> if List.mem_assoc s loc then 
-      decl_loc (inst_aux nm loc k)  b i
-    else inst_aux loc k b i
-  | _ -> inst_aux loc k b i*)
 
 and loc_v i = snd (V.vars i)
 
@@ -415,10 +435,13 @@ and inst_aux loc nm k b = function
 
 and affect' b v loc nm = function
   (* otherwise, we use some Coq update function *)
-  | Var s -> 
-      if List.mem_assoc s loc then  
-        bprintf b "update_loc \"%s\" %a" s (pexp loc nm) v
-      else bprintf b "let %s := %a in" s (pexp loc nm) v
+  | Var s ->
+      begin
+        try
+          let name, _type, id = List.find (fun (s',_,_) -> s=s') loc in  
+            bprintf b "update_loc %d (*%s*) %a" id name (pexp loc nm) v
+        with Not_found -> bprintf b "let %s := %a in" s (pexp loc nm) v
+      end
   (* affectation of a CPSR bit requires a special case *)
   | Range (CPSR, Flag (s, _)) -> 
       bprintf b "set_cpsr_bit %sbit %a" s (pexp loc nm) v
@@ -497,10 +520,17 @@ let mode_var b = function
   are not handled yet. Moreover, they use while-loops... *)
 let problems = set_of_list ["A5.5.2";"A5.5.3";"A5.5.4";"A5.5.5"];;
 
+let add_index l =
+  let rec aux n = function
+    | [] -> []
+    | (a,b) :: tl -> (a,b,n) :: aux (n+1) tl
+  in aux 0 l;;
+
 let pinst b p =
   match p.pkind with
     | InstARM -> 
-        bprintf b "%a nil true s0" (inst (snd (V.vars p.pinst)) (p.pident.iname) 2) p.pinst
+        let loc = add_index (snd (V.vars p.pinst)) in
+        bprintf b "%a nil true s0" (inst loc (p.pident.iname) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
 	let ls = mode_vars k in

@@ -18,7 +18,7 @@ Require Import State Util Bitvec Arm State List Message ZArith String.
  ** with a list of variables*)
 (****************************************************************************)
 
-Definition local := list (string * word).
+Definition local := list (nat * word).
 
 Inductive result : Type :=
 | Ok (loc : local) (b : bool) (s : state)
@@ -71,7 +71,7 @@ Fixpoint block (fs : list semfun) (loc0 : local) (b0 : bool)
   end.
 
 Fixpoint loop_aux (p k : nat) (f : nat -> semfun) 
-  (loc0 : list (string * word)) (b0 : bool) (s0 : state)
+  (loc0 : local) (b0 : bool) (s0 : state)
   : result :=
   match k with
     | 0 => Ok loc0 b0 s0
@@ -86,28 +86,28 @@ Definition loop (p q : nat) (f : nat -> semfun) (loc0 : local)
   (b0 : bool) (s0 : state)
   : result := loop_aux p (q - p + 1) f loc0 b0 s0.
 
-Fixpoint update_loc_aux (s : string) (v : word) (loc : local)
-  : list (string * word) :=
+Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
+  : local :=
   match loc with
-    | nil => ((s, v) :: loc)
-    | (s', v') :: locs => if string_dec s s' then (s, v) :: locs 
-      else (s', v') :: update_loc_aux s v locs
+    | nil => ((List.length loc +1, v) :: loc)
+    | (nb', v') :: locs => if eq nb nb' then (nb, v) :: locs 
+      else (nb', v') :: update_loc_aux nb v locs
   end.
 
-Definition update_loc (str : string) (v : word) (loc : local)
+Definition update_loc (nb : nat) (v : word) (loc : local)
   (b : bool) (s : state) : result :=
-  Ok (update_loc_aux str v loc) b s.
+  Ok (update_loc_aux nb v loc) b s.
 
-Fixpoint get_loc (str : string) (loc : local) : word :=
+(*Fixpoint get_loc (str : string) (loc : local) : word :=
   match loc with
     | nil => zero
     | (s, v) :: locs => if string_dec s str then v else get_loc str locs
-  end.
+  end.*)
 
-Fixpoint get_loc' (str : string) (loc : local) : option word :=
+Fixpoint get_loc (nb : nat) (loc : local) : word :=
   match loc with
-    | nil => None
-    | (s, v) :: locs => if string_dec s str then Some v else get_loc' str locs
+    | nil => zero
+    | (nb', v) :: locs => if eq nb nb' then v else get_loc nb locs
   end.
 
 Definition set_cpsr (v : word) (loc : local) (b : bool) 
