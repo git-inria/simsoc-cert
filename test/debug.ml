@@ -13,8 +13,6 @@ open Simul
 open State
 open Util
 open Arm6
-open Ascii
-open String0
 open Semantics
 open Functions
 
@@ -101,13 +99,6 @@ let stack s =
   let sp = reg s 13 in
     if (sp>stack_top) then raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4);;
-
-(* let data_coqstr = (String ((Ascii (false, false, true, false, false, *)
-(*               true, true, false)), (String ((Ascii (true, false, false, *)
-(*               false, false, true, true, false)), (String ((Ascii (false, *)
-(*               false, true, false, true, true, true, false)), (String ((Ascii *)
-(*               (true, false, false, false, false, true, true, false)), *)
-(*               EmptyString))))))));; *)
 
 let check state steps expected name =
   try
