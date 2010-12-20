@@ -222,11 +222,11 @@ let remove_params (md: kind) n lst =
 let inst_param ls =
   match ls with
     | (("s" | "m" | "n" | "d" | "dHi" | "dLo"), i, _) ->
-	Printf.sprintf "(regnum_from_bit %d w)" i
+	Printf.sprintf "(regnum_from_bit n%d w)" i
     | ("cond", _, _) ->	"condition" (*REMOVE:"(condition w)"*)
     | (s, p, l) ->
 	if l > 1 then
-	  Printf.sprintf "w[%d#%d]" (p+l-1) p
+	  Printf.sprintf "w[n%d#n%d]" (p+l-1) p
 	else
 	  Printf.sprintf "%s" s
 ;;
