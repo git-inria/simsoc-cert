@@ -11,5 +11,8 @@ Page numbers refer to ARMv6.pdf.
 Extraction of the arm6 simulator.
 *)
 
+(*Unset Extraction Optimize.*)
+Unset Extraction AutoInline.
 Require Extraction arm6.
 Recursive Extraction Library arm6.
+
