@@ -125,7 +125,7 @@ void test_ORRS() {
       get_N_flag(cpsr)==0 &&
       get_Z_flag(cpsr)==0 &&
       get_C_flag(cpsr)==1 &&
-      get_V_flag(cpsr)==1) count+=2048;
+      get_V_flag(cpsr)==1) count+=2048;//update N Z C
 }
 
 void test_BICS() {
@@ -133,7 +133,9 @@ void test_BICS() {
   asm("mov r0,#1\n\t"
       "BICs %0,r0,#0xfffffff0\n\t"
       "mrs %1,CPSR"
-      : "=r" (rd), "=r" (cpsr): : "r0");
+      : "=r" (rd), "=r" (cpsr)
+      : 
+      : "r0");                                      
   if (rd==1 &&
       get_N_flag(cpsr)==0 &&
       get_Z_flag(cpsr)==0) count+=0x1000;
@@ -148,7 +150,7 @@ void test_TST() {
       : "=r" (cpsr));
   if (get_N_flag(cpsr)==0 &&
       get_Z_flag(cpsr)==0 &&
-      get_C_flag(cpsr)==1 &&
+      get_C_flag(cpsr)==1 &&                          
       get_V_flag(cpsr)==0) count+=0x2000;
 }
 
@@ -195,7 +197,8 @@ void test_RSCS() {
 
 void test_CMN() {
   uint32_t cpsr;
-  asm("mov r0, #1\n\t"
+  asm("msr CPSR_f, #0x20000000\n\t" // set C bit
+      "mov r0, #1\n\t"
       "CMN r0, #1\n\t"
       "mrs %0, CPSR"
       : "=r" (cpsr));

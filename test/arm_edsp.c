@@ -83,7 +83,7 @@ void test_SMLA_BB(void) {
       : "=&r" (x)
       : "r"   (0xffff1234),
         "r"   (0xffffece2),
-        "r"   (0x00345678));
+      "r"   (0x00345678));//??
 
   CHECK(32, (x == 0xfed85860));
 }
@@ -97,7 +97,7 @@ void test_SMLA_BB_Q(void) {
       : "=&r" (x), "=r" (f)
       : "r"   (0xffff1234),
         "r"   (0xffffece2),
-        "r"   (0x812bfe18));
+      "r"   (0x812bfe18));//??
 
   CHECK(64, (x == 0x7fd00000) && QFLAG(f));
 }
@@ -111,7 +111,7 @@ void test_SMLA_BT(void) {
         "r"   (0xece2ffff),
         "r"   (0x00345678));
 
-  CHECK(128, (x == 0xfed85860));
+  CHECK(128, (x == 0xfed85860));//?
 }
 
 void test_SMLA_TB(void) {
@@ -123,7 +123,7 @@ void test_SMLA_TB(void) {
         "r"   (0xffffece2),
         "r"   (0x00345678));
 
-  CHECK(256, (x == 0xfed85860));
+  CHECK(256, (x == 0xfed85860));//?
 }
 
 void test_SMLA_TT(void) {
@@ -131,11 +131,11 @@ void test_SMLA_TT(void) {
 
   asm("smlatt %0, %1, %2, %3"
       : "=&r" (x)
-      : "r"   (0x1234ffff),
-        "r"   (0xece2ffff),
-        "r"   (0x00345678));
+      : "r"   (0x0004ffff),
+        "r"   (0x0002ffff),
+        "r"   (0x00000008));
 
-  CHECK(512, (x == 0xfed85860));
+  CHECK(512, (x == 0x10));//?
 }
 
 
@@ -186,9 +186,9 @@ void test_SMULBB(void) {
 
   asm("smulbb %0, %1, %2"
       : "=&r" (x)
-      : "r"   (0xffff1234), "r" (0xffffece2));
+      : "r"   (0xffff1004), "r" (0xffff0002));
 
-  CHECK(0x2000, (x == 0xfea401e8));
+  CHECK(0x2000, (x == 0x00002008));//???????????????????????????????
 }
 
 void test_SMULBT(void) {
@@ -196,9 +196,9 @@ void test_SMULBT(void) {
 
   asm("smulbt %0, %1, %2"
       : "=&r" (x)
-      : "r"   (0xffff1234), "r" (0xece2ffff));
+      : "r"   (0xffff1234), "r" (0x1234ffff));
 
-  CHECK(0x4000, (x == 0xfea401e8));
+  CHECK(0x4000, (x == 0x14B5A90));
 }
 
 void test_SMULTB(void) {

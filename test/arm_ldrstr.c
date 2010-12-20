@@ -64,7 +64,7 @@ void test_offset_ASR_imm() {
   uint32_t x, a1=0xe0000004;
   asm("str %2,[%0,-%3,ASR#2]!\n\t"
       "ldr %1,[%4,#0x4]"
-      : "+&r"(a1), "=r"(x)
+       : "+&r"(a1), "=r"(x)
       : "r"(0xd000000e), "r"(0x80000000), "r"(0));
   CHECK(256, x, 0xd000000e);
   CHECK(512, a1, 0x4);
