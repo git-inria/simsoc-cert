@@ -1,5 +1,7 @@
 CPPFLAGS=-I../elf # for elf.h
-CFLAGS=-Wall -Wextra -Wno-unused -Werror -g
+CFLAGS=-Wall -Wextra -Wno-unused -Werror -g -fprofile-arcs -ftest-coverage
+LDFLAGS= 
+LIBRARIES= -lgcov
 CC = gcc
 
 SOURCES=slv6_iss.c common.c slv6_condition.c slv6_math.c \
@@ -31,7 +33,7 @@ GENFILES=$(GENFILES_MO) slv6_iss.c
 all: simlight
 
 simlight: $(OBJECTS)
-	$(CC) $^ -o $@
+	$(CC) $(LDFLAGS) $^ -o $@ $(LIBRARIES)
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
