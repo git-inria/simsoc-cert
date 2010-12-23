@@ -318,10 +318,12 @@ and exp loc nm b = function
               | _ -> bprintf b "(mul %a %a)[%a]"
                   (pexp loc nm) e1 (pexp loc nm) e2 (range loc nm) r
             end
-        | e, Bits ("7","0") -> bprintf b "(byte0 %a)" (pexp loc nm) e
-        | e, Bits ("15","8") -> bprintf b "(byte1 %a)" (pexp loc nm) e
-        | e, Bits ("23","16") -> bprintf b "(byte2 %a)" (pexp loc nm) e
-        | e, Bits ("31","24") -> bprintf b "(byte3 %a)" (pexp loc nm) e
+        | e, Bits ("7","0") -> bprintf b "(get_byte0 %a)" (pexp loc nm) e
+        | e, Bits ("15","8") -> bprintf b "(get_byte1 %a)" (pexp loc nm) e
+        | e, Bits ("23","16") -> bprintf b "(get_byte2 %a)" (pexp loc nm) e
+        | e, Bits ("31","24") -> bprintf b "(get_byte3 %a)" (pexp loc nm) e
+        | e, Bits ("15","0") -> bprintf b "(get_half0 %a)" (pexp loc nm) e
+        | e, Bits ("31","16") -> bprintf b "(get_half1 %a)" (pexp loc nm) e
         | _ ->
             bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
       end
