@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After 267 instructions executed, r0 should contain 0x11f = 511 */
+ * After 10 instructions executed, r0 should contain 0x3ff = 1023*/
 
 #include "common.h"
 
@@ -74,7 +74,7 @@ void arm_QSUB8(){
   uint32_t x;
   asm("qsub8 %0, %1, %2\n\t"
       :"=&r" (x)
-      :"r" (0xffffffff), "r" (0xffff0000));//if you change %1, %2 with some other values, the return is not correct.
+      :"r" (0xffffffff), "r" (0xffff0000));
 
   CHECK(32,(x == 0x0000ffff));
 }
@@ -83,7 +83,7 @@ void arm_QSUB16(){
   uint32_t x;
   asm("qsub16 %0, %1, %2\n\t"
       :"=&r" (x)
-      :"r" (0xffffffff), "r" (0xffff0000));//if you change %1, %2 with some other values, the return is not correct.
+      :"r" (0xffffffff), "r" (0xffff0000));
 
   CHECK(64,(x == 0x0000ffff));
 }
@@ -92,7 +92,7 @@ void arm_QADD8() {
   uint32_t x;
   asm("qadd8 %0, %1, %2\n\t"
       : "=&r" (x)
-      : "r" (0x0000fffe), "r" (0x00010001));//if you change %1, %2 with some other values, the return is not correct.
+      : "r" (0x0000fffe), "r" (0x00010001));
 
   CHECK(128,(x == 0x0001ffff));
 }
@@ -102,10 +102,27 @@ void arm_QADD16() {
   asm("qadd16 %0, %1, %2\n\t"
       
       : "=&r" (x)
-      : "r" (0x4ffeffff), "r" (0x00010001));//if you change %1, %2 with some other values, the return is not correct.
+      : "r" (0x4ffeffff), "r" (0x00010001));
   CHECK(256,(x == 0x4fffffff));
 }
 
+void thumb_ADD6() {
+  uint32_t x,y,z;
+  y = 0x4;
+  asm("add %0,pc,%1\n\t"
+      "mov %2, pc" 
+      : "=r" (x), "+&r" (y), "=r" (z));
+      
+  CHECK(512, ((z+2)&~2)-2 == (x-4+2));
+  }
+
+/*void thumb_ADR() {
+  uint32_t x,y;
+  asm("adr %0, #0\n\t"
+      "mov %1, pc"
+      : "=r" (x), "=&r" (y));
+  CHECK(512, (x == y));
+  }*/
 int main(){
   arm_SASX();
   arm_SADD8();
@@ -116,6 +133,8 @@ int main(){
   arm_QSUB16();
   arm_QADD8();
   arm_QADD16();
+  thumb_ADD6();
+  //  thumb_ADR();
   return count;
 }
 

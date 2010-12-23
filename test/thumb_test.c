@@ -17,7 +17,7 @@ void test_add5() {
   asm("add %0,pc,#1*4\n\t"
       "mov %1,pc"
       :"=r"(d), "=r" (n));
-  CHECK(1, ((n+2)&~2)-2 == (d-4+2))
+  CHECK(1, ((n+2)&~2)-2 == (d-4+2));
 }
 
 void test_asr1() {

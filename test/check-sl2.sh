@@ -3,7 +3,7 @@ SIMLIGHT="../simlight2/simlight -d -i -r0"
 set -e # exit on error
 set -x # verbose
 
-$SIMLIGHT arm_v6news_a.elf -r0=511
+$SIMLIGHT test_v6news_a.elf -r0=1023
 $SIMLIGHT sum_iterative_a.elf -r0=903
 $SIMLIGHT sum_recursive_a.elf -r0=903
 $SIMLIGHT sum_direct_a.elf -r0=903
