@@ -13,7 +13,7 @@ Functions used in the pseudocode, in alphabetical order.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Arm.
+Require Import Coqlib Util Bitvec Arm Integers.
 
 (****************************************************************************)
 (** Table A4-1 Bit mask constants (p. 227) *)
@@ -304,6 +304,12 @@ Definition SignedSatZ (x : Z) (n : nat) : word :=
 Definition SignedSat (x : word) (n : nat) : word :=
   SignedSatZ (signed x) n.
 
+Definition SignedSatZ' (x : Z) (n : nat) : Z :=
+  let k := two_power_nat (n-1) in
+    if zlt x (-k) then (-k)
+      else if zle (-k) x && zle x (k-1) then x
+        else (k-1).
+
 (****************************************************************************)
 (** SignedSat32_add(x,y)
 
@@ -313,6 +319,12 @@ calling SignedSat. *)
 
 Definition SignedSat32_add (x y : word) : word :=
   SignedSatZ (signed x + signed y) 32.
+
+Definition SignedSat16_add (x y : half) : half :=
+  mk_half (SignedSatZ' (Half.signed x + Half.signed y) 16).
+
+Definition SignedSat8_add (x y : byte) : byte :=
+  mk_byte (SignedSatZ' (Byte.signed x + Byte.signed y) 8).
 
 (****************************************************************************)
 (** SignedDoesSat32_add(x,y)
@@ -333,6 +345,12 @@ calling SignedSat. *)
 
 Definition SignedSat32_sub (x y : word) : word :=
   SignedSatZ (signed x - signed y) 32.
+
+Definition SignedSat16_sub (x y : half) : half :=
+  mk_half (SignedSatZ' (Half.signed x - Half.signed y) 16).
+
+Definition SignedSat8_sub (x y : byte) : byte :=
+  mk_byte (SignedSatZ' (Byte.signed x - Byte.signed y) 8).
 
 (****************************************************************************)
 (** SignedDoesSat32_sub(x,y)
