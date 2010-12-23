@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After 9 instructions executed, r0 should contain 0x11f = 511 */
+ * After 267 instructions executed, r0 should contain 0x11f = 511 */
 
 #include "common.h"
 
