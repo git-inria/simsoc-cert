@@ -53,20 +53,12 @@ let rec exp = function
 	   List.map exp es)
   
   | Fun (("SignedSat"|"SignedDoesSat" as f),
-         (BinOp (_, op, _) as e) :: [Num s]) -> (
-      match e with
-        | BinOp (e', "*", Num "2") -> Fun (sprintf "%s%s_double" f s, [e'])
-        | _ -> let es = args e in
-            Fun (sprintf "%s%s_%s" f s (string_of_op op),
-	         List.map exp es))
-
-  (*| Fun (("SignedSat"|"SignedDoesSat" as f),
          (BinOp (_, op, _) as e) :: [Num "32"]) -> (
       match e with
         | BinOp (e', "*", Num "2") -> Fun (sprintf "%s32_double" f, [e'])
         | _ -> let es = args e in
             Fun (sprintf "%s32_%s" f (string_of_op op),
-	         List.map exp es))*)
+	         List.map exp es))
 
   (* The reference manual does not distinguish between boolean "not"
      and bitwise "NOT". Indeed, the operator is always written "NOT".*)

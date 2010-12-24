@@ -282,6 +282,11 @@ and exp loc nm b = function
   | Fun (f, []) -> fun_name b f
   (* for saturation functions, add a cast to nat if the second
      argument is not a number *)
+
+  | Fun ("SignedSat" as f, (BinOp (e1, op, e2)) :: [Num s]) ->
+      bprintf b "%s%s_%s %a %a" f s (string_of_binop op) (pexp loc nm) e1
+        (pexp loc nm) e2
+
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
 	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
