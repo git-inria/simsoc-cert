@@ -1,7 +1,7 @@
 CPPFLAGS=-I../elf # for elf.h
-CFLAGS=-Wall -Wextra -Wno-unused -Werror -g -fprofile-arcs -ftest-coverage
+CFLAGS=-Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
 LDFLAGS= 
-LIBRARIES= -lgcov
+LIBRARIES= #-lgcov
 CC = gcc
 
 SOURCES=slv6_iss.c common.c slv6_condition.c slv6_math.c \
