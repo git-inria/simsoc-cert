@@ -22,3 +22,4 @@ $SIMLIGHT multiply_a.elf -r0=0xf
 $SIMLIGHT simsoc_new1_a.elf -r0=0xff
 $SIMLIGHT test_mem_a.elf -r0=0x3
 $SIMLIGHT sorting_a.elf -r0=0x3f
+$SIMLIGHT arm_v6_a.elf -r0=510
