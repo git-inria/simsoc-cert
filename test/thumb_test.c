@@ -10,7 +10,7 @@
 int count = 0;
 
 #define CHECK(ID, COND)                         \
-  if (COND) count+=(ID);
+  if (COND) count+=(ID)
 
 void test_add5() {
   uint32_t d,n;

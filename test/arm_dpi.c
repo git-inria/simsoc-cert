@@ -125,7 +125,7 @@ void test_ORRS() {
       get_N_flag(cpsr)==0 &&
       get_Z_flag(cpsr)==0 &&
       get_C_flag(cpsr)==1 &&
-      get_V_flag(cpsr)==1) count+=2048;//update N Z C
+      get_V_flag(cpsr)==1) count+=2048;
 }
 
 void test_BICS() {
@@ -150,7 +150,7 @@ void test_TST() {
       : "=r" (cpsr));
   if (get_N_flag(cpsr)==0 &&
       get_Z_flag(cpsr)==0 &&
-      get_C_flag(cpsr)==1 &&                          
+      get_C_flag(cpsr)==1 &&
       get_V_flag(cpsr)==0) count+=0x2000;
 }
 
