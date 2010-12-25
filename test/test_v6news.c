@@ -2,28 +2,29 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After 10 instructions executed, r0 should contain 0x3ff = 1023*/
+ * After ?? instructions executed, r0 should contain 510 = 0b111111110 = 0x1e*/
 
 #include "common.h"
 
 int count = 0;
 
 #define CHECK(ID, COND)                         \
-  if (COND) count+=(ID);
+  if (COND) count+=(ID)
 
-void arm_SASX() {
-  uint32_t x, f;
-  asm("sasx %0, %2, %3\n\t"
-      "mrs %1, CPSR"
-      : "=&r" (x), "=r" (f)
-      : "r" (0x12345678), "r" (0x56781234));
-  CHECK(1,(x == 0x24680000)
-		&&(f&(1<<16))
-		&&(f&(1<<17))
-		&&(f&(1<<18))
-		&&(f&(1<<19))
-	);
-}
+/* REMOVE: not an ARMv6 instruction */
+/* void arm_SASX() { */
+/*   uint32_t x, f; */
+/*   asm("sasx %0, %2, %3\n\t" */
+/*       "mrs %1, CPSR" */
+/*       : "=&r" (x), "=r" (f) */
+/*       : "r" (0x12345678), "r" (0x56781234)); */
+/*   CHECK(1,(x == 0x24680000) */
+/* 		&&(f&(1<<16)) */
+/* 		&&(f&(1<<17)) */
+/* 		&&(f&(1<<18)) */
+/* 		&&(f&(1<<19)) */
+/* 	); */
+/* } */
 
 void arm_SADD8() {
   uint32_t x, f;
@@ -106,25 +107,7 @@ void arm_QADD16() {
   CHECK(256,(x == 0x4fffffff));
 }
 
-void thumb_ADD6() {
-  uint32_t x,y,z;
-  y = 0x4;
-  asm("add %0,pc,%1\n\t"
-      "mov %2, pc" 
-      : "=r" (x), "+&r" (y), "=r" (z));
-      
-  CHECK(512, ((z+2)&~2)-2 == (x-4+2));
-  }
-
-/*void thumb_ADR() {
-  uint32_t x,y;
-  asm("adr %0, #0\n\t"
-      "mov %1, pc"
-      : "=r" (x), "=&r" (y));
-  CHECK(512, (x == y));
-  }*/
 int main(){
-  arm_SASX();
   arm_SADD8();
   arm_SADD16();
   arm_REVSH();
@@ -133,8 +116,6 @@ int main(){
   arm_QSUB16();
   arm_QADD8();
   arm_QADD16();
-  thumb_ADD6();
-  //  thumb_ADR();
   return count;
 }
 

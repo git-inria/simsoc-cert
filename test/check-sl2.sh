@@ -31,5 +31,5 @@ $SIMLIGHT simsoc_new1_t.elf -r0=0xff
 $SIMLIGHT test_mem_t.elf -r0=0x3
 $SIMLIGHT sorting_t.elf -r0=0x3f
 $SIMLIGHT thumb_test_t.elf -r0=0x7f
-$SIMLIGHT test_v6news_a.elf -r0=1023
-
+$SIMLIGHT test_v6news_a.elf -r0=510
+# $SIMLIGHT thumb_v6_t.elf -r0=1
