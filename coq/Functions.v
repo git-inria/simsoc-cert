@@ -321,10 +321,12 @@ Definition SignedSat32_add (x y : word) : word :=
   SignedSatZ (signed x + signed y) 32.
 
 Definition SignedSat16_add (x y : half) : half :=
-  mk_half (SignedSatZ' (Half.signed x + Half.signed y) 16).
+  mk_half (SignedSatZ' (signed x + signed y) 16).
+
+(*Eval compute in (SignedSat16_add (Half.repr 65535) (Half.repr 1)).*)
 
 Definition SignedSat8_add (x y : byte) : byte :=
-  mk_byte (SignedSatZ' (Byte.signed x + Byte.signed y) 8).
+  mk_byte (SignedSatZ' (signed x + signed y) 8).
 
 (****************************************************************************)
 (** SignedDoesSat32_add(x,y)
@@ -347,10 +349,10 @@ Definition SignedSat32_sub (x y : word) : word :=
   SignedSatZ (signed x - signed y) 32.
 
 Definition SignedSat16_sub (x y : half) : half :=
-  mk_half (SignedSatZ' (Half.signed x - Half.signed y) 16).
+  mk_half (SignedSatZ' (signed x - signed y) 16).
 
 Definition SignedSat8_sub (x y : byte) : byte :=
-  mk_byte (SignedSatZ' (Byte.signed x - Byte.signed y) 8).
+  mk_byte (SignedSatZ' (signed x - signed y) 8).
 
 (****************************************************************************)
 (** SignedDoesSat32_sub(x,y)

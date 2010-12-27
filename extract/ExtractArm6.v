@@ -12,7 +12,10 @@ Extraction of the arm6 simulator.
 *)
 
 (*Unset Extraction Optimize.*)
-Unset Extraction AutoInline.
+(*Unset Extraction AutoInline.*)
 Require Extraction arm6.
 Recursive Extraction Library arm6.
+
+Extract Inductive unit => "unit" [ "()" ].
+(*Extract Constant *)
 

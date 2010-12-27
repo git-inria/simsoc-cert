@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After ?? instructions executed, r0 should contain 510 = 0b111111110 = 0x1e*/
+ * After 227 instructions executed, r0 should contain 510 = 0b111111110 = 0x1fe*/
 
 #include "common.h"
 
@@ -77,7 +77,7 @@ void arm_QSUB8(){
       :"=&r" (x)
       :"r" (0xffffffff), "r" (0xffff0000));
 
-  CHECK(32,(x == 0x0000ffff));
+  CHECK(32,(x == 0x00007f7f));
 }
 
 void arm_QSUB16(){
@@ -86,7 +86,7 @@ void arm_QSUB16(){
       :"=&r" (x)
       :"r" (0xffffffff), "r" (0xffff0000));
 
-  CHECK(64,(x == 0x0000ffff));
+  CHECK(64,(x == 0x00007fff));
 }
 
 void arm_QADD8() {
@@ -95,7 +95,7 @@ void arm_QADD8() {
       : "=&r" (x)
       : "r" (0x0000fffe), "r" (0x00010001));
 
-  CHECK(128,(x == 0x0001ffff));
+  CHECK(128,(x == 0x00017f7f));
 }
 
 void arm_QADD16() {
@@ -103,8 +103,8 @@ void arm_QADD16() {
   asm("qadd16 %0, %1, %2\n\t"
       
       : "=&r" (x)
-      : "r" (0x4ffeffff), "r" (0x00010001));
-  CHECK(256,(x == 0x4fffffff));
+      : "r" (0x4ffefffe), "r" (0x00010001));
+  CHECK(256,(x == 0x4fff7fff));
 }
 
 int main(){

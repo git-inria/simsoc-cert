@@ -138,6 +138,9 @@ let run_opt (s0: State.state) (max: int option): BinInt.coq_Z * (int * hexa) lis
 let run s0 = run_opt s0 None;;
 let runmax s0 max = run_opt s0 (Some max);;
 
+#load "arm_v6_a.cmo";;
+check Arm_v6_a.initial_state 227 0x1fe "arm_v6";;
+
 #load "arm_multiple_a.cmo";;
 check Arm_multiple_a.initial_state 227 0x1ff "arm_multiple";;
 
