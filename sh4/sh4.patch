@@ -1,5 +1,5 @@
 --- sh4.txt	2010-12-14 15:32:27.266489001 +0800
-+++ sh4_mod.txt	2011-01-04 15:44:11.000000000 +0800
++++ sh4_mod.txt	2011-01-04 16:29:38.081752002 +0800
 @@ -9153,6 +9153,29 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
@@ -936,6 +936,19 @@
      }
  
  Possible Exceptions:
+@@ -12014,9 +12047,9 @@
+          1.0 Load
+ 
+                                                                            Execution
+-Format                  Summary of Operation        Instruction Code       States    T Bit
+-FLDI1 FRn               0x3F800000 → FRn            1111nnnn10011101 1                 —
+-—                       —                           —                      —           —
++PR      Format                  Summary of Operation        Instruction Code       States    T Bit
++0       FLDI1 FRn               0x3F800000 → FRn            1111nnnn10011101 1                 —
++1       —                       —                           —                      —           —
+ 
+ 
+ Description
 @@ -12028,7 +12061,7 @@
    void FLDI1(int n)
    {
