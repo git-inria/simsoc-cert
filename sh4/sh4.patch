@@ -1,5 +1,5 @@
---- sh4.txt	2010-12-07 16:05:52.318088001 +0800
-+++ sh4_mod.txt	2010-12-13 19:14:49.407332001 +0800
+--- sh4.txt	2010-12-14 15:32:27.266489001 +0800
++++ sh4_mod.txt	2011-01-04 15:44:11.000000000 +0800
 @@ -9153,6 +9153,29 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
@@ -10,11 +10,11 @@
 +//int check_positive_infinity(void);
 +int check_product_infinity(int, int);
 +int check_product_invalid(int, int);
-+int fcmp_chk(int, int);
++
 +void fpu_exception_trap(void);
 +//int fpul_type(float *);
-+int ftrc_double_type_of(int);
-+int ftrc_single_type_of(int);
++//int ftrc_double_type_of(int);
++//int ftrc_single_type_of(int);
 +void inexact(void);
 +void invalidate_operand_cache_block(int);
 +int is_dirty_block(int);
@@ -120,7 +120,7 @@
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
-@@ -9316,19 +9355,115 @@
+@@ -9316,28 +9355,124 @@
           else                                return(sNaN);
       }
  }
@@ -166,10 +166,10 @@
 +}
 +
 +  void check_single_exception(float *dst, float result)
-+  {
-+  union {
-+        float f;
-+        int l;
+   {
+   union {
+         float f;
+         int l;
 +  }     tmp;
 +  float abs;
 +        if(result < 0.0)        tmp.l = 0xff800000; /* – infinity */
@@ -197,8 +197,8 @@
 +  }
 +
 +  void check_double_exception(double *dst, float result)
-   {
-   union {
++  {
++  union {
 +        double d;
 +        int l[2];
 +}    tmp;
@@ -235,10 +235,11 @@
 +  {
 +  int dst_d /* FIXME do we have to declare dst_d ? */;
 +  union {
-         float f;
-         int l;
++        float f;
++        int l;
    }     dstf,srcf;
-@@ -9337,7 +9472,7 @@
+   union {
+         long d;
          int l[2];
    }     dstd,srcd;
    union {                      /* “long double” format:      */
@@ -569,44 +570,54 @@
                     case PZERO:
  
  
-@@ -11451,17 +11489,23 @@
+@@ -11451,29 +11489,12 @@
  
  Operation
  
 -     void FCMP_EQ(int m,n) /* FCMP/EQ         FRm,FRn */
+-     {
+-             pc += 2;
+-             clear_cause();
+-             if(fcmp_chk (m,n) == INVALID) fcmp_invalid();
+-             else if(fcmp_chk (m,n) == EQ)       T = 1;
+-             else                                T = 0;
+-     }
+-     void FCMP_GT(int m,n) /* FCMP/GT         FRm,FRn */
+-     {
+-             pc += 2;
+-             clear_cause();
+-             if ((fcmp_chk (m,n) == INVALID) ||
+-
+-                                                       Rev. 6.00 Sep 13, 2006 page 257 of 424
+-                                                                            REJ09B0318-0600
+-Section 9 Instruction Descriptions
+-
+-               (fcmp_chk (m,n) == UO)) fcmp_invalid();
+-        else if(fcmp_chk (m,n) == GT)          T = 1;
+-        else                                   T = 0;
+-  }
+-  int fcmp_chk (int m,n)
 +void fcmp_invalid()
 +{
 +     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
 +                  else fpu_exception_trap();
 +}
-+
-+     void FCMP_EQ(int m, int n) /* FCMP/EQ         FRm,FRn */
-      {
--             pc += 2;
-+             PC += 2;
-              clear_cause();
-              if(fcmp_chk (m,n) == INVALID) fcmp_invalid();
-              else if(fcmp_chk (m,n) == EQ)       T = 1;
-              else                                T = 0;
-      }
--     void FCMP_GT(int m,n) /* FCMP/GT         FRm,FRn */
-+     void FCMP_GT(int m, int n) /* FCMP/GT         FRm,FRn */
-      {
--             pc += 2;
-+             PC += 2;
-              clear_cause();
-              if ((fcmp_chk (m,n) == INVALID) ||
- 
-@@ -11473,7 +11517,7 @@
-         else if(fcmp_chk (m,n) == GT)          T = 1;
-         else                                   T = 0;
-   }
--  int fcmp_chk (int m,n)
 +  int fcmp_chk (int m, int n)
    {
          if((data_type_of(m) == sNaN) ||
              (data_type_of(n) == sNaN))                 return(INVALID);
-@@ -11515,14 +11559,6 @@
+@@ -11504,24 +11525,39 @@
+               if(FR[n] == FR[m])                 return(EQ);
+               else if(FR[n] > FR[m])             return(GT);
+               else                               return(LT);
+-
+-Rev. 6.00 Sep 13, 2006 page 258 of 424
+-REJ09B0318-0600
+-                                                Section 9 Instruction Descriptions
+-
+      }else {
+          if(DR[n>>1] == DR[m>>1])     return(EQ);
+          else if(DR[n>>1] > DR[m>>1]) return(GT);
           else                         return(LT);
       }
  }
@@ -615,16 +626,43 @@
 -     set_V();     if((FPSCR & ENABLE_V) == 0)    T = 0;
 -                  else fpu_exception_trap();
 -}
--
--
--
+ 
++     void FCMP_EQ(int m, int n) /* FCMP/EQ         FRm,FRn */
++     {
++             PC += 2;
++             clear_cause();
++             if(fcmp_chk (m,n) == INVALID) fcmp_invalid();
++             else if(fcmp_chk (m,n) == EQ)       T = 1;
++             else                                T = 0;
++     }
++     void FCMP_GT(int m, int n) /* FCMP/GT         FRm,FRn */
++     {
++             PC += 2;
++             clear_cause();
++             if ((fcmp_chk (m,n) == INVALID) ||
++
++                                                       Rev. 6.00 Sep 13, 2006 page 257 of 424
++                                                                            REJ09B0318-0600
++Section 9 Instruction Descriptions
+ 
++               (fcmp_chk (m,n) == UO)) fcmp_invalid();
++        else if(fcmp_chk (m,n) == GT)          T = 1;
++        else                                   T = 0;
++  }
++
++Rev. 6.00 Sep 13, 2006 page 258 of 424
++REJ09B0318-0600
++                                                Section 9 Instruction Descriptions
+ 
  
                                          Rev. 6.00 Sep 13, 2006 page 259 of 424
-                                                              REJ09B0318-0600
-@@ -11591,34 +11627,9 @@
- 
- Operation
- 
+@@ -11588,37 +11624,12 @@
+ an exception has occurred. When an exception occurs, correct exception information is reflected in
+ FPSCR.cause and FPSCR.flag, and FPUL is not updated. Appropriate processing should therefore
+ be performed by software.
+-
+-Operation
+-
 -    void FCNVDS(int m, float *FPUL){
 -            case((FPSCR.PR){
 -                 0:    undefined_operation();            /* reserved */
@@ -653,6 +691,9 @@
 -                                 else fpu_exception_trap();   break;
 -        }
 -  }
++
++Operation
++
 +int data_type_of_2(int n1, int n2) {
 +  return 0 ; /* FIXME écrire la fonction */
 +}
@@ -1368,61 +1409,81 @@
  
  
  Rev. 6.00 Sep 13, 2006 page 300 of 424
-@@ -13084,15 +13116,24 @@
+@@ -13084,31 +13116,16 @@
      #define P_INT_DOUBLE_RANGE 0x41e0000000000000
  
  
+-    void FTRC(int m, int *FPUL)
+-    {
+-         pc += 2;
+-         clear_cause();
+-         if(FPSCR.PR==0){
+-                 case(ftrc_single_ type_of(m)){
+-                 NORM:      *FPUL = FR[m];         break;
+-                 PINF:      ftrc_invalid(0);       break;
+-                 NINF:      ftrc_invalid(1);       break;
+-                 }
+-         }
+-
+-                                                      Rev. 6.00 Sep 13, 2006 page 303 of 424
+-                                                                           REJ09B0318-0600
+-Section 9 Instruction Descriptions
+-
+-        else{                        /* case FPSCR.PR=1 */
+-               case(ftrc_double_type_of(m)){
+-               NORM:        *FPUL = DR[m>>1]; break;
+-               PINF:        ftrc_invalid(0);    break;
+-               NINF:        ftrc_invalid(1);    break;
+-               }
 +  void ftrc_invalid(int sign, int *FPUL)
 +  {
 +        set_V();
 +         if((FPSCR & ENABLE_V) == 0){
 +                 if(sign == 0)             *FPUL = 0x7fffffff;
 +                 else                      *FPUL = 0x80000000;
-+        }
-+        else fpu_exception_trap();
-+  }
-     void FTRC(int m, int *FPUL)
-     {
--         pc += 2;
-+         PC += 2;
-          clear_cause();
--         if(FPSCR.PR==0){
--                 case(ftrc_single_ type_of(m)){
--                 NORM:      *FPUL = FR[m];         break;
--                 PINF:      ftrc_invalid(0);       break;
--                 NINF:      ftrc_invalid(1);       break;
-+         if(FPSCR_PR==0){
-+                 switch(ftrc_single_type_of(m)){
-+                 case NORM:      *FPUL = FR[m];         break;
-+                 case PINF:      ftrc_invalid(0, FPUL);       break;
-+                 case NINF:      ftrc_invalid(1, FPUL);       break;
-                  }
-          }
- 
-@@ -13101,14 +13142,14 @@
- Section 9 Instruction Descriptions
- 
-         else{                        /* case FPSCR.PR=1 */
--               case(ftrc_double_type_of(m)){
--               NORM:        *FPUL = DR[m>>1]; break;
--               PINF:        ftrc_invalid(0);    break;
--               NINF:        ftrc_invalid(1);    break;
-+               switch(ftrc_double_type_of(m)){
-+               case NORM:        *FPUL = DR[m>>1]; break;
-+               case PINF:        ftrc_invalid(0, FPUL);    break;
-+               case NINF:        ftrc_invalid(1, FPUL);    break;
-                }
          }
++        else fpu_exception_trap();
    }
 -  int ftrc_signle_type_of(int m)
 +  int ftrc_single_type_of(int m)
    {
          if(sign_of(m) == 0){
                if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
-@@ -13141,15 +13182,6 @@
+@@ -13135,21 +13152,36 @@
+                             return(NINF);      /* out of range ,+INF,NaN*/
+               else          return(NORM);      /* -0,-NORM                  */
+         }
++  }
++    void FTRC(int m, int *FPUL)
++    {
++         PC += 2;
++         clear_cause();
++         if(FPSCR_PR==0){
++                 switch(ftrc_single_type_of(m)){
++                 case NORM:      *FPUL = FR[m];         break;
++                 case PINF:      ftrc_invalid(0, FPUL);       break;
++                 case NINF:      ftrc_invalid(1, FPUL);       break;
++                 }
++         }
++
++                                                      Rev. 6.00 Sep 13, 2006 page 303 of 424
++                                                                           REJ09B0318-0600
++Section 9 Instruction Descriptions
++
++        else{                        /* case FPSCR.PR=1 */
++               switch(ftrc_double_type_of(m)){
++               case NORM:        *FPUL = DR[m>>1]; break;
++               case PINF:        ftrc_invalid(0, FPUL);    break;
++               case NINF:        ftrc_invalid(1, FPUL);    break;
++               }
++        }
++  }
+ 
+ Rev. 6.00 Sep 13, 2006 page 304 of 424
+ REJ09B0318-0600
                                                                  Section 9 Instruction Descriptions
  
-   }
+-  }
 -  void ftrc_invalid(int sign, int *FPUL)
 -  {
 -        set_V();
