@@ -60,8 +60,14 @@ module G = struct
   let local_type s e =
     match e with
       | Memory (_, n) -> type_of_size n
+      | BinOp (Ast.Range (_, Bits (a, b)), _, _) ->
+          begin match a, b with
+            | "31", "24" | "23", "16" | "15", "8" | "7", "0" -> "uint8_t"
+            | "31", "16" | "15", "0" -> "uint16_t"
+            | _ -> type_of_var s
+          end
       | _ -> type_of_var s;;
-
+  
   let case_type = "uint8_t";;
 
 end;;
@@ -200,6 +206,10 @@ let rec exp p b = function
   (* try to find the right conversion operator *)
   | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
       bprintf b "to_int32(%s)" v
+  | Fun ("to_signed", [Var v]) when typeof p v = "uint16_t" ->
+      bprintf b "to_int16(%s)" v
+  | Fun ("to_signed", [Var v]) when typeof p v = "uint8_t" ->
+      bprintf b "to_int8(%s)" v
   | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
 
   | Fun (f, es) -> bprintf b "%s(%s%a)"

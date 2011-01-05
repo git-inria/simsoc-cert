@@ -83,6 +83,10 @@ let rec exp (p: xprog) b = function
   (* try to find the right conversion operator *)
   | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
       bprintf b "to_int32(%s)" v
+  | Fun ("to_signed", [Var v]) when typeof p v = "uint16_t" ->
+      bprintf b "to_int16(%s)" v
+  | Fun ("to_signed", [Var v]) when typeof p v = "uint8_t" ->
+      bprintf b "to_int8(%s)" v
   | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
 
   | Fun (f, es) -> bprintf b "%s(%s%a)"
