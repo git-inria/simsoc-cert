@@ -36,8 +36,8 @@ let set_debug() =
 
 let set_check() = set_check(); set_verbose();;
 
-type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | DecBinTest 
-		   | DecAsmTest | DecTest;;
+type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
+		   | DecBinTest | DecAsmTest | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -93,6 +93,8 @@ let rec options() =
   " Output Coq instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
+  "-oml-dec", Unit (fun () -> set_output_type MlDec),
+  " Output Ocaml decoder (requires -idec)";
   "-obin-test", Unit (fun () -> set_norm(); set_output_type DecBinTest),
   " Output test for Coq and Simlight decoders, in binary format (requires -ipc, -isyntax, and -idec)";
   "-s", Int (fun i -> set_seed i),
@@ -132,6 +134,10 @@ let parse_args() =
     | CoqDec ->
         if is_set_pc_input_file() then
           error "option -ocoq-dec incompatible with -ipc"
+        else ignore (get_dec_input_file())
+    | MlDec ->
+        if is_set_pc_input_file() then
+          error "option -oml-dec incompatible with -ipc"
         else ignore (get_dec_input_file())
     | DecBinTest ->
         ignore(get_pc_input_file());
@@ -234,6 +240,7 @@ let genr_output() =
             (get_syntax_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
     | CoqDec -> print Gencoqdec.decode (get_dec_input())
+    | MlDec -> print Genmldec.decode (get_dec_input())
     | DecBinTest ->
 	Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())
           (get_dec_input()) (get_seed ())
