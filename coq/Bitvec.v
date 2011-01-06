@@ -306,6 +306,13 @@ Definition lt_0 (x: word) : bool :=
     | Zneg x' => true
   end.
 
+Definition ge_0 (x: word) : bool :=
+  match Word.signed x with
+    | Z0 => true
+    | Zpos x' => true
+    | Zneg x' => false
+  end.
+
 Definition n0 := 0%nat.
 Definition n1 := (S n0).
 Definition n2 := (S n1).
