@@ -83,10 +83,6 @@ let rec exp (p: xprog) b = function
   (* try to find the right conversion operator *)
   | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
       bprintf b "to_int32(%s)" v
-  | Fun ("to_signed", [Var v]) when typeof p v = "uint16_t" ->
-      bprintf b "to_int16(%s)" v
-  | Fun ("to_signed", [Var v]) when typeof p v = "uint8_t" ->
-      bprintf b "to_int8(%s)" v
   | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
 
   | Fun (f, es) -> bprintf b "%s(%s%a)"
@@ -108,14 +104,16 @@ let rec exp (p: xprog) b = function
   | Ast.Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (Gencxx.cpsr_flag s)
   | Ast.Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Ast.Range (e, Bits (n1, n2)) ->
-      begin match n1, n2 with
-        | "15", "0" -> bprintf b "get_half_0(%a)" (exp p) e
-        | "31", "16" -> bprintf b "get_half_1(%a)" (exp p) e
-        | "7", "0" -> bprintf b "get_byte_0(%a)" (exp p) e
-        | "15", "8" -> bprintf b "get_byte_1(%a)" (exp p) e
-        | "23", "16" -> bprintf b "get_byte_2(%a)" (exp p) e
-        | "31", "24" -> bprintf b "get_byte_3(%a)" (exp p) e
-        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
+      begin
+        let signed = if p.xprog.fid.[0] = 'S' then "_signed" else "" in
+          match n1, n2 with
+            | "15", "0" -> bprintf b "get%s_half_0(%a)" signed (exp p) e
+            | "31", "16" -> bprintf b "get%s_half_1(%a)" signed (exp p) e
+            | "7", "0" -> bprintf b "get%s_byte_0(%a)" signed (exp p) e
+            | "15", "8" -> bprintf b "get%s_byte_1(%a)" signed (exp p) e
+            | "23", "16" -> bprintf b "get%s_byte_2(%a)" signed (exp p) e
+            | "31", "24" -> bprintf b "get%s_byte_3(%a)" signed (exp p) e
+            | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
       end
   | _ -> string b "TODO(\"exp\")";;
 
