@@ -26,13 +26,13 @@ void arm_SADD8() {
       : "=&r" (result), "=r" (cpsr)
       : "r" (0x026080fe), "r" (0x0360fffe));
   /* 1. case positive + positive -> positive: 0x02 + 0x03 = 0x05 */
-  /* 2. case positive + positive -> negative: 0x60 + 0x60 = 0xc0 */
-  /* 3. case negative + negative -> positive: 0x80 + 0xff = 0x7f */
+  /* 2. case positive + positive -> positive (overflow): 0x60 + 0x60 = 0xc0 */
+  /* 3. case negative + negative -> negative (overflow): 0x80 + 0xff = 0x7f */
   /* 4. case negative + negative -> negative: 0xfe + 0xfe = 0xfc */
   CHECK(result==0x05c07ffc);
   CHECK(GE3(cpsr)==1);
-  CHECK(GE2(cpsr)==0);
-  CHECK(GE1(cpsr)==1);
+  CHECK(GE2(cpsr)==1);
+  CHECK(GE1(cpsr)==0);
   CHECK(GE0(cpsr)==0);
 }
 
@@ -73,10 +73,10 @@ void arm_SADD16_bis() {
       : "=&r" (result), "=r" (cpsr)
       : "r" (0x11116666), "r" (0x22227777));
   /* 3. case positive + positive -> positive: 0x1111 + 0x2222 = 0x3333 */
-  /* 4. case positive + positive -> negative: 0x6666 + 0x7777 = 0xdddd */
+  /* 4. case positive + positive -> positive (overflow): 0x6666 + 0x7777 = 0xdddd */
   CHECK(result==0x3333dddd);
   CHECK(GE32(cpsr)==3);
-  CHECK(GE10(cpsr)==0);
+  CHECK(GE10(cpsr)==3);
 }
 
 void arm_SADD16_ter() {
@@ -86,10 +86,10 @@ void arm_SADD16_ter() {
       : "=&r" (result), "=r" (cpsr)
       : "r" (0xabcd8000), "r" (0xffffffff));
   /* 5. case negative + negative -> negative: 0xabcd + 0xffff = 0xabcc */
-  /* 6. case negative + negative -> positive: 0x8000 + 0xffff = 0x7fff */
+  /* 6. case negative + negative -> negative (overflow): 0x8000 + 0xffff = 0x7fff */
   CHECK(result==0xabcc7fff);
   CHECK(GE32(cpsr)==0);
-  CHECK(GE10(cpsr)==3);
+  CHECK(GE10(cpsr)==0);
 }
 
 void arm_SADDSUBX() {
