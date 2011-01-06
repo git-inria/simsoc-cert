@@ -20,6 +20,15 @@ static inline uint32_t get_byte_1(uint32_t x) {return 0xff&(x>>8);}
 static inline uint32_t get_byte_2(uint32_t x) {return 0xff&(x>>16);}
 static inline uint32_t get_byte_3(uint32_t x) {return 0xff&(x>>24);}
 
+static inline int32_t u16_to_i32(uint16_t x) {return (int32_t)(int16_t) x;}
+static inline int32_t u8_to_i32(uint8_t x) {return (int32_t)(int8_t) x;}
+static inline int32_t get_signed_half_0(uint32_t x) {return u16_to_i32(0xffff&x);}
+static inline int32_t get_signed_half_1(uint32_t x) {return u16_to_i32(0xffff&(x>>16));}
+static inline int32_t get_signed_byte_0(uint32_t x) {return u8_to_i32(0xff&x);}
+static inline int32_t get_signed_byte_1(uint32_t x) {return u8_to_i32(0xff&(x>>8));}
+static inline int32_t get_signed_byte_2(uint32_t x) {return u8_to_i32(0xff&(x>>16));}
+static inline int32_t get_signed_byte_3(uint32_t x) {return u8_to_i32(0xff&(x>>24));}
+
 static inline bool is_even(uint8_t x) {return !(x&1);}
 
 static inline bool CarryFrom8_add2(uint32_t a, uint32_t b) {return a+b>0xff;}

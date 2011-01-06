@@ -219,13 +219,15 @@ let rec exp p b = function
   | Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (cpsr_flag s)
   | Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Range (e, Bits (n1, n2)) ->
-      begin match n1, n2 with
-        | "15", "0" -> bprintf b "get_half_0(%a)" (exp p) e
-        | "31", "16" -> bprintf b "get_half_1(%a)" (exp p) e
-        | "7", "0" -> bprintf b "get_byte_0(%a)" (exp p) e
-        | "15", "8" -> bprintf b "get_byte_1(%a)" (exp p) e
-        | "23", "16" -> bprintf b "get_byte_2(%a)" (exp p) e
-        | "31", "24" -> bprintf b "get_byte_3(%a)" (exp p) e
+      begin
+        let signed = if p.xid.[0] = 'S' then "_signed" else "" in
+          match n1, n2 with
+            | "15", "0" -> bprintf b "get%s_half_0(%a)" signed (exp p) e
+            | "31", "16" -> bprintf b "get%s_half_1(%a)" signed (exp p) e
+            | "7", "0" -> bprintf b "get%s_byte_0(%a)" signed (exp p) e
+            | "15", "8" -> bprintf b "get%s_byte_1(%a)" signed (exp p) e
+            | "23", "16" -> bprintf b "get%s_byte_2(%a)" signed (exp p) e
+            | "31", "24" -> bprintf b "get%s_byte_3(%a)" signed (exp p) e
         | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
       end
   | Coproc_exp (e, f, es) ->
