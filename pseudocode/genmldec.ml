@@ -105,15 +105,15 @@ let gen_pattern (lh ,ls) =
     match ls with
       | (Value s, _) ->
 	  begin match s with
-	    | true -> "1"
-	    | false -> "0"
+	    | true -> "true"
+	    | false -> "false"
 	  end
       | (Shouldbe s, i) ->
 	  begin match s with
-	    | true -> "SBO"^(string_of_int i)
-	    | false -> "SBZ"^(string_of_int i)
+	    | true -> "sBO"^(string_of_int i)
+	    | false -> "sBZ"^(string_of_int i)
 	  end
-      | (Param1 c, _) -> Char.escaped c^"_"
+      | (Param1 c, _) -> Char.escaped (Char.lowercase c)^"_"
       | (Param1s s, _) -> s
       | (Range ("cond", _, _), _) -> ""
       | (Range _, _) -> "_"
@@ -148,20 +148,20 @@ let gen_pattern (lh ,ls) =
  according to addressing mode 'i'*)
 let not_param_add_mode i =
   match i with
-    | 1 -> ["S_"; "cond"; "d"; "n"; "opcode"]
-    | 2 -> ["B_"; "L_"; "d"; "H_"; "S_"]
-    | 3 -> ["B_"; "L_"; "d"; "H_"; "S_"]
-    | 4 -> ["L_"; "S_"; "CRd"; "N_"; "option"; "i"]
-    | 5 -> ["L_"; "S_" ; "CRd"; "N_"; "option"]
+    | 1 -> ["s_"; "cond"; "d"; "n"; "opcode"]
+    | 2 -> ["b_"; "l_"; "d"; "h_"; "s_"]
+    | 3 -> ["b_"; "l_"; "d"; "h_"; "s_"]
+    | 4 -> ["l_"; "s_"; "CRd"; "n_"; "option"; "i"]
+    | 5 -> ["l_"; "s_" ; "CRd"; "n_"; "option"]
     | _ -> [];;
 
 let not_param_inst i =
   match i with
-    | 1 -> ["shifter_operand"; "I_"]
-    | 2 -> ["P_"; "U_"; "W_"; "addr_mode"; "I_"]
-    | 3 -> ["I_"; "P_"; "W_"; "U_"; "n"; "addr_mode"]
-    | 4 -> ["P_"; "U_"; "W_"; "n"; "mode"]
-    | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"; "N_"; "n"]
+    | 1 -> ["shifter_operand"; "i_"]
+    | 2 -> ["p_"; "u_"; "w_"; "addr_mode"; "i_"]
+    | 3 -> ["i_"; "p_"; "w_"; "u_"; "n"; "addr_mode"]
+    | 4 -> ["p_"; "u_"; "w_"; "n"; "mode"]
+    | 5 -> ["8_bit_word_offset"; "CRd"; "p_"; "u_"; "w_"; "n_"; "n"]
     | _ -> [];;
 
 let is_not_param_add_mode i =
@@ -199,13 +199,13 @@ let remove_params (md: kind) n lst =
 		      if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn")||(s = "opcode") then ("",0,0) else (s, i1, i2)) lst
 
       | "M5" :: "Unindexed" :: _ ->
-	  List.map (fun (s, i1, i2) -> if (s = "U_") then ("",0,0) else (s, i1, i2)) lst
+	  List.map (fun (s, i1, i2) -> if (s = "u_") then ("",0,0) else (s, i1, i2)) lst
 
       | "SWI" :: _ -> List.map (fun (s, i1, i2) -> if (s = "immed_24") then ("",0,0) else (s, i1, i2)) lst
 
       | ("LDRB"|"LDRBT"|"STRB"|"LDR"|"STR"|"STRBT"|"LDRT"|"STRT") :: _ -> List.map (fun (s, i1, i2) -> if (s = "n") then ("",0,0) else (s, i1, i2)) lst
       (* PLD is a mode 2 instruction but the AST does not used the mode, so we remove 'add_mode' *)
-      | ("PLD") :: _ -> List.map (fun (s, i1, i2) -> if (s = "add_mode")|| (s = "I_")||(s = "U_")||(s = "n")||(s = "addr_mode") then ("",0,0) else (s, i1, i2)) lst
+      | ("PLD") :: _ -> List.map (fun (s, i1, i2) -> if (s = "add_mode")|| (s = "i_")||(s = "u_")||(s = "n")||(s = "addr_mode") then ("",0,0) else (s, i1, i2)) lst
 
       | _ -> lst
   in
@@ -263,6 +263,12 @@ let param_m (_, ls) =
 	  done;
     res;;
 
+let to_lowercase (str, a, b) =
+  if String.length str = 2 && String.get str 1 = '_' then
+    ((Char.escaped (Char.lowercase (String.get str 0)))^"_",a,b)
+  else (str, a, b)
+;;
+
 (*get the final well typed parameters list*)
 let params f (lh, ls) =
   let dname = name (lh,ls) 
@@ -271,13 +277,15 @@ let params f (lh, ls) =
     let lst =
       (List.filter ((<>) "")
 	 (List.map inst_param
-	    (remove_params md dname
-	       (add_mode_param md dname
-		  (List.sort (fun (s1, _, _) (s2, _, _) ->
-				Pervasives.compare s1 s2)
-		     (Array.to_list (param_m (lh,ls))))))))
+	       (remove_params md dname
+	          (add_mode_param md dname
+                     (List.map to_lowercase
+		        (List.sort (fun (s1, _, _) (s2, _, _) ->
+				      Pervasives.compare s1 s2)
+		           (Array.to_list (param_m (lh,ls)))))))))
     in
-      (list ", " f) b lst
+      if List.length lst > 1 then par (list ", " f) b lst
+      else (list ", " f) b lst
   in aux;;
 
 (*****************************************************************************)
@@ -289,14 +297,14 @@ let params f (lh, ls) =
 (*return SBO with its position*)
 let sbo_tst ls =
   match ls with
-    | (Shouldbe true, i) -> Printf.sprintf "SBO%d" i
+    | (Shouldbe true, i) -> Printf.sprintf "sBO%d" i
     | ((Nothing | Value _ | Param1 _ | Param1s _ | Range _ | Shouldbe false), _)
       -> "";;
 
 (*return SBZ with its position*)
 let sbz_tst ls =
   match ls with
-    | (Shouldbe false, i) -> Printf.sprintf "SBZ%d" i
+    | (Shouldbe false, i) -> Printf.sprintf "sBZ%d" i
     | ((Nothing | Value _ | Param1 _ | Param1s _ | Range _ | Shouldbe true), _)
       -> "";;
 
@@ -354,11 +362,11 @@ let dec_inst b (lh, ls) =
       | DecMode i ->
 	  (*FIXME*)
 	  if i = 1 || (i = 2 && false) || (i = 3 && false) then
-	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      DecInst (%s (%t))\n"
+	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      DecInst (%s %t)\n"
 	      comment lh (gen_pattern (lh, ls))
 	      (id_addr_mode (lh, ls)) (params string (lh, ls))
 	  else
-	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      decode_cond w (fun condition -> %s (%t))\n"
+	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      decode_cond w (fun condition -> %s %t)\n"
 	      comment lh (gen_pattern (lh ,ls))
 	      (id_addr_mode (lh, ls)) (params string (lh, ls))
 ;;
@@ -413,7 +421,7 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require*)
-  string b "open Bitvec\nopen Integers\nopen Message\nopen Simul\nopen Arm6inst";
+  string b "open Bitvec\nopen Integers\nopen Message\nopen Simul\nopen Arm6inst\n";
 
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
@@ -425,15 +433,15 @@ let decode b ps =
   (*print the instruction decoder*)
   bprintf b "\n\nlet decode_unconditional w =\n  match w28_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
-  bprintf b "    | _ -> DecUndefined inst\n;;";
+  bprintf b "    | _ -> coq_DecUndefined\n;;";
 
   bprintf b "\n\nlet decode_conditional w =\n  match w28_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
-  bprintf b "    | _ -> DecUndefined inst\n;;";
+  bprintf b "    | _ -> coq_DecUndefined\n;;";
 
   bprintf b "\n\nlet decode w =\n";
   bprintf b "  match w32_of_word w with\n";
-  bprintf b "    | Coq_word32 (1, 1, 1, 1, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) ->\n";
+  bprintf b "    | Coq_word32 (true, true, true, true, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) ->\n";
   bprintf b "      decode_unconditional w\n";
   bprintf b "    | _ -> decode_conditional w\n";
   bprintf b "  ;;\n"
