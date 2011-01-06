@@ -81,7 +81,7 @@ $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/keepsyntax $(DIR)/parsesyntax $(DIR)/
 	cd $(DIR) && $(MAKE) `basename $@`
 
 clean:
-	rm -f *~ *.glob *.vo $(FILES) ../coq/arm6mldec.ml
+	rm -f *~ *.glob *.vo $(FILES) arm6mldec.ml *.cmi *.cmo *.cmx *.o
 
 usage-patch-inst:
 	echo update $(PROC)inst.txt to the desired contents, then make patch-inst
