@@ -42,7 +42,7 @@ order_deps=$root/tools/order_deps/order_deps
 files=`sed -e 's|.cm[iox]||g' .depend | $order_deps $files`
 
 echo create Makefile ...
-sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" ../Makefile.in > Makefile || exit $?
+sed -e "s|__FILES__|$files|" -e "s|__NAME__|extract|" -e "s|INCLUDES :=|INCLUDES := -I ../../arm6|" -e "s|simul|simul ../../arm6/arm6mldec|" ../Makefile.in > Makefile || exit $?
 
 echo compile OCaml files ...
 make -r -k

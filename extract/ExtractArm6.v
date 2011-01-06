@@ -21,7 +21,7 @@ Extract Inductive bool => "bool" [ "true" "false" ].
 Extract Inductive option => "option" [ "Some" "None" ].
 Extract Inductive List.list => "list" [ "[]" "(::)" ].
 
-(*Require arm6dec.
+Require arm6dec.
 Extract Constant arm6dec.decode_addr_mode1 => "Arm6mldec.decode_addr_mode1". 
 Extract Constant arm6dec.decode_addr_mode2 => "Arm6mldec.decode_addr_mode2". 
 Extract Constant arm6dec.decode_addr_mode3 => "Arm6mldec.decode_addr_mode3". 
@@ -30,7 +30,7 @@ Extract Constant arm6dec.decode_addr_mode5 => "Arm6mldec.decode_addr_mode5".
 Extract Constant arm6dec.decode_unconditional => "Arm6mldec.decode_unconditional".
 Extract Constant arm6dec.decode_conditional => "Arm6mldec.decode_conditional".
 Extract Constant arm6dec.decode => "Arm6mldec.decode".
-*)
+
 
 Require Simul.
 Require Semantics.
