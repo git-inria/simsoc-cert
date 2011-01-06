@@ -5,7 +5,8 @@ PROC := arm6
 
 FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
 	$(PROC)exn.arm $(PROC)exn.v \
-	$(PROC)dec.txt $(PROC)dec.dat $(PROC)syntax.dat $(PROC)dec.v $(PROC)test.elf
+	$(PROC)dec.txt $(PROC)dec.dat $(PROC)syntax.dat \
+	$(PROC)dec.v $(PROC)mldec.ml $(PROC)test.elf
 
 DIR := ../refARMparsing
 
@@ -15,7 +16,7 @@ GEN := ../pseudocode/main
 
 .PRECIOUS: $(PROC).txt $(FILES)
 
-default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo #$(PROC)exn.vo
+default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo $(PROC)mldec.ml #$(PROC)exn.vo
 testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)syntax.txt
 	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.dat.ref $(PROC)syntax.dat
 	diff $(PROC)inst.arm.ref $(PROC)inst.arm
@@ -58,6 +59,9 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 %dec.v: %dec.dat $(GEN)
 	$(GEN) -idec $< -ocoq-dec > $@ || (rm -f $@; exit 1)
 
+%mldec.ml: %dec.dat $(GEN)
+	$(GEN) -idec $< -oml-dec > $@ || (rm -f $@; exit 1)
+
 %test.bin: %dec.dat $(GEN)
 	$(GEN) -idec $< -otest > $@ || (rm -f $@; exit 1)
 
@@ -77,7 +81,7 @@ $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/keepsyntax $(DIR)/parsesyntax $(DIR)/
 	cd $(DIR) && $(MAKE) `basename $@`
 
 clean:
-	rm -f *~ *.glob *.vo $(FILES)
+	rm -f *~ *.glob *.vo $(FILES) ../coq/arm6mldec.ml
 
 usage-patch-inst:
 	echo update $(PROC)inst.txt to the desired contents, then make patch-inst
