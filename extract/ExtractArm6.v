@@ -31,18 +31,13 @@ Extract Constant arm6dec.decode_unconditional => "Arm6mldec.decode_unconditional
 Extract Constant arm6dec.decode_conditional => "Arm6mldec.decode_conditional".
 Extract Constant arm6dec.decode => "Arm6mldec.decode".
 
-
 Require Simul.
 Require Semantics.
-Require ZArith.
-Require Functions.
 
 Extraction NoInline Simul.decode_cond.
 Extraction NoInline Simul.DecUndefined.
 Extraction NoInline Simul.decode_cond_mode.
 Extraction NoInline Semantics.if_CurrentModeHasSPSR.
-(*Extraction NoInline Semantics.if_then.*)
-(*Extraction NoInline andb.*)
 
 (*Print Extraction Inline.*)
 
