@@ -24,12 +24,12 @@ Section decoder_result.
  Variable inst : Type.
 
  Inductive decoder_result : Type :=
- | DecUndefined_with_num : nat -> decoder_result
- | DecUnpredictable : decoder_result
  | DecInst : inst -> decoder_result
- | DecError : message -> decoder_result.
+ | DecUnpredictable : decoder_result
+ | DecError : message -> decoder_result
+ | DecUndefined_with_num : nat -> decoder_result.
 
-Definition DecUndefined := DecUndefined_with_num 0%nat.
+Notation DecUndefined := (DecUndefined_with_num 0).
 
 End decoder_result.
 
@@ -52,6 +52,16 @@ Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
         | DecUndefined => @DecUndefined_with_num inst 2
       end
     | None => @DecUndefined_with_num inst 3
+  end.
+
+Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
+  (w : word) (inst : Type) (g : mode -> inst) :
+  decoder_result inst :=
+  match f w with
+    | DecInst i => DecInst (g i)
+    | DecError m => @DecError inst m
+    | DecUnpredictable => @DecUnpredictable inst
+    | DecUndefined => @DecUndefined_with_num inst 2
   end.
 
 (****************************************************************************)

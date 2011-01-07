@@ -333,13 +333,23 @@ let shouldbe_test (lh, ls) =
 (*****************************************************************************)
 
 (*call the decode mode function according to the addressing mode*)
-let mode_tst (lh, ls) =
+let mode_tst (lh, ls) c =
   let aux b =
-  let lst = Array.to_list (param_m (lh,ls)) in
-  let md = mode_of_inst (name (lh, ls)) lst in
-  match md with
-    | (1|2|3|4|5 as i) -> bprintf b "decode_cond_mode decode_addr_mode%d w (fun add_mode condition => %t)" i (shouldbe_test (lh, ls))
-    | _ -> bprintf b "decode_cond w (fun condition => %t)" (shouldbe_test (lh, ls))
+    let lst = Array.to_list (param_m (lh,ls)) in
+    let n = mode_of_inst (name (lh, ls)) lst in
+      match n with
+        | (1|2|3|4|5 as i) -> if c then
+            bprintf b "decode_cond_mode decode_addr_mode%d w (fun add_mode condition => %t)" 
+              i (shouldbe_test (lh, ls))
+          else
+            bprintf b "decode_mode decode_addr_mode%d w (fun add_mode => %t)" 
+              i (shouldbe_test (lh, ls))
+        | _ -> if c then
+            bprintf b "decode_cond w (fun condition => %t)" 
+              (shouldbe_test (lh, ls))
+          else
+            bprintf b "DecInst (%t)" 
+              (shouldbe_test (lh, ls))
   in aux;;
 
 (*****************************************************************************)
@@ -352,9 +362,12 @@ let unconditional_instr =
 let dec_inst b (lh, ls) =
   let md = add_mode lh in
     match md with
-      | DecInstARMCond | DecInstARMUncond 
-          -> bprintf b "    %a\n    | word28 %t=>\n      %t\n"
-	  comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls))
+      | DecInstARMCond ->
+          bprintf b "    %a\n    | word28 %t=>\n      %t\n"
+	    comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) true)
+      | DecInstARMUncond -> 
+          bprintf b "    %a\n    | word28 %t=>\n      %t\n"
+	    comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) false)
       | DecInstThumb -> () (* TODO: Thumb mode *)
       | DecEncoding -> ()
       | DecMode i ->
@@ -431,11 +444,11 @@ let decode b ps =
   (*print the instruction decoder*)
   bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
-  bprintf b "    | _ => DecUndefined inst\n  end.";
+  bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
 
   bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
-  bprintf b "    | _ => DecUndefined inst\n  end.";
+  bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
 
   bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n";
   bprintf b "  match w32_of_word w with\n";
