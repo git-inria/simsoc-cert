@@ -294,6 +294,8 @@ and exp loc nm b = function
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
 
   | BinOp (e1, "<", Num "0") -> bprintf b "lt_0 %a" (pexp loc nm) e1
+  | BinOp (e1, ">=", Num "0") -> bprintf b "ge_0 %a" (pexp loc nm) e1
+
   (* optimization avoiding a call to repr *)
   | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f (pexp loc nm) e1 num n
@@ -323,14 +325,18 @@ and exp loc nm b = function
               | _ -> bprintf b "(mul %a %a)[%a]"
                   (pexp loc nm) e1 (pexp loc nm) e2 (range loc nm) r
             end
-        | e, Bits ("7","0") -> bprintf b "(get_byte0 %a)" (pexp loc nm) e
-        | e, Bits ("15","8") -> bprintf b "(get_byte1 %a)" (pexp loc nm) e
-        | e, Bits ("23","16") -> bprintf b "(get_byte2 %a)" (pexp loc nm) e
-        | e, Bits ("31","24") -> bprintf b "(get_byte3 %a)" (pexp loc nm) e
-        | e, Bits ("15","0") -> bprintf b "(get_half0 %a)" (pexp loc nm) e
-        | e, Bits ("31","16") -> bprintf b "(get_half1 %a)" (pexp loc nm) e
-        | _ ->
-            bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
+        | e, Bits (h, l) ->
+            let signed = if nm.[0] = 'S' then "signed_" else "" in
+            begin match h, l with
+              | "7","0" -> bprintf b "(get_%sbyte0 %a)" signed (pexp loc nm) e
+              | "15","8" -> bprintf b "(get_%sbyte1 %a)" signed (pexp loc nm) e
+              | "23","16" -> bprintf b "(get_%sbyte2 %a)" signed (pexp loc nm) e
+              | "31","24" -> bprintf b "(get_%sbyte3 %a)" signed (pexp loc nm) e
+              | "15","0" -> bprintf b "(get_%shalf0 %a)" signed (pexp loc nm) e
+              | "31","16" -> bprintf b "(get_%shalf1 %a)" signed (pexp loc nm) e
+              | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
+            end
+        | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
       end
   | Memory (e, n) -> bprintf b "read st %a %a" (pexp loc nm) e size n
 
