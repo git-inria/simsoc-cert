@@ -160,6 +160,10 @@ Definition get_byte0 w := mk_byte (w[7#0]).
 Definition get_byte1 w := mk_byte (w[15#8]).
 Definition get_byte2 w := mk_byte (w[23#16]).
 Definition get_byte3 w := mk_byte (w[31#24]).
+Definition get_signed_byte0 w := Word.repr (Byte.signed (mk_byte (w[7#0]))).
+Definition get_signed_byte1 w := Word.repr (Byte.signed (mk_byte (w[15#8]))).
+Definition get_signed_byte2 w := Word.repr (Byte.signed (mk_byte (w[23#16]))).
+Definition get_signed_byte3 w := Word.repr (Byte.signed (mk_byte (w[31#24]))).
 
 (****************************************************************************)
 (** half-words (16-bits words) *)
@@ -185,6 +189,8 @@ Coercion word_of_half : half >-> word.
 
 Definition get_half0 w := mk_half (w[15#0]).
 Definition get_half1 w := mk_half (w[31#16]).
+Definition get_signed_half0 w := Word.repr (Half.signed (mk_half (w[15#0]))).
+Definition get_signed_half1 w := Word.repr (Half.signed (mk_half (w[31#16]))).
 
 (****************************************************************************)
 (** A2.3 Registers (p. 42) *)
