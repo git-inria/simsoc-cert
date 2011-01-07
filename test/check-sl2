@@ -1,5 +1,5 @@
 #!/bin/bash
-SIMLIGHT="../simlight2/simlight -d -i"
+SIMLIGHT="../simlight2/simlight -d -r0 "
 set -e # exit on error
 set -x # verbose
 
@@ -31,6 +31,7 @@ $SIMLIGHT simsoc_new1_t.elf -r0=0xff
 $SIMLIGHT test_mem_t.elf -r0=0x3
 $SIMLIGHT sorting_t.elf -r0=0x3f
 $SIMLIGHT thumb_test_t.elf -r0=0x7f
-$SIMLIGHT arm_sadd_a.elf -r0=0x3fffff
-$SIMLIGHT arm_v6_a.elf -r0=0x530f
+$SIMLIGHT arm_v6_a.elf -r0=0x327e530f
+$SIMLIGHT arm_v6_extra_a.elf -r0=0x3
+$SIMLIGHT arm_srsrfe_a.elf -r0=0x1
 # $SIMLIGHT thumb_v6_t.elf -r0=1
