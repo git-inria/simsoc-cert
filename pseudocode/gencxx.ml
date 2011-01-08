@@ -228,7 +228,7 @@ let rec exp p b = function
             | "15", "8" -> bprintf b "get%s_byte_1(%a)" signed (exp p) e
             | "23", "16" -> bprintf b "get%s_byte_2(%a)" signed (exp p) e
             | "31", "24" -> bprintf b "get%s_byte_3(%a)" signed (exp p) e
-        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
+        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2	
       end
   | Coproc_exp (e, f, es) ->
       bprintf b "%s(proc,%a)" (func f) (list "," (exp p)) (e::es)
