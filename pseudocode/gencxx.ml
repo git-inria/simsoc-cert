@@ -41,7 +41,7 @@ let type_of_var = function
 
   | "cond" -> "SLv6_Condition"
   | "old_mode" | "mode" -> "SLv6_Mode"
-  | "accvalue" | "result" -> "uint64_t"
+  | "accvalue" | "result" | "value" -> "uint64_t"
   | _ -> "uint32_t";;
 
 (** List the variables of a prog *)
