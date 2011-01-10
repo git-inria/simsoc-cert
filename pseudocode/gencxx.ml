@@ -220,7 +220,9 @@ let rec exp p b = function
   | Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Range (e, Bits (n1, n2)) ->
       begin
-        let signed = if p.xid.[0] = 'S' then "_signed" else "" in
+        let signed =
+          if p.xid.[0] = 'S' || p.xid.[0] = 'Q' then "_signed" else ""
+        in
           match n1, n2 with
             | "15", "0" -> bprintf b "get%s_half_0(%a)" signed (exp p) e
             | "31", "16" -> bprintf b "get%s_half_1(%a)" signed (exp p) e

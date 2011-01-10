@@ -105,7 +105,9 @@ let rec exp (p: xprog) b = function
   | Ast.Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Ast.Range (e, Bits (n1, n2)) ->
       begin
-        let signed = if p.xprog.fid.[0] = 'S' then "_signed" else if p.xprog.fid.[0] = 'Q' then "_signed" else "" in
+        let signed =
+          if p.xprog.fid.[0] = 'S' || p.xprog.fid.[0] = 'Q' then "_signed" else ""
+        in
           match n1, n2 with
             | "15", "0" -> bprintf b "get%s_half_0(%a)" signed (exp p) e
             | "31", "16" -> bprintf b "get%s_half_1(%a)" signed (exp p) e
