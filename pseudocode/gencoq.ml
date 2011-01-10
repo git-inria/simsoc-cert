@@ -283,10 +283,6 @@ and exp loc nm b = function
   (* for saturation functions, add a cast to nat if the second
      argument is not a number *)
 
-  | Fun ("SignedSat" as f, (BinOp (e1, op, e2)) :: [Num s]) ->
-      bprintf b "%s%s_%s %a %a" f s (string_of_binop op) (pexp loc nm) e1
-        (pexp loc nm) e2
-
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
 	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
@@ -326,7 +322,8 @@ and exp loc nm b = function
                   (pexp loc nm) e1 (pexp loc nm) e2 (range loc nm) r
             end
         | e, Bits (h, l) ->
-            let signed = if nm.[0] = 'S' then "signed_" else "" in
+            let signed = if nm.[0] = 'S' ||nm.[0] =  'Q' then "signed_" 
+            else "" in
             begin match h, l with
               | "7","0" -> bprintf b "(get_%sbyte0 %a)" signed (pexp loc nm) e
               | "15","8" -> bprintf b "(get_%sbyte1 %a)" signed (pexp loc nm) e
