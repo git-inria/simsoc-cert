@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions SADD8, SADD16, and SADDSUBX
- * After 655 instructions executed, r0 should contain 2^22-1 = 0x3fffff */
+ * After 655 instructions executed, r0 should contain 2^25-1 = 0x1ffffff */
 
 #include "common.h"
 
@@ -105,6 +105,18 @@ void arm_SADDSUBX() {
   CHECK(GE10(cpsr)==3);
 }
 
+void arm_SADDSUBX_bis() {
+  uint32_t result, cpsr;
+  asm("saddsubx %0, %2, %3\n\t"
+      "mrs %1, CPSR"
+      : "=&r" (result), "=&r" (cpsr)
+      : "r" (0x12345678), "r" (0x56781234)
+      );
+  CHECK(result==0x24680000);
+  CHECK(GE32(cpsr)==3);
+  CHECK(GE10(cpsr)==3);
+}
+
 int main() {
   arm_SADD8();
   arm_SADD8_bis();
@@ -112,5 +124,6 @@ int main() {
   arm_SADD16_bis();
   arm_SADD16_ter();
   arm_SADDSUBX();
+  arm_SADDSUBX_bis();
   return count;
 }

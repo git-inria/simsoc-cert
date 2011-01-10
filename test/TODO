@@ -1,9 +1,48 @@
 
+--- Test of the new ARMv6 instructions
+
+Todo:
+- CPS
+- SETEND
+- CPY
+- LDREX, STREX (not completely implemented in simlight)
+- PKHBT, PKHTB
+- REV, REV16, REVSH
+- SEL
+- SHADD8, SHADD16, SHADDSUBX, SHSUB8, SHSUB16, SHSUBADDX
+- SMLAD, SMLALD, SMLSD, SMLSLD
+- SMMLA, SMMLS, SMMUL
+- SMUAD, SMUSD
+- SRS, RFE
+- SSAT, SSAT16
+- SSUB8, SSUB16, SSUBADDX
+- SXTAB, SXTAB16, STXAH, SXTB, SXTB16, SXTH
+- UADD16, UADD8, UADDSUBX
+- UHADD16, UHADD8, UHADDSUBX
+- UMAAL
+- UQADD16, UQADD8, UQADDSUBX
+- UQSUB16, UQSUB8, UQSUBADDX
+- USAT, USAT16
+- USAD8, USADA8
+- USUB16, USUB8, USUBADDX
+- UXTAB, UXTAB16, UXTAH, UXTB, UXTB16, UXTH
+- Thumb CPS
+- Thumb CPY
+- Thumb REV, REV16, REVSH
+- Thumb SETEND
+- Thumb SXTB, SXTH, UXTB, UXTH
+
+Done:
+- SADD8, SADD16, SADDSUBX in arm_sadd.c
+- QADD8, QADD16, QADDSUBX in arm_qadd.c
+- QSUB8, QSUB16, QSUBADDX in arm_qsub.c
+
+
+-----------------------------------------------------------------------------
+--- OCaml and extraction
+
 - mv v2ml.sh into the tool directory
 
 - mv debug.ml in another more appropriate directory
 
 - put all generated files in a tmp subdirectory?
-
-Done:
------
