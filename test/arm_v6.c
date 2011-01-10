@@ -11,6 +11,13 @@ int index_ = 1;
 #define CHECK(COND)				\
   if (COND) count +=index_; index_ <<= 1;
 
+int GE0(uint32_t cpsr) {return (cpsr>>16)&1;}
+int GE1(uint32_t cpsr) {return (cpsr>>17)&1;}
+int GE2(uint32_t cpsr) {return (cpsr>>18)&1;}
+int GE3(uint32_t cpsr) {return (cpsr>>19)&1;}
+int GE10(uint32_t cpsr) {return (cpsr>>16)&3;}
+int GE32(uint32_t cpsr) {return (cpsr>>18)&3;}
+
 void arm_CPY() {
   uint32_t x;
   asm("cpy %0, %1\n\t"
@@ -51,21 +58,21 @@ void arm_PKHTB() {
 }
 
 void arm_SEL() {
-  uint32_t x,f;
+  uint32_t x,ge,result;
   /* There is a bug here: the GE bits must be set to known values before 'sel' is
    * executed
    * Moreover, there is no reason to test the GE bits after. */ 
-  asm(
-      "sel %0, %2, %3\n\t"
+  asm("sadd8 %2, %5, %6\n\t"
+      "sel %0, %3, %4\n\t"
       "mrs %1, cpsr\n\t"
-      : "=&r" (x), "=&r" (f)
-      : "r" (0x12345678), "r" (0x87654321)
-);
-  CHECK((x == 0x12345678)
-	&&(f&(1<<16))
-	&&(f&(1<<17))
-	&&(f&(1<<18))
-	&&(f&(1<<19)));
+      : "=&r" (x), "=&r" (ge), "=&r" (result)
+      : "r" (0x12345678), "r" (0x87654321), "r" (0x026080fe), "r" (0x0360fffe));
+  CHECK((x == 0x12344321)
+  &&(GE3(ge)==1)
+  &&(GE2(ge)==1)
+  &&(GE1(ge)==0)
+  &&(GE0(ge)==0)
+  &&(result==0x05c07ffc));
 }
 
 void arm_SETEND_BE(){
@@ -88,78 +95,7 @@ void arm_SETEND_LE(){
     CHECK((f == 0));
 }
 
-void arm_SHADD8(){
-  uint32_t x;
-    asm("shadd8 %0, %1, %2\n\t"
-	:"=&r" (x)
-	:"r" (0x02040608), "r" (0x02020202)
-	);
-    CHECK((x == 0x02030405));
-}
 
-void arm_SHADD16(){
-  uint32_t x;
-    asm("shadd16 %0, %1, %2\n\t"
-	:"=&r" (x)
-	:"r" (0x00020004), "r" (0x00060008)
-	);
-    CHECK((x == 0x00040006));
-}
-
-void arm_SHADDSUBX(){
-  uint32_t x=0;
-    asm("shaddsubx %0, %1, %2"
-	:"=&r" (x)
-	:"r" (0x00080009), "r" (0x00010002)
-	);
-    CHECK((x == 0x00050004));
-}
-
-void arm_SHSUB16(){
-  uint32_t x;
-    asm("shsub16 %0, %1, %2\n\t"
-	:"=&r" (x)
-	:"r" (0x000a000a), "r" (0x00040006)
-	);
-    CHECK((x == 0x00030002));
-}
-
-void arm_SHSUB8(){
-  uint32_t x;
-    asm("shsub8 %0, %1, %2\n\t"
-	:"=&r" (x)
-	:"r" (0x0a0a0a0a), "r" (0x02040608)
-	);
-    CHECK((x == 0x04030201));
-}
-
-void arm_SHSUBADDX(){
-  uint32_t x;
-    asm("shsubaddx %0, %1, %2"
-	:"=&r" (x)
-	:"r" (0x00080004), "r" (0x00020006)
-	);
-    CHECK((x == 0x00010003));
-}
-
-void arm_SMLAD(){
-  uint32_t x,f;
-  asm("smlad %0, %2, %3, %4\n\t"
-      :"=&r" (x), "=&r" (f)
-      :"r" (0x80002),"r" (0x20004),"r" (0x6)
-      );
-  CHECK((x == 0x1e));
-
-}
-
-void arm_SMLSD(){
-  uint32_t x,f;
-  asm("smlsdx %0, %2, %3, %4\n\t"
-      :"=&r" (x), "=&r" (f)
-      :"r" (0x10002),"r" (0x20004),"r" (0xc)
-      );
-  CHECK((x == 0xc));
-}
 
 int main() {
   arm_CPY();
@@ -169,13 +105,5 @@ int main() {
   arm_SEL();
   arm_SETEND_BE();
   arm_SETEND_LE();
-  arm_SHADD8();
-  arm_SHADD16();
-  arm_SHADDSUBX();
-  arm_SHSUB8();
-  arm_SHSUB16();
-  arm_SHSUBADDX();
-  arm_SMLAD();
-  arm_SMLSD();
   return count;
 }
