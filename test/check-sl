@@ -25,3 +25,4 @@ $SIMLIGHT sorting_a.elf -r0=0x3f
 $SIMLIGHT arm_sadd_a.elf -r0=0x1ffffff
 $SIMLIGHT arm_qadd_a.elf -r0=0x1fff
 $SIMLIGHT arm_qsub_a.elf -r0=7
+$SIMLIGHT arm_rev_a.elf -r0=15

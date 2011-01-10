@@ -7,11 +7,9 @@ Todo:
 - CPY
 - LDREX, STREX (not completely implemented in simlight)
 - PKHBT, PKHTB
-- REV, REV16, REVSH
 - SEL
 - SHADD8, SHADD16, SHADDSUBX, SHSUB8, SHSUB16, SHSUBADDX
 - SMLAD, SMLALD, SMLSD, SMLSLD
-- SMMLA, SMMLS, SMMUL
 - SMUAD, SMUSD
 - SRS, RFE
 - SSAT, SSAT16
@@ -36,7 +34,7 @@ Done:
 - SADD8, SADD16, SADDSUBX in arm_sadd.c
 - QADD8, QADD16, QADDSUBX in arm_qadd.c
 - QSUB8, QSUB16, QSUBADDX in arm_qsub.c
-
+- REV, REV16, REVSH in arm_rev.c
 
 -----------------------------------------------------------------------------
 --- OCaml and extraction

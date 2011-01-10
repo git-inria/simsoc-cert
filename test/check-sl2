@@ -34,5 +34,6 @@ $SIMLIGHT thumb_test_t.elf -r0=0x7f
 $SIMLIGHT arm_sadd_a.elf -r0=0x1ffffff
 $SIMLIGHT arm_qadd_a.elf -r0=0x1fff
 $SIMLIGHT arm_qsub_a.elf -r0=7
+$SIMLIGHT arm_rev_a.elf -r0=15
 
 # $SIMLIGHT arm_v6_a.elf -r0=0x1ffffff => arm_v6 must be splited in smaller files

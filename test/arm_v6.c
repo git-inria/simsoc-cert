@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After 821 instructions executed, r0 should contain 0x327e530f */
+ * After ?? instructions executed, r0 should contain 2^15-1 = 0x7fff */
 
 #include "common.h"
 
@@ -10,23 +10,6 @@ int count = 0;
 int index_ = 1;
 #define CHECK(COND)				\
   if (COND) count +=index_; index_ <<= 1;
-
-void arm_REVSH() {
-  uint32_t x;
-  asm("revsh %0, %1\n\t"
-      : "=&r" (x)
-      : "r" (0x8765));
-  CHECK((x == 0x6587));
-}
-
-void arm_REV() {
-  uint32_t x;
-  asm("rev %0, %1\n\t"
-      
-      : "=&r" (x)
-      : "r" (0x11223344));
-  CHECK((x == 0x44332211));
-}
 
 void arm_CPY() {
   uint32_t x;
@@ -69,6 +52,9 @@ void arm_PKHTB() {
 
 void arm_SEL() {
   uint32_t x,f;
+  /* There is a bug here: the GE bits must be set to known values before 'sel' is
+   * executed
+   * Moreover, there is no reason to test the GE bits after. */ 
   asm(
       "sel %0, %2, %3\n\t"
       "mrs %1, cpsr\n\t"
@@ -80,15 +66,6 @@ void arm_SEL() {
 	&&(f&(1<<17))
 	&&(f&(1<<18))
 	&&(f&(1<<19)));
-}
-
-void arm_REV16(){
-  uint32_t x=0;
-    asm("rev16 %0, %1"
-	:"=&r" (x)
-	:"r" (0x12345678)
-	);
-    CHECK((x == 0x34127856));
 }
 
 void arm_SETEND_BE(){
@@ -185,14 +162,11 @@ void arm_SMLSD(){
 }
 
 int main() {
-  arm_REVSH();
   arm_CPY();
   arm_CPS();
   arm_PKHBT();
   arm_PKHTB();
-  arm_REV();
   arm_SEL();
-  arm_REV16();
   arm_SETEND_BE();
   arm_SETEND_LE();
   arm_SHADD8();
