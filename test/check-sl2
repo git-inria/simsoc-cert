@@ -38,4 +38,4 @@ $SIMLIGHT arm_rev_a.elf -r0=15
 $SIMLIGHT arm_v6_a.elf -r0=0xfff
 $SIMLIGHT arm_v6_SH_a.elf -r0=0x3f
 $SIMLIGHT arm_v6_SM_a.elf -r0=0x3ffff
-
+$SIMLIGHT arm_v6_SS_a.elf -r0=0xffffffff

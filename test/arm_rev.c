@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions REV, REV16, REVSH
- * After ?? instructions executed, r0 should contain 2^4-1 = 15 */
+ * After 125 instructions executed, r0 should contain 2^4-1 = 15 */
 
 #include "common.h"
 

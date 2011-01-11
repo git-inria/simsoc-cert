@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions QSUB8, QSUB16, and QSUBADDX
- * After ?? instructions executed, r0 should contain 2^3-1 = 7 */
+ * After 106 instructions executed, r0 should contain 2^3-1 = 7 */
 
 #include "common.h"
 

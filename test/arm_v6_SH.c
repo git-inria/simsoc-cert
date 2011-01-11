@@ -1,8 +1,8 @@
 /* Derived from SimSoC, Copyright © INRIA 2007, 2008, 2009, 2010
  * LGPL license version 3 */
 
-/* test some v6 new instructions
- * After ?? instructions executed, r0 should contain 2^15-1 = 0x7fff */
+/* test some v6 SH operation instructions
+ * After 205 instructions executed, r0 should contain 2^6-1 = 0x3f */
 
 #include "common.h"
 

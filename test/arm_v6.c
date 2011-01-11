@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test some v6 new instructions
- * After ?? instructions executed, r0 should contain 2^15-1 = 0x7fff */
+ * After 364 instructions executed, r0 should contain 2^15-1 = 0x7fff */
 
 #include "common.h"
 
@@ -23,7 +23,6 @@ int GE32(uint32_t cpsr) {return (cpsr>>18)&3;}
 void arm_CPY() {
   uint32_t x;
   asm("cpy %0, %1\n\t"
-      
       : "=&r" (x)
       : "r" (0x10101010));
   CHECK((x == 0x10101010));

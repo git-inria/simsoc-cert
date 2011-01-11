@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test v6 SM operation instructions
- * After ?? instructions executed, r0 should contain 31 = 0x1f */
+ * After 617 instructions executed, r0 should contain 2^18-1 = 0x3ffff */
 
 #include "common.h"
 

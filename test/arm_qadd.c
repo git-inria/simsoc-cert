@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions QADD8, QADD16, and QADDSUBX
- * After ?? instructions executed, r0 should contain 2^13-1 = 0x1fff */
+ * After 375 instructions executed, r0 should contain 2^13-1 = 0x1fff */
 
 #include "common.h"
 
