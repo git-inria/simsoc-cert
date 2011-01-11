@@ -43,6 +43,7 @@ let level = function
 
 let rec exp b = function
   | Bin s | Hex s | Num s -> string b s
+  | Float_zero -> string b "0."
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (_, f, _) as e -> pexp_level (level f) b e

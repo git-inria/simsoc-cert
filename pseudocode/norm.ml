@@ -98,7 +98,7 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  |Num _|Bin _|Hex _|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e -> e
+  |Num _|Bin _|Hex _|Float_zero|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e -> e
 
 (* replace two successive ranges by a single one *)
 and range =

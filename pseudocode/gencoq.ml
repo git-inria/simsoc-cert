@@ -259,6 +259,7 @@ and exp loc nm b = function
   | Bin s -> word bin b s
   | Hex s -> word hex b s
   | Num s -> word num b s
+  | Float_zero as e -> todo_word b e (*FIXME: float not supported yet*)
   | Var s -> string b s
 
   (*FIXME: functions not supported yet*)

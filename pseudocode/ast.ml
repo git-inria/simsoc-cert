@@ -34,6 +34,7 @@ type exp =
 | Num of string
 | Bin of string
 | Hex of string
+| Float_zero
 | If_exp of exp * exp * exp
 | Fun of string * exp list
 | BinOp of exp * string * exp
