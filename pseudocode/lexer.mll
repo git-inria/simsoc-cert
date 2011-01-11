@@ -22,7 +22,7 @@ List.iter (fun (k, t) -> Hashtbl.add keyword_table k t) [
   (* instructions *)
   "begin", BEGIN; "end", END; "if", IF; "then", THEN; "else", ELSE;
   "while", WHILE; "for", FOR; "to", TO; "do", DO;
-  "case", CASE; "of", OF; "endcase", ENDCASE;
+  "case", CASE; "of", OF; "defaultcase", DEFAULTCASE; "endcase", ENDCASE;
   "assert", ASSERT; "UNPREDICTABLE", UNPREDICTABLE;
   (* registers *)
   "Flag", FLAG "Flag"; "flag", FLAG "flag"; "bit", FLAG "bit";

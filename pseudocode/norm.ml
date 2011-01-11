@@ -229,7 +229,8 @@ let rec inst = function
   | While (e, i) -> While (exp e, inst i)
   | For (s, n, p, i) -> For (s, n, p, inst i)
   | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
-  | Case (e, s) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s)
+  | Case (e, s, o) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s, 
+			    option_map inst o)
 
   (* non-recursive instructions *)
   | Unpredictable as i -> i;;
@@ -251,7 +252,8 @@ let rec affect = function
   | If (e, i1, Some i2) -> If (e, affect i1, Some (affect i2))
   | While (e, i) -> While (e, affect i)
   | For (s, n, p, i) -> For (s, n, p, affect i)
-  | Case (e, s) -> Case (e, List.map (fun (n, i) -> (n, affect i)) s)
+  | Case (e, s, o) -> Case (e, List.map (fun (n, i) -> (n, affect i)) s, 
+			    option_map affect o)
 
   | i -> i
 

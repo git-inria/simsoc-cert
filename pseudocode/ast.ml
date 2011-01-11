@@ -76,7 +76,7 @@ type inst =
 | Assert of exp
 | For of string * string * string * inst
 | Coproc of exp * string * exp list
-| Case of exp * (string * inst) list;;
+| Case of exp * (string * inst) list * inst option;;
 
 (*****************************************************************************)
 (** program names *)
@@ -221,13 +221,14 @@ module Make (G : Var) = struct
     | Proc (_, es) -> vars_exps acc es
     | For (_, _, _, i) -> vars_inst acc i
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (Var s, nis) -> vars_cases (StrMap.add s G.case_type gs, ls) nis
+    | Case (Var s, nis, o) -> vars_cases (StrMap.add s G.case_type gs, ls) 
+      (let nis = List.map snd nis in
+       match o with None -> nis | Some ni -> nis @ [ni])
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
 
-  and vars_cases acc nis =
-    List.fold_left (fun acc (_, i) -> vars_inst acc i) acc nis;;
+  and vars_cases acc nis = List.fold_left vars_inst acc nis;;
 
   (* sort variables by their names *)
   let vars (i: inst) =
@@ -267,8 +268,9 @@ let ast_map (fi: inst -> inst) (fe: exp -> exp) (i: inst) =
     | Assert e -> Assert (exp e)
     | For (s1, s2, s3, i) -> For (s1, s2, s3, inst i)
     | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
-    | Case (e, sis) ->
-        Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis)
+    | Case (e, sis, oi) ->
+        Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis, 
+	      option_map inst oi)
     | x -> x
     in fi i'
   in inst i;;
@@ -317,7 +319,8 @@ let inst_exists pi pe pr =
     | Assert e -> exp e
     | For (_, _, _, i) -> inst i
     | Coproc (e, _, es) -> exp e || List.exists exp es
-    | Case (e, sis) -> exp e || List.exists (fun (_,i) -> inst i) sis
+    | Case (e, sis, oi) -> exp e || List.exists (fun (_,i) -> inst i) sis ||
+      option_exists inst oi
   in inst;;
 
 let ftrue _ = true and ffalse _ = false;;

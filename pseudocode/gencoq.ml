@@ -367,7 +367,7 @@ and range loc nm b = function
 (*REMOVE when finished! *)
 let todo s f b x = bprintf b "todo %s (* %a *)" s f x;;
 
-let case loc nm k b (n, i) =
+let case bin loc nm k b (n, i) =
   match i with
     | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
     | _ -> raise Not_found;;
@@ -429,11 +429,14 @@ and inst_aux loc nm k b = function
   (* adhoc treatment of case's: as case's are only used for defining
      the variable index, we convert a case which branches define index
      into a let index := followed by a Coq match *)
-  | Case (e, nis) as i ->
+  | Case (e, nis, oi) as i ->
       begin try bprintf b
-	"let index :=\n%amatch unsigned %a with\n%a%a| _ => repr 0\n%aend in"
-	indent (k+2) (exp loc nm) e (list "" (case loc nm (k+4))) nis indent (k+4) indent (k+2)
-      with Not_found -> todo "Case" (Genpc.inst 0) b i end
+	"let index :=\n%amatch unsigned %a with\n%a%a%a\n%aend in"
+	indent (k+2) (exp loc nm) e (list "" (case bin loc nm (k+4))) nis indent (k+4) 
+	(fun b -> function 
+	  | None -> bprintf b "| _ => repr 0"
+	  | Some i -> case string loc nm (k+4) b ("_", i)) oi indent (k+2)
+	with Not_found -> todo "Case" (Genpc.inst 0) b i end
 
   | For (x, p, q, i) ->
       bprintf b "loop %s n%s (fun %s => \n%a)" p q x (inst loc nm (k+2)) i

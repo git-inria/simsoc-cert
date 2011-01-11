@@ -19,7 +19,7 @@ Pseudocode parser.
 %token EOF COLON SEMICOLON COMA
 %token LPAR RPAR LSQB RSQB BEGIN END
 %token EQ IN UNPREDICTABLE UNAFFECTED
-%token IF THEN ELSE WHILE DO ASSERT FOR TO CASE ENDCASE OF
+%token IF THEN ELSE WHILE DO ASSERT FOR TO CASE DEFAULTCASE ENDCASE OF
 %token CPSR SPSR MEMORY REG GE
 %token COPROC LOAD SEND FROM NOT_FINISHED
 %token <Ast.mode> MODE
@@ -98,7 +98,8 @@ cond_inst:
 | IF exp THEN block ELSE block        { If ($2, $4, Some $6) }
 | WHILE exp DO block                  { While ($2, $4) }
 | FOR IDENT EQ NUM TO NUM DO block    { For ($2, $4, $6, $8) }
-| CASE exp OF BEGIN cases END ENDCASE { Case ($2, $5) }
+| CASE exp OF BEGIN cases END ENDCASE { Case ($2, $5, None) }
+| CASE exp OF BEGIN cases END DEFAULTCASE block ENDCASE { Case ($2, $5, Some $8) }
 ;
 cases:
 | BIN block       { [$1, $2] }

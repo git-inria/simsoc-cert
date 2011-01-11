@@ -157,9 +157,13 @@ and inst_aux p k b = function
       bprintf b "size_t %s; for (%s = %a; %s<=%a; ++%s) {\n%a\n}"
         counter counter Gencxx.num min counter Gencxx.num max counter (inst p (k+2)) i
 
-  | Case (e, s) ->
-      bprintf b "switch (%a) {\n%a%a  default: abort();\n  }"
+  | Case (e, s, o) ->
+      bprintf b "switch (%a) {\n%a%a  default:\n%a\n  }"
         (exp p) e (list "" (case_aux p k)) s indent k
+	(fun b -> function
+	  | None -> bprintf b "%aabort();" indent (k+2)
+	  | Some i -> inst p (k+2) b i) o
+
 
   (* the condition has already been checked, or has been removed *)
   | If (Fun ("ConditionPassed", [Var "cond"]), _, None) ->

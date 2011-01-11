@@ -173,7 +173,9 @@ let may_branch_prog b (x: xprog) =
       | If (_, i, None) -> inst acc i
       | While (_, i) -> inst acc i
       | For (_, _, _, i) -> inst acc i
-      | Case (_, sis) -> List.fold_left inst acc (List.map (fun (_, i) -> i) sis)
+      | Case (_, sis, oi) -> List.fold_left inst acc 
+	(let sis = List.map snd sis in
+	 match oi with None -> sis | Some i -> sis @ [ i ])
       | _ -> acc
     and exp = function
       | Reg (Var s, None)
