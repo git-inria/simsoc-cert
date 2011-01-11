@@ -41,7 +41,6 @@ void arm_SMLAD_X(){
       );
   CHECK((x == 0x2a));
 }
-
 void arm_SMLAD(){
   uint32_t x,f;
   asm("smlad %0, %2, %3, %4\n\t"
@@ -61,7 +60,6 @@ void arm_SMLSD_X(){
       );
   CHECK((x == 0xc));
 }
-
 void arm_SMLSD(){
   uint32_t x,f;
   asm("smlsd %0, %2, %3, %4\n\t"
@@ -81,7 +79,6 @@ void arm_SMLALD_X(){
       );
   CHECK((x == 0x5)&&(f == 0x32143241));
 }
-
 void arm_SMLALD(){
   uint32_t x=0xffffffff,f=0x3214323f;
   asm("smlald %0, %1, %2, %3\n\t"
@@ -101,7 +98,6 @@ void arm_SMLSLD_X(){
       );
   CHECK((x == 0x345)&&(f == 0x3ade323f));
 }
-
 void arm_SMLSLD(){
   uint32_t x=0xffffffff,f=0x3ade323f;
   asm("smlsld %0, %1, %2, %3\n\t"
@@ -121,7 +117,6 @@ void arm_SMMLA_R(){
       );
   CHECK((x == 0x10326587));
 }
-
 void arm_SMMLA_T(){
   uint32_t x;
   asm("smmla %0, %1, %2, %3\n\t"
@@ -141,7 +136,6 @@ void arm_SMMLS_R(){
       );
   CHECK((x == 0x82a6699));
 }
-
 void arm_SMMLS_T(){
   uint32_t x;
   asm("smmls %0, %1, %2, %3\n\t"
@@ -162,7 +156,6 @@ void arm_SMUAD_X(){
       );
   CHECK((x == 0x8));
 }
-
 void arm_SMUAD(){
   uint32_t x,q;
   asm("smuad %0, %2, %3\n\t"
@@ -183,7 +176,6 @@ void arm_SMUSD_X(){
       );
   CHECK((x == 0x0));
 }
-
 void arm_SMUSD(){
   uint32_t x;
   asm("smusd %0, %1, %2\n\t"

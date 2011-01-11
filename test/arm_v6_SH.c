@@ -11,6 +11,7 @@ int index_ = 1;
 #define CHECK(COND)				\
   if (COND) count +=index_; index_ <<= 1;
 
+/* Signed Halving Add 8 performs four signed 8-bit integer additions, halves the results, and writes the results to the destination register. */
 void arm_SHADD8(){
   uint32_t x;
     asm("shadd8 %0, %1, %2\n\t"
@@ -20,6 +21,7 @@ void arm_SHADD8(){
     CHECK((x == 0x02030405));
 }
 
+/* Signed Halving Add 16 performs two signed 16-bit integer additions, halves the results, and writes the results to the destination register. */
 void arm_SHADD16(){
   uint32_t x;
     asm("shadd16 %0, %1, %2\n\t"
@@ -29,6 +31,10 @@ void arm_SHADD16(){
     CHECK((x == 0x00040006));
 }
 
+/* SHSUBADDX (Signed Halving Subtract and Add with Exchange) performs one 16-bit signed integer subtraction */
+/* and one 16-bit signed integer addition, and halves the results. It exchanges the two halfwords of the second */
+/* operand before it performs the arithmetic. */
+/* SHADDSUBX has no effect on the GE flags. */
 void arm_SHADDSUBX(){
   uint32_t x=0;
     asm("shaddsubx %0, %1, %2"
@@ -38,6 +44,8 @@ void arm_SHADDSUBX(){
     CHECK((x == 0x00050004));
 }
 
+/* SHSUB16 (Signed Halving Subtract) performs two 16-bit signed integer subtractions, and halves the results. */
+/* SHSUB16 has no effect on the GE flags. */
 void arm_SHSUB16(){
   uint32_t x;
     asm("shsub16 %0, %1, %2\n\t"
@@ -47,6 +55,8 @@ void arm_SHSUB16(){
     CHECK((x == 0x00030002));
 }
 
+/* SHSUB8 performs four 8-bit signed integer subtractions, and halves the results. */
+/* SHSUB8 has no effect on the GE flags. */
 void arm_SHSUB8(){
   uint32_t x;
     asm("shsub8 %0, %1, %2\n\t"
@@ -56,6 +66,10 @@ void arm_SHSUB8(){
     CHECK((x == 0x04030201));
 }
 
+/* SHSUBADDX (Signed Halving Subtract and Add with Exchange) performs one 16-bit signed integer subtraction */
+/* and one 16-bit signed integer addition, and halves the results. It exchanges the two halfwords of the second */
+/* operand before it performs the arithmetic. */
+/* SHSUBADDX has no effect on the GE flags. */
 void arm_SHSUBADDX(){
   uint32_t x;
     asm("shsubaddx %0, %1, %2"

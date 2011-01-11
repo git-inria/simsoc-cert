@@ -18,6 +18,8 @@ int GE3(uint32_t cpsr) {return (cpsr>>19)&1;}
 int GE10(uint32_t cpsr) {return (cpsr>>16)&3;}
 int GE32(uint32_t cpsr) {return (cpsr>>18)&3;}
 
+
+/* Copy is a pre-UAL synonym for MOV (register). */
 void arm_CPY() {
   uint32_t x;
   asm("cpy %0, %1\n\t"
@@ -27,6 +29,8 @@ void arm_CPY() {
   CHECK((x == 0x10101010));
 }
 
+/* Change Processor State is available only in privileged modes. It changes one or more of the A, I, and F */
+/* interrupt disable bits and the mode bits of the CPSR, without changing the other CPSR bits. */
 void arm_CPS() {
   uint32_t f;
   asm("cpsie a, #31\n\t"
@@ -39,6 +43,8 @@ void arm_CPS() {
 	);
 }
 
+/* Pack Halfword combines one halfword of its first operand with the other halfword of its shifted second */
+/* operand. */
 void arm_PKHBT() {
   uint32_t x;
   asm("pkhbt %0, %1, %2, lsl #1\n\t"
@@ -47,7 +53,6 @@ void arm_PKHBT() {
       : "r" (0x0000ffff), "r" (0xffff0000));
   CHECK((x == 0xfffeffff));
 }
-
 void arm_PKHTB() {
   uint32_t x=0;
   asm("pkhtb %0, %1, %2, asr #1\n\t"
@@ -57,24 +62,24 @@ void arm_PKHTB() {
   CHECK((x == 0xff007f80));
 }
 
+/* Select Bytes selects each byte of its result from either its first operand or its second operand, according to */
+/* the values of the GE flags. */
 void arm_SEL() {
   uint32_t x,ge,result;
-  /* There is a bug here: the GE bits must be set to known values before 'sel' is
-   * executed
-   * Moreover, there is no reason to test the GE bits after. */ 
   asm("sadd8 %2, %5, %6\n\t"
       "sel %0, %3, %4\n\t"
       "mrs %1, cpsr\n\t"
       : "=&r" (x), "=&r" (ge), "=&r" (result)
       : "r" (0x12345678), "r" (0x87654321), "r" (0x026080fe), "r" (0x0360fffe));
-  CHECK((x == 0x12344321)
-  &&(GE3(ge)==1)
-  &&(GE2(ge)==1)
-  &&(GE1(ge)==0)
-  &&(GE0(ge)==0)
-  &&(result==0x05c07ffc));
+  CHECK((x == 0x12344321));
+  CHECK(GE3(ge)==1);
+  CHECK(GE2(ge)==1);
+  CHECK(GE1(ge)==0);
+  CHECK(GE0(ge)==0);
+  CHECK((result==0x05c07ffc));
 }
 
+/* Set Endianness writes a new value to ENDIANSTATE. */
 void arm_SETEND_BE(){
   uint32_t f;
     asm("setend be\n\t"
@@ -84,7 +89,6 @@ void arm_SETEND_BE(){
     f=(f&(1<<9))>>9;
     CHECK((f == 1));
 }
-
 void arm_SETEND_LE(){
   uint32_t f;
     asm("setend le\n\t"
@@ -94,8 +98,6 @@ void arm_SETEND_LE(){
     f=(f&(1<<9))>>9;
     CHECK((f == 0));
 }
-
-
 
 int main() {
   arm_CPY();

@@ -2,15 +2,8 @@
 --- Test of the new ARMv6 instructions
 
 Todo:
-- CPS
-- SETEND
-- CPY
+
 - LDREX, STREX (not completely implemented in simlight)
-- PKHBT, PKHTB
-- SEL
-- SHADD8, SHADD16, SHADDSUBX, SHSUB8, SHSUB16, SHSUBADDX
-- SMLAD, SMLALD, SMLSD, SMLSLD
-- SMUAD, SMUSD
 - SRS, RFE
 - SSAT, SSAT16
 - SSUB8, SSUB16, SSUBADDX
@@ -31,10 +24,14 @@ Todo:
 - Thumb SXTB, SXTH, UXTB, UXTH
 
 Done:
+
 - SADD8, SADD16, SADDSUBX in arm_sadd.c
 - QADD8, QADD16, QADDSUBX in arm_qadd.c
 - QSUB8, QSUB16, QSUBADDX in arm_qsub.c
 - REV, REV16, REVSH in arm_rev.c
+- CPY, CPS, PKHBT, PKHTB, SETEND, SEL in arm_v6.c
+- SHADD8, SHADD16, SHADDSUBX, SHSUB8, SHSUB16, SHSUBADDX in arm_v6_SH.c
+- SMMUL, SMLAD, SMLALD, SMLSD, SMLSLD, SMMLA, SMMLS, SMUAD, SMUSD in arm_v6_SM.c
 
 -----------------------------------------------------------------------------
 --- OCaml and extraction
