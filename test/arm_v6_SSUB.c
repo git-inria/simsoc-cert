@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test so1e v6 SS operation instructions
- * After 1009 instructions executed, r0 should contain 2^32-1 = 0xffffffff */
+ * After 638 instructions executed, r0 should contain 2^20-1 = 0xfffff */
 
 #include "common.h"
 

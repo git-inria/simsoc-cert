@@ -40,3 +40,5 @@ $SIMLIGHT arm_v6_SH_a.elf -r0=0x3f
 $SIMLIGHT arm_v6_SM_a.elf -r0=0x3ffff
 $SIMLIGHT arm_v6_SSAT_a.elf -r0=0xfff
 $SIMLIGHT arm_v6_SSUB_a.elf -r0=0xfffff
+$SIMLIGHT arm_v6_SXTA_a.elf -r0=0x7fff
+$SIMLIGHT arm_v6_SXTB_a.elf -r0=0x7fff

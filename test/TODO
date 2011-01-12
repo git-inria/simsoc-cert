@@ -5,7 +5,6 @@ Todo:
 
 - LDREX, STREX (not completely implemented in simlight)
 - SRS, RFE
-- SXTAB, SXTAB16, STXAH, SXTB, SXTB16, SXTH
 - UADD16, UADD8, UADDSUBX
 - UHADD16, UHADD8, UHADDSUBX
 - UMAAL
@@ -32,6 +31,8 @@ Done:
 - SMMUL, SMLAD, SMLALD, SMLSD, SMLSLD, SMMLA, SMMLS, SMUAD, SMUSD in arm_v6_SM.c
 - SSAT, SSAT16 in arm_v6_SSAT.c
 - SSUB8, SSUB16, SSUBADDX in arm_v6_SSUB.c
+- SXTAB, SXTAB16, STXAH in arm_v6_SXTA.c
+- SXTB, SXTB16, SXTH in arm_v6_SXTB.c
 -----------------------------------------------------------------------------
 --- OCaml and extraction
 
