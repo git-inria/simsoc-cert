@@ -194,9 +194,10 @@ let output_registers = set_of_list ["d"; "dHi"; "dLo"; "n"];;
 module Make (G : Var) = struct
 
   (* add every variable as global except if it is already declared as
-     local or if its the for-loop variable "i" *)
+     local. Note that the for-loop variable is added, but will be removed in
+     [vars_inst]. *)
   let rec vars_exp ((gs,ls) as acc) = function
-    | Var s when not (StrMap.mem s ls || s = "i") ->
+    | Var s when not (StrMap.mem s ls) ->
 	StrMap.add s (G.global_type s) gs, ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
@@ -219,7 +220,7 @@ module Make (G : Var) = struct
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
     | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es
-    | For (_, _, _, i) -> vars_inst acc i
+    | For (v, _, _, i) -> let gs, ls = vars_inst acc i in StrMap.remove v gs, ls
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
     | Case (Var s, nis, o) -> vars_cases (StrMap.add s G.case_type gs, ls) 
       (let nis = List.map snd nis in
