@@ -30,7 +30,8 @@ Done:
 - CPY, CPS, PKHBT, PKHTB, SETEND, SEL in arm_v6.c
 - SHADD8, SHADD16, SHADDSUBX, SHSUB8, SHSUB16, SHSUBADDX in arm_v6_SH.c
 - SMMUL, SMLAD, SMLALD, SMLSD, SMLSLD, SMMLA, SMMLS, SMUAD, SMUSD in arm_v6_SM.c
-- SSAT, SSAT16, SSUB8, SSUB16, SSUBADDX in arm_v6_SS.c
+- SSAT, SSAT16 in arm_v6_SSAT.c
+- SSUB8, SSUB16, SSUBADDX in arm_v6_SSUB.c
 -----------------------------------------------------------------------------
 --- OCaml and extraction
 
