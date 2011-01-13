@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions SADD8, SADD16, and SADDSUBX
- * After 655 instructions executed, r0 should contain 2^25-1 = 0x1ffffff */
+ * After 742 instructions executed, r0 should contain 2^25-1 = 0x1ffffff */
 
 #include "common.h"
 
@@ -19,6 +19,8 @@ int GE3(uint32_t cpsr) {return (cpsr>>19)&1;}
 int GE10(uint32_t cpsr) {return (cpsr>>16)&3;}
 int GE32(uint32_t cpsr) {return (cpsr>>18)&3;}
 
+/* SADD8 performs four 8-bit signed integer additions. It sets the GE bits in the CPSR according to the results */
+/* of the additions. */
 void arm_SADD8() {
   uint32_t result, cpsr;
   asm("sadd8 %0, %2, %3\n\t"
@@ -53,6 +55,8 @@ void arm_SADD8_bis() {
   CHECK(GE0(cpsr)==0);
 }
 
+/* SADD16 (Signed Add) performs two 16-bit signed integer additions. It sets the GE bits in the CPSR according */
+/* to the results of the additions. */
 void arm_SADD16() {
   uint32_t result, cpsr;
   asm("sadd16 %0, %2, %3\n\t"
@@ -92,6 +96,9 @@ void arm_SADD16_ter() {
   CHECK(GE10(cpsr)==0);
 }
 
+/* SADDSUBX (Signed Add and Subtract with Exchange) performs one 16-bit signed integer addition and one */
+/* 16-bit signed integer subtraction. It exchanges the two halfwords of the second operand before it performs */
+/* the arithmetic. It sets the GE bits in the CPSR according to the results of the additions. */
 void arm_SADDSUBX() {
   uint32_t result, cpsr;
   asm("saddsubx %0, %2, %3\n\t"
