@@ -27,6 +27,10 @@ uint32_t Number_Of_Set_Bits_In(uint32_t x) {
 
 void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src) {
   assert(a>b);
+  if (a-b+1==32) {
+    *dst = src;
+    return;
+  }
   const uint32_t mask = ((1<<(a-b+1))-1)<<b;
   *dst &= ~mask;
   *dst |= (src<<b)&mask;
