@@ -7,7 +7,6 @@ Todo:
 - SRS, RFE
 - UADD16, UADD8, UADDSUBX
 - UHADD16, UHADD8, UHADDSUBX
-- UMAAL
 - UQADD16, UQADD8, UQADDSUBX
 - UQSUB16, UQSUB8, UQSUBADDX
 - USAT, USAT16
@@ -33,6 +32,7 @@ Done:
 - SSUB8, SSUB16, SSUBADDX in arm_v6_SSUB.c
 - SXTAB, SXTAB16, STXAH in arm_v6_SXTA.c
 - SXTB, SXTB16, SXTH in arm_v6_SXTB.c
+- UMAAL in arm_v6_UMAAL.c
 -----------------------------------------------------------------------------
 --- OCaml and extraction
 

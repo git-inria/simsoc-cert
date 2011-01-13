@@ -4,9 +4,9 @@ C_FILES := sum_iterative sum_recursive sum_direct endian multiply simsoc_new1 \
 ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
              arm_ldrstr arm_mrs arm_msr arm_multiple arm_swi arm_sadd \
 	     arm_qadd arm_qsub arm_rev arm_v6 arm_v6_SH arm_v6_SM \
-	     arm_v6_SSAT arm_v6_SSUB arm_v6_SXTA arm_v6_SXTB  $(C_FILES)
+	     arm_v6_SSAT arm_v6_SSUB arm_v6_SXTA arm_v6_SXTB arm_v6_UMAAL $(C_FILES)
 
-THUMB_FILES := thumb_test thumb_v6 $(C_FILES)
+THUMB_FILES := thumb_test $(C_FILES)
 
 default: $(ARM_FILES:%=%_a.cmo) $(THUMB_FILES:%=%_t.cmo)
 

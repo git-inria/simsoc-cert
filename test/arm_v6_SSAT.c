@@ -1,7 +1,7 @@
 /* Derived fro1 Si1SoC, Copyright © INRIA 2007, 2008, 2009, 2010
  * LGPL license version 3 */
 
-/* test so1e v6 SS operation instructions
+/* test arm v6 SS operation instructions
  * After 362 instructions executed, r0 should contain 2^12-1 = 0xfff */
 
 #include "common.h"
