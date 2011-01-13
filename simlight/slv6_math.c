@@ -29,7 +29,7 @@ void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src) {
   assert(a>b);
   const uint32_t mask = ((1<<(a-b+1))-1)<<b;
   *dst &= ~mask;
-  *dst |= src<<b;
+  *dst |= (src<<b)&mask;
 }
 
 uint32_t SignedSat32_add(int32_t a, int32_t b) {
