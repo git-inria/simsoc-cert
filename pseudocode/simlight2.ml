@@ -279,7 +279,7 @@ let print_stat k xs =
 (** main function *)
 
 (* bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
-let lib (bn: string) (pcs: prog list) (ss: syntax list)
+let lib (bn: string) ({ body = pcs ; _ } : program) (ss: syntax list)
     (decs: Codetype.maplist) (wf: string option) =
   let pcs': prog list = postpone_writeback pcs in
   let fs4: fprog list = List.rev (flatten pcs' ss decs) in

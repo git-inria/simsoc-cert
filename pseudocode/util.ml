@@ -66,6 +66,26 @@ module StrOrd = struct
   let compare = Pervasives.compare
 end;;
 
+module Map = 
+struct
+  module type S = 
+  sig
+    include Map.S
+
+    val add_no_erase : key -> 'a -> 'a t -> 'a t
+      (* like [add] but does nothing if the [key] is already present *)
+  end
+
+  module Make (O : Map.OrderedType) : S with type key = O.t =
+  struct
+    module M = Map.Make (O)
+
+    let add_no_erase k v map = if M.mem k map then map else M.add k v map
+    include M
+  end
+end
+
+
 module StrSet = Set.Make (StrOrd);;
 module StrMap = Map.Make (StrOrd);;
 

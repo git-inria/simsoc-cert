@@ -165,8 +165,9 @@ let fprint_loc oc loc =
 
 let parse_lexbuf lb =
   try Parser.lib Lexer.token lb
-  with Parsing.Parse_error ->
-    fprintf stderr "syntax error: %a\n" fprint_loc lb.lex_curr_p; exit 1;;
+  with Parsing.Parse_error as e ->
+    let () = eprintf "syntax error: %a\n%!" fprint_loc lb.lex_curr_p in
+    raise e;;
 
 let parse_channel ic =
   let lb = Lexing.from_channel ic in
@@ -184,7 +185,7 @@ let parse_file fn =
 (** main procedure *)
 (*****************************************************************************)
 
-let get_pc_input, set_pc_input = get_set [];;
+let get_pc_input, set_pc_input = get_set { Ast.header = []; Ast.body = [] };;
 let get_dec_input, set_dec_input = get_set [];;
 let get_syntax_input, set_syntax_input = get_set [];;
 
@@ -195,15 +196,15 @@ let check() =
       verbose "reparsing... ";
       Genpc.lib b ps;
       let ps' = parse_string (Buffer.contents b) in
-	if ps = ps' then verbose "ok\n" else error "failed";;
+	if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
 
-let norm() =
+let norm split_msr_code =
   if get_norm() then
     let ps = get_pc_input() in
       verbose "normalization... ";
-      let ps = List.map Norm.prog (Norm.split_msr_code ps) in
+      let ps = Norm.prog (split_msr_code ps) in
 	if get_check() then
-	  let ps' = List.map Norm.prog ps in
+	  let ps' = Norm.prog ps in
 	    if ps = ps' then verbose "ok\n" else error "failed"
 	else verbose "\n";
 	set_pc_input ps;
@@ -220,9 +221,18 @@ let parse_input_file() =
   );
   if is_set_pc_input_file() then (
     verbose "parsing pseudo-code...\n";
-    set_pc_input (parse_file (get_pc_input_file()));
+
+    let input_file = get_pc_input_file () in
+    let split_msr_code, pc =
+      match try Some (parse_file input_file) with Parsing.Parse_error -> None with
+	| None -> (fun x -> x), 
+	  C2pc.Traduction.prog_list_of_manual (input_value 
+						 (open_in_bin input_file) : C2pc.manual)
+	| Some s -> Norm.split_msr_code, { Ast.header = [] ; Ast.body = s } in
+
+    set_pc_input pc;
     check();
-    norm()
+    norm split_msr_code
   );
   if is_set_dec_input_file() then (
     verbose "read coding tables...\n";

@@ -151,6 +151,13 @@ and inst_aux p k b = function
   | Block (i :: is) ->
       bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
 
+  | Let (n, ns, is, i) ->
+      bprintf b "function %s(%a) {\n%a%a\n  }\n%a%a" n   
+	(list ", " (fun b (ty, x) -> 
+	  string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty) x))) ns
+	indent k   (list "" (inst p (k+2))) is
+	indent k   (inst p (k+2)) i
+
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
   | For (counter, min, max, i) ->
@@ -185,6 +192,7 @@ and inst_aux p k b = function
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
 	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+  | Return e -> bprintf b "return %a;\n" (exp p) e
 
 and case_aux p k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"

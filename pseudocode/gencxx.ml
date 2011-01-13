@@ -61,6 +61,15 @@ module G = struct
     match e with
       | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
+
+  let explicit_annot_type = function
+    | Tint -> "int"
+    | Tlong -> "long"
+    | Tfloat -> "float"
+    | Tdouble -> "double"
+    | Tvoid -> "void"
+    | Tunsigned_long -> "unsigned long"
+    | Tchar -> "char"
   
   let case_type = "uint8_t";;
 
@@ -257,6 +266,13 @@ and inst_aux p k b = function
   | Block (i :: is) ->
       bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
 
+  | Let (n, ns, is, i) ->
+      bprintf b "function %s(%a) {\n%a%a\n  };\n%a%a" n   
+	(list ", " (fun b (ty, x) -> 
+	  string b (sprintf "%s %s" (G.explicit_annot_type ty) x))) ns
+	indent k   (list "" (inst p (k+2))) is
+	indent k   (inst p (k+2)) i
+
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
   | For (counter, min, max, i) ->
@@ -286,6 +302,7 @@ and inst_aux p k b = function
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
 	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+  | Return e -> bprintf b "return %a;\n" (exp p) e
 
 and case_aux p k b (n, i) =
   bprintf b "%acase %s:\n%a\n%abreak;\n"
@@ -602,7 +619,7 @@ let dec_modes b ms =
 
 (* main function
  * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
-let lib (bn: string) (pcs: prog list) (decs: Codetype.maplist) =
+let lib (bn: string) ({ body = pcs ; _ } : program) (decs: Codetype.maplist) =
   let pcs' = List.map lsm_hack pcs in (* hack LSM instructions *)
   let decs' = (* remove encodings *)
     let aux (lh, _) = add_mode lh <> DecEncoding in

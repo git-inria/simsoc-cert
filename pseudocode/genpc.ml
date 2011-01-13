@@ -92,6 +92,11 @@ and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
+  | Let (n, ns, is, i) ->
+      bprintf b "let %s %a =\n%abegin\n%a%aend in\n%a%a"
+	n   (list " " (fun b (_, x) -> string b x)) ns   indent k
+	(list "" (postfix "\n" (inst k))) is   indent k   
+	indent k   (postfix "\n" (inst k)) i
   | Unpredictable -> bprintf b "UNPREDICTABLE"
   | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
@@ -111,6 +116,8 @@ and inst_aux k b = function
       bprintf b "case %a of\n%abegin\n%a%aend\n%adefaultcase\n%a\n%aendcase"
         exp e indent (k+4) (list "" (case_aux (k+4))) nis indent (k+4) indent (k+4) 
 	(option "" (inst (k+4))) oi indent k
+  | Return e -> 
+      bprintf b "return %a" exp e
 
 and case_aux k b (n, i) =
   bprintf b "%a%a\n%a\n" indent k num n (inst (k+4)) i;;
@@ -146,4 +153,5 @@ let block = function
 let prog b p =
   bprintf b "%s %a\n%a\n" p.pref name p (inst 9) (block p.pinst);;
 
-let lib b ps = list "" prog b ps;;
+let lib b ps = 
+  bprintf b "%a\n%a" (list "" (inst 9)) ps.header   (list "" prog) ps.body;;

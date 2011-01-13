@@ -231,6 +231,8 @@ let rec inst = function
   | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
   | Case (e, s, o) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s, 
 			    option_map inst o)
+  | Let (n, ns, li, i) -> Let (n, ns, List.map inst li, inst i)
+  | Return e -> Return (exp e)
 
   (* non-recursive instructions *)
   | Unpredictable as i -> i;;
@@ -281,10 +283,11 @@ and affects = function
  * but only one pseudo-code. The function below splits the pseudo-code to
  * create two real instructions. *)
 
-let rec split_msr_code (ps: prog list): prog list =
-  match ps with
-    | p :: ps' ->
-        if p.pident.iname <> "MSR" then p :: split_msr_code ps' else
+let split_msr_code (ps: program): program =
+  let rec aux ps =
+    match ps with
+      | p :: ps' ->
+        if p.pident.iname <> "MSR" then p :: aux ps' else
           let opcode25 = Range (Var "opcode", Index (Num "25")) in
           let imm = replace_exp opcode25 (Num "1") p.pinst
           and reg = replace_exp opcode25 (Num "0") p.pinst
@@ -292,7 +295,8 @@ let rec split_msr_code (ps: prog list): prog list =
           and reg_id = {p.pident with iname = "MSRreg"} in
             {p with pident = imm_id; pinst = imm} ::
               {p with pident = reg_id; pinst = reg} :: ps'
-    | [] -> raise (Failure "split_msr_code");;
+      | [] -> raise (Failure "split_msr_code") in
+  { ps with body = aux ps.body } ;;
 
 let lh_name (lh: lightheader) =
   match lh with LH (_, s) -> s;;
@@ -309,4 +313,7 @@ let rec split_msr_syntax (ss: syntax list): syntax list =
 (** normalization of programs *)
 (*****************************************************************************)
 
-let prog p = { p with pinst = affect (inst p.pinst) };;
+let prog p = 
+  let norm x = affect (inst x) in
+  { header = List.map norm p.header;
+    body = List.map (fun p -> { p with pinst = norm p.pinst }) p.body }

@@ -66,8 +66,12 @@ let args = function
 (** instructions *)
 (*****************************************************************************)
 
+type type_param = 
+    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tchar
+
 type inst =
 | Block of inst list
+| Let of string * (type_param * string) list * inst list * inst
 | Unpredictable
 | Affect of exp * exp
 | If of exp * inst * inst option
@@ -76,7 +80,8 @@ type inst =
 | Assert of exp
 | For of string * string * string * inst
 | Coproc of exp * string * exp list
-| Case of exp * (string * inst) list * inst option;;
+| Case of exp * (string * inst) list * inst option
+| Return of exp;;
 
 (*****************************************************************************)
 (** program names *)
@@ -111,6 +116,10 @@ type prog = {
   pident : ident;
   pidents : ident list; (* alternative idents *)
   pinst : inst };;
+
+type program = {
+  header : inst list; (* for ARM, this list is always nil *)
+  body : prog list }
 
 (* s should be the reference of the program *)
 let is_thumb s = s.[1] = '7';;
@@ -178,14 +187,16 @@ The variable "i" used in for-loops is not counted in variables. *)
 
 module type Var = sig
   (* type of target language types *)
-  type typ;;
+  type typ
   (* type of a variable from its name *)
-  val global_type : string -> typ;;
+  val global_type : string -> typ
   (* type of a local variable from its name and the expression to
      which it is affected *)
-  val local_type : string -> exp -> typ;;
+  val local_type : string -> exp -> typ
   (* type of variables used in case instructions *)
-  val case_type : typ;;
+  val explicit_annot_type : type_param -> typ
+  (* internal representation of [type_param], they are equivalent *)
+  val case_type : typ
 end;;
 
 (* register variables that are set by instructions *)
@@ -198,7 +209,7 @@ module Make (G : Var) = struct
      [vars_inst]. *)
   let rec vars_exp ((gs,ls) as acc) = function
     | Var s when not (StrMap.mem s ls) ->
-	StrMap.add s (G.global_type s) gs, ls
+	(StrMap.add_no_erase s (G.global_type s) gs), ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
     | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
@@ -213,18 +224,36 @@ module Make (G : Var) = struct
   let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
 	(if StrSet.mem s output_registers
-	 then StrMap.add s (G.global_type s) gs, ls
-	 else gs, StrMap.add s (G.local_type s e) ls) e
+	 then StrMap.add_no_erase s (G.global_type s) gs, ls
+	 else gs, StrMap.add_no_erase s (G.local_type s e) ls) e
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
+    | Let (_, ns, is, i) -> vars_inst (vars_insts (List.fold_left (fun gs (ty, n) -> 
+      StrMap.add n (G.explicit_annot_type ty) gs) gs ns, ls) is) i
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
     | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es
     | For (v, _, _, i) -> let gs, ls = vars_inst acc i in StrMap.remove v gs, ls
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
-    | Case (Var s, nis, o) -> vars_cases (StrMap.add s G.case_type gs, ls) 
-      (let nis = List.map snd nis in
-       match o with None -> nis | Some ni -> nis @ [ni])
+    | Case (Var s, nis, o) -> 
+      let gs', ls = 
+	vars_cases (StrMap.add s G.case_type gs, ls) 
+	  (let nis = List.map snd nis in
+	   match o with None -> nis | Some ni -> nis @ [ni]) in
+      ((* Now, we can just return [gs'], but the functions [G.case_type] and [G.global_type _] 
+	  do not necessarily return the same type description. So by default, we choose to restore 
+	  the initial value associated to [s] in [gs]. *)
+	if StrMap.mem s gs then
+	  StrMap.add s (let v0 = StrMap.find s gs in 
+			let () = 
+			  if v0 = StrMap.find s gs' then
+			    ()
+			  else 
+			    Printf.eprintf "warning: inside the Case, '%s' has a \
+                            different type than it has outside\n%!" s in 
+			v0) gs'
+       else
+	  gs'), ls
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
@@ -311,6 +340,7 @@ let inst_exists pi pe pr =
   let exp = exp_exists pe pr in
   let rec inst i = if pi i then true else match i with
     | Block is -> List.exists inst is
+    | Let (_, _, is, i) -> List.exists inst is || inst i
     | Unpredictable -> false
     | Affect (e1, e2) -> exp e1 || exp e2
     | If (e, i, None) -> exp e || inst i
@@ -322,6 +352,7 @@ let inst_exists pi pe pr =
     | Coproc (e, _, es) -> exp e || List.exists exp es
     | Case (e, sis, oi) -> exp e || List.exists (fun (_,i) -> inst i) sis ||
       option_exists inst oi
+    | Return e -> exp e
   in inst;;
 
 let ftrue _ = true and ffalse _ = false;;

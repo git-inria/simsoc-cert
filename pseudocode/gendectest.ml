@@ -649,7 +649,7 @@ let bin_insts out fs =
   (*done*)
 ;;
 
-let gen_bin_test out pcs ss decs seed =
+let gen_bin_test out { body = pcs ; _ } ss decs seed =
   set_binary_mode_out out true;
   Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
@@ -662,7 +662,7 @@ let gen_bin_test out pcs ss decs seed =
 (*output assembly tests*)
 (*****************************************************************************)
 
-let gen_asm_test bn pcs ss decs seed =
+let gen_asm_test bn { body = pcs ; _ } ss decs seed =
   Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
   let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
@@ -673,7 +673,7 @@ let gen_asm_test bn pcs ss decs seed =
       Buffer.output_buffer outa ba; close_out outa;
 ;;
 
-let gen_test bn pcs ss decs seed =
+let gen_test bn { body = pcs ; _ } ss decs seed =
   Random.init seed;
   let fs: fprog list = List.filter is_arm (flatten pcs ss decs) in
   let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
