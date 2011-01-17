@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-all: extract_compcert nc output_value
+all: extract_compcert nc
 
 ####
 
