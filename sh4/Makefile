@@ -24,5 +24,11 @@ instr.byte: instr.ml
 
 #
 
+clean:
+	ocamlbuild -clean
+
+nobackup:
+	rm -f *.bak *~ *.dup
+
 cbc: instr.byte sh4_mod.txt
-	cat sh4_mod.txt | ./instr.byte > c_code.c
+	cat sh4_mod.txt | ./instr.byte > c_code.dat

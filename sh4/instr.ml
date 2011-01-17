@@ -324,21 +324,28 @@ match l with
   let close_in t = P.close_in t.ic
 end
 
+module type C_PARSE = 
+sig
+  val c_of_file : string (* filename *) -> Cabs.definition list
+  val c_of_program : string (* program written in C language *) -> Cabs.definition list
+end
 
-module C_parse = 
+module C_parse : C_PARSE = 
 struct
-  let parse_file fic : Cabs.definition list = 
+  let c_of_file fic : Cabs.definition list = 
     let ic = open_in_bin fic in
     let v = Parser.file Lexer.initial (Lexer.init "#" ic) in
     let _ = close_in ic in
     v
 
-  let str str : Cabs.definition list = 
-    let fic = ((* FIXME let-réduire *) let temp_dir = "./test" in Filename.temp_file ~temp_dir) "test" "" in
+  let c_of_program str : Cabs.definition list = 
+    let fic = ((* FIXME let-réduire *) let temp_dir = "." in Filename.temp_file ~temp_dir) "test" "" in
     let oc = open_out fic in
-    let _ = Printf.fprintf oc "%s\n" str in
-    let _ = close_out oc in
-    parse_file fic
+    let () = Printf.fprintf oc "%s\n" str in
+    let () = close_out oc in
+    let v = c_of_file fic in
+    let () = Unix.unlink fic in
+    v
 end
 
 
@@ -421,7 +428,7 @@ type manual =
 
 let mk_code l = 
   { init = l
-  ; code = C_parse.str (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
+  ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
 
 (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
 (* Remark : we can replace the "Assert_failure" by a "[]" *)
@@ -517,9 +524,11 @@ struct
       | Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
       | Index of exp
 
+    type type_param = Tint | Tlong | Tfloat | Tdouble
+
     type inst =
       | Block of inst list
-      | Block_fun of string * string list * inst list
+      | Let of string * (type_param * string) list * inst list * inst
       | Unpredictable
       | Affect of exp * exp
       | If of exp * inst * inst option
@@ -528,7 +537,7 @@ struct
       | Assert of exp
       | For of string * string * string * inst
       | Coproc of exp * string * exp list
-      | Case of exp * (string * inst list) list * inst list option (* default *) 
+      | Case of exp * (string * inst) list * inst option (* default *) 
       | Return of exp
 
     type ident = {
@@ -562,191 +571,6 @@ struct
       | Shouldbe of bool               (* false -> SBZ, true -> SBO *)
   end
 end
-
-module Traduction =
-struct
-
-let inst_of_cabs : Cabs.definition -> P.E.inst = 
-  let module C = Cabs in
-  let module E = P.E in 
-
-  let flatten_case = (** replace the statement inside any CASE by a NOP (which location is a copy of the CASE's location) *) (* WARNING this case for example is not treated : a CASE contains a BLOCK which contains a CASE *)
-    let rec aux = function
-      | C.CASE (e, s, loc) :: xs -> C.CASE (e, C.NOP loc, loc) :: aux (s :: xs)
-      | x :: xs -> x :: aux xs
-      | [] -> [] in
-    aux in
-
-  let s_of_unary_operator = function
-    | C.MINUS -> "minus" | C.PLUS -> "plus" | C.NOT -> "NOT" | C.BNOT -> "not" | C.MEMOF -> "memof" | C.ADDROF -> "addrof"
-   (*| PREINCR | PREDECR *) | C.POSINCR -> "succ" | C.POSDECR -> "pred" in
-
-  let s_of_binary_operator = function
-    | C.ADD -> "+" | C.SUB -> "-" | C.MUL -> "*" | C.DIV -> "divu" (* MOD *) 
-    | C.AND -> "AND" | C.OR -> "OR"
-    | C.BAND -> "and" | C.BOR -> "or" | C.XOR -> "EOR" | C.SHL -> "Logical_Shift_Left" | C.SHR -> "Logical_Shift_Right" 
-    | C.EQ -> "==" | C.NE -> "!=" | C.LT -> "<" | C.GT -> "zgt" | (* LE *) C.GE -> ">="
-    (*| ASSIGN
-    | ADD_ASSIGN | SUB_ASSIGN | MUL_ASSIGN | DIV_ASSIGN | MOD_ASSIGN
-    | BAND_ASSIGN | BOR_ASSIGN | XOR_ASSIGN | SHL_ASSIGN | SHR_ASSIGN*) in
-
-  let simple_binary_operator = function
-    | C.ADD_ASSIGN -> C.ADD | C.SUB_ASSIGN -> C.SUB | C.MUL_ASSIGN -> C.MUL | C.DIV_ASSIGN -> C.DIV (* MOD *)
-    | C.BAND_ASSIGN -> C.BAND | C.BOR_ASSIGN -> C.BOR | C.XOR_ASSIGN -> C.XOR | C.SHL_ASSIGN -> C.SHL | C.SHR_ASSIGN -> C.SHR in
-
-  let rec i_of_definition = function
-    | C.FUNDEF ((_, (name, C.PROTO (_, l, _), [], _)), e, _, _) -> E.Block_fun (name, List.map (function (_, (n, _, _, _)) -> n) l, li_of_block e)
-    | C.DECDEF _ 
-    | C.ONLYTYPEDEF _ -> E.Block []
-
-  and li_of_block { C.bstmts = l } =
-    List.map i_of_statement (List.rev (List.fold_left (fun xs -> function C.NOP _ -> xs | x -> x :: xs) [] l))
-      
-  and i_of_statement = function 
-    | C.IF (e, s1, C.NOP _, _) -> E.If (e_of_expression e, i_of_statement s1, None)
-    | C.IF (e, C.NOP _, s2, _) -> E.If (e_of_expression e, E.Block [], Some (i_of_statement s2))
-    | C.IF (e, s1, s2, _) -> E.If (e_of_expression e, i_of_statement s1, Some (i_of_statement s2))
-
-    | C.NOP _ -> assert false
-
-    | C.COMPUTATION (C.UNARY (C.POSINCR | C.POSDECR as op, v), _) -> 
-      let v, op = e_of_expression v, s_of_unary_operator op in
-      E.Affect (v, E.Fun (op, [v]))
-
-    | C.COMPUTATION (C.BINARY (C.ASSIGN, C.VARIABLE v1, C.BINARY (C.ASSIGN, C.VARIABLE v2, C.BINARY (C.ASSIGN, C.VARIABLE v3, e))), _) -> 
-      (* REMARK This case can be deleted and the whole expression can be treated in [e_of_expression]. 
-	 If we do so, we have to change the return type of [e_of_expression] to be able to get back the side affect of assigning an expression (before returning the value considered as an expression). 
-	 That is to modify [e_of_expression] to return a list for example. *)
-      E.Block (List.rev (snd (List.fold_left 
-				(fun (e, l) v -> 
-				  let v = e_of_expression (C.VARIABLE v) in
-				  v, E.Affect (v, e) :: l)
-				(e_of_expression e, []) 
-				[v3; v2; v1])))
-    | C.COMPUTATION (C.BINARY (op, v, e), _) ->       
-      let affect_b v e f = 
-	let v = e_of_expression v in
-	E.Affect (v, f v (e_of_expression e)) in
-      if op = C.ASSIGN then
-	affect_b v e (fun _ e -> e)
-      else
-	affect_b v e (fun v e -> E.BinOp (v, s_of_binary_operator (simple_binary_operator op), e))
-
-    | C.COMPUTATION (C.CALL (C.VARIABLE s, l), _) -> E.Proc (s, List.map e_of_expression l)
-
-    | C.DEFINITION _ -> E.Block []
-    | C.BLOCK (b, _) -> E.Block (li_of_block b)
-    | C.SWITCH (e, C.BLOCK ({ C.bstmts = l }, _), _) -> 
-
-      let _, acc, def = (* WARNING we evaluate [i_of_statement] from the end of the list as at the time of writing, this function is pure *)
-
-	let verify_break = (** verify that there is no instructions after every BREAK (CASE and DEFAULT are the only allowed) *)
-	  let rec aux = function
-	    | C.BREAK _ :: xs -> 
-	      let () = match xs with [] | C.CASE _ :: _ | C.DEFAULT _ :: _ -> () | _ -> assert false in
-	      aux xs
-	    | _ :: xs -> aux xs
-	    | [] -> () in
-	  aux in
-	let () = verify_break l in
-
-	List.fold_right 
-	  (fun s (acc_c, acc, def) -> 
-	    let f_acc_c s = i_of_statement s :: acc_c in
-	    match s with 
-	      | C.CASE (e, _, _) -> 
-		
-		acc_c, ((match e with 
-		  | C.CONSTANT (C.CONST_INT i) -> i
-		  | C.VARIABLE v -> "" (* FIXME récupérer la valeur entière associé à [v] *)), acc_c) :: acc, def
-
-	      | C.BREAK _ -> [], acc, def
-	      | C.DEFAULT (nop, _) when (match nop with C.NOP _ -> true | _ -> assert false) -> 
-		if (def, acc) = (None, []) then
-		  acc_c, [], Some acc_c 
-		else
-		  assert false (* test : presence of "default" at the end of the "switch" only *)
-	      | x -> f_acc_c x, acc, def
-	  ) (flatten_case l) ([], [], None) in
-      E.Case (e_of_expression e, acc, def)
-
-    | C.RETURN (e, _) -> E.Return (e_of_expression e)
-
-    | C.FOR (C.FC_EXP (C.BINARY (C.ASSIGN, C.VARIABLE i, C.CONSTANT (C.CONST_INT i_deb))), 
-	     C.BINARY (C.LT, C.VARIABLE i_, C.CONSTANT (C.CONST_INT i_end)),
-	     C.UNARY (C.POSINCR, C.VARIABLE i__),
-	     st,
-	     _) when List.for_all ((=) i) [ i_ ; i__ ] -> E.For (i, i_deb, i_end, i_of_statement st)
-
-    | i -> (assert false) i
-
-  and e_of_expression = function
-    | C.VARIABLE "PC" -> E.Reg (E.Var "15", None)
-    | C.VARIABLE i -> E.Var i
-
-    | C.INDEX (C.VARIABLE "R", e) -> E.Reg (e_of_expression e, None)
-    | C.INDEX (C.VARIABLE ("DR" | "DR_HEX" | "FR" | "FR_HEX" | "mlt" | "result_vec" | "saved_vec" | "XD" | "XF") as e1, e2)
-    | C.INDEX (C.MEMBEROF ((C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _)))), _) as e1, e2) -> E.Range (e_of_expression e1, E.Index (e_of_expression e2))
-
-    | C.PAREN e -> e_of_expression e
-
-    | C.UNARY (op, e) -> E.Fun (s_of_unary_operator op, [ e_of_expression e ])
-    | C.BINARY (op, e1, e2) -> E.BinOp (e_of_expression e1, s_of_binary_operator op, e_of_expression e2)
-
-    | C.CONSTANT (C.CONST_INT s) -> if String.length s >= 3 && s.[0] = '0' then match s.[1] with 'x' -> E.Hex s | 'b' -> E.Bin s | _ -> E.Num s else E.Num s 
-    | C.CONSTANT (C.CONST_FLOAT "0.0") -> E.Float_zero
-
-    | C.CAST (_, C.SINGLE_INIT e) -> e_of_expression e
-
-    | C.CALL (C.VARIABLE s, l) -> E.Fun (s, List.map e_of_expression l)
-
-    | C.MEMBEROF (C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _))) as e, s) -> E.Fun (Printf.sprintf "__get_%s" s, [ e_of_expression e ]) (*E.Member_of (e_of_expression e, s) *)
-
-    | e -> (assert false) e
-
-  in
-
-  i_of_definition
-
-
-
-let prog_list_of_manual : manual -> P.E.prog list = 
-  let module C = Cabs in
-  let module E = P.E in
-  fun m ->
-  (* FIXME keep [m.entete] *)
-
-    List.fold_left (fun xs -> function
-      | None -> xs
-      | Some x -> x @ xs) []
-      
-      (List.rev_map (fun inst -> 
-	match inst.decoder.dec_title with
-	  | Menu ->
-	    Some 
-	      (List.map (function
-		| C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) as c -> 
-
-		  { E.pref = Printf.sprintf "9.%d (* %s *)" inst.position fun_name
-		  ; E.pkind = E.InstARM
-		  ; E.pident = { E.iname = fun_name ; E.iparams = [] ; E.ivariant = None }
-		  ; E.pidents = []
-		  ; E.pinst =
-		      let code = inst_of_cabs c in
-		      E.Block [ code ; E.Proc (fun_name, match code with E.Block_fun (_, l, _) -> List.map (fun x -> E.Var x) l) ] }
-		    
-	       ) inst.c_code.code)
-	  | _ -> 
-	    let () = ignore (E.Block ( List.map inst_of_cabs inst.c_code.code @ [])) in
-	    (* FIXME prise en charge des flottants *) 
-	    None
-       ) m.section)
-
-
-let maplist_element_of_manual : manual -> (P.D.lightheader * P.D.pos_contents array) list = fun _ -> failwith "à faire"
-
-end
-
 
 let _ = 
   let module S = SH4_section in
@@ -907,9 +731,8 @@ let _ =
 
   let manual = { entete = mk_code (S.c_code t) ; section = aux t [] }  in
 
-  let t1 = Traduction.prog_list_of_manual manual in
-  let t2 = List.map Traduction.inst_of_cabs manual.entete.code in
-  let _ = ignore (t1, t2) in
+  let () = output_value stdout manual in
+  let () = exit 0 in
 
   let s_map = ref S_map.empty in
   begin
