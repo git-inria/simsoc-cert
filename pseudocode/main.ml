@@ -227,7 +227,7 @@ let parse_input_file() =
       match try Some (parse_file input_file) with Parsing.Parse_error -> None with
 	| None -> (fun x -> x), 
 	  C2pc.Traduction.prog_list_of_manual (input_value 
-						 (open_in_bin input_file) : C2pc.raw_c_code C2pc.manual) in
+						 (open_in_bin input_file) : C2pc.raw_c_code C2pc.manual)
 	| Some s -> Norm.split_msr_code, { Ast.header = [] ; Ast.body = s } in
 
     set_pc_input pc;
