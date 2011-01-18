@@ -659,6 +659,23 @@ let lib b ps =
   in
     (* generate code *)
 
+    (let open C2pc.Traduction in 
+      begin
+	(* print __get function *)
+	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_%s : word -> word.\n" s) !map_affect;
+	bprintf bsem_head "\n";
+
+	(* *)
+	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : word.\n" s) !map_param;
+	bprintf bsem_head "\n";
+      end);
+    (if ps.header = [] then
+	()
+     else
+	begin
+	  bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ "Parameter nat_of_word : word -> nat."
+								       ; ""]);
+	end);
     List.iter (function (Let (n, ns, is, _)) ->
       (*let gs, _ = V.vars i in*)
       bprintf bsem_head "Definition %s %a :=\n%a.\n\n"
@@ -667,7 +684,7 @@ let lib b ps =
 	  string b (sprintf "(%s : %s)" 
 		      (if s = "" then "_" else s) 
 		      (match ty with
-			| Tint -> "Type" 
+			| Tint -> "nat" 
 			| Tlong -> "Type" 
 			| Tfloat -> "Type" 
 			| Tdouble -> "Type"

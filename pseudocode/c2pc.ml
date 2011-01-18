@@ -59,19 +59,18 @@ type raw_c_code =
     { init : string list (* WARNING [init] is unused *)
     ; code : Cabs.definition list (** representation of the C pseudocode, natural order : first element in the list = first line *) }
 
-type instruction = 
+type 'a instruction = 
     { explanation_desc : string list (** information present in the part "description" *) 
     ; explanation_other : string list (** information eventually present after the C code *)
 
 
     ; decoder : decoder
-    ; c_code : raw_c_code
+    ; c_code : 'a
     ; position : int }
 
-
-type manual = 
-    { entete : raw_c_code (** piece of C code present at the beginning of section 9 *) 
-    ; section : instruction list }
+type 'a manual = 
+    { entete : 'a (** piece of C code present at the beginning of section 9 *) 
+    ; section : 'a instruction list }
 
 
 module Traduction =
@@ -79,6 +78,11 @@ struct
 
   module C = Cabs
   module E = Ast
+
+  module StringMap = Map.Make (struct type t = string let compare = compare end)
+
+  let map_affect = ref StringMap.empty 
+  let map_param = ref StringMap.empty
 
 let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) -> E.inst) option = 
 
@@ -120,6 +124,7 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
     | [C.SpecType C.Tunsigned; C.SpecType C.Tlong] -> E.Tunsigned_long
     | t -> ignore t ; assert false in
 
+
   let rec li_of_block { C.bstmts = l ; _ } =
     List.map i_of_statement (List.rev (List.fold_left (fun xs -> function C.NOP _ -> xs | x -> x :: xs) [] l))
       
@@ -134,24 +139,25 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
       let v, op = e_of_expression v, s_of_unary_operator op in
       E.Affect (v, E.Fun (op, [v]))
 
-    | C.COMPUTATION (C.BINARY (C.ASSIGN, C.VARIABLE v1, C.BINARY (C.ASSIGN, C.VARIABLE v2, C.BINARY (C.ASSIGN, C.VARIABLE v3, e))), _) -> 
+    | C.COMPUTATION (C.BINARY (C.ASSIGN, v1, C.BINARY (C.ASSIGN, v2, C.BINARY (C.ASSIGN, v3, e))), _) -> 
       (* REMARK This case can be deleted and the whole expression can be treated in [e_of_expression]. 
-	 If we do so, we have to change the return type of [e_of_expression] to be able to get back the side affect of assigning an expression (before returning the value considered as an expression). 
-	 That is to modify [e_of_expression] to return a list for example. *)
+         If we do so, we have to change the return type of [e_of_expression] to be able to get back the side affect of assigning an expression (before returning the value considered as an expression). 
+         That is to modify [e_of_expression] to return a list for example. *)
       E.Block (List.rev (snd (List.fold_left 
-				(fun (e, l) v -> 
-				  let v = e_of_expression (C.VARIABLE v) in
-				  v, E.Affect (v, e) :: l)
-				(e_of_expression e, []) 
-				[v3; v2; v1])))
-    | C.COMPUTATION (C.BINARY (op, v, e), _) ->       
+                                (fun (e, l) v -> 
+                                  let v = e_of_expression v in
+                                  v, E.Affect (v, e) :: l)
+                                (e_of_expression e, []) 
+                                [v3; v2; v1])))
+
+    | C.COMPUTATION (C.BINARY (op, v, e), _) -> 
       let affect_b v e f = 
-	let v = e_of_expression v in
-	E.Affect (v, f v (e_of_expression e)) in
+        let v = e_of_expression v in
+        E.Affect (v, f v (e_of_expression e)) in
       if op = C.ASSIGN then
-	affect_b v e (fun _ e -> e)
+        affect_b v e (fun _ e -> e)
       else
-	affect_b v e (fun v e -> E.BinOp (v, s_of_binary_operator (simple_binary_operator op), e))
+        affect_b v e (fun v e -> E.BinOp (v, s_of_binary_operator (simple_binary_operator op), e))
 
     | C.COMPUTATION (C.CALL (C.VARIABLE s, l), _) -> E.Proc (s, List.map e_of_expression l)
 
@@ -161,46 +167,46 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 
       let _, acc, def = (* WARNING we evaluate [i_of_statement] from the end of the list as at the time of writing, this function is pure *)
 
-	let verify_break = (** verify that there is no instructions after every BREAK (CASE and DEFAULT are the only allowed) *)
-	  let rec aux = function
-	    | C.BREAK _ :: xs -> 
-	      let () = match xs with [] | C.CASE _ :: _ | C.DEFAULT _ :: _ -> () | _ -> assert false in
-	      aux xs
-	    | _ :: xs -> aux xs
-	    | [] -> () in
-	  aux in
-	let () = verify_break l in
+        let verify_break = (** verify that there is no instructions after every BREAK (CASE and DEFAULT are the only allowed) *)
+          let rec aux = function
+            | C.BREAK _ :: xs -> 
+              let () = match xs with [] | C.CASE _ :: _ | C.DEFAULT _ :: _ -> () | _ -> assert false in
+              aux xs
+            | _ :: xs -> aux xs
+            | [] -> () in
+          aux in
+        let () = verify_break l in
 
-	let mk_inst x = E.Block x in
+        let mk_inst x = E.Block x in
 
-	List.fold_right 
-	  (fun s (acc_c, acc, def) -> 
-	    let f_acc_c s = i_of_statement s :: acc_c in
-	    match s with 
-	      | C.CASE (e, _, _) -> 
-		
-		acc_c, ((match e with 
-		  | C.CONSTANT (C.CONST_INT i) -> i
-		  | C.VARIABLE v -> ignore v ; "" (* FIXME récupérer la valeur entière associé à [v] *)
-		  | _ -> assert false), mk_inst acc_c) :: acc, def
+        List.fold_right 
+          (fun s (acc_c, acc, def) -> 
+            let f_acc_c s = i_of_statement s :: acc_c in
+            match s with 
+              | C.CASE (e, _, _) -> 
+                
+                acc_c, ((match e with 
+                  | C.CONSTANT (C.CONST_INT i) -> i
+                  | C.VARIABLE v -> ignore v ; "" (* FIXME récupérer la valeur entière associé à [v] *)
+                  | _ -> assert false), mk_inst acc_c) :: acc, def
 
-	      | C.BREAK _ -> [], acc, def
-	      | C.DEFAULT (nop, _) when (match nop with C.NOP _ -> true | _ -> assert false) -> 
-		if (def, acc) = (None, []) then
-		  acc_c, [], Some (mk_inst acc_c) 
-		else
-		  assert false (* test : presence of "default" at the end of the "switch" only *)
-	      | x -> f_acc_c x, acc, def
-	  ) (flatten_case l) ([], [], None) in
+              | C.BREAK _ -> [], acc, def
+              | C.DEFAULT (nop, _) when (match nop with C.NOP _ -> true | _ -> assert false) -> 
+                if (def, acc) = (None, []) then
+                  acc_c, [], Some (mk_inst acc_c) 
+                else
+                  assert false (* test : presence of "default" at the end of the "switch" only *)
+              | x -> f_acc_c x, acc, def
+          ) (flatten_case l) ([], [], None) in
       E.Case (e_of_expression e, acc, def)
 
     | C.RETURN (e, _) -> E.Return (e_of_expression e)
 
     | C.FOR (C.FC_EXP (C.BINARY (C.ASSIGN, C.VARIABLE i, C.CONSTANT (C.CONST_INT i_deb))), 
-	     C.BINARY (C.LT, C.VARIABLE i_, C.CONSTANT (C.CONST_INT i_end)),
-	     C.UNARY (C.POSINCR, C.VARIABLE i__),
-	     st,
-	     _) when List.for_all ((=) i) [ i_ ; i__ ] -> E.For (i, i_deb, i_end, i_of_statement st)
+             C.BINARY (C.LT, C.VARIABLE i_, C.CONSTANT (C.CONST_INT i_end)),
+             C.UNARY (C.POSINCR, C.VARIABLE i__),
+             st,
+             _) when List.for_all ((=) i) [ i_ ; i__ ] -> E.For (i, i_deb, i_end, i_of_statement st)
 
     | i -> ignore i ; assert false
 
@@ -209,8 +215,7 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
     | C.VARIABLE i -> E.Var i
 
     | C.INDEX (C.VARIABLE "R", e) -> E.Reg (e_of_expression e, None)
-    | C.INDEX (C.VARIABLE ("DR" | "DR_HEX" | "FR" | "FR_HEX" | "mlt" | "result_vec" | "saved_vec" | "XD" | "XF") as e1, e2)
-    | C.INDEX (C.MEMBEROF ((C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _)))), _) as e1, e2) -> E.Range (e_of_expression e1, E.Index (e_of_expression e2))
+    | C.INDEX (e1, e2) -> E.Range (e_of_expression e1, E.Index (e_of_expression e2))
 
     | C.PAREN e -> e_of_expression e
 
@@ -224,7 +229,16 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 
     | C.CALL (C.VARIABLE s, l) -> E.Fun (s, List.map e_of_expression l)
 
-    | C.MEMBEROF (C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _))) as e, s) -> E.Fun (Printf.sprintf "__get_%s" s, [ e_of_expression e ]) (*E.Member_of (e_of_expression e, s) *)
+    | C.MEMBEROF
+        (C.PAREN
+           (C.UNARY (C.MEMOF,
+                     C.CAST
+                       (([C.SpecType (C.Tstruct ("SR0", None, []))], C.PTR ([], C.JUSTBASE)),
+                        C.SINGLE_INIT (C.PAREN (C.UNARY (C.ADDROF, C.VARIABLE "SR")))))) as e,
+         s) -> E.Fun (Printf.sprintf "__get_special_%s" s, [ e_of_expression e ])
+    | C.MEMBEROF (C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _))) as e, s) -> 
+      let () = map_affect := StringMap.add s () !map_affect in
+      E.Fun (Printf.sprintf "__get_%s" s, [ e_of_expression e ]) (*E.Member_of (e_of_expression e, s) *)
 
     | e -> ignore e ; assert false
 
@@ -232,13 +246,16 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 
   let i_of_definition = function
     | C.FUNDEF ((_, (name, C.PROTO (_, l, _), _, _)), e, _, _) -> 
+      let l_param = List.map (function ([C.SpecType o], (n, _, _, _)) -> t_of_typeSpecifier o, n | t -> ignore t ; assert false) l in
       Some (fun i -> 
-	let l_param = List.map (function ([C.SpecType o], (n, _, _, _)) -> t_of_typeSpecifier o, n | t -> ignore t ; assert false) l in
-	E.Let (name, l_param, li_of_block e, i l_param))
+        E.Let (name, l_param, li_of_block e, i l_param))
     | C.DECDEF ((_, [((name, C.PROTO (_, l, _), _, _), _)]), _) -> 
+      let l_param = List.map (function (l, (n, _, _, _)) -> t_of_ltypeSpecifier l, n) l in
       Some (fun i -> 
-	let l_param = List.map (function (l, (n, _, _, _)) -> t_of_ltypeSpecifier l, n) l in
-	E.Let (name, l_param, [], i l_param)) 
+        E.Let (name, l_param, [], i l_param)) 
+    | C.DECDEF ((_, [((name, C.JUSTBASE, [], _), _)]), _) -> 
+      let () = map_param := StringMap.add name () !map_param in
+      None
     | C.DECDEF _
     | C.ONLYTYPEDEF _ -> None
     | _ -> assert false in
@@ -247,44 +264,43 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 
 
 
-let prog_list_of_manual : manual -> E.program = 
+let prog_list_of_manual : raw_c_code manual -> E.program = 
   fun m ->
-
     { E.header = List.fold_left (fun xs -> function
       | None -> xs
       | Some x -> x :: xs) []
-	
-	(List.rev_map (fun c ->
-	  match inst_of_cabs c with
-	    | None -> None
-	    | Some f -> Some (f (fun _ -> E.Block []))) m.entete.code)
+        
+        (List.rev_map (fun c ->
+          match inst_of_cabs c with
+            | None -> None
+            | Some f -> Some (f (fun _ -> E.Block []))) m.entete.code)
 
     ; E.body =
-	List.fold_left (fun xs -> function
-	  | None -> xs
-	  | Some x -> x @ xs) []
+        List.fold_left (fun xs -> function
+          | None -> xs
+          | Some x -> x @ xs) []
       
-	  (List.rev_map (fun inst -> 
-	    match inst.decoder.dec_title with
-	      | Menu ->
-		Some 
-		  (List.map (function
-		    | C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) as c -> 
-		      
-		      { E.pref = Printf.sprintf "9.%d (* %s *)" inst.position fun_name
-		      ; E.pkind = E.InstARM
-		      ; E.pident = { E.iname = fun_name ; E.iparams = [] ; E.ivariant = None }
-		      ; E.pidents = []
-		      ; E.pinst = 
-			  let code = match inst_of_cabs c with None -> assert false | Some s -> s in
-			  code (fun l -> E.Proc (fun_name, List.map (fun (_, x) -> E.Var x) l)) }
-		
-		    | _ -> assert false	
-		   ) inst.c_code.code)
-	      | _ -> 
-		let () = ignore ( List.map inst_of_cabs inst.c_code.code ) in
-	    (* FIXME prise en charge des flottants *) 
-		None
-	   ) m.section) }
+          (List.rev_map (fun inst -> 
+            match inst.decoder.dec_title with
+              | Menu ->
+                Some 
+                  (List.map (function
+                    | C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) as c -> 
+                      
+                      { E.pref = Printf.sprintf "9.%d (* %s *)" inst.position fun_name
+                      ; E.pkind = E.InstARM
+                      ; E.pident = { E.iname = fun_name ; E.iparams = [] ; E.ivariant = None }
+                      ; E.pidents = []
+                      ; E.pinst = 
+                          let code = match inst_of_cabs c with None -> assert false | Some s -> s in
+                          code (fun l -> E.Proc (fun_name, List.map (fun (_, x) -> E.Var x) l)) }
+                
+                    | _ -> assert false 
+                   ) inst.c_code.code)
+              | _ -> 
+                let () = ignore ( List.map inst_of_cabs inst.c_code.code ) in
+            (* FIXME prise en charge des flottants *) 
+                None
+           ) m.section) }
 
 end

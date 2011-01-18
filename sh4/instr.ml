@@ -180,10 +180,10 @@ struct
           | x1 :: x2 :: xs when l_match [r_foot1, x1; r_foot2, x2] -> 
             (match List.rev (del_line xs) with
               | x :: xs ->
-		if l_match [r_head, x] then 
-		  del_line xs
-		else
-		  raise (Unknown_header ((x, xs), t))
+                if l_match [r_head, x] then 
+                  del_line xs
+                else
+                  raise (Unknown_header ((x, xs), t))
               | [] -> failwith importation_error
             )
           | _ -> raise (Unknown_footer (l, t))
@@ -252,19 +252,19 @@ struct
     let some ll t = Next (ll, { t with pos = succ t.pos }) in
     fun t ->
       let rec aux ll = 
-	match 
-	  try let l, tt = input_page_9 t.ic in Next l, tt with 
-	    | Unknown_header (x_xs, tt) -> Last x_xs, tt
-	with
-	  | Last x_xs, tt -> some ll { t with ic = tt ; next = Last x_xs }
+        match 
+          try let l, tt = input_page_9 t.ic in Next l, tt with 
+            | Unknown_header (x_xs, tt) -> Last x_xs, tt
+        with
+          | Last x_xs, tt -> some ll { t with ic = tt ; next = Last x_xs }
           | Next l, tt ->
             match l with 
-	      | x :: _ when Str.string_match r x 0 -> some ll { t with ic = tt ; next = Next l }
-	      | _ -> aux (l :: ll) in
+              | x :: _ when Str.string_match r x 0 -> some ll { t with ic = tt ; next = Next l }
+              | _ -> aux (l :: ll) in
       match t.next with
         | Next l -> aux [l]
         | Last _ -> 
-	  Last (
+          Last (
 let rec aux ll ic = 
   match 
     try Some (input_page_a ic) with 
@@ -284,8 +284,8 @@ match l with
   let separate f_reg = 
     let rec aux acc n1 l1 = 
       match split_from_beg_at f_reg l1 with
-	| None -> List.rev ((n1, del_line l1) :: acc)
-	| Some (l1, n2, l2) -> aux ((n1, del_line l1) :: acc) n2 l2 in
+        | None -> List.rev ((n1, del_line l1) :: acc)
+        | Some (l1, n2, l2) -> aux ((n1, del_line l1) :: acc) n2 l2 in
     aux [] in
 
   let _, n1, l = split_beg ((=) "(1) No Operand") l in 
@@ -296,20 +296,20 @@ match l with
   match ll with
     | (_, (_, (_, l1) :: l2) :: l3) :: l4 -> 
       List.fold_left (fun l s -> 
-	if s.[0] = ' ' then 
-	  l
-	else
-	  let ll = Str.split (Str.regexp " +") s in
-	  List.hd ll :: l) [] l1,
+        if s.[0] = ' ' then 
+          l
+        else
+          let ll = Str.split (Str.regexp " +") s in
+          List.hd ll :: l) [] l1,
       let fold_left f a l = List.fold_left (fun a (_, l) -> f a l) a l in
       fold_left (fold_left (fold_left (List.fold_left (fun acc s -> 
-	if s = "" || s.[0] = ' ' then
-	  acc 
-	else 
-	  let x1 :: x2 :: l = Str.split (Str.regexp " +") s in
-	  (x1, x2, List.exists ((=) "Privileged") l) :: acc)))) 
-	[]
-	(("", ("", l2) :: l3) :: l4)
+        if s = "" || s.[0] = ' ' then
+          acc 
+        else 
+          let x1 :: x2 :: l = Str.split (Str.regexp " +") s in
+          (x1, x2, List.exists ((=) "Privileged") l) :: acc)))) 
+        []
+        (("", ("", l2) :: l3) :: l4)
     | _ -> failwith importation_error in
   let _ = ignore ll in
   let l1, l2 = ll in 
@@ -324,10 +324,18 @@ match l with
   let close_in t = P.close_in t.ic
 end
 
+let str_match r s l = 
+  if Str.string_match (Str.regexp r) s 0 then
+    Some (List.map (fun i -> Str.matched_group i s) l)
+  else 
+    None
+
 module type C_PARSE = 
 sig
   val c_of_file : string (* filename *) -> Cabs.definition list
   val c_of_program : string (* program written in C language *) -> Cabs.definition list
+  val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
+  val expand_line_space : string list -> string list
 end
 
 module C_parse : C_PARSE = 
@@ -338,6 +346,15 @@ struct
     let _ = close_in ic in
     v
 
+  let cmd_file c_of_file suf str = 
+    let fic = ((* FIXME let-réduire *) let temp_dir = "." in Filename.temp_file ~temp_dir) "test" suf in
+    let oc = open_out fic in
+    let () = Printf.fprintf oc "%s\n" str in
+    let () = close_out oc in
+    let v = c_of_file fic in
+    let () = Unix.unlink fic in
+    v
+
   let c_of_program str : Cabs.definition list = 
     let fic = ((* FIXME let-réduire *) let temp_dir = "." in Filename.temp_file ~temp_dir) "test" "" in
     let oc = open_out fic in
@@ -346,6 +363,49 @@ struct
     let v = c_of_file fic in
     let () = Unix.unlink fic in
     v
+
+  let process f s = 
+    let ic, oc = 
+      Unix.open_process f in
+    let () = output_string oc s in
+    let () = close_out oc in
+    let rec aux l = 
+      match try Some (input_line ic) with _ -> None with
+        | None -> List.rev l
+        | Some s -> aux (s :: l) in
+    let l = aux [] in
+    let _ = Unix.close_process (ic, oc) in
+    l
+
+  let preprocess = 
+    process (Printf.sprintf "gcc -E -U__GNUC__ /dev/stdin")
+
+  let preprocess = 
+    cmd_file (fun fic -> 
+      let ic = Unix.open_process_in (Printf.sprintf "gcc -E -U__GNUC__ %s" fic) in
+      let rec aux l = 
+	match try Some (input_line ic) with _ -> None with
+          | None -> List.rev l
+          | Some s -> aux (s :: l) in
+      let l = aux [] in
+      let _ = Unix.close_process_in ic in
+      l
+    ) ".c"
+
+  let expand_line_space l =
+    snd
+      (List.fold_left (fun (pos1, acc) s ->
+	match str_match "# \\([0-9]+\\) " s [1] with
+          | Some [n] -> 
+	    let pos2 = int_of_string n in
+	    let rec aux pos1 acc = 
+	      if pos1 = pos2 then 
+		pos1, acc
+	      else
+		aux (succ pos1) ("" :: acc) in
+	    aux pos1 acc
+          | _ -> 
+	    succ pos1, s :: acc) (1, []) l)
 end
 
 
@@ -413,22 +473,47 @@ type raw_c_code =
     { init : string list (* WARNING [init] is unused *)
     ; code : Cabs.definition list (** representation of the C pseudocode, natural order : first element in the list = first line *) }
 
-type instruction = 
+type 'a instruction = 
     { explanation_desc : string list (** information present in the part "description" *) 
     ; explanation_other : string list (** information eventually present after the C code *)
 
 
     ; decoder : decoder
-    ; c_code : raw_c_code
+    ; c_code : 'a
     ; position : int }
 
-type manual = 
-    { entete : raw_c_code (** piece of C code present at the beginning of section 9 *) 
-    ; section : instruction list }
+type 'a manual = 
+    { entete : 'a (** piece of C code present at the beginning of section 9 *) 
+    ; section : 'a instruction list }
 
-let mk_code l = 
-  { init = l
-  ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
+
+let preprocess_c : string list manual -> raw_c_code manual = fun m -> 
+  let (pos, code), l_pos =
+    List.fold_left (fun ((pos, acc_s), l_pos) l -> 
+      List.fold_left (fun (pos, acc_s) s -> succ pos, Printf.sprintf "%s%s\n" acc_s s)
+        (pos, acc_s) l, pos :: l_pos) ((0, ""), [])
+      (m.entete :: List.map (fun i -> i.c_code) m.section) in
+
+  let _, (_, l, ll) =
+    List.fold_left 
+      (fun (pos, (l_pos, acc_l, acc_ll)) s -> 
+	pred pos, 
+	match l_pos with
+	  | [] -> 
+	    [], s :: acc_l, acc_ll
+	  | x :: xs -> 
+	    if pos = x then
+	      xs, [s], acc_l :: acc_ll
+	    else
+	      l_pos, s :: acc_l, acc_ll) 
+      (pos, (l_pos, [], [])) 
+      (C_parse.expand_line_space (C_parse.preprocess code)) in
+
+  let mk_code l = 
+    { init = l
+    ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) } in
+
+  { entete = mk_code l ; section = List.map2 (fun l i -> { i with c_code = mk_code l }) ll m.section }
 
 (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
 (* Remark : we can replace the "Assert_failure" by a "[]" *)
@@ -456,21 +541,21 @@ let list_of_string_01nmid s =
       List.rev l
     else
       let rec aux2 i = 
-	if n + i = lg then
-	  i
-	else if s.[n] = s.[n + i] then
-	  aux2 (succ i)
-	else
-	  i in
+        if n + i = lg then
+          i
+        else if s.[n] = s.[n + i] then
+          aux2 (succ i)
+        else
+          i in
       let i = aux2 1 in
       aux (((match s.[n] with 
-	| '0' -> I_0
-	| '1' -> I_1
-	| 'n' -> I_n
-	| 'm' -> I_m
-	| 'i' -> I_i
-	| 'd' -> I_d
-	| _ -> assert false (* by definition of [Str.matched_group], we can prove that this case is never reached *)
+        | '0' -> I_0
+        | '1' -> I_1
+        | 'n' -> I_n
+        | 'm' -> I_m
+        | 'i' -> I_i
+        | 'd' -> I_d
+        | _ -> assert false (* by definition of [Str.matched_group], we can prove that this case is never reached *)
       ), i) :: l) (n + i) in
   aux [] 0
 
@@ -483,10 +568,10 @@ struct
   let init f =
     let rec aux l n = 
       if n = 0 then
-	l
+        l
       else
-	let n = pred n in
-	aux (f n :: l) n in
+        let n = pred n in
+        aux (f n :: l) n in
     aux [] 
 end
 
@@ -606,7 +691,7 @@ let _ =
     match S.input_instr t with 
       | Last l_no_param -> 
 
-	List.rev l_section
+        List.rev l_section
       | Next (l, t) -> 
         let l = List.flatten (List.rev l) in
         
@@ -688,7 +773,7 @@ let _ =
                     failwith importation_error), l2
                       
             ) (let l2 = structure_line l2 (* Remark : if [l2] is empty, it is an [importation_error] *) in
-	       match String.sub x1 0 4 with
+               match String.sub x1 0 4 with
                  | "9.31" -> (match l2 with x1 :: x2 :: _ -> [x1; x2] | _ -> failwith importation_error)
                  | "9.55" 
                  | "9.64" 
@@ -696,40 +781,40 @@ let _ =
                  | _ -> l2) in
 
           { dec_other = (x1, x2, l1) 
-	  ; dec_title = dec_title 
-	  ; dec_title_long = header
-	  ; dec_tab = dec_tab 
-	  ; dec_inst_ty = inst_ty }, l in
+          ; dec_title = dec_title 
+          ; dec_title_long = header
+          ; dec_tab = dec_tab 
+          ; dec_inst_ty = inst_ty }, l in
 
         let l2, _, l = split_beg ((=) "Operation") l in (** [l2] contains the information between the line "Description" and the line "Operation" *)
         let l3, n, l = split_end (fun x -> List.exists (fun r -> Str.string_match r x 0) [ accol_end; comment ]) l in (** [l3 @ [n]] contains the C program between the line "Operation" and some human language information we are not interested *)
-	let c_code = mk_code
-	  ((match decoder.dec_other with
-	      | (x1, _, _) when (match String.sub x1 0 4 with "9.50" | "9.92" -> true | _ -> false) -> 
+        let c_code = 
+          ((match decoder.dec_other with
+              | (x1, _, _) when (match String.sub x1 0 4 with "9.50" | "9.92" -> true | _ -> false) -> 
 
-		let r_bank = Str.regexp ".*_BANK" in
-		let r_accol_end = Str.regexp ".*}" in
-		let replace c_code =
-		  let l1, n0, _ :: ll = split_beg (fun x -> Str.string_match r_bank x 0) c_code in
-		  let l, n1, l2 = split_beg (fun x -> Str.string_match r_accol_end x 0) ll in
-		  l1 @ List.flatten (
-		    List.init (fun n -> List.map (Str.global_replace (Str.regexp "R._BANK") (Printf.sprintf "R%d_BANK" n)) ([n0] @ l @ [n1; ""])) 8), l2 in
-		fun c_code -> 
-		  let l1, l2 = replace c_code in
-		  let l2, l3 = replace l2 in
-		  l1 @ l2 @ l3
+                let r_bank = Str.regexp ".*_BANK" in
+                let r_accol_end = Str.regexp ".*}" in
+                let replace c_code =
+                  let l1, n0, _ :: ll = split_beg (fun x -> Str.string_match r_bank x 0) c_code in
+                  let l, n1, l2 = split_beg (fun x -> Str.string_match r_accol_end x 0) ll in
+                  l1 @ List.flatten (
+                    List.init (fun n -> List.map (Str.global_replace (Str.regexp "R._BANK") (Printf.sprintf "R%d_BANK" n)) ([n0] @ l @ [n1; ""])) 8), l2 in
+                fun c_code -> 
+                  let l1, l2 = replace c_code in
+                  let l2, l3 = replace l2 in
+                  l1 @ l2 @ l3
 
-	      | _ -> fun x -> x) (l3 @ [n])) in
+              | _ -> fun x -> x) (l3 @ [n])) in
 
         aux t ({ position = S.pos t 
-	       ; explanation_desc = l2 
-	       ; c_code = c_code
+               ; explanation_desc = l2 
+               ; c_code = c_code
 
-	       ; explanation_other = l 
-	       ; decoder = decoder } :: l_section) in
+               ; explanation_other = l 
+               ; decoder = decoder } :: l_section) in
 
 
-  let manual = { entete = mk_code (S.c_code t) ; section = aux t [] }  in
+  let manual = preprocess_c { entete = S.c_code t ; section = aux t [] }  in
 
   let () = output_value stdout manual in
   let () = exit 0 in
@@ -743,71 +828,71 @@ let _ =
     List.iter (fun sec -> 
       begin 
         if false && display_c then
-	  begin
+          begin
             Printf.printf "/* 9.%d */\n" sec.position;
-	    Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
-	  end;
+            Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
+          end;
         if display_c then
           begin
-	  match sec.decoder.dec_title with
-	    | Menu ->
+          match sec.decoder.dec_title with
+            | Menu ->
             (*Printf.printf "/* 9.%d */" sec.position;*)
 
-	    (** algorithm for coupling the line present in the decoder and the pseudo code *)
-	    let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
-	    and n2 = List.length sec.c_code.code (** number of function defined in C *) in
+            (** algorithm for coupling the line present in the decoder and the pseudo code *)
+            let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
+            and n2 = List.length sec.c_code.code (** number of function defined in C *) in
             let () = if n1 = n2 then () else assert false in
 
-	      (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-	    List.iter (let module C = Cabs in
-		       function 
-			 | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-		           match () with 
-			     | _ when m "[0-9_A-Z]+$" -> ()
-			     | _ -> assert false (*Printf.printf "%s\n%!" s*) ) sec.c_code.code
-	    | Menu_PR -> 
-	      begin
-	      Printf.printf "/* 9.%d PR */" sec.position;
+              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
+            List.iter (let module C = Cabs in
+                       function 
+                         | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
+                           match () with 
+                             | _ when m "[0-9_A-Z]+$" -> ()
+                             | _ -> assert false (*Printf.printf "%s\n%!" s*) ) sec.c_code.code
+            | Menu_PR -> 
+              begin
+              Printf.printf "/* 9.%d PR */" sec.position;
 
-	      (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-	      let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
-	      and n2 = 
-	      List.fold_right (let module C = Cabs in
-			 function 
-			   | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-			     match () with 
-			       | _ when m "[0-9_A-Z]+$" -> succ
-			       | _ when m "[0-9_a-z]+$" -> (fun x -> x)
-			       | _ -> assert false ) sec.c_code.code 0 in
+              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
+              let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
+              and n2 = 
+              List.fold_right (let module C = Cabs in
+                         function 
+                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
+                             match () with 
+                               | _ when m "[0-9_A-Z]+$" -> succ
+                               | _ when m "[0-9_a-z]+$" -> (fun x -> x)
+                               | _ -> assert false ) sec.c_code.code 0 in
               let () = if n1 = n2 then () else Printf.printf "/* %d %d */\n" n1 n2 in
-	      ()
-	      end
-	    | Menu_NO_PR -> 
-	      begin
-	      Printf.printf "/* 9.%d NOPR */" sec.position;
+              ()
+              end
+            | Menu_NO_PR -> 
+              begin
+              Printf.printf "/* 9.%d NOPR */" sec.position;
 
-	      (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-	      List.iter (let module C = Cabs in
-			 function 
-			   | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-			     match () with 
-			       | _ when m "[0-9_A-Z]+$" -> ()
-			       | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
-			       | _ -> assert false ) sec.c_code.code;
-	      end
-	    | Menu_NO_SZ -> 
-	      begin
-	      Printf.printf "/* 9.%d NOSZ */" sec.position;
+              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
+              List.iter (let module C = Cabs in
+                         function 
+                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
+                             match () with 
+                               | _ when m "[0-9_A-Z]+$" -> ()
+                               | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
+                               | _ -> assert false ) sec.c_code.code;
+              end
+            | Menu_NO_SZ -> 
+              begin
+              Printf.printf "/* 9.%d NOSZ */" sec.position;
 
-	      (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-	      List.iter (let module C = Cabs in
-			 function 
-			   | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-			     match () with 
-			       | _ when m "[0-9_A-Z]+$" -> ()
-			       | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
-			       | _ -> assert false ) sec.c_code.code;
-	      end
+              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
+              List.iter (let module C = Cabs in
+                         function 
+                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
+                             match () with 
+                               | _ when m "[0-9_A-Z]+$" -> ()
+                               | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
+                               | _ -> assert false ) sec.c_code.code;
+              end
 
           end;
 
