@@ -48,6 +48,10 @@ Definition if_CurrentModeHasSPSR (f : exn_mode -> semfun)
     | exn em => f em loc b s
   end.
 
+Definition return_ (_ : word) (loc : local)
+  (b : bool) (s : state) : result :=
+  todo ComplexSemantics loc b s.
+
 Definition seq (f1 f2 : semfun) (loc0 : local) 
   (b0 : bool) (s0 : state) : result :=
   match f1 loc0 b0 s0 with
