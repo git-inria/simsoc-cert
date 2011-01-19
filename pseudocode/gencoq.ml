@@ -30,6 +30,8 @@ module G = struct
     | "cond" -> "opcode"
     | "mmod" | "opcode25" | "shift" -> "bool"
     | "n" | "d" | "m" | "s" | "dHi" | "dLo" -> "regnum"
+    | "data" -> "word"
+    | "accvalue" | "result" | "value" -> "long"
     | s -> if String.length s = 1 then "bool" else "word";;
 
   (* the type of global variables is given by their names *)
@@ -184,6 +186,8 @@ let string_of_binop = function
 
 let binop b s = string b (string_of_binop s);;
 
+let binop64 b s = bprintf b "%s64" (string_of_binop s);;
+
 let is_cp15_reg1 s =
   String.length s > 10 && String.sub s 0 10 = "CP15_reg1_";;
 
@@ -219,12 +223,14 @@ let is_not_num = function
 
 (* add parentheses around complex expressions *)
 
-let rec pexp (loc: (string*string*int) list) nm b = function
+let rec pexp' (loc: (string*string*int) list) nm sz b = function
   | Var s as e -> 
-      if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm) b e 
-      else (exp loc nm) b e
-  | Fun (f, []) as e when depend_on_config f -> (exp loc nm) b e 
-  | e -> par (exp loc nm) b e
+      if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") b e 
+      else (exp' loc nm sz) b e
+  | Fun (f, []) as e when depend_on_config f -> (exp' loc nm sz) b e 
+  | e -> par (exp' loc nm sz) b e
+
+and pexp loc nm b e = pexp' loc nm "" b e 
 
 (* like pexp but prints numbers as integers (not words) *)
 and num_exp loc nm b = function
@@ -233,6 +239,7 @@ and num_exp loc nm b = function
 
 (* convert an expression into a register number using the Coq function
    mk_regnum except if it is a number or a variable *)
+
 and regnum_exp loc nm b = function
   | Num s -> regnum b s
   | Var s -> string b s
@@ -246,17 +253,20 @@ and regnum_exp loc nm b = function
    function nat_of_Z *)
 and nat_exp loc nm b e = bprintf b "(nat_of_Z %a)" (pexp loc nm) e
 
-and loc_exp loc nm b = function
+and loc_exp loc nm hl b = function
   | Var s ->
       begin
         try 
-          let name, _type, id = List.find (fun (s',_,_) -> s'=s) loc in
-            bprintf b "get_loc n%d (*%s*) loc" id name
+          let name, tp, id = List.find (fun (s',_,_) -> s'=s) loc in
+          let size = if tp = "long" then "64" else "" in
+            bprintf b "get_loc%s%s n%d (*%s*) loc" size hl id name
         with Not_found -> raise (Failure "inside loc_exp")
       end
   | e -> pexp loc nm b e
 
-and exp loc nm b = function
+and exp loc nm b e = exp' loc nm "" b e
+
+and exp' loc nm sz b = function
     (* convert numbers into Coq words *)
   | Bin s -> word bin b s
   | Hex s -> word hex b s
@@ -298,9 +308,25 @@ and exp loc nm b = function
   (* optimization avoiding a call to repr *)
   | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f (pexp loc nm) e1 num n
+
+
   (* default printing of binary operators (like function calls) *)
-  | BinOp (e1, f, e2) -> 
-      bprintf b "%a %a %a" binop f (pexp loc nm) e1 (pexp loc nm) e2
+  | BinOp (e1, f, e2) ->
+      begin match nm with
+        | "SMMLA" | "SMMLS" | "SMMUL" ->
+            begin match f with
+              | "+" | "<<" | "-" ->
+                  bprintf b "%a64 %a %a" 
+                    binop f (pexp' loc nm sz) e1 (pexp' loc nm sz) e2
+              | "*" -> bprintf b "signed_%a64 %a %a" 
+                  binop f (pexp' loc nm sz) e1 (pexp' loc nm sz) e2 
+              | _ -> bprintf b "%a%s %a %a" 
+                  binop f sz (pexp' loc nm sz) e1 (pexp' loc nm sz) e2
+            end
+        | _ ->
+            bprintf b "%a%s %a %a" 
+              binop f sz (pexp' loc nm sz) e1 (pexp' loc nm sz) e2
+      end
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" (exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
@@ -323,7 +349,7 @@ and exp loc nm b = function
                   (pexp loc nm) e1 (pexp loc nm) e2 num n1 num n2
               | _ -> bprintf b "(mul %a %a)[%a]"
                   (pexp loc nm) e1 (pexp loc nm) e2 (range loc nm) r
-            end
+            end 
         | e, Bits (h, l) ->
             let signed = if nm.[0] = 'S' ||nm.[0] =  'Q' then "signed_" 
             else "" in
@@ -334,6 +360,10 @@ and exp loc nm b = function
               | "31","24" -> bprintf b "(get_%sbyte3 %a)" signed (pexp loc nm) e
               | "15","0" -> bprintf b "(get_%shalf0 %a)" signed (pexp loc nm) e
               | "31","16" -> bprintf b "(get_%shalf1 %a)" signed (pexp loc nm) e
+              | "63", "32" -> bprintf b "(get_hi %a)" (pexp loc nm) e
+              | "31", "0" -> bprintf b "(get_lo %a)" (pexp loc nm) e
+              (*| "63", "32" -> bprintf b "%a" (loc_exp loc nm "_hi") e
+              | "31", "0" -> bprintf b "%a" (loc_exp loc nm "_lo") e*)
               | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
             end
         | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
@@ -430,6 +460,10 @@ and inst_aux loc nm k b = function
 
   (* try to generate the code of an affectation; in case of failure,
      output a "todo" *)
+
+  (*| Affect (e, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) -> *)
+      
+
   | Affect (e, v) as i ->
       begin try affect' b v loc nm e
       with Not_found -> todo "Affect" (Genpc.inst 0) b i end
@@ -461,8 +495,10 @@ and affect' b v loc nm = function
   | Var s ->
       begin
         try
-          let name, _type, id = List.find (fun (s',_,_) -> s=s') loc in  
-            bprintf b "update_loc n%d (*%s*) %a" id name (pexp loc nm) v
+          let name, tp, id = List.find (fun (s',_,_) -> s=s') loc in
+          let sz = if tp = "long" then "64" else "" in 
+              bprintf b "update_loc%s n%d (*%s*) %a" 
+                sz id name (pexp' loc nm sz) v
         with Not_found -> bprintf b "let %s := %a in" s (pexp loc nm) v
       end
   (* affectation of a CPSR bit requires a special case *)
