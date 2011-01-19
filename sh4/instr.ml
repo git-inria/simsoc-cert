@@ -233,8 +233,8 @@ struct
   (** Here comes the initialization of the processing, [f_open] and [f] are used to return an input channel. *)
   let init_ f_open f = 
     let t = P.throw_page (f_open f) nb_page_to_ignore in (** go to section 9 and ignore the first page of section 9 *)
-    let l1, t = input_page_9 t in let l1 = dont_keep comment_c_code1 l1 in (** page [1]  C code *)
-    let l2, t = input_page_9 t in let l2 = dont_keep comment_c_code2 l2 in (** page [2]  C code *)
+    let l1, t = input_page_9 t in 
+    let l2, t = input_page_9 t in 
     let ll, t = input_page_groups 10 t in (** page [3-12]  C code *)
     let t = P.throw_page t 1 in (** go to beginning of instruction *)
 
@@ -376,9 +376,6 @@ struct
     let l = aux [] in
     let _ = Unix.close_process (ic, oc) in
     l
-
-  let preprocess = 
-    process (Printf.sprintf "gcc -E -U__GNUC__ /dev/stdin")
 
   let preprocess = 
     cmd_file (fun fic -> 
@@ -559,8 +556,6 @@ let list_of_string_01nmid s =
       ), i) :: l) (n + i) in
   aux [] 0
 
-module S_map = Map.Make (struct type t = string let compare = compare end)
-
 module List = 
 struct
   include List
@@ -573,88 +568,6 @@ struct
         let n = pred n in
         aux (f n :: l) n in
     aux [] 
-end
-
-module P = 
-struct
-
-  module E = 
-  struct
-
-    type mode = Fiq | Irq | Svc | Abt | Und | Usr | Sys
-      
-    type size = Byte | Half | Word
-
-    type exp =
-      | Num of string
-      | Bin of string
-      | Hex of string
-      | Float_zero
-      | If_exp of exp * exp * exp
-      | Fun of string * exp list
-      | BinOp of exp * string * exp
-      | CPSR
-      | SPSR of mode option
-      | Reg of exp * mode option
-      | Var of string
-      | Range of exp * range
-      | Unaffected
-      | Unpredictable_exp
-      | Memory of exp * size
-      | Coproc_exp of exp * string * exp list
-      (*| Member_of of exp * string*)
-
-    and range =
-      | Bits of string * string
-      | Flag of string * string (* 2nd arg is the name used like "Flag" or "bit" *)
-      | Index of exp
-
-    type type_param = Tint | Tlong | Tfloat | Tdouble
-
-    type inst =
-      | Block of inst list
-      | Let of string * (type_param * string) list * inst list * inst
-      | Unpredictable
-      | Affect of exp * exp
-      | If of exp * inst * inst option
-      | Proc of string * exp list
-      | While of exp * inst
-      | Assert of exp
-      | For of string * string * string * inst
-      | Coproc of exp * string * exp list
-      | Case of exp * (string * inst) list * inst option (* default *) 
-      | Return of exp
-
-    type ident = {
-      iname : string;
-      iparams : string list;
-      ivariant : string option }
-
-    type kind =
-      | InstARM (* instruction on 32 bits *)
-      | InstThumb (* instruction on 16 bits *)
-      | Mode of int (* addressing mode *)
-
-    type prog = {
-      pref : string; (* chapter in the ARM documentation (e.g. A4.1.20) *)
-      pkind : kind;
-      pident : ident;
-      pidents : ident list; (* alternative idents *)
-      pinst : inst }
-  end
-
-  module D =
-  struct 
-    type lightheader = LH of int list * string
-
-    type pos_contents =
-      | Nothing
-      | Value of bool                  (* false -> 0, true -> 1 *)
-      | Param1 of char                 (* e.g. S *)
-      | Param1s of string              (* e.g. mmod *)
-      | Range of string * int * int    (* length position, e.g. Rn 4 0 *)
-      | Shouldbe of bool               (* false -> SBZ, true -> SBO *)
-  end
 end
 
 let _ = 
@@ -819,7 +732,6 @@ let _ =
   let () = output_value stdout manual in
   let () = exit 0 in
 
-  let s_map = ref S_map.empty in
   begin
     if false && display_c then
       begin 

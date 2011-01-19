@@ -8,6 +8,9 @@ all: cbc
 sh4.txt: Renesas_SH4_2006.pdf
 	pdftotext -layout Renesas_SH4_2006.pdf $@
 
+sh4.patch: sh4.txt sh4_mod.txt
+	diff -u sh4.txt sh4_mod.txt > sh4.patch || exit 0
+
 sh4_mod.txt: sh4.txt sh4.patch
 	patch sh4.txt sh4.patch -o $@
 

@@ -1,6 +1,6 @@
---- sh4.txt	2010-12-14 15:32:27.266489001 +0800
-+++ sh4_mod.txt	2011-01-04 17:49:05.000000000 +0800
-@@ -9153,6 +9153,29 @@
+--- sh4.txt	2011-01-15 18:37:17.819057006 +0800
++++ sh4_mod.txt	2011-01-19 08:53:39.000000000 +0800
+@@ -9153,45 +9153,72 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
  Section 9 Instruction Descriptions
@@ -21,7 +21,7 @@
 +int is_write_back_memory(int);
 +void load_int(int, int);
 +void load_quad(int, int);
-+int look_up_in_operand_cache(int);
++int look_up_in_operand_cache(int); int MISS;
 +float sqrt(float);
 +void store_int(int, int);
 +void store_quad(int, int);
@@ -30,24 +30,38 @@
  
    unsigned char          Read_Byte(unsigned long Addr);
    unsigned short Read_Word(unsigned long Addr);
-@@ -9168,30 +9191,34 @@
-   or a longword write to other than a 4n address, will be detected as an address error.
+   unsigned long          Read_Long(unsigned long Addr);
+-  These reflect the respective sizes of address Addr. A word read from other than a 2n address, or a
+-  longword read from other than a 4n address, will be detected as an address error.
++  /* These reflect the respective sizes of address Addr. A word read from other than a 2n address, or a
++  longword read from other than a 4n address, will be detected as an address error. */
+ 
+ 
+   unsigned char Write_Byte(unsigned long Addr, unsigned long Data);
+   unsigned short Write_Word(unsigned long Addr, unsigned long Data);
+   unsigned long Write_Long(unsigned long Addr, unsigned long Data);
+-  These write data Data to address Addr, using the respective sizes. A word write to other than a 2n address,
+-  or a longword write to other than a 4n address, will be detected as an address error.
++  /* These write data Data to address Addr, using the respective sizes. A word write to other than a 2n address,
++  or a longword write to other than a 4n address, will be detected as an address error. */
  
  
 -  Delay_Slot(unsigned long Addr);
+-  Shifts to execution of the slot instruction at address (Addr).
 +  void Delay_Slot(unsigned long Addr);
-   Shifts to execution of the slot instruction at address (Addr).
++  /* Shifts to execution of the slot instruction at address (Addr). */
  
  
    unsigned long R[16];
 +  union {
 +    int ASID, VPN, PPN, SZ, SH, PR, WT, C, D, V, SA, TC;
-+  } TLB_MMUCR_URC /* FIXME existence */;
++  } TLB_MMUCR_URC /* FIXME existence */; unsigned long PTEH, PTEL, PTEA;
    unsigned long SR,GBR,VBR;
-+  unsigned long SSR, SPC, DBR, Rn_BANK, PTEH, PTEL, PTEA, MISS, SGR, R0_BANK, R1_BANK, R2_BANK, R3_BANK, R4_BANK, R5_BANK, R6_BANK, R7_BANK, TRA, R15, SR_MD, SR_BL, SR_RB, EXPEVT, H_00000100; /* FIXME existence */
++  unsigned long SSR, SPC, DBR, SGR, R0_BANK, R1_BANK, R2_BANK, R3_BANK, R4_BANK, R5_BANK, R6_BANK, R7_BANK, TRA, SR_MD, SR_BL, SR_RB, EXPEVT, H_00000100; /* FIXME existence */
    unsigned long MACH,MACL,PR;
    unsigned long PC;
-   Registers
+-  Registers
++  /* Registers */
  
  
 -  struct SR0 {
@@ -67,7 +81,8 @@
 +     int               S0:1;
 +     int               T0:1;
    };
-   SR structure definitions
+-  SR structure definitions
++  /* SR structure definitions */
  
  
 -  define M ((*(struct SR0 *)(&SR)).M0)
@@ -75,17 +90,35 @@
    #define Q ((*(struct SR0 *)(&SR)).Q0)
    #define S ((*(struct SR0 *)(&SR)).S0)
  
-@@ -9204,7 +9231,7 @@
- Definitions of bits in SR
+@@ -9201,14 +9228,14 @@
+                                                                Section 9 Instruction Descriptions
+ 
+ #define T ((*(struct SR0 *)(&SR)).T0)
+-Definitions of bits in SR
++/* Definitions of bits in SR */
  
  
 -Error( char *er );
+-Error display function
 +void Error( char *er );
- Error display function
++/* Error display function */
  
  
-@@ -9253,7 +9280,9 @@
-   #define FPSCR_DN          FPSCR>>18&1
+-These are floating-point number definition statements.
++/* These are floating-point number definition statements. */
+ #define PZERO                0
+ #define NZERO                1
+ #define DENORM               2
+@@ -9248,12 +9275,14 @@
+   #define FLAG              0x0000007C    /* FPSCR(bit6-2) */
+ 
+ 
+-  #define FPSCR_FR          FPSCR>>21&1
+-  #define FPSCR_PR          FPSCR>>19&1
+-  #define FPSCR_DN          FPSCR>>18&1
++  #define FPSCR_FR          nat_of_word(FPSCR>>21&1)
++  #define FPSCR_PR          bool_of_word(FPSCR>>19&1)
++  #define FPSCR_DN          bool_of_word(FPSCR>>18&1)
    #define FPSCR_I           FPSCR>>12&1
    #define FPSCR_RM          FPSCR&1
 +  #define SPSCR_RM          FPSCR&1 /* FIXME existence */
@@ -105,7 +138,7 @@
 +{
 +     if(sign == 0)      FR_HEX [n]     = 0x00000000;
 +     else               FR_HEX [n]     = 0x80000000;
-+     if (FPSCR_PR==1) FR_HEX [n+1] = 0x00000000;
++     if (bool_of_word(FPSCR_PR)==1) FR_HEX [n+1] = 0x00000000;
 +}
 +
    int data_type_of(int n) {
@@ -120,7 +153,7 @@
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
-@@ -9316,18 +9355,114 @@
+@@ -9316,28 +9355,124 @@
           else                                return(sNaN);
       }
  }
@@ -166,10 +199,10 @@
 +}
 +
 +  void check_single_exception(float *dst, float result)
-+  {
-+  union {
-+        float f;
-+        int l;
+   {
+   union {
+         float f;
+         int l;
 +  }     tmp;
 +  float abs;
 +        if(result < 0.0)        tmp.l = 0xff800000; /* – infinity */
@@ -232,12 +265,14 @@
 +}
 +
 +void normal_faddsub(int m, int n, int type)
-   {
++  {
 +  int dst_d /* FIXME do we have to declare dst_d ? */;
++  union {
++        float f;
++        int l;
+   }     dstf,srcf;
    union {
-         float f;
-         int l;
-@@ -9337,7 +9472,7 @@
+         long d;
          int l[2];
    }     dstd,srcd;
    union {                      /* “long double” format:      */
@@ -1795,13 +1830,15 @@
          PC+=2;
    }
  
-@@ -16895,11 +16930,11 @@
+@@ -16894,12 +16929,12 @@
+        TRA=imm<<2;
         SSR=SR;
         SPC=PC+2;
-        SGR=R15;
+-       SGR=R15;
 -       SR.MD=1;
 -       SR.BL=1;
 -       SR.RB=1;
++       SGR=R[15];
 +       SR_MD=1;
 +       SR_BL=1;
 +       SR_RB=1;
