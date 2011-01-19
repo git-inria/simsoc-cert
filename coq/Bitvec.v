@@ -277,7 +277,10 @@ Definition long_of_word (x : word) : long := mk_long x.
 
 Coercion long_of_word : word >-> long.
 
-(* mask made of the bits n to n+(p-n) (p>=n) *)
+(****************************************************************************)
+(** operations on 64 bits *)
+(****************************************************************************)
+
 Definition masks64 (p n : nat) : long := mk_long (masks_aux n (p-n)).
 
 Definition bits_val64 (p n : nat) (w : long) : Z :=
@@ -305,6 +308,25 @@ Definition bits_of_unsigned_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
 Definition bits_of_signed_mul64 (w1 w2 : word) (n1 n2 : nat) : word :=
   repr (sbits64 n1 n2 (signed_mul64 w1 w2)).
 
+Definition to64 (hi : word) (lo : word) :=
+  Long.or (Long.shl hi (repr 32)) lo.
+
+Definition or64 := Long.or.
+Definition add64 := Long.add.
+Definition mul64 := unsigned_mul64.
+Definition sub64 := Long.sub.
+Definition Logical_Shift_Left64 := Long.shl.
+
+Definition get_hi (l : long) :=
+  Word.repr (sbits64 63 32 l).
+
+Definition get_lo (l : long) :=
+  Word.repr (sbits64 31 0 l).
+
+(****************************************************************************)
+(** comparison to zero *)
+(****************************************************************************)
+
 Definition lt_0 (x: word) : bool :=
   match Word.signed x with
     | Z0 => false
@@ -318,6 +340,10 @@ Definition ge_0 (x: word) : bool :=
     | Zpos x' => true
     | Zneg x' => false
   end.
+
+(****************************************************************************)
+(** representation of nature numbers *)
+(****************************************************************************)
 
 Definition n0 := 0%nat.
 Definition n1 := (S n0).
