@@ -11,15 +11,13 @@ Page numbers refer to ARMv6.pdf.
 Extraction of the arm6 simulator.
 *)
 
-Require List.
-
 (*Unset Extraction Optimize.*)
 (*Unset Extraction AutoInline.*)
 
 Extract Inductive unit => "unit" [ "()" ].
 Extract Inductive bool => "bool" [ "true" "false" ].
 Extract Inductive option => "option" [ "Some" "None" ].
-Extract Inductive List.list => "list" [ "[]" "(::)" ].
+Extract Inductive list => "list" [ "[]" "(::)" ].
 
 Require arm6dec.
 Extract Constant arm6dec.decode_addr_mode1 => "Arm6mldec.decode_addr_mode1". 
@@ -31,12 +29,7 @@ Extract Constant arm6dec.decode_unconditional => "Arm6mldec.decode_unconditional
 Extract Constant arm6dec.decode_conditional => "Arm6mldec.decode_conditional".
 Extract Constant arm6dec.decode => "Arm6mldec.decode".
 
-Require Simul.
 Require Semantics.
-
-Extraction NoInline Simul.decode_cond.
-Extraction NoInline Simul.DecUndefined.
-Extraction NoInline Simul.decode_cond_mode.
 Extraction NoInline Semantics.if_CurrentModeHasSPSR.
 
 (*Print Extraction Inline.*)
