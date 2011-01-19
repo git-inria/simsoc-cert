@@ -2,10 +2,12 @@ C_FILES := sum_iterative sum_recursive sum_direct endian multiply simsoc_new1 \
            test_mem sorting
 
 ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
-             arm_ldrstr arm_mrs arm_msr arm_multiple arm_swi arm_v6_SADD \
-	     arm_v6_QADD arm_v6_QSUB arm_v6_REV arm_v6 arm_v6_SH \
-             arm_v6_SM arm_v6_SSAT arm_v6_SSUB arm_v6_SXTA \
-             arm_v6_SXTB arm_v6_UMAAL arm_v6_UH $(C_FILES)
+             arm_ldrstr arm_mrs arm_msr arm_multiple arm_swi arm_v6_SADD  \
+	     arm_v6_QADD arm_v6_QSUB arm_v6_REV arm_v6 arm_v6_SHADD       \
+             arm_v6_SHSUB arm_v6_SML arm_v6_SMM arm_v6_UA arm_v6_UQADD    \
+             arm_v6_SMU arm_v6_SSAT arm_v6_SSUB arm_v6_SXTA arm_v6_USUB   \
+             arm_v6_SXTB arm_v6_UMAAL arm_v6_UH arm_v6_UQSUB arm_v6_USAD  \
+             arm_v6_USAT arm_v6_UXTA arm_v6_UXTB $(C_FILES)
 
 THUMB_FILES := thumb_test $(C_FILES)
 

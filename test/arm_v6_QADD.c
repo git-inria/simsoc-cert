@@ -13,7 +13,7 @@ int index_ = 1;
   if (COND) count+=index_; index_ <<= 1;
 
 /* QADD8 performs four 8-bit integer additions. It saturates the results to the 8-bit signed integer range */
-/* –27 ≤ x ≤ 27 – 1. QADD8 does not affect any flags. */
+/* –2^7 ≤ x ≤ 2^7 – 1. QADD8 does not affect any flags. */
 void arm_QADD8() {
   uint32_t x1,x2,x3,x4,x5,x6;
 
@@ -54,7 +54,7 @@ void arm_QADD8() {
 }
 
 /* QADD16 performs two 16-bit integer additions. It saturates the results to the 16-bit signed integer range */
-/* –215 ≤ x ≤ 215 – 1. QADD16 does not affect any flags. */
+/* –2^15 ≤ x ≤ 2^15 – 1. QADD16 does not affect any flags. */
 void arm_QADD16() {
   uint32_t x1,x2,x3,x4,x5,x6;
 
@@ -100,7 +100,7 @@ void arm_QADD16() {
 }
 
 /* QADDSUBX (Saturating Add and Subtract with Exchange) performs one 16-bit integer addition and one 16-bit */
-/* subtraction. It saturates the results to the 16-bit signed integer range –215 ≤ x ≤ 215 – 1. QADDSUBX exchanges */
+/* subtraction. It saturates the results to the 16-bit signed integer range –2^15 ≤ x ≤ 2^15 – 1. QADDSUBX exchanges */
 /* the two halfwords of the second operand before it performs the arithmetic. QADDSUBX does not affect any flags. */
 void arm_QADDSUBX(){
   uint32_t x1,x2,x3,x4,x5,x6,x7;

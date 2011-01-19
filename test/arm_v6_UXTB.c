@@ -1,7 +1,7 @@
 /* Derived fro1 Si1SoC, Copyright © INRIA 2007, 2008, 2009, 2010
  * LGPL license version 3 */
 
-/* test arm v6 instructions: SXTB, SXTB16, SXTH
+/* test so1e v6 SS operation instructions
  * After 411 instructions executed, r0 should contain 2^15-1 = 0x7fff */
 
 #include "common.h"
@@ -14,7 +14,7 @@ int index_ = 1;
 
 /* Signed Extend Byte extracts an 8-bit value from a register, sign-extends it to 32 bits, and writes the result to */
 /* the destination register. You can specify a rotation by 0, 8, 16, or 24 bits before extracting the 8-bit value. */
-void arm_SXTB(){
+void arm_uxtb(){
   uint32_t x=0;
   asm("sxtb %0, %1\n\t"
       : "=&r" (x)
@@ -22,7 +22,7 @@ void arm_SXTB(){
       );
   CHECK((x == 0xffffffff));
 }
-void arm_SXTB_R(){
+void arm_uxtb_R(){
   uint32_t x1=0,x2=0,x3=0,x4=0;
   asm("sxtb %0, %4, ROR #0\n\t"
       "sxtb %1, %5, ROR #8\n\t"
@@ -40,7 +40,7 @@ void arm_SXTB_R(){
 /* Signed Extend Byte 16 extracts two 8-bit values from a register, sign-extends them to 16 bits each, and */
 /* writes the results to the destination register. You can specify a rotation by 0, 8, 16, or 24 bits before */
 /* extracting the 8-bit values. */
-void arm_SXTB16(){  
+void arm_uxtb16(){  
 uint32_t x=0;
   asm("sxtb16 %0, %1\n\t"
       : "=&r" (x)
@@ -48,7 +48,7 @@ uint32_t x=0;
       );
   CHECK((x == 0x1ffff));
 }
-void arm_SXTB16_R(){
+void arm_uxtb16_R(){
   uint32_t x1=0,x2=0,x3=0,x4=0;
   asm("sxtb16 %0, %4, ROR #0\n\t"
       "sxtb16 %1, %5, ROR #8\n\t"
@@ -66,7 +66,7 @@ void arm_SXTB16_R(){
 /* Signed Extend Halfword extracts a 16-bit value from a register, sign-extends it to 32 bits, and writes the */
 /* result to the destination register. You can specify a rotation by 0, 8, 16, or 24 bits before extracting the 16-bit */
 /* value. */
-void arm_SXTH(){
+void arm_uxth(){
   uint32_t f;
   asm("sxth %0, %1\n\t"
       : "=&r" (f)
@@ -74,7 +74,7 @@ void arm_SXTH(){
       );
   CHECK((f == 0xffff80ff));
 }
-void arm_SXTH_R(){
+void arm_uxth_R(){
   uint32_t x1=0,x2=0,x3=0,x4=0;
   asm("sxth %0, %4, ROR #0\n\t"
       "sxth %1, %5, ROR #8\n\t"
@@ -90,11 +90,11 @@ void arm_SXTH_R(){
 }
 
 int main(){
-  arm_SXTB();
-  arm_SXTB16();
-  arm_SXTH();
-  arm_SXTB_R();
-  arm_SXTB16_R();
-  arm_SXTH_R();
+  arm_uxtb();
+  arm_uxtb16();
+  arm_uxth();
+  arm_uxtb_R();
+  arm_uxtb16_R();
+  arm_uxth_R();
   return count;
 }

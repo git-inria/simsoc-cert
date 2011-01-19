@@ -1,7 +1,7 @@
 /* Derived fro1 Si1SoC, Copyright © INRIA 2007, 2008, 2009, 2010
  * LGPL license version 3 */
 
-/* test arm v6 instructions: SXTAB, SXTAB16, SXTAH
+/* test so1e v6 SS operation instructions
  * After 414 instructions executed, r0 should contain 2^15-1 = 0x7fff */
 
 #include "common.h"
@@ -15,7 +15,7 @@ int index_ = 1;
 /* to the value in another register, and writes the fina
 l result to the destination register. You can specify a */
 /* rotation by 0, 8, 16, or 24 bits before extracting the 8-bit value. */
-void arm_SXTAB(){
+void arm_uxtab(){
   uint32_t x;
   asm("sxtab %0, %1, %2\n\t"
       : "=&r" (x)
@@ -23,7 +23,7 @@ void arm_SXTAB(){
       );
   CHECK((x == 0x0102030c));
 }
-void arm_SXTAB_R(){
+void arm_uxtab_R(){
   uint32_t x1,x2,x3,x4;
   asm("sxtab %0, %1, %2, ROR #0\n\t"
       : "=&r" (x1)
@@ -50,7 +50,7 @@ void arm_SXTAB_R(){
 /* Signed Extend and Add Byte 16 extracts two 8-bit values from a register, sign-extends them to 16 bits each, */
 /* adds the results to two 16-bit values from another register, and writes the final results to the destination */
 /* register. You can specify a rotation by 0, 8, 16, or 24 bits before extracting the 8-bit values. */
-void arm_SXTAB16(){
+void arm_uxtab16(){
   uint32_t x;
   asm("sxtab16 %0, %1, %2\n\t"
       : "=&r" (x)
@@ -58,7 +58,7 @@ void arm_SXTAB16(){
       );
   CHECK((x == 0x0108030c));
 }
-void arm_SXTAB16_R(){
+void arm_uxtab16_R(){
   uint32_t x1,x2,x3,x4;
   asm("sxtab16 %0, %1, %2, ROR #0\n\t"
       : "=&r" (x1)
@@ -85,7 +85,7 @@ void arm_SXTAB16_R(){
 /* Signed Extend and Add Halfword extracts a 16-bit value from a register, sign-extends it to 32 bits, adds the */
 /* result to a value from another register, and writes the final result to the destination register. You can specify */
 /* a rotation by 0, 8, 16, or 24 bits before extracting the 16-bit value. */
-void arm_SXTAH(){
+void arm_uxtah(){
   uint32_t x;
   asm("sxtah %0, %1, %2\n\t"
       : "=&r" (x)
@@ -93,7 +93,7 @@ void arm_SXTAH(){
       );
   CHECK((x == 0x01020a0c));
 }
-void arm_SXTAH_R(){
+void arm_uxtah_R(){
   uint32_t x1,x2,x3,x4;
   asm("sxtah %0, %1, %2, ROR #0\n\t"
       : "=&r" (x1)
@@ -118,11 +118,11 @@ void arm_SXTAH_R(){
 }
 
 int main() {
-  arm_SXTAB();
-  arm_SXTAB_R();
-  arm_SXTAB16();
-  arm_SXTAB16_R();
-  arm_SXTAH();
-  arm_SXTAH_R();
+  arm_uxtab();
+  arm_uxtab_R();
+  arm_uxtab16();
+  arm_uxtab16_R();
+  arm_uxtah();
+  arm_uxtah_R();
   return count;
 }

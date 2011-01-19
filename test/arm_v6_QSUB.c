@@ -2,7 +2,7 @@
  * LGPL license version 3 */
 
 /* test the arm v6 instructions QSUB8, QSUB16, and QSUBADDX
- * After ?? instructions executed, r0 should contain 2^ = 0x */
+ * After 790 instructions executed, r0 should contain 2^30-1 = 0x3fffffff */
 
 #include "common.h"
 
