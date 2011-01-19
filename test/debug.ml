@@ -111,6 +111,7 @@ let check state steps expected name =
       )
   with Failure s -> print_endline ("Error in "^name^": "^s^".");;
 
+
 let pc s = Printf.printf "address of current instruction = 0x%x\n" ((reg s 15) - 8);;
 
 let print_coq_Z f n = Format.fprintf f "%d (0x%x)" (coq_Z_to_int n) (coq_Z_to_int n);;
@@ -138,8 +139,41 @@ let run_opt (s0: State.state) (max: int option): BinInt.coq_Z * (int * hexa) lis
 let run s0 = run_opt s0 None;;
 let runmax s0 max = run_opt s0 (Some max);;
 
-#load "arm_v6_a.cmo";;
-check Arm_v6_a.initial_state 227 0x1fe "arm_v6";;
+#load "arm_v6_QADD_a.cmo";;
+check Arm_v6_QADD_a.initial_state 509 0x7efff "arm_v6_QADD";;
+
+#load "arm_v6_REV_a.cmo";;
+check Arm_v6_REV_a.initial_state 125 15 "arm_v6_REV";;
+
+#load "arm_v6_SADD_a.cmo";;
+check Arm_v6_SADD_a.initial_state 742 0x1FFFFFF "arm_v6_SADD";;
+
+#load "arm_v6_SSUB_a.cmo";;
+check Arm_v6_SSUB_a.initial_state 638 0xfffff "arm_v6_SSUB";;
+
+#load "arm_v6_SSAT_a.cmo";;
+check Arm_v6_SSAT_a.initial_state 632 0xfff "arm_v6_SSAT";;
+
+#load "arm_v6_SSUB_a.cmo";;
+check Arm_v6_SSUB_a.initial_state 638 0xfffff "arm_v6_SSUB";;
+
+#load "arm_v6_SXTA_a.cmo";;
+check Arm_v6_SXTA_a.initial_state 414 0x7fff "arm_v6_SXTA";;
+
+#load "arm_v6_SXTB_a.cmo";;
+check Arm_v6_SXTB_a.initial_state 411 0x7fff "arm_v6_SXTB";;
+
+#load "arm_v6_UMAAL_a.cmo";;
+check Arm_v6_UMAAL_a.initial_state 207 0xff "arm_v6_UMAAL";;
+
+#load "arm_v6_UH_a.cmo";;
+check Arm_v6_UH_a.initial_state 594 0x3ffff "arm_v6_UH";;
+
+#load "arm_v6_SH_a.cmo";;
+check Arm_v6_SH_a.initial_state 205 63 "arm_v6_SH";;
+
+#load "arm_v6_SM_a.cmo";;
+check Arm_v6_SM_a.initial_state 617 0x3ffff "arm_v6_SM";;
 
 #load "arm_multiple_a.cmo";;
 check Arm_multiple_a.initial_state 227 0x1ff "arm_multiple";;
