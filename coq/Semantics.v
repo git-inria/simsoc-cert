@@ -18,7 +18,32 @@ Require Import State Util Bitvec Arm State List Message ZArith String.
  ** with a list of variables*)
 (****************************************************************************)
 
-Definition local := list (nat * word).
+Inductive single_or_double : Type :=
+| Single : word -> single_or_double
+| Double :long -> single_or_double.
+
+Notation id_result := (S (S (S (S 0)))).
+Notation id_value := 0.
+
+Definition sod_of_id (i : nat) :=
+  match i with
+    | id_result (*result*) => long -> single_or_double
+    | id_value (*value*) => long -> single_or_double
+    | _ => word -> single_or_double
+  end.
+
+(*Inductive map_sod : Type :=
+  | mk_map_sod : forall i h l, sod_of_id i -> map_sod.
+*)
+
+Record map_sod : Type := {
+  id : nat;
+  contents : sod_of_id id 
+}.
+
+Definition local := list (nat * option word * word).
+Definition local' := list (nat * single_or_double).
+Definition local'' := list map_sod.
 
 Inductive result : Type :=
 | Ok (loc : local) (b : bool) (s : state)
@@ -90,7 +115,7 @@ Definition loop (p q : nat) (f : nat -> semfun) (loc0 : local)
   (b0 : bool) (s0 : state)
   : result := loop_aux p (q - p + 1) f loc0 b0 s0.
 
-Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
+(*Fixpoint update_loc_aux (nb : nat) (v : single_or_double) (loc : local)
   : local :=
   match loc with
     | nil => ((nb, v) :: loc)
@@ -98,20 +123,63 @@ Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
       else (nb', v') :: update_loc_aux nb v locs
   end.
 
+Definition update_loc (nb : nat) (v : single_or_double) (loc : local)
+  (b : bool) (s : state) : result :=
+  Ok (update_loc_aux nb v loc) b s.
+
+Fixpoint get_loc (nb : nat) (loc : local):=
+  match loc with
+    | nil => Single zero
+    | (nb', v) :: locs => 
+      if beq_nat nb nb' then v else get_loc nb locs
+  end.*)
+
+Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
+  : local :=
+  match loc with
+    | nil => ((nb, None, v) :: loc)
+    | (nb',None, v') :: locs | (nb', Some _, v') :: locs => 
+      if beq_nat nb nb' then (nb, None, v) :: locs 
+        else (nb',None, v') :: update_loc_aux nb v locs
+  end.
+
+Fixpoint update_loc_aux64 (nb : nat) (v1 : word) (v2 : word) (loc : local)
+  : local :=
+  match loc with
+    | nil  => ((nb, Some v1, v2) :: loc)
+    | (nb', Some v1', v2') :: locs => 
+      if beq_nat nb nb' then (nb, Some v1, v2) :: locs 
+        else (nb', Some v1', v2') :: update_loc_aux64 nb v1 v2 locs
+    | (nb', None, v2') :: locs =>
+      if beq_nat nb nb' then (nb, Some v1, v2) :: locs 
+        else (nb', None, v2') :: update_loc_aux64 nb v1 v2 locs
+  end.
+
 Definition update_loc (nb : nat) (v : word) (loc : local)
   (b : bool) (s : state) : result :=
   Ok (update_loc_aux nb v loc) b s.
 
-(*Fixpoint get_loc (str : string) (loc : local) : word :=
-  match loc with
-    | nil => zero
-    | (s, v) :: locs => if string_dec s str then v else get_loc str locs
-  end.*)
+Definition update_loc64 (nb : nat) (l : long) (loc : local)
+  (b : bool) (s : state) : result :=
+  Ok (update_loc_aux64 nb (repr (sbits64 63 32 l)) (repr (sbits64 31 0 l)) loc) b s.
+
 
 Fixpoint get_loc (nb : nat) (loc : local) : word :=
   match loc with
     | nil => zero
-    | (nb', v) :: locs => if beq_nat nb nb' then v else get_loc nb locs
+    | (nb', None, v) :: locs | (nb', Some _, v) :: locs => 
+      if beq_nat nb nb' then v else get_loc nb locs
+  end.
+
+Fixpoint get_loc64 (nb : nat) (loc : local) : long :=
+  match loc with
+    | nil => Long.zero
+    | (nb', Some v1, v2) :: locs => 
+      if beq_nat nb nb' then (to64 v1 v2) 
+        else get_loc64 nb locs
+    | (nb', None, v2) :: locs => 
+      if beq_nat nb nb' then (to64 zero v2) 
+        else get_loc64 nb locs
   end.
 
 Definition set_cpsr (v : word) (loc : local) (b : bool) 
