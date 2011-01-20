@@ -92,7 +92,7 @@ and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
-  | Let (n, ns, is, i) ->
+  | Let ((_, n), ns, is, i) ->
       bprintf b "let %s %a =\n%abegin\n%a%aend in\n%a%a"
 	n   (list " " (fun b (_, x) -> string b x)) ns   indent k
 	(list "" (postfix "\n" (inst k))) is   indent k   

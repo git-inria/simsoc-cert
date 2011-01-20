@@ -151,7 +151,7 @@ and inst_aux p k b = function
   | Block (i :: is) ->
       bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
 
-  | Let (n, ns, is, i) ->
+  | Let ((_, n), ns, is, i) ->
       bprintf b "function %s(%a) {\n%a%a\n  }\n%a%a" n   
 	(list ", " (fun b (ty, x) -> 
 	  string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty) x))) ns

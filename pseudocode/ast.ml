@@ -67,11 +67,11 @@ let args = function
 (*****************************************************************************)
 
 type type_param = 
-    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tchar
+    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tunsigned_char | Tunsigned_short | Tchar
 
 type inst =
 | Block of inst list
-| Let of string * (type_param * string) list * inst list * inst
+| Let of (type_param * string) * (type_param * string) list * inst list * inst
 | Unpredictable
 | Affect of exp * exp
 | If of exp * inst * inst option

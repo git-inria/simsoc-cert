@@ -82,6 +82,7 @@ struct
   module StringMap = Map.Make (struct type t = string let compare = compare end)
 
   let map_affect = ref StringMap.empty 
+  let map_affect_spec = ref StringMap.empty 
   let map_param = ref StringMap.empty
 
 let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) -> E.inst) option = 
@@ -110,19 +111,21 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
     | C.ADD_ASSIGN -> C.ADD | C.SUB_ASSIGN -> C.SUB | C.MUL_ASSIGN -> C.MUL | C.DIV_ASSIGN -> C.DIV (* MOD *)
     | C.BAND_ASSIGN -> C.BAND | C.BOR_ASSIGN -> C.BOR | C.XOR_ASSIGN -> C.XOR | C.SHL_ASSIGN -> C.SHL | C.SHR_ASSIGN -> C.SHR | _ -> assert false in
 
-  let t_of_typeSpecifier = function
-    | C.Tint  -> E.Tint 
-    | C.Tlong  -> E.Tlong 
-    | C.Tfloat  -> E.Tfloat 
-    | C.Tdouble -> E.Tdouble
-    | C.Tvoid -> E.Tvoid 
-    | C.Tchar -> E.Tchar
-    | t -> ignore t ; assert false in
-
-  let t_of_ltypeSpecifier = function
-    | [C.SpecType o] -> t_of_typeSpecifier o
-    | [C.SpecType C.Tunsigned; C.SpecType C.Tlong] -> E.Tunsigned_long
-    | t -> ignore t ; assert false in
+  let t_of_ltypeSpecifier = 
+    let t_of_typeSpecifier = function
+      | C.Tint  -> E.Tint 
+      | C.Tlong  -> E.Tlong 
+      | C.Tfloat  -> E.Tfloat 
+      | C.Tdouble -> E.Tdouble
+      | C.Tvoid -> E.Tvoid 
+      | C.Tchar -> E.Tchar
+      | t -> ignore t ; assert false in
+    function
+      | [C.SpecType o] -> t_of_typeSpecifier o
+      | [C.SpecType C.Tunsigned; C.SpecType C.Tlong] -> E.Tunsigned_long
+      | [C.SpecType C.Tunsigned; C.SpecType C.Tchar] -> E.Tunsigned_char
+      | [C.SpecType C.Tunsigned; C.SpecType C.Tshort] -> E.Tunsigned_short
+      | t -> ignore t ; assert false in
 
 
   let rec li_of_block { C.bstmts = l ; _ } =
@@ -162,6 +165,8 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
     | C.COMPUTATION (C.CALL (C.VARIABLE s, l), _) -> E.Proc (s, List.map e_of_expression l)
 
     | C.DEFINITION _ -> E.Block []
+    (*| i -> ignore i ; assert false*)
+
     | C.BLOCK (b, _) -> E.Block (li_of_block b)
     | C.SWITCH (e, C.BLOCK ({ C.bstmts = l ; _ }, _), _) -> 
 
@@ -235,7 +240,9 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
                      C.CAST
                        (([C.SpecType (C.Tstruct ("SR0", None, []))], C.PTR ([], C.JUSTBASE)),
                         C.SINGLE_INIT (C.PAREN (C.UNARY (C.ADDROF, C.VARIABLE "SR")))))) as e,
-         s) -> E.Fun (Printf.sprintf "__get_special_%s" s, [ e_of_expression e ])
+         s) -> 
+      let () = map_affect_spec := StringMap.add s () !map_affect_spec in
+      E.Fun (Printf.sprintf "__get_special_%s" s, [ e_of_expression e ])
     | C.MEMBEROF (C.VARIABLE _ | C.INDEX (C.VARIABLE _, (C.VARIABLE _ | C.CONSTANT (C.CONST_INT _))) as e, s) -> 
       let () = map_affect := StringMap.add s () !map_affect in
       E.Fun (Printf.sprintf "__get_%s" s, [ e_of_expression e ]) (*E.Member_of (e_of_expression e, s) *)
@@ -244,15 +251,36 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 
   in
 
-  let i_of_definition = function
-    | C.FUNDEF ((_, (name, C.PROTO (_, l, _), _, _)), e, _, _) -> 
-      let l_param = List.map (function ([C.SpecType o], (n, _, _, _)) -> t_of_typeSpecifier o, n | t -> ignore t ; assert false) l in
+  let i_of_definition = 
+    let open Util in
+    let unsupported_fun = set_of_list
+      [ "check_single_exception" 
+      ; "check_double_exception"
+      ; "normal_faddsub"
+      ; "normal_fmul" 
+      ; "check_product_infinity"
+      ; "check_negative_infinity"
+      ; "check_positive_infinity" 
+      ; "check_product_invalid"
+      ; "fipr"
+      ; "clear_cause" ] in
+    function
+    | C.FUNDEF ((l_ty, (name, C.PROTO (_, l, _), _, _)), e, _, _) -> 
+      if StrSet.mem name unsupported_fun then
+	(* FIXME float instruction is not supported *) None
+      else
+	let l_param = List.map (function ([C.SpecType _] as o, (n, _, _, _)) -> t_of_ltypeSpecifier o, n | t -> ignore t ; assert false) l in
+	Some (fun i -> 
+          E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, li_of_block e, i l_param))
+    | C.DECDEF ((l_ty, [((name, C.PROTO (_, [[C.SpecType C.Tvoid], _], _), _, _), _)]), _) -> 
+      (* REMARK we choose the convention to delete the void argument (at function declaration time) instead of create a new one (at application time) *)
+      let l_param = [] in 
       Some (fun i -> 
-        E.Let (name, l_param, li_of_block e, i l_param))
-    | C.DECDEF ((_, [((name, C.PROTO (_, l, _), _, _), _)]), _) -> 
+        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i l_param)) 
+    | C.DECDEF ((l_ty, [((name, C.PROTO (_, l, _), _, _), _)]), _) -> 
       let l_param = List.map (function (l, (n, _, _, _)) -> t_of_ltypeSpecifier l, n) l in
       Some (fun i -> 
-        E.Let (name, l_param, [], i l_param)) 
+        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i l_param)) 
     | C.DECDEF ((_, [((name, C.JUSTBASE, [], _), _)]), _) -> 
       let () = map_param := StringMap.add name () !map_param in
       None

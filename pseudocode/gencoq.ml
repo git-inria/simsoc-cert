@@ -435,7 +435,7 @@ and inst_aux loc nm k b = function
       bprintf b "block (\n%a\n%anil)"
 	(list "\n" (inst_cons loc nm (k+2))) is indent (k+2)
 
-  | Let (n, ns, is, i) -> 
+  | Let ((_, n), ns, is, i) -> 
       bprintf b "let %s %a := %a in\n%a%a" n   
 	(list " " (fun b (_, x) -> string b x)) ns
 	(decl_loc (inst_aux loc nm k)) (Block is)   indent k 
@@ -701,8 +701,12 @@ let lib b ps =
 	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_%s : word -> word.\n" s) !map_affect;
 	bprintf bsem_head "\n";
 
+	(* print __get_special function *)
+	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_special_%s : word -> word.\n" s) !map_affect_spec;
+	bprintf bsem_head "\n";
+
 	(* *)
-	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : word.\n" s) !map_param;
+	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s (if s = "PC" then "regnum" else "word")) !map_param;
 	bprintf bsem_head "\n";
       end);
     (if ps.header = [] then
@@ -712,22 +716,31 @@ let lib b ps =
 	  bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ "Parameter nat_of_word : word -> nat."
 								       ; ""]);
 	end);
-    List.iter (function (Let (n, ns, is, _)) ->
+    List.iter (function (Let ((ty, n), ns, is, _)) ->
       (*let gs, _ = V.vars i in*)
-      bprintf bsem_head "Definition %s %a :=\n%a.\n\n"
+      let string_of_ty = function
+	| Tint -> "(* 1 *) nat" 
+	| Tlong -> "(* 2 *) Type" 
+	| Tfloat -> "(* 3 *) Type" 
+	| Tdouble -> "(* 4 *) Type"
+	| Tvoid -> "(* 5 *) result" 
+	| Tunsigned_long -> "(* 6 *) word" 
+	| Tchar -> "(* 7 *) Type"
+	| Tunsigned_char -> "(* 8 *) word"
+	| Tunsigned_short -> "(* 9 *) word" in
+      let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n"
         n   
 	(list " " (fun b (ty, s) -> 
-	  string b (sprintf "(%s : %s)" 
-		      (if s = "" then "_" else s) 
-		      (match ty with
-			| Tint -> "nat" 
-			| Tlong -> "Type" 
-			| Tfloat -> "Type" 
-			| Tdouble -> "Type"
-			| Tvoid -> "Type" 
-			| Tunsigned_long -> "Type" 
-			| Tchar -> "Type")) )) ns   
-	(inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is)
+	  string b (sprintf "(%s : %s)" (if s = "" then "_" else s) (string_of_ty ty)) )) ns x in
+	(match is with 
+	  | [] -> bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
+	    (fun b -> function
+	      | [] -> string b "(* z*) local -> bool -> state"
+	      | l -> list " -> " (fun b (ty, _) -> string b (sprintf "%s" (string_of_ty ty)) ) b l) ns
+	    (string_of_ty ty)
+	  | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e
+	  | _ -> f (decl_loc (inst (add_index (snd (V.vars (Block is)))) "" 2)) (Block is))
+
       | _ -> assert false (* by construction of SH4, this never happens *)) ps.header;
     List.iter prog ps.body;
 
