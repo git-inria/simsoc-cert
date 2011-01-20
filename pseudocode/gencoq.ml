@@ -397,6 +397,12 @@ and range loc nm b = function
 (*REMOVE when finished! *)
 let todo s f b x = bprintf b "todo %s (* %a *)" s f x;;
 
+let try_todo msg f b i =
+  let b_try = Buffer.create 500 in 
+  match try Some (f b_try) with Not_found -> None with
+    | None -> todo msg (Genpc.inst 0) b i
+    | Some () -> Buffer.add_buffer b b_try
+
 let case bin loc nm k b (n, i) =
   match i with
     | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
@@ -463,20 +469,18 @@ and inst_aux loc nm k b = function
       
 
   | Affect (e, v) as i ->
-      begin try affect' b v loc nm e
-      with Not_found -> todo "Affect" (Genpc.inst 0) b i end
+      try_todo "Affect" (fun b -> affect' b v loc nm e) b i
 
   (* adhoc treatment of case's: as case's are only used for defining
      the variable index, we convert a case which branches define index
      into a let index := followed by a Coq match *)
   | Case (e, nis, oi) as i ->
-      begin try bprintf b
+      try_todo "Case" (fun b -> bprintf b
 	"let index :=\n%amatch unsigned %a with\n%a%a%a\n%aend in"
 	indent (k+2) (exp loc nm) e (list "" (case bin loc nm (k+4))) nis indent (k+4) 
 	(fun b -> function 
-	  | None -> bprintf b "| _ => repr 0"
-	  | Some i -> case string loc nm (k+4) b ("_", i)) oi indent (k+2)
-	with Not_found -> todo "Case" (Genpc.inst 0) b i end
+          | None -> bprintf b "| _ => repr 0"
+          | Some i -> case string loc nm (k+4) b ("_", i)) oi indent (k+2)) b i
 
   | For (x, p, q, i) ->
       bprintf b "loop %s n%s (fun %s => \n%a)" p q x (inst loc nm (k+2)) i
