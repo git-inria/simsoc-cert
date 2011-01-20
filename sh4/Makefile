@@ -6,9 +6,9 @@ all: cbc
 ####
 
 sh4.txt: sh4.txt.gz
-	gunzip $<
+	gunzip -c $< > $@
 
-sh4.patch: sh4.txt sh4_inst.txt
+patch-inst: sh4.txt sh4_inst.txt
 	diff -u sh4.txt sh4_inst.txt > sh4.patch || exit 0
 
 sh4_inst.txt: sh4.txt sh4.patch
@@ -28,7 +28,7 @@ instr.byte: instr.ml
 #
 
 clean:
-	gzip sh4.txt && ocamlbuild -clean
+	ocamlbuild -clean
 
 nobackup:
 	rm -f *.bak *~ *.dup
