@@ -8,10 +8,10 @@ all: cbc
 sh4.txt: Renesas_SH4_2006.pdf
 	pdftotext -layout Renesas_SH4_2006.pdf $@
 
-sh4.patch: sh4.txt sh4_mod.txt
-	diff -u sh4.txt sh4_mod.txt > sh4.patch || exit 0
+sh4.patch: sh4.txt sh4_inst.txt
+	diff -u sh4.txt sh4_inst.txt > sh4.patch || exit 0
 
-sh4_mod.txt: sh4.txt sh4.patch
+sh4_inst.txt: sh4.txt sh4.patch
 	patch sh4.txt sh4.patch -o $@
 
 #
@@ -33,5 +33,5 @@ clean:
 nobackup:
 	rm -f *.bak *~ *.dup
 
-cbc: instr.byte sh4_mod.txt
-	cat sh4_mod.txt | ./instr.byte > c_code.dat
+cbc: instr.byte sh4_inst.txt
+	cat sh4_inst.txt | ./instr.byte > c_code.dat
