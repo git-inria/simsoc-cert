@@ -387,7 +387,7 @@ x     if 0 <= x < 2^n
 (****************************************************************************)
 
 Definition UnsignedSat (x : word) (n : nat) : word :=
-  if zlt x 0 then repr 0
+  if lt_0 x then repr 0
     else let k := two_power_nat n in
       if zlt x k then x
       else repr (k-1).
