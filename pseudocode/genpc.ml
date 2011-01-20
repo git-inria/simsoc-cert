@@ -113,9 +113,9 @@ and inst_aux k b = function
   | Coproc (c, "load", e :: _) -> bprintf b "load %a for %a" exp e coproc c
   | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s
   | Case (e, nis, oi) ->
-      bprintf b "case %a of\n%abegin\n%a%aend\n%adefaultcase\n%a\n%aendcase"
-        exp e indent (k+4) (list "" (case_aux (k+4))) nis indent (k+4) indent (k+4) 
-	(option "" (inst (k+4))) oi indent k
+      bprintf b "case %a of\n%abegin\n%a%aend%a\n%aendcase"
+        exp e indent (k+4) (list "" (case_aux (k+4))) nis indent (k+4) 
+	(option "\ndefaultcase\n" (inst (k+4))) oi indent k
   | Return e -> 
       bprintf b "return %a" exp e
 
