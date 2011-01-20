@@ -23,8 +23,8 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 	diff $(PROC)dec.dat.ref $(PROC)dec.dat
 	diff $(PROC)syntax.dat.ref $(PROC)syntax.dat
 
-%.txt: %.pdf
-	pdftotext -layout $< $@
+%.txt: %.txt.gz
+	gunzip -c $< > $@
 
 %inst.txt: %.txt %inst.patch
 	cp -a $< $@; patch $@ < $*inst.patch
