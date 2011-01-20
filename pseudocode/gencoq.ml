@@ -354,16 +354,14 @@ and exp' loc nm sz b = function
             let signed = if nm.[0] = 'S' ||nm.[0] =  'Q' then "signed_" 
             else "" in
             begin match h, l with
-              | "7","0" -> bprintf b "(get_%sbyte0 %a)" signed (pexp loc nm) e
-              | "15","8" -> bprintf b "(get_%sbyte1 %a)" signed (pexp loc nm) e
-              | "23","16" -> bprintf b "(get_%sbyte2 %a)" signed (pexp loc nm) e
-              | "31","24" -> bprintf b "(get_%sbyte3 %a)" signed (pexp loc nm) e
-              | "15","0" -> bprintf b "(get_%shalf0 %a)" signed (pexp loc nm) e
-              | "31","16" -> bprintf b "(get_%shalf1 %a)" signed (pexp loc nm) e
-              | "63", "32" -> bprintf b "(get_hi %a)" (pexp loc nm) e
-              | "31", "0" -> bprintf b "(get_lo %a)" (pexp loc nm) e
-              (*| "63", "32" -> bprintf b "%a" (loc_exp loc nm "_hi") e
-              | "31", "0" -> bprintf b "%a" (loc_exp loc nm "_lo") e*)
+              | "7","0" -> bprintf b "get_%sbyte0 %a" signed (pexp loc nm) e
+              | "15","8" -> bprintf b "get_%sbyte1 %a" signed (pexp loc nm) e
+              | "23","16" -> bprintf b "get_%sbyte2 %a" signed (pexp loc nm) e
+              | "31","24" -> bprintf b "get_%sbyte3 %a" signed (pexp loc nm) e
+              | "15","0" -> bprintf b "get_%shalf0 %a" signed (pexp loc nm) e
+              | "31","16" -> bprintf b "get_%shalf1 %a" signed (pexp loc nm) e
+              | "63", "32" -> bprintf b "get_hi %a" (pexp loc nm) e
+              | "31", "0" -> bprintf b "get_lo %a" (pexp loc nm) e
               | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
             end
         | _ -> bprintf b "%a[%a]" (pexp loc nm) e (range loc nm) r
