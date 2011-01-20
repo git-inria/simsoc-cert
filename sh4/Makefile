@@ -5,8 +5,8 @@ all: cbc
 
 ####
 
-sh4.txt: Renesas_SH4_2006.pdf
-	pdftotext -layout Renesas_SH4_2006.pdf $@
+sh4.txt: sh4.txt.gz
+	gunzip $<
 
 sh4.patch: sh4.txt sh4_inst.txt
 	diff -u sh4.txt sh4_inst.txt > sh4.patch || exit 0
@@ -28,7 +28,7 @@ instr.byte: instr.ml
 #
 
 clean:
-	ocamlbuild -clean
+	gzip sh4.txt && ocamlbuild -clean
 
 nobackup:
 	rm -f *.bak *~ *.dup
