@@ -77,8 +77,8 @@ Definition return_ (_ : word) (loc : local)
   (b : bool) (s : state) : result :=
   todo ComplexSemantics loc b s.
 
-Parameter memof : word -> word. (* SH4 todo : C pointer *)
-Parameter addrof : word -> word. (* SH4 todo : C pointer *)
+Definition memof (_: word) : word := repr 0. (* SH4 todo : C pointer *)
+Definition addrof (_: word) : word := repr 0. (* SH4 todo : C pointer *)
 
 Definition seq (f1 f2 : semfun) (loc0 : local) 
   (b0 : bool) (s0 : state) : result :=
