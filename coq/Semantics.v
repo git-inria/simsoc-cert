@@ -137,10 +137,13 @@ Fixpoint get_loc (nb : nat) (loc : local):=
 Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
   : local :=
   match loc with
-    | nil => ((nb, None, v) :: loc)
-    | (nb',None, v') :: locs | (nb', Some _, v') :: locs => 
+    | nil => (nb, None, v) :: loc
+    | (nb',None, v') :: locs => 
       if beq_nat nb nb' then (nb, None, v) :: locs 
         else (nb',None, v') :: update_loc_aux nb v locs
+    | (nb', Some v1', v2') :: locs =>
+      if beq_nat nb nb' then (nb, Some v1', v) :: locs 
+        else (nb', Some v1', v2') :: update_loc_aux nb v locs
   end.
 
 Fixpoint update_loc_aux64 (nb : nat) (v1 : word) (v2 : word) (loc : local)
