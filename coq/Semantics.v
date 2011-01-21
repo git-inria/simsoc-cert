@@ -36,14 +36,12 @@ Definition sod_of_id (i : nat) :=
   | mk_map_sod : forall i h l, sod_of_id i -> map_sod.
 *)
 
-Record map_sod : Type := {
+Record map_sod : Type := mk_map_sod {
   id : nat;
-  contents : sod_of_id id 
+  contents : single_or_double
 }.
 
-Definition local := list (nat * option word * word).
-Definition local' := list (nat * single_or_double).
-Definition local'' := list map_sod.
+Definition local := list map_sod.
 
 Inductive result : Type :=
 | Ok (loc : local) (b : bool) (s : state)
@@ -118,74 +116,39 @@ Definition loop (p q : nat) (f : nat -> semfun) (loc0 : local)
   (b0 : bool) (s0 : state)
   : result := loop_aux p (q - p + 1) f loc0 b0 s0.
 
-(*Fixpoint update_loc_aux (nb : nat) (v : single_or_double) (loc : local)
+Fixpoint update_loc_aux (nb : nat) (v :single_or_double) (loc : local)
   : local :=
   match loc with
-    | nil => ((nb, v) :: loc)
-    | (nb', v') :: locs => if beq_nat nb nb' then (nb, v) :: locs 
-      else (nb', v') :: update_loc_aux nb v locs
-  end.
-
-Definition update_loc (nb : nat) (v : single_or_double) (loc : local)
-  (b : bool) (s : state) : result :=
-  Ok (update_loc_aux nb v loc) b s.
-
-Fixpoint get_loc (nb : nat) (loc : local):=
-  match loc with
-    | nil => Single zero
-    | (nb', v) :: locs => 
-      if beq_nat nb nb' then v else get_loc nb locs
-  end.*)
-
-Fixpoint update_loc_aux (nb : nat) (v : word) (loc : local)
-  : local :=
-  match loc with
-    | nil => (nb, None, v) :: loc
-    | (nb',None, v') :: locs => 
-      if beq_nat nb nb' then (nb, None, v) :: locs 
-        else (nb',None, v') :: update_loc_aux nb v locs
-    | (nb', Some v1', v2') :: locs =>
-      if beq_nat nb nb' then (nb, Some v1', v) :: locs 
-        else (nb', Some v1', v2') :: update_loc_aux nb v locs
-  end.
-
-Fixpoint update_loc_aux64 (nb : nat) (v1 : word) (v2 : word) (loc : local)
-  : local :=
-  match loc with
-    | nil  => ((nb, Some v1, v2) :: loc)
-    | (nb', Some v1', v2') :: locs => 
-      if beq_nat nb nb' then (nb, Some v1, v2) :: locs 
-        else (nb', Some v1', v2') :: update_loc_aux64 nb v1 v2 locs
-    | (nb', None, v2') :: locs =>
-      if beq_nat nb nb' then (nb, Some v1, v2) :: locs 
-        else (nb', None, v2') :: update_loc_aux64 nb v1 v2 locs
+    | nil => mk_map_sod nb v :: loc
+    | sod1 :: locs => if beq_nat nb (id sod1) then mk_map_sod nb v :: loc
+      else sod1 :: update_loc_aux nb v locs
   end.
 
 Definition update_loc (nb : nat) (v : word) (loc : local)
   (b : bool) (s : state) : result :=
-  Ok (update_loc_aux nb v loc) b s.
+  Ok (update_loc_aux nb (Single v) loc) b s.
 
-Definition update_loc64 (nb : nat) (l : long) (loc : local)
+Definition update_loc64 (nb : nat) (v : long) (loc : local)
   (b : bool) (s : state) : result :=
-  Ok (update_loc_aux64 nb (repr (sbits64 63 32 l)) (repr (sbits64 31 0 l)) loc) b s.
+  Ok (update_loc_aux nb (Double v) loc) b s.
 
-
-Fixpoint get_loc (nb : nat) (loc : local) : word :=
+Fixpoint get_loc_aux (nb : nat) (loc : local) :=
   match loc with
-    | nil => zero
-    | (nb', None, v) :: locs | (nb', Some _, v) :: locs => 
-      if beq_nat nb nb' then v else get_loc nb locs
+    | nil => Single zero
+    | sod1 :: locs => if beq_nat nb (id sod1) then (contents sod1)
+      else get_loc_aux nb locs
   end.
 
-Fixpoint get_loc64 (nb : nat) (loc : local) : long :=
-  match loc with
-    | nil => Long.zero
-    | (nb', Some v1, v2) :: locs => 
-      if beq_nat nb nb' then (to64 v1 v2) 
-        else get_loc64 nb locs
-    | (nb', None, v2) :: locs => 
-      if beq_nat nb nb' then (to64 zero v2) 
-        else get_loc64 nb locs
+Definition get_loc (nb : nat) (loc : local) :=
+  match (get_loc_aux nb loc) with
+    | Single v => v
+    | Double v => Word.repr (sbits64 31 0 v)
+  end.
+
+Definition get_loc64 (nb : nat) (loc : local) :=
+  match (get_loc_aux nb loc) with
+    | Single v => to64 w0 v
+    | Double v => v
   end.
 
 Definition set_cpsr (v : word) (loc : local) (b : bool) 
