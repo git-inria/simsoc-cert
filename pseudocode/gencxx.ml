@@ -72,6 +72,7 @@ module G = struct
     | Tunsigned_char -> "unsigned char"
     | Tunsigned_short -> "unsigned short"
     | Tchar -> "char"
+    | Tbool -> "_Bool"
   
   let case_type = "uint8_t";;
 

@@ -85,7 +85,7 @@ struct
   let map_affect_spec = ref StringMap.empty 
   let map_param = ref StringMap.empty
 
-let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) -> E.inst) option = 
+let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -> E.inst) -> E.inst) option = 
 
   let flatten_case = (** replace the statement inside any CASE by a NOP (which location is a copy of the CASE's location) *) (* WARNING this case for example is not treated : a CASE contains a BLOCK which contains a CASE *)
     let rec aux = function
@@ -95,7 +95,7 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
     aux in
 
   let s_of_unary_operator = function
-    | C.MINUS -> "minus" | C.PLUS -> "plus" | C.NOT -> "NOT" | C.BNOT -> "not" | C.MEMOF -> "memof" | C.ADDROF -> "addrof"
+    | C.MINUS -> "opp" | C.PLUS -> "plus" | C.NOT -> "NOT" | C.BNOT -> "not" | C.MEMOF -> "memof" | C.ADDROF -> "addrof"
    (*| PREINCR | PREDECR*) | C.POSINCR -> "succ" | C.POSDECR -> "pred" | _ -> assert false in
 
   let s_of_binary_operator = function
@@ -119,6 +119,7 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
       | C.Tdouble -> E.Tdouble
       | C.Tvoid -> E.Tvoid 
       | C.Tchar -> E.Tchar
+      | C.T_Bool -> E.Tbool
       | t -> ignore t ; assert false in
     function
       | [C.SpecType o] -> t_of_typeSpecifier o
@@ -270,17 +271,19 @@ let inst_of_cabs : Cabs.definition -> (((E.type_param * string) list -> E.inst) 
 	(* FIXME float instruction is not supported *) None
       else
 	let l_param = List.map (function ([C.SpecType _] as o, (n, _, _, _)) -> t_of_ltypeSpecifier o, n | t -> ignore t ; assert false) l in
+	let name = (* WARNING : special keyword : the "NOT" string is sometimes translated to "not" in gencoq.ml *)
+	  if name = "NOT" then "NOT_" else name in
 	Some (fun i -> 
-          E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, li_of_block e, i l_param))
+          E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, li_of_block e, i name l_param))
     | C.DECDEF ((l_ty, [((name, C.PROTO (_, [[C.SpecType C.Tvoid], _], _), _, _), _)]), _) -> 
       (* REMARK we choose the convention to delete the void argument (at function declaration time) instead of create a new one (at application time) *)
       let l_param = [] in 
       Some (fun i -> 
-        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i l_param)) 
+        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i name l_param)) 
     | C.DECDEF ((l_ty, [((name, C.PROTO (_, l, _), _, _), _)]), _) -> 
       let l_param = List.map (function (l, (n, _, _, _)) -> t_of_ltypeSpecifier l, n) l in
       Some (fun i -> 
-        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i l_param)) 
+        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i name l_param)) 
     | C.DECDEF ((_, [((name, C.JUSTBASE, [], _), _)]), _) -> 
       let () = map_param := StringMap.add name () !map_param in
       None
@@ -301,7 +304,7 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
         (List.rev_map (fun c ->
           match inst_of_cabs c with
             | None -> None
-            | Some f -> Some (f (fun _ -> E.Block []))) m.entete.code)
+            | Some f -> Some (f (fun _ _ -> E.Block []))) m.entete.code)
 
     ; E.body =
         List.fold_left (fun xs -> function
@@ -320,8 +323,9 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
                       ; E.pident = { E.iname = fun_name ; E.iparams = [] ; E.ivariant = None }
                       ; E.pidents = []
                       ; E.pinst = 
-                          let code = match inst_of_cabs c with None -> assert false | Some s -> s in
-                          code (fun l -> E.Proc (fun_name, List.map (fun (_, x) -> E.Var x) l)) }
+                          (match inst_of_cabs c with None -> assert false | Some s -> s) 
+			    (fun fun_name l -> E.Proc (fun_name, List.map (fun (_, x) -> E.Var x) l))
+		      }
                 
                     | _ -> assert false 
                    ) inst.c_code.code)

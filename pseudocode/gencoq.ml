@@ -74,8 +74,8 @@ let bin b s =
       while !i < n && s.[!i] = '0' do incr i done;
       if !i >= n then string b "Z0"
       else begin
-	string b "Zpos 1";
-	for i = !i+1 to n-1 do bprintf b "~%c" s.[i] done
+        string b "Zpos 1";
+        for i = !i+1 to n-1 do bprintf b "~%c" s.[i] done
       end;;
 
 let bin b s = par bin b s;;
@@ -297,7 +297,7 @@ and exp' loc nm sz b = function
      argument is not a number *)
 
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
-	 [e1; e2]) when is_not_num e2 -> (* add a cast *)
+         [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
   (* default printing of function calls *)
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
@@ -437,13 +437,13 @@ and inst_aux loc nm k b = function
   | Block [] -> string b "block nil"
   | Block is ->
       bprintf b "block (\n%a\n%anil)"
-	(list "\n" (inst_cons loc nm (k+2))) is indent (k+2)
+        (list "\n" (inst_cons loc nm (k+2))) is indent (k+2)
 
   | Let ((_, n), ns, is, i) -> 
       bprintf b "let %s %a := %a in\n%a%a" n   
-	(list " " (fun b (_, x) -> string b x)) ns
-	(decl_loc (inst_aux loc nm k)) (Block is)   indent k 
-	(inst_aux loc nm k) i
+        (list " " (fun b (_, x) -> string b x)) ns
+        (decl_loc (inst_aux loc nm k)) (Block is)   indent k 
+        (inst_aux loc nm k) i
 
   | If (e, i1, None) ->
       bprintf b "if_then %a\n%a" (pexp loc nm) e (pinst loc nm (k+2)) i1
@@ -459,7 +459,7 @@ and inst_aux loc nm k b = function
               (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
         | _ ->
             bprintf b "if_then_else %a\n%a\n%a"
-	      (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
+              (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
       end
 
   (* try to generate the code of an affectation; in case of failure,
@@ -476,9 +476,9 @@ and inst_aux loc nm k b = function
      into a let index := followed by a Coq match *)
   | Case (e, nis, oi) as i ->
       try_todo "Case" (fun b -> bprintf b
-	"let index :=\n%amatch unsigned %a with\n%a%a%a\n%aend in"
-	indent (k+2) (exp loc nm) e (list "" (case bin loc nm (k+4))) nis indent (k+4) 
-	(fun b -> function 
+        "let index :=\n%amatch unsigned %a with\n%a%a%a\n%aend in"
+        indent (k+2) (exp loc nm) e (list "" (case bin loc nm (k+4))) nis indent (k+4) 
+        (fun b -> function 
           | None -> bprintf b "| _ => repr 0"
           | Some i -> case string loc nm (k+4) b ("_", i)) oi indent (k+2)) b i
 
@@ -594,20 +594,20 @@ let pinst b p =
         bprintf b "%a nil true s0" (inst loc (p.pident.iname) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
-	let ls = mode_vars k in
-	  if StrSet.mem p.pref problems then
-	    bprintf b "  let r := %a nil true s0 in\n    (r%a)"
-	      (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
-	      (list "" default) ls
-	else
-	  match p.pinst with
-	    | If (e, i, None) ->
-		bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
-		  (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
-		  (list "" mode_var) ls (list "" default) ls
-	    | i ->
-		bprintf b "%a\n    (r%a)" (block (p.pident.iname) 2) i
-		  (list "" mode_var) ls;;
+        let ls = mode_vars k in
+          if StrSet.mem p.pref problems then
+            bprintf b "  let r := %a nil true s0 in\n    (r%a)"
+              (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
+              (list "" default) ls
+        else
+          match p.pinst with
+            | If (e, i, None) ->
+                bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
+                  (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
+                  (list "" mode_var) ls (list "" default) ls
+            | i ->
+                bprintf b "%a\n    (r%a)" (block (p.pident.iname) 2) i
+                  (list "" mode_var) ls;;
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
@@ -626,17 +626,17 @@ let semfun b p gs =
 let constr bcons_inst bcons_mode p gs =
   match p.pkind with
     | InstARM -> let b = bcons_inst in
-	begin match addr_mode_of_prog p gs with
-	  | Some k ->
-	      bprintf b "\n| %a (m_ : mode%d)%a"
-		name p k (list "" arg_typ) (remove_mode_vars gs)
-		(* mode variables are not constructor arguments since
-		   they are computed from the mode argument *)
-	  | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
-	end
+        begin match addr_mode_of_prog p gs with
+          | Some k ->
+              bprintf b "\n| %a (m_ : mode%d)%a"
+                name p k (list "" arg_typ) (remove_mode_vars gs)
+                (* mode variables are not constructor arguments since
+                   they are computed from the mode argument *)
+          | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
+        end
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcons_mode.(k-1) in
-	bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
+        bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
 
 (*****************************************************************************)
 (** call to the semantics function of some instruction *)
@@ -655,24 +655,24 @@ let args = list "" arg;;
 let call bcall_inst bcall_mode p gs =
   match p.pkind with
     | InstARM -> let b = bcall_inst in
-	begin match addr_mode_of_prog p gs with
-	  | None ->
-	      bprintf b "    | %a%a =>" name p args gs;
-	      bprintf b " %a_step s0%a\n" name p args gs
-	  | Some k ->
-	      bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
-	      bprintf b
-		"\n      match mode%d_step s0 m_ with (r%a) =>\n"
-		k (list "" mode_var) (mode_vars k);
+        begin match addr_mode_of_prog p gs with
+          | None ->
+              bprintf b "    | %a%a =>" name p args gs;
+              bprintf b " %a_step s0%a\n" name p args gs
+          | Some k ->
+              bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
+              bprintf b
+                "\n      match mode%d_step s0 m_ with (r%a) =>\n"
+                k (list "" mode_var) (mode_vars k);
               bprintf b "        match r with\n";
               bprintf b "          | Ok _ _ s1 =>";
-	      bprintf b " %a_step s1%a\n" name p args gs;
+              bprintf b " %a_step s1%a\n" name p args gs;
               bprintf b "          | _ => r\n        end\n      end\n"
-	end
+        end
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
-	bprintf b "    | %a%a =>" name p args gs;
-	bprintf b " %a_step s0%a\n" name p args gs;;
+        bprintf b "    | %a%a =>" name p args gs;
+        bprintf b " %a_step s0%a\n" name p args gs;;
 
 (*****************************************************************************)
 (** Main coq generation function.
@@ -698,51 +698,65 @@ let lib b ps =
     (* generate code *)
 
     (let open C2pc.Traduction in 
-      begin
-	(* print __get function *)
-	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_%s : word -> word.\n" s) !map_affect;
-	bprintf bsem_head "\n";
+     begin
+       (* print __get function *)
+       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_%s : word -> word.\n" s) !map_affect;
+       bprintf bsem_head "\n";
 
-	(* print __get_special function *)
-	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_special_%s : word -> word.\n" s) !map_affect_spec;
-	bprintf bsem_head "\n";
+       (* print __get_special function *)
+       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_special_%s : word -> word.\n" s) !map_affect_spec;
+       bprintf bsem_head "\n";
 
-	(* *)
-	StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s (if s = "PC" then "regnum" else "word")) !map_param;
-	bprintf bsem_head "\n";
-      end);
+       (* *)
+       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s (if s = "PC" then "regnum" else "word")) !map_param;
+       bprintf bsem_head "\n";
+     end);
     (if ps.header = [] then
-	()
+      ()
      else
-	begin
-	  bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ "Parameter nat_of_word : word -> nat."
-								       ; ""]);
-	end);
+      begin
+        bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ "Parameter nat_of_word : word -> nat."
+                                                                     ; "Definition succ := add (repr 1)."
+                                                                     ; "Definition pred x := sub x (repr 1)."
+                                                                     ; "Definition opp := sub (repr 0)."
+                                                                     ; ""]);
+      end);
     List.iter (function (Let ((ty, n), ns, is, _)) ->
       (*let gs, _ = V.vars i in*)
       let string_of_ty = function
-	| Tint -> "(* 1 *) nat" 
-	| Tlong -> "(* 2 *) Type" 
-	| Tfloat -> "(* 3 *) Type" 
-	| Tdouble -> "(* 4 *) Type"
-	| Tvoid -> "(* 5 *) result" 
-	| Tunsigned_long -> "(* 6 *) word" 
-	| Tchar -> "(* 7 *) Type"
-	| Tunsigned_char -> "(* 8 *) word"
-	| Tunsigned_short -> "(* 9 *) word" in
-      let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n"
-        n   
-	(list " " (fun b (ty, s) -> 
-	  string b (sprintf "(%s : %s)" (if s = "" then "_" else s) (string_of_ty ty)) )) ns x in
-	(match is with 
-	  | [] -> bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
-	    (fun b -> function
-	      | [] -> string b "(* z*) local -> bool -> state"
-	      | l -> list " -> " (fun b (ty, _) -> string b (sprintf "%s" (string_of_ty ty)) ) b l) ns
-	    (string_of_ty ty)
-	  | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e
-	  | _ -> f (decl_loc (inst (add_index (snd (V.vars (Block is)))) "" 2)) (Block is))
+        | Tint -> "(* 1 *) nat" 
+        | Tlong -> "(* 2 *) Type" 
+        | Tfloat -> "(* 3 *) Type" 
+        | Tdouble -> "(* 4 *) Type"
+        | Tvoid -> "(* 5 *) result" 
+        | Tunsigned_long -> "(* 6 *) word" 
+        | Tchar -> "(* 7 *) Type"
+        | Tunsigned_char -> "(* 8 *) word"
+        | Tunsigned_short -> "(* 9 *) word"
+        | Tbool -> "(* 10 *) bool" in
 
+      (if is = [] then
+         if ty = Tvoid then
+           if ns = [] then
+             bprintf bsem_head "Parameter %s : local -> bool -> state -> result.\n" n 
+           else
+             bprintf bsem_head "Parameter %s : %a -> local -> bool -> state -> result.\n" n 
+               (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) ns
+         else
+           bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
+             (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) (if ns = [] then assert false else ns)
+             (string_of_ty ty)
+       else 
+         let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n" n   
+           (list " " (fun b (ty, s) -> 
+             string b (sprintf "(%s : %s)" (if s = "" then "_" else s) (string_of_ty ty)) )) ns x in
+         if ty = Tvoid then
+           f (decl_loc (inst (add_index (snd (V.vars (Block is)))) "" 2)) (Block is)
+         else 
+           match is with 
+             | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e 
+             | _ -> f (inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is) )
+        
       | _ -> assert false (* by construction of SH4, this never happens *)) ps.header;
     List.iter prog ps.body;
 
@@ -755,13 +769,14 @@ let lib b ps =
     (* print type definitions *)
     for k = 1 to 5 do
       bprintf b "(* Addressing mode %d *)\nInductive mode%d : Type :=%a.\n\n"
-	k k Buffer.add_buffer bcons_mode.(k-1)
+        k k Buffer.add_buffer bcons_mode.(k-1)
     done;
     bprintf b "(* Instructions *)\nInductive inst : Type :=%a.\n\n" Buffer.add_buffer bcons_inst;
     (* print semantic functions *)
     bprintf b "(* Semantic functions of addressing modes and instructions *)\nModule InstSem (Import C : CONFIG).\n\n";
     Buffer.add_buffer b bsem;
     for k = 1 to 5 do
+      if Buffer.length bcall_mode.(k-1) = 0 then () else 
       bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
     done;
     bprintf b "(* Semantic function for instructions *)\nDefinition step (s0 : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;

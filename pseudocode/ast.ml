@@ -67,7 +67,7 @@ let args = function
 (*****************************************************************************)
 
 type type_param = 
-    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tunsigned_char | Tunsigned_short | Tchar
+    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tunsigned_char | Tunsigned_short | Tchar | Tbool
 
 type inst =
 | Block of inst list

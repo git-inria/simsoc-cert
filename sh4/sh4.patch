@@ -1,25 +1,25 @@
---- sh4.txt	2011-01-15 18:37:17.819057006 +0800
-+++ sh4_mod.txt	2011-01-19 12:08:53.000000000 +0800
+--- sh4.txt	2011-01-20 17:22:24.000000000 +0800
++++ sh4_inst.txt	2011-01-21 09:59:46.000000000 +0800
 @@ -9153,45 +9153,65 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
  Section 9 Instruction Descriptions
 +void Sleep_standby(void);
-+void allocate_operand_cache_block(int);
++void allocate_operand_cache_block(unsigned long);
 +
 +void fpu_exception_trap(void);
 +void inexact(void);
-+void invalidate_operand_cache_block(int);
-+int is_dirty_block(int);
-+int is_write_back_memory(int);
++void invalidate_operand_cache_block(unsigned long);
++_Bool is_dirty_block(unsigned long);
++_Bool is_write_back_memory(unsigned long);
 +void load_int(int, int);
 +void load_quad(int, int);
-+int look_up_in_operand_cache(int); int MISS;
++int look_up_in_operand_cache(unsigned long); int MISS;
 +float sqrt(float);
 +void store_int(int, int);
 +void store_quad(int, int);
 +void undefined_operation(void);
-+void write_back(int);
++void write_back(unsigned long);
  
    unsigned char          Read_Byte(unsigned long Addr);
    unsigned short Read_Word(unsigned long Addr);
@@ -30,11 +30,14 @@
 +  longword read from other than a 4n address, will be detected as an address error. */
  
  
-   unsigned char Write_Byte(unsigned long Addr, unsigned long Data);
-   unsigned short Write_Word(unsigned long Addr, unsigned long Data);
-   unsigned long Write_Long(unsigned long Addr, unsigned long Data);
+-  unsigned char Write_Byte(unsigned long Addr, unsigned long Data);
+-  unsigned short Write_Word(unsigned long Addr, unsigned long Data);
+-  unsigned long Write_Long(unsigned long Addr, unsigned long Data);
 -  These write data Data to address Addr, using the respective sizes. A word write to other than a 2n address,
 -  or a longword write to other than a 4n address, will be detected as an address error.
++  void Write_Byte(unsigned long Addr, unsigned long Data);
++  void Write_Word(unsigned long Addr, unsigned long Data);
++  void Write_Long(unsigned long Addr, unsigned long Data);
 +  /* These write data Data to address Addr, using the respective sizes. A word write to other than a 2n address,
 +  or a longword write to other than a 4n address, will be detected as an address error. */
  
@@ -142,10 +145,19 @@
           if(abs < 0x00100000){
                  if((FPSCR_DN == 1) ||
 -                    ((abs == 0x00000000) && (FR_HEX[n+1] == 0x00000000)){
-+                    (abs == 0x00000000) && (FR_HEX[n+1] == 0x00000000)){
++                    (abs == 0x00000000) && (FR_HEX[nat_of_word(n+1)] == 0x00000000)){
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
+@@ -9308,7 +9340,7 @@
+          }
+          else if(abs < 0x7ff00000) return(NORM);
+          else if((abs == 0x7ff00000) &&
+-                      (FR_HEX[n+1] == 0x00000000)) {
++                      (FR_HEX[nat_of_word(n+1)] == 0x00000000)) {
+                 if(sign_of(n) == 0) return(PINF);
+                 else                       return(NINF);
+          }
 @@ -9316,28 +9348,124 @@
           else                                return(sNaN);
       }
@@ -538,6 +550,15 @@
  
  
  
+@@ -10662,7 +10696,7 @@
+ Section 9 Instruction Descriptions
+ 
+        LL=temp&0x000000FF;
+-       HH=HH&&HL&&LH&&LL;
++       HH=HH&HL&LH&LL;
+        if (HH==0) T=1;
+        else T=0;
+        PC+=2;
 @@ -10674,8 +10708,8 @@
         long imm;
  
@@ -556,14 +577,14 @@
 -                        ~
 -                 Res2= Res2;
 +                        
-+                 Res2=~Res2;
++                 Res2=!Res2;
                   if (Res0==0)
                      Res2++;
                   else
 -                            ~
 -                    Res0=( Res0)+1;
 +                            
-+                    Res0=(~Res0)+1;
++                    Res0=(!Res0)+1;
             }
  
  
@@ -1634,15 +1655,24 @@
 -              ~
 -       Res2= Res2;
 +              
-+       Res2=~Res2;
++       Res2=!Res2;
         if (Res0==0) Res2++;
 -                     ~
 -       else Res0=( Res0)+1;
 +                     
-+       else Res0=(~Res0)+1;
++       else Res0=(!Res0)+1;
    }
    if(S==1){
         Res0=MACL+Res0;
+@@ -13887,7 +13915,7 @@
+                                                 Section 9 Instruction Descriptions
+ 
+     if (MACL>Res0) Res2++;
+-    if (MACH&0x00008000);
++    if (bool_of_word(MACH&0x00008000));
+     else Res2+=MACH|0xFFFF0000;
+            Res2+=MACH&0x00007FFF;
+ 
 @@ -14152,7 +14180,7 @@
  
  
@@ -1675,7 +1705,7 @@
    NOT(long m, long n) /* NOT Rm,Rn */
    {
 -              R[n]=∼R[m];
-+              R[n]=~R[m];
++              R[n]=!R[m];
                PC+=2;
    }
  
@@ -1697,6 +1727,15 @@
    {
               int sgn=R[m] & 0x80000000;
               if (sgn==0)
+@@ -15712,7 +15740,7 @@
+                                  R[n] = 0xFFFFFFFF;
+             }
+             else
+-                     R[n]=(long)R[n] >> ((~R[m] & 0x1F)+1);
++                     R[n]=(long)R[n] >> ((!R[m] & 0x1F)+1);
+             PC+=2;
+   }
+ 
 @@ -15866,7 +15894,7 @@
  
  Operation
@@ -1706,6 +1745,15 @@
    {
           int sgn = R[m] & 0x80000000;
           if (sgn == 0)
+@@ -15874,7 +15902,7 @@
+          else if ((R[m] & 0x1F) == 0)
+                      R[n] = 0;
+          else
+-                     R[n]=(unsigned)R[n] >> ((~R[m] & 0x1F)+1);
++                     R[n]=(unsigned)R[n] >> ((!R[m] & 0x1F)+1);
+          PC+=2;
+   }
+ 
 @@ -16310,7 +16338,7 @@
  
    STCMSR(int n)          /* STC.L SR,@-Rn : Privileged */
