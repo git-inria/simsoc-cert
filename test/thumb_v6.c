@@ -11,18 +11,17 @@ int index_ = 1;
 #define CHECK(COND)                         \
   if (COND) count += index_; index_ <<= 1;
 
-int A_flag(uint32_t cpsr){return cpsr&(1<<8);}
-int I_flag(uint32_t cpsr){return cpsr&(1<<7);}
-int F_flag(uint32_t cpsr){return cpsr&(1<<6);}
-int E_flag(uint32_t cpsr){return cpsr&(1<<9);}
+int A_flag(uint32_t cpsr) {return (cpsr>>8)&1;}
+int I_flag(uint32_t cpsr) {return (cpsr>>7)&1;}
+int F_flag(uint32_t cpsr) {return (cpsr>>6)&1;}
+int E_flag(uint32_t cpsr) {return (cpsr>>9)&1;}
 
 
 /* Change Processor State is available only in privileged modes. It changes one or more of the A, I, and F */
 /* interrupt disable bits and the mode bits of the CPSR, without changing the other CPSR bits. */
 void thumb_CPS(){
   uint32_t  cpsr7,cpsr14;
-  asm(
-      "cpsid aif\n\t"
+  asm("cpsid aif\n\t"
       "mrs %0, cpsr\n\t"
       : "=&r" (cpsr7));
   asm("cpsie aif\n\t"
@@ -63,6 +62,7 @@ void thumb_SETEND_LE(){
 	:"=&r" (f));
     CHECK(E_flag(f) == 0);
 }
+
 void thumb_SETEND_BE(){
   uint32_t f;
     asm("setend be\n\t"
@@ -70,7 +70,6 @@ void thumb_SETEND_BE(){
 	:"=&r" (f));
     CHECK(E_flag(f) == 1);
 }
-
 
 int main() {
   thumb_CPS();
