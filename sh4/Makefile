@@ -16,13 +16,13 @@ sh4_inst.txt: sh4.txt sh4.patch
 
 #
 
-instr.native: instr.ml
+instr.native: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
 	ocamlbuild -I compcert-1.8/cparser instr.native
 
-instr.d.byte: instr.ml
+instr.d.byte: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
 	ocamlbuild -I compcert-1.8/cparser instr.d.byte
 
-instr.byte: instr.ml
+instr.byte: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
 	ocamlbuild -I compcert-1.8/cparser instr.byte
 
 #
