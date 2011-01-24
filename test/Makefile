@@ -9,7 +9,7 @@ ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
              arm_v6_SXTB arm_v6_UMAAL arm_v6_UH arm_v6_UQSUB arm_v6_USAD  \
              arm_v6_USAT arm_v6_UXTA arm_v6_UXTB $(C_FILES)
 
-THUMB_FILES := thumb_test thumb_v6 $(C_FILES)
+THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV $(C_FILES)
 
 default: $(ARM_FILES:%=%_a.cmo) $(THUMB_FILES:%=%_t.cmo)
 

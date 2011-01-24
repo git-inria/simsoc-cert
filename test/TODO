@@ -4,19 +4,7 @@
 Todo:
 
 - LDREX, STREX (not completely implemented in simlight)
-- SRS, RFE
-- UADD16, UADD8, UADDSUBX
-- UQADD16, UQADD8, UQADDSUBX
-- UQSUB16, UQSUB8, UQSUBADDX
-- USAT, USAT16
-- USAD8, USADA8
-- USUB16, USUB8, USUBADDX
-- UXTAB, UXTAB16, UXTAH, UXTB, UXTB16, UXTH
-- Thumb CPS
-- Thumb CPY
-- Thumb REV, REV16, REVSH
-- Thumb SETEND
-- Thumb SXTB, SXTH, UXTB, UXTH
+- SRS, RFE 
 
 Done:
 
@@ -33,6 +21,17 @@ Done:
 - SXTB, SXTB16, SXTH in arm_v6_SXTB.c
 - UMAAL in arm_v6_UMAAL.c
 - UHADD16, UHADD8, UHADDSUBX, UHSUB8,UHSUB16,UHSUBADDX in arm_v6_UH.c
+- UADD16, UADD8, UADDSUBX in arm_UA.c
+- UQADD16, UQADD8, UQADDSUBX in arm_UQADD.c
+- UQSUB16, UQSUB8, UQSUBADDX in arm_UQSUB.c
+- USAT, USAT16 in arm_USAT.c
+- USAD8, USADA8 in arm_USAD.c
+- USUB16, USUB8, USUBADDX in arm_USUB.c
+- UXTAB, UXTAB16, UXTAH in arm_UXTA.c
+- UXTB, UXTB16, UXTH in arm_UXTB.c
+- Thumb CPS, CPY SETEND in thumb_v6.c
+- Thumb REV, REV16, REVSH in thumb_v6_REV.c
+- Thumb SXTB, SXTH, UXTB, UXTH in thumb_v6_SXUX.c
 -----------------------------------------------------------------------------
 --- OCaml and extraction
 
