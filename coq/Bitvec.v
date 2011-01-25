@@ -219,10 +219,6 @@ Definition word_of_regnum (x : regnum) : word := repr x.
 
 Coercion word_of_regnum : regnum >-> word.
 
-Definition PC := mk_regnum 15.
-Definition LR := mk_regnum 14.
-Definition SP := mk_regnum 13.
-
 (*IMPROVE: can be improved by using build_bitvec instead of mk_bitvec
 since [bits (k+3) k w] is always smaller than [two_power_nat 4]*)
 Definition regnum_from_bit (k : nat) (w : word) : regnum :=

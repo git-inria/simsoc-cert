@@ -50,6 +50,10 @@ Definition word_of_proc_mode (m : proc_mode) : word := repr (Zpos
 A2.4 General-purpose registers (p. 44) *)
 (****************************************************************************)
 
+Definition PC := mk_regnum 15.
+Definition LR := mk_regnum 14.
+Definition SP := mk_regnum 13.
+
 Inductive register : Type :=
 | R (k : regnum)
 | R_svc (k : Z) (h : 13 <= k <= 14)
