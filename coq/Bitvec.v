@@ -132,6 +132,11 @@ Inductive w28 : Type := word28 : bool^^28 --> w28.
 Definition w28_of_word (w : int) : w28 :=
   nary_iter_decr (bits_of_Z 28 (unsigned w)) 28 27 word28.
 
+Inductive w16 : Type := word16 : bool^^16 --> w16.
+
+Definition w16_of_word (w : int) : w16 :=
+  nary_iter_decr (bits_of_Z 16 (unsigned w)) 16 15 word16.
+
 (****************************************************************************)
 (** bytes (8-bits words) *)
 (****************************************************************************)
