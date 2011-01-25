@@ -432,7 +432,7 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require and notations*)
-  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.\nLocal Infix \"\'\" := cons (at level 60, right associativity).";
+  string b "Require Import Bitvec List Util Functions Config Arm State Semantics ZArith arm6inst Simul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true.";
 
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
