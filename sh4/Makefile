@@ -3,15 +3,23 @@
 
 all: cbc
 
+GEN := ../pseudocode/main.byt
+
 ####
 
 sh4.txt: sh4.txt.gz
 	gunzip -c $< > $@
 
-patch-inst: sh4.txt sh4_inst.txt
-	diff -u sh4.txt sh4_inst.txt > sh4.patch || exit 0
+sh4inst.v: c_code.dat $(GEN)
+	$(GEN) -sh4 -ipc $< -ocoq-inst > $@ || (rm -f $@; exit 1)
 
-sh4_inst.txt: sh4.txt sh4.patch
+sh4dec.v: c_code.dat $(GEN)
+	$(GEN) -sh4 -idec $< -ocoq-dec > $@ || (rm -f $@; exit 1)
+
+patch-inst: sh4.txt sh4inst.txt
+	diff -u sh4.txt sh4inst.txt > sh4.patch || exit 0
+
+sh4inst.txt: sh4.txt sh4.patch
 	patch sh4.txt sh4.patch -o $@
 
 #
@@ -33,5 +41,5 @@ clean:
 nobackup:
 	rm -f *.bak *~ *.dup
 
-cbc: instr.byte sh4_inst.txt
-	cat sh4_inst.txt | ./instr.byte > c_code.dat
+cbc: instr.byte sh4inst.txt
+	cat sh4inst.txt | ./instr.byte > c_code.dat
