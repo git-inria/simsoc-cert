@@ -194,7 +194,7 @@ module type Var = sig
      which it is affected *)
   val local_type : string -> exp -> typ
   (* type of variables used in case instructions *)
-  val explicit_annot_type : type_param -> typ
+  val explicit_annot_type : type_param -> string -> typ
   (* internal representation of [type_param], they are equivalent *)
   val case_type : typ
 end;;
@@ -229,7 +229,7 @@ module Make (G : Var) = struct
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
     | Let (_, ns, is, i) -> vars_inst (vars_insts (List.fold_left (fun gs (ty, n) -> 
-      StrMap.add n (G.explicit_annot_type ty) gs) gs ns, ls) is) i
+      StrMap.add n (G.explicit_annot_type ty n) gs) gs ns, ls) is) i
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
     | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es

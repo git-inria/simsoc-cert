@@ -33,7 +33,7 @@ OCAMLOPT = ocamlopt -unsafe -noassert -inline 10000 $(INCLUDES) $(WARNINGS)
 
 # the order is important !
 PARSERS := parser lexer
-FILES := Cabs util ast dec validity $(PARSERS) c2pc genpc norm flatten gencxx gencoq gencoqdec genmldec gendectest sl2_patch sl2_semantics sl2_decoder sl2_print simlight2
+FILES := Cabs util ast dec validity $(PARSERS) c2pc genpc norm flatten gencxx gencoq gencoqdec gencoqdecsh4 genmldec gendectest sl2_patch sl2_semantics sl2_decoder sl2_print simlight2
 
 
 CMOFILES = $(FILES:%=%.cmo)

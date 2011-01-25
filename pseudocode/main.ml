@@ -30,6 +30,7 @@ let error s = error (sprintf "%s\n%s" s usage_msg);;
 
 let get_norm, set_norm = get_set_bool();;
 let get_check, set_check = get_set_bool();;
+let get_sh4, set_sh4 = get_set_bool ()
 
 let set_debug() =
   ignore(Parsing.set_trace true); set_debug(); set_verbose();;
@@ -79,6 +80,8 @@ let rec options() =
   " Take syntax instructions as input";
   "-iw", String (fun s -> set_weight_file s),
   " Take an additional weight file as input (requires -oc4dt)";
+  "-sh4", Unit set_sh4,
+  " Assume that we are importing a SH4 data (default is ARM)";
   "-check", Unit set_check,
   " Check pseudocode pretty-printer (only with -ipc)";
   "-norm", Unit set_norm,
@@ -165,9 +168,9 @@ let fprint_loc oc loc =
 
 let parse_lexbuf lb =
   try Parser.lib Lexer.token lb
-  with Parsing.Parse_error as e ->
+  with Parsing.Parse_error ->
     let () = eprintf "syntax error: %a\n%!" fprint_loc lb.lex_curr_p in
-    raise e;;
+    exit 1;;
 
 let parse_channel ic =
   let lb = Lexing.from_channel ic in
@@ -215,28 +218,41 @@ let norm () =
 	    check();;
 
 let parse_input_file() =
+  let verbose s = verbose (sprintf (format_of_string s) (if get_sh4 () then "SH4" else "ARM")) in
+  let input_bin fic = 
+    let ic = open_in_bin fic in
+    let v = input_value ic in
+    let () = close_in ic in
+    v in
   if is_set_syntax_input_file() then (
-    verbose "read syntax data...\n";
-    set_syntax_input (input_value (open_in (get_syntax_input_file())))
+    verbose "read %s syntax data...\n";
+    set_syntax_input (input_bin (get_syntax_input_file()))
   );
   if is_set_pc_input_file() then (
-    verbose "parsing pseudo-code...\n";
+    verbose "parsing %s pseudo-code...\n";
 
     let input_file = get_pc_input_file () in
     let norm, pc =
-      match try Some (parse_file input_file) with Parsing.Parse_error -> None with
-	| None -> (fun x -> x), 
-	  C2pc.Traduction.prog_list_of_manual (input_value 
-						 (open_in_bin input_file) : C2pc.raw_c_code C2pc.manual)
-	| Some s -> norm, { Ast.header = [] ; Ast.body = s } in
+      if get_sh4 () then
+	(fun x -> x), 
+	C2pc.Traduction.prog_list_of_manual (input_bin input_file : C2pc.raw_c_code C2pc.manual)
+      else
+	norm, { Ast.header = [] ; Ast.body = parse_file input_file } in
 
     set_pc_input pc;
     check();
     norm ()
   );
   if is_set_dec_input_file() then (
-    verbose "read coding tables...\n";
-    set_dec_input (input_value (open_in (get_dec_input_file())))
+    verbose "read %s coding tables...\n";
+
+    set_dec_input 
+      (let v = (if get_sh4 () then 
+	  fun x -> C2pc.Traduction.maplist_of_manual (input_bin x) 
+	else
+	  input_bin) (get_dec_input_file()) in
+       let () = ignore v in
+       v)
   );;
 
 let genr_output() =
@@ -249,7 +265,7 @@ let genr_output() =
           Simlight2.lib (get_output_file()) (get_pc_input())
             (get_syntax_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
-    | CoqDec -> print Gencoqdec.decode (get_dec_input())
+    | CoqDec -> print (if get_sh4 () then Gencoqdecsh4.decode else Gencoqdec.decode) (get_dec_input())
     | MlDec -> print Genmldec.decode (get_dec_input())
     | DecBinTest ->
 	Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())

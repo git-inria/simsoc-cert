@@ -335,4 +335,26 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
                 None
            ) m.section) }
 
+
+
+let maplist_of_manual : raw_c_code manual -> Codetype.maplist =
+  fun m -> 
+    List.flatten (List.map (fun i -> 
+      if i.decoder.dec_title = Menu then
+	let l, _ = 
+	  List.fold_left2 (fun (acc_l, pos) -> function (Dec_usual d, _) -> (function C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) ->  
+	    (Lightheadertype.LH ([9; i.position; pos], fun_name), 
+	     (List.fold_left (fun acc (i, nb) ->
+	       Array.append acc (Array.init nb (match i with 
+		 | I_0 -> fun _ -> Codetype.Value false
+		 | I_1 -> fun _ -> Codetype.Value true
+		 | I_n -> fun i -> Codetype.Range ("n", nb, i)
+		 | I_m -> fun i -> Codetype.Range ("m", nb, i)
+		 | I_i -> fun i -> Codetype.Range ("i", nb, i)
+		 | I_d -> fun i -> Codetype.Range ("d", nb, i)))
+	      ) [||] d.inst_code)) :: acc_l, succ pos | _ -> assert false) | _ -> assert false) ([], 0) i.decoder.dec_tab i.c_code.code in
+	List.rev l
+      else
+	[]) m.section)
+
 end

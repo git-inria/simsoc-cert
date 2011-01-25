@@ -65,6 +65,9 @@ let structure_line =
     | _ -> assert false in
   aux []
 
+module String_map = Map.Make (struct type t = string let compare = compare end)
+module Int_set = Set.Make (struct type t = int let compare = compare end)
+
 let _ = 
   let module S = SH4_section in
 
@@ -94,6 +97,27 @@ let _ =
       | "Underflow" -> Underflow 
       | "" -> Empty
       | _ -> failwith importation_error in
+
+  let map_analyse = ref String_map.empty in
+  let analyse dec_title l = 
+    match dec_title with
+      | Menu -> 
+	map_analyse :=
+	List.fold_left (
+	  fun map -> 
+	    let f s nb = 
+	      String_map.add s (if String_map.mem s map then Int_set.add nb (String_map.find s map) else Int_set.empty) map
+	    in
+	    function
+	  | I_1, nb -> f "1" nb
+	  | I_0, nb -> f "0" nb
+	  | I_n, nb -> f "n" nb
+	  | I_m, nb -> f "m" nb
+	  | I_i, nb -> f "i" nb
+	  | I_d, nb -> f "d" nb) !map_analyse l
+      | Menu_PR 
+      | Menu_NO_PR  
+      | Menu_NO_SZ -> () in
 
   let rec aux t l_section =
     match S.input_instr t with 
@@ -162,7 +186,7 @@ let _ =
             List.map (fun (s, l2) -> 
               (if m [ "\\(.+\\) +\\([01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid][01nmid]\\) +\\([0-9]+\\)\\(\226\128\147\\([0-9]+\\)\\)? *\\(.*\\)", s ] then
                   Dec_usual { before_code = Str.matched_group 1 s
-                            ; inst_code = list_of_string_01nmid (Str.matched_group 2 s)
+                            ; inst_code = ( (* (fun l -> let () = analyse dec_title l in l) *) (list_of_string_01nmid (Str.matched_group 2 s)) )
                             ; states = (let open States in
                                             (match try Some (matched_group_i 5 s) with _ -> None with
                                               | None -> fun x -> Pos x
@@ -227,6 +251,20 @@ let _ =
   let () = exit 0 in
 
   begin
+    (if false then (* this part is used to know the size of each register inside the decoder array *)
+      begin
+	String_map.fold (fun k m () -> Printf.eprintf "%s [%s]\n%!" k (Int_set.fold (fun k acc -> Printf.sprintf "%s%d " acc k) m "")) !map_analyse ();
+      end
+    (* 
+       0 [1 2 3 4 5 6 7 8 9 10 11 12 ]
+       1 [1 2 3 4 5 7 ]
+       d [4 8 12 ]
+       i [8 ]
+       m [4 ]
+       n [4 ]
+    *) 
+    else
+      ());
     if false && display_c then
       begin 
 	List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;

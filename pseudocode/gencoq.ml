@@ -50,7 +50,9 @@ module G = struct
       | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
-  let explicit_annot_type _ = "regnum" 
+  let explicit_annot_type _ = function
+    | "i" | "d" -> "word" 
+    | _ -> "regnum" 
 
   (* type of variables used in case instructions *)
   let case_type = "word";;

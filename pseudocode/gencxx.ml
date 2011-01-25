@@ -62,7 +62,7 @@ module G = struct
       | Memory (_, n) -> type_of_size n
       | _ -> type_of_var s;;
 
-  let explicit_annot_type = function
+  let explicit_annot_type ty _ = match ty with
     | Tint -> "int"
     | Tlong -> "long"
     | Tfloat -> "float"
@@ -272,7 +272,7 @@ and inst_aux p k b = function
   | Let ((_, n), ns, is, i) ->
       bprintf b "function %s(%a) {\n%a%a\n  };\n%a%a" n   
 	(list ", " (fun b (ty, x) -> 
-	  string b (sprintf "%s %s" (G.explicit_annot_type ty) x))) ns
+	  string b (sprintf "%s %s" (G.explicit_annot_type ty x) x))) ns
 	indent k   (list "" (inst p (k+2))) is
 	indent k   (inst p (k+2)) i
 
