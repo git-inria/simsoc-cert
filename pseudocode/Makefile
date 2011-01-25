@@ -116,6 +116,11 @@ bintest:
 	../elf/bin2elf test.bin test.elf 
 	../simlight2/simlight -Adec ../pseudocode/test.elf | perl -p -e "s/[^\t]*\t//" | perl -p -e "s/CPY/MOV/" >tst.asm
 
+sh4inst: default
+	ocamlrun -b ./main.byt -sh4 -ipc  ../sh4/c_code.dat -ocoq-inst > sh4inst.v && coqide -R ../coq SimSoCCert sh4inst.v
 
+sh4dec: default
+	coqc -R ../coq SimSoCCert sh4inst.v
+	ocamlrun -b ./main.byt -sh4 -idec ../sh4/c_code.dat -ocoq-dec  > sh4dec.v  && coqide -R ../coq SimSoCCert sh4dec.v
 
 include .depend
