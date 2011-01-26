@@ -20,7 +20,11 @@ open Manual
 let display_dec = false
 let display_c = true
 
-let preprocess_c : string list manual -> raw_c_code manual = fun m -> 
+let mk_code l = 
+  { init = l
+  ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
+
+let preprocess_parse_c : string list manual -> raw_c_code manual = fun m -> 
   let (pos, code), l_pos =
     List.fold_left (fun ((pos, acc_s), l_pos) l -> 
       List.fold_left (fun (pos, acc_s) s -> succ pos, Printf.sprintf "%s%s\n" acc_s s)
@@ -42,11 +46,10 @@ let preprocess_c : string list manual -> raw_c_code manual = fun m ->
       (pos, (l_pos, [], [])) 
       (C_parse.expand_line_space (C_parse.preprocess code)) in
 
-  let mk_code l = 
-    { init = l
-    ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) } in
-
   { entete = mk_code l ; section = List.map2 (fun l i -> { i with c_code = mk_code l }) ll m.section }
+
+let parse_c : string list manual -> raw_c_code manual = fun m -> 
+  { entete = mk_code m.entete ; section = List.map (fun i -> { i with c_code = mk_code i.c_code }) m.section }
 
 (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
 (* Remark : we can replace the "Assert_failure" by a "[]" *)
@@ -245,7 +248,7 @@ let _ =
                ; decoder = decoder } :: l_section) in
 
 
-  let manual = preprocess_c { entete = S.c_code t ; section = aux t [] }  in
+  let manual = (*preprocess_parse_c*) parse_c { entete = S.c_code t ; section = aux t [] }  in
 
   let () = output_value stdout manual in
   let () = exit 0 in
