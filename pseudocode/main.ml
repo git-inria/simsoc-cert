@@ -201,11 +201,11 @@ let check() =
       let ps' = parse_string (Buffer.contents b) in
 	if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
 
-let norm () =
+let norm split_msr_code =
   if get_norm() then
     let ps = get_pc_input() in
       verbose "normalization... ";
-      let ps = Norm.prog (Norm.split_msr_code ps) in
+      let ps = Norm.prog (split_msr_code ps) in
 	if get_check() then
 	  let ps' = Norm.prog ps in
 	    if ps = ps' then verbose "ok\n" else error "failed"
@@ -232,16 +232,16 @@ let parse_input_file() =
     verbose "parsing %s pseudo-code...\n";
 
     let input_file = get_pc_input_file () in
-    let norm, pc =
+    let split_msr_code, pc =
       if get_sh4 () then
-	(fun x -> x), 
+	(fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
 	C2pc.Traduction.prog_list_of_manual (input_bin input_file : C2pc.raw_c_code C2pc.manual)
       else
-	norm, { Ast.header = [] ; Ast.body = parse_file input_file } in
+	Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
 
     set_pc_input pc;
     check();
-    norm ()
+    norm split_msr_code
   );
   if is_set_dec_input_file() then (
     verbose "read %s coding tables...\n";
