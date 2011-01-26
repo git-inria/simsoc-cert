@@ -83,9 +83,9 @@ struct
 
   let map_affect = ref StringMap.empty 
   let map_affect_spec = ref StringMap.empty 
-  let map_param = ref StringMap.empty
+  let map_param = ref (List.fold_left (fun map k -> StringMap.add k () map) StringMap.empty [ "FPUL" ; "FPSCR" ] )
 
-let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -> E.inst) -> E.inst) option = 
+let inst_of_cabs : Cabs.definition -> E.inst option = 
 
   let flatten_case = (** replace the statement inside any CASE by a NOP (which location is a copy of the CASE's location) *) (* WARNING this case for example is not treated : a CASE contains a BLOCK which contains a CASE *)
     let rec aux = function
@@ -120,12 +120,15 @@ let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -
       | C.Tvoid -> E.Tvoid 
       | C.Tchar -> E.Tchar
       | C.T_Bool -> E.Tbool
+      | C.Tunsigned -> E.Tunsigned
+      | C.Tunion _ -> E.Tunsigned (* FIXME floating instruction *)
       | t -> ignore t ; assert false in
     function
       | [C.SpecType o] -> t_of_typeSpecifier o
       | [C.SpecType C.Tunsigned; C.SpecType C.Tlong] -> E.Tunsigned_long
       | [C.SpecType C.Tunsigned; C.SpecType C.Tchar] -> E.Tunsigned_char
       | [C.SpecType C.Tunsigned; C.SpecType C.Tshort] -> E.Tunsigned_short
+      | [C.SpecType C.Tunsigned; C.SpecType C.Tint] -> E.Tunsigned_int
       | t -> ignore t ; assert false in
 
 
@@ -218,6 +221,12 @@ let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -
 
   and e_of_expression = function
     | C.VARIABLE "PC" -> E.Reg (E.Num "15", None)
+    | C.VARIABLE ("M" | "Q" | "S" | "T" as v) -> E.Range (E.CPSR, (E.Flag (v, "")))
+    | C.VARIABLE ("GBR" | "PR" | "MACH" | "MACL" | "FPUL" | "FPSCR" | "SR" | "VBR" | "SSR" | "SPC" | "DBR" 
+                 | "R0_BANK" | "R1_BANK" | "R2_BANK" | "R3_BANK" | "R4_BANK" | "R5_BANK" | "R6_BANK" | "R7_BANK"
+                 | "TRA" | "SGR" | "SR_MD" | "SR_BL" | "SR_RB" | "EXPEVT"
+                 as v) -> E.Reg (E.Var v, None)
+
     | C.VARIABLE i -> E.Var i
 
     | C.INDEX (C.VARIABLE "R", e) -> E.Reg (e_of_expression e, None)
@@ -252,10 +261,21 @@ let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -
 
   in
 
+  let add_def e =
+    let rec aux acc = function
+      | C.DEFINITION x :: xs -> 
+        aux (match x with 
+          | C.DECDEF ((l_ty, l), _) -> let ty = t_of_ltypeSpecifier l_ty in List.fold_left (fun acc ((name, _, _, _), _) -> (ty, name) :: acc) acc l 
+          | t -> ignore t ; assert false) xs
+      | l -> acc, l in
+    let acc, l = aux [] e.C.bstmts in
+    acc, { e with C.bstmts = l } in
+
   let i_of_definition = 
     let open Util in
-    let unsupported_fun = set_of_list
-      [ "check_single_exception" 
+    let unsupported_fundef = set_of_list
+      [ (* float *)
+        "check_single_exception" 
       ; "check_double_exception"
       ; "normal_faddsub"
       ; "normal_fmul" 
@@ -265,29 +285,51 @@ let inst_of_cabs : Cabs.definition -> ((string -> (E.type_param * string) list -
       ; "check_product_invalid"
       ; "fipr"
       ; "clear_cause" ] in
+
+    let unsupported_decdef = set_of_list
+      [ "fpu_exception_trap"
+      ; "inexact"
+      ; "load_int"
+      ; "load_quad"
+      ; "sqrt"
+      ; "store_int"
+      ; "store_quad"
+      ; "undefined_operation"
+      ; "Error"
+
+      ; "TLB_MMUCR_URC"
+      ; "frf"] in
+
     function
     | C.FUNDEF ((l_ty, (name, C.PROTO (_, l, _), _, _)), e, _, _) -> 
-      if StrSet.mem name unsupported_fun then
-	(* FIXME float instruction is not supported *) None
+      if StrSet.mem name unsupported_fundef then
+        (* FIXME float instruction is not supported *) None
       else
-	let l_param = List.map (function ([C.SpecType _] as o, (n, _, _, _)) -> t_of_ltypeSpecifier o, n | t -> ignore t ; assert false) l in
-	let name = (* WARNING : special keyword : the "NOT" string is sometimes translated to "not" in gencoq.ml *)
-	  if name = "NOT" then "NOT_" else name in
-	Some (fun i -> 
-          E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, li_of_block e, i name l_param))
+        let l_param = List.map (function ([C.SpecType _] as o, (n, _, _, _)) -> t_of_ltypeSpecifier o, n | t -> ignore t ; assert false) l in
+        let name = (* WARNING : special keyword : the "NOT" string is sometimes translated to "not" in gencoq.ml *)
+          if name = "NOT" then "NOT_" else name in
+        let l_loc, e = add_def e in
+        Some (E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, li_of_block e, l_loc))
     | C.DECDEF ((l_ty, [((name, C.PROTO (_, [[C.SpecType C.Tvoid], _], _), _, _), _)]), _) -> 
+      if StrSet.mem name unsupported_decdef then
+        None
+      else
       (* REMARK we choose the convention to delete the void argument (at function declaration time) instead of create a new one (at application time) *)
-      let l_param = [] in 
-      Some (fun i -> 
-        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i name l_param)) 
+        let l_param = [] in 
+        Some (E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], [])) 
     | C.DECDEF ((l_ty, [((name, C.PROTO (_, l, _), _, _), _)]), _) -> 
+      if StrSet.mem name unsupported_decdef then
+        None
+      else
       let l_param = List.map (function (l, (n, _, _, _)) -> t_of_ltypeSpecifier l, n) l in
-      Some (fun i -> 
-        E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], i name l_param)) 
-    | C.DECDEF ((_, [((name, C.JUSTBASE, [], _), _)]), _) -> 
-      let () = map_param := StringMap.add name () !map_param in
+      Some (E.Let ((t_of_ltypeSpecifier l_ty, name), l_param, [], [])) 
+    | C.DECDEF ((_, l), _) -> 
+      let () = 
+        List.iter (function
+          | ((name, C.JUSTBASE, [], _), _) when not (StrSet.mem name unsupported_decdef) ->
+            map_param := StringMap.add name () !map_param
+          | _ -> ()) l in
       None
-    | C.DECDEF _
     | C.ONLYTYPEDEF _ -> None
     | _ -> assert false in
 
@@ -300,11 +342,7 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
     { E.header = List.fold_left (fun xs -> function
       | None -> xs
       | Some x -> x :: xs) []
-        
-        (List.rev_map (fun c ->
-          match inst_of_cabs c with
-            | None -> None
-            | Some f -> Some (f (fun _ _ -> E.Block []))) m.entete.code)
+        (List.rev_map inst_of_cabs m.entete.code)
 
     ; E.body =
         List.fold_left (fun xs -> function
@@ -313,7 +351,7 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
       
           (List.rev_map (fun inst -> 
             match inst.decoder.dec_title with
-              | Menu ->
+              | Menu when (match inst.position with 34 | 44 (* floating instructions *) | 53 (* mmu *) -> false | _ -> true) ->
                 Some 
                   (List.map (function
                     | C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) as c -> 
@@ -322,13 +360,12 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
                       ; E.pkind = E.InstARM
                       ; E.pident = { E.iname = fun_name ; E.iparams = [] ; E.ivariant = None }
                       ; E.pidents = []
-                      ; E.pinst = 
-                          (match inst_of_cabs c with None -> assert false | Some s -> s) 
-			    (fun fun_name l -> E.Proc (fun_name, List.map (fun (_, x) -> E.Var x) l))
-		      }
+                      ; E.pinst = match inst_of_cabs c with None -> assert false | Some s -> s
+                      }
                 
                     | _ -> assert false 
                    ) inst.c_code.code)
+
               | _ -> 
                 let () = ignore ( List.map inst_of_cabs inst.c_code.code ) in
             (* FIXME prise en charge des flottants *) 
@@ -341,20 +378,20 @@ let maplist_of_manual : raw_c_code manual -> Codetype.maplist =
   fun m -> 
     List.flatten (List.map (fun i -> 
       if i.decoder.dec_title = Menu then
-	let l, _ = 
-	  List.fold_left2 (fun (acc_l, pos) -> function (Dec_usual d, _) -> (function C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) ->  
-	    (Lightheadertype.LH ([9; i.position; pos], fun_name), 
-	     (List.fold_left (fun acc (i, nb) ->
-	       Array.append acc (Array.init nb (match i with 
-		 | I_0 -> fun _ -> Codetype.Value false
-		 | I_1 -> fun _ -> Codetype.Value true
-		 | I_n -> fun i -> Codetype.Range ("n", nb, i)
-		 | I_m -> fun i -> Codetype.Range ("m", nb, i)
-		 | I_i -> fun i -> Codetype.Range ("i", nb, i)
-		 | I_d -> fun i -> Codetype.Range ("d", nb, i)))
-	      ) [||] d.inst_code)) :: acc_l, succ pos | _ -> assert false) | _ -> assert false) ([], 0) i.decoder.dec_tab i.c_code.code in
-	List.rev l
+        let l, _ = 
+          List.fold_left2 (fun (acc_l, pos) -> function (Dec_usual d, _) -> (function C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) ->  
+            (Lightheadertype.LH ([9; i.position; pos], fun_name), 
+             (List.fold_left (fun acc (i, nb) ->
+               Array.append acc (Array.init nb (match i with 
+                 | I_0 -> fun _ -> Codetype.Value false
+                 | I_1 -> fun _ -> Codetype.Value true
+                 | I_n -> fun i -> Codetype.Range ("n", nb, i)
+                 | I_m -> fun i -> Codetype.Range ("m", nb, i)
+                 | I_i -> fun i -> Codetype.Range ("i", nb, i)
+                 | I_d -> fun i -> Codetype.Range ("d", nb, i)))
+              ) [||] d.inst_code)) :: acc_l, succ pos | _ -> assert false) | _ -> assert false) ([], 0) i.decoder.dec_tab i.c_code.code in
+        List.rev l
       else
-	[]) m.section)
+        []) m.section)
 
 end

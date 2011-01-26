@@ -231,7 +231,7 @@ let rec inst = function
   | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
   | Case (e, s, o) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s, 
 			    option_map inst o)
-  | Let (n, ns, li, i) -> Let (n, ns, List.map inst li, inst i)
+  | Let (n, ns, li, loc) -> Let (n, ns, List.map inst li, loc)
   | Return e -> Return (exp e)
 
   (* non-recursive instructions *)

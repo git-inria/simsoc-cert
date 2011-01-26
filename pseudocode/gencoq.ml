@@ -441,11 +441,8 @@ and inst_aux loc nm k b = function
       bprintf b "block (\n%a\n%anil)"
         (list "\n" (inst_cons loc nm (k+2))) is indent (k+2)
 
-  | Let ((_, n), ns, is, i) -> 
-      bprintf b "let %s %a := %a in\n%a%a" n   
-        (list " " (fun b (_, x) -> string b x)) ns
-        (decl_loc (inst_aux loc nm k)) (Block is)   indent k 
-        (inst_aux loc nm k) i
+  | Let (_, _, is, _) -> 
+      bprintf b "%a" (inst_aux loc nm k) (Block is)
 
   | If (e, i1, None) ->
       bprintf b "if_then %a\n%a" (pexp loc nm) e (pinst loc nm (k+2)) i1
@@ -710,17 +707,19 @@ let lib b ps =
        bprintf bsem_head "\n";
 
        (* *)
-       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s (if s = "PC" then "regnum" else "word")) !map_param;
+       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s "regnum") !map_param;
        bprintf bsem_head "\n";
      end);
     (if ps.header = [] then
       ()
      else
       begin
-        bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ "Parameter nat_of_word : word -> nat."
-                                                                     ; "Definition succ := add (repr 1)."
+        bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ (* (* FIXME float support *) "Parameter nat_of_word : word -> nat."
+                                                                     ; *) "Definition succ := add (repr 1)."
                                                                      ; "Definition pred x := sub x (repr 1)."
                                                                      ; "Definition opp := sub (repr 0)."
+                                                                     ; "Parameter Sbit : nat."
+                                                                     ; "Parameter FPSCR_MASK : nat. (* := 0x003FFFFF *)"
                                                                      ; ""]);
       end);
     List.iter (function (Let ((ty, n), ns, is, _)) ->
@@ -735,7 +734,9 @@ let lib b ps =
         | Tchar -> "(* 7 *) Type"
         | Tunsigned_char -> "(* 8 *) word"
         | Tunsigned_short -> "(* 9 *) word"
-        | Tbool -> "(* 10 *) bool" in
+        | Tbool -> "(* 10 *) bool"
+        | Tunsigned_int -> "(* 11 *) word" 
+        | Tunsigned -> "(* 12 *) word" in
 
       (if is = [] then
          if ty = Tvoid then
@@ -748,8 +749,9 @@ let lib b ps =
            bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
              (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) (if ns = [] then assert false else ns)
              (string_of_ty ty)
-       else 
-         let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n" n   
+       else ()
+         (* (* FIXME floating point specific operation *) 
+           let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n" n   
            (list " " (fun b (ty, s) -> 
              string b (sprintf "(%s : %s)" (if s = "" then "_" else s) (string_of_ty ty)) )) ns x in
          if ty = Tvoid then
@@ -757,7 +759,7 @@ let lib b ps =
          else 
            match is with 
              | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e 
-             | _ -> f (inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is) )
+             | _ -> f (inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is)*) )
         
       | _ -> assert false (* by construction of SH4, this never happens *)) ps.header;
     List.iter prog ps.body;

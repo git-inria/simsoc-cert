@@ -151,12 +151,11 @@ and inst_aux p k b = function
   | Block (i :: is) ->
       bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
 
-  | Let ((_, n), ns, is, i) ->
-      bprintf b "function %s(%a) {\n%a%a\n  }\n%a%a" n   
+  | Let ((_, n), ns, is, _) ->
+      bprintf b "function %s(%a) {\n%a%a\n  }" n   
 	(list ", " (fun b (ty, x) -> 
 	  string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty x) x))) ns
 	indent k   (list "" (inst p (k+2))) is
-	indent k   (inst p (k+2)) i
 
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 

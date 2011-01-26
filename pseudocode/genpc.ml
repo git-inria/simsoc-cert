@@ -92,11 +92,10 @@ and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
 	(list "" (postfix "\n" (inst k))) is indent k
-  | Let ((_, n), ns, is, i) ->
-      bprintf b "let %s %a =\n%abegin\n%a%aend in\n%a%a"
+  | Let ((_, n), ns, is, _) ->
+      bprintf b "let %s %a =\n%abegin\n%a%aend"
 	n   (list " " (fun b (_, x) -> string b x)) ns   indent k
 	(list "" (postfix "\n" (inst k))) is   indent k   
-	indent k   (postfix "\n" (inst k)) i
   | Unpredictable -> bprintf b "UNPREDICTABLE"
   | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2

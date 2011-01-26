@@ -57,8 +57,8 @@ and range =
 let args = function
   | BinOp (_, f, _) as e ->
       let rec aux = function
-	| BinOp (e1, g, e2) when g = f -> aux e1 @ aux e2
-	| e -> [e]
+        | BinOp (e1, g, e2) when g = f -> aux e1 @ aux e2
+        | e -> [e]
       in aux e
   | e -> [e];;
 
@@ -67,11 +67,17 @@ let args = function
 (*****************************************************************************)
 
 type type_param = 
-    Tint | Tlong | Tfloat | Tdouble | Tvoid | Tunsigned_long | Tunsigned_char | Tunsigned_short | Tchar | Tbool
+  | Tint | Tlong | Tfloat | Tdouble | Tvoid | Tchar | Tbool
+  | Tunsigned
+    (* FIXME split the type unsigned by a boolean one *)
+  | Tunsigned_long | Tunsigned_char | Tunsigned_short | Tunsigned_int
 
 type inst =
 | Block of inst list
-| Let of (type_param * string) * (type_param * string) list * inst list * inst
+| Let of (type_param * string) (* function name, return type expected *)
+  * (type_param * string) list (* param *)
+  * inst list (* let ... = <here> *)
+  * (type_param * string) list (* hint indicating local variable *)
 | Unpredictable
 | Affect of exp * exp
 | If of exp * inst * inst option
@@ -134,12 +140,12 @@ let addr_mode ss =
     | "Data" :: _ -> 1
     | "Miscellaneous" :: _ -> 3
     | _ :: _ :: _ :: s :: _ ->
-	begin match s with
-	  | "Word" -> 2
-	  | "Multiple" -> 4
-	  | "Coprocessor" -> 5
-	  | _ -> invalid_arg "Ast.add_mode"
-	end
+        begin match s with
+          | "Word" -> 2
+          | "Multiple" -> 4
+          | "Coprocessor" -> 5
+          | _ -> invalid_arg "Ast.add_mode"
+        end
     | _ -> invalid_arg "Ast.addr_mode";;
 
 (* heuristic providing the addressing mode of a program from its name
@@ -153,9 +159,9 @@ let addr_mode_of_prog =
       if List.mem_assoc "shifter_operand" gs then Some 1
       else if List.mem_assoc "address" gs then
         if StrSet.mem p.pident.iname no_mode then None
-	else if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
+        else if StrSet.mem p.pident.iname mode3 then Some 3 else Some 2
       else if List.mem_assoc "register_list" gs
-	|| StrSet.mem p.pident.iname mode4 then Some 4
+        || StrSet.mem p.pident.iname mode4 then Some 4
       else if StrSet.mem p.pident.iname mode5 then Some 5
       else None;;
 
@@ -209,7 +215,7 @@ module Make (G : Var) = struct
      [vars_inst]. *)
   let rec vars_exp ((gs,ls) as acc) = function
     | Var s when not (StrMap.mem s ls) ->
-	(StrMap.add_no_erase s (G.global_type s) gs), ls
+        (StrMap.add_no_erase s (G.global_type s) gs), ls
     | If_exp (e1, e2, e3) -> vars_exp (vars_exp (vars_exp acc e1) e2) e3
     | Fun (_, es) -> vars_exps acc es
     | Range (e1, Index e2) | BinOp (e1, _, e2) -> vars_exp (vars_exp acc e1) e2
@@ -223,13 +229,15 @@ module Make (G : Var) = struct
      register or in a case instruction *)
   let rec vars_inst ((gs,ls) as acc) = function
     | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
-	(if StrSet.mem s output_registers
-	 then StrMap.add_no_erase s (G.global_type s) gs, ls
-	 else gs, StrMap.add_no_erase s (G.local_type s e) ls) e
+        (if StrSet.mem s output_registers
+         then StrMap.add_no_erase s (G.global_type s) gs, ls
+         else gs, StrMap.add_no_erase s (G.local_type s e) ls) e
     | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
-    | Let (_, ns, is, i) -> vars_inst (vars_insts (List.fold_left (fun gs (ty, n) -> 
-      StrMap.add n (G.explicit_annot_type ty n) gs) gs ns, ls) is) i
+    | Let (_, ns, _, l_loc) -> 
+      let map_of_list = List.fold_left (fun map (ty, k) -> 
+        StrMap.add k (G.explicit_annot_type ty k) map) StrMap.empty in
+      map_of_list ns, map_of_list l_loc
     | If (e, i, None) | While (e, i) -> vars_inst (vars_exp acc e) i
     | If (e, i1, Some i2) -> vars_inst (vars_inst (vars_exp acc e) i1) i2
     | Proc (_, es) -> vars_exps acc es
@@ -237,23 +245,23 @@ module Make (G : Var) = struct
     | Coproc(e, _ , es) -> vars_exps (vars_exp acc e) es
     | Case (Var s, nis, o) -> 
       let gs', ls = 
-	vars_cases (StrMap.add s G.case_type gs, ls) 
-	  (let nis = List.map snd nis in
-	   match o with None -> nis | Some ni -> nis @ [ni]) in
+        vars_cases (StrMap.add s G.case_type gs, ls) 
+          (let nis = List.map snd nis in
+           match o with None -> nis | Some ni -> nis @ [ni]) in
       ((* Now, we can just return [gs'], but the functions [G.case_type] and [G.global_type _] 
-	  do not necessarily return the same type description. So by default, we choose to restore 
-	  the initial value associated to [s] in [gs]. *)
-	if StrMap.mem s gs then
-	  StrMap.add s (let v0 = StrMap.find s gs in 
-			let () = 
-			  if v0 = StrMap.find s gs' then
-			    ()
-			  else 
-			    Printf.eprintf "warning: inside the Case, '%s' has a \
+          do not necessarily return the same type description. So by default, we choose to restore 
+          the initial value associated to [s] in [gs]. *)
+        if StrMap.mem s gs then
+          StrMap.add s (let v0 = StrMap.find s gs in 
+                        let () = 
+                          if v0 = StrMap.find s gs' then
+                            ()
+                          else 
+                            Printf.eprintf "warning: inside the Case, '%s' has a \
                             different type than it has outside\n%!" s in 
-			v0) gs'
+                        v0) gs'
        else
-	  gs'), ls
+          gs'), ls
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
@@ -300,7 +308,7 @@ let ast_map (fi: inst -> inst) (fe: exp -> exp) (i: inst) =
     | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
     | Case (e, sis, oi) ->
         Case (exp e, List.map (fun (s, i) -> (s, inst i)) sis, 
-	      option_map inst oi)
+              option_map inst oi)
     | x -> x
     in fi i'
   in inst i;;
@@ -339,8 +347,8 @@ and range_exists pe pr r = if pr r then true else match r with
 let inst_exists pi pe pr =
   let exp = exp_exists pe pr in
   let rec inst i = if pi i then true else match i with
-    | Block is -> List.exists inst is
-    | Let (_, _, is, i) -> List.exists inst is || inst i
+    | Block is
+    | Let (_, _, is, _) -> List.exists inst is
     | Unpredictable -> false
     | Affect (e1, e2) -> exp e1 || exp e2
     | If (e, i, None) -> exp e || inst i
