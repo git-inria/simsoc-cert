@@ -24,6 +24,13 @@ sh4inst.txt: sh4.txt sh4.patch
 
 #
 
+sh4: sh4inst.vo sh4dec.vo
+
+%.vo: %.v
+	time -p coqc -q -R ../coq SimSoCCert $<
+
+#
+
 instr.native: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
 	ocamlbuild -I compcert-1.8/cparser instr.native
 
