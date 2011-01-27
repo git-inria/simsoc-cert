@@ -1,6 +1,6 @@
 
 default:
-	./extract.sh
+	./extract_arm6.sh
 
 clean:
 	\rm -rf tmp *.glob *.vo *~
