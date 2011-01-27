@@ -413,7 +413,9 @@ let is_cond_inst (lh, _) = match add_mode lh with
   | DecInstARMCond | DecInstThumb -> true
   | DecEncoding | DecMode _ | DecInstARMUncond-> false;;
 
-let is_uncond_inst (lh, _) = match add_mode lh with
+let is_uncond_inst (lh, _) = 
+  (match lh with LH (_ :: n :: _, _) -> C2pc.Traduction.is_not_float_mmu n | LH _ -> true)
+  && match add_mode lh with
   | DecInstARMUncond | DecInstThumb -> true
   | DecEncoding | DecMode _ | DecInstARMCond-> false;;
 

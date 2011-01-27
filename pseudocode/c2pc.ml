@@ -335,7 +335,10 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
 
   i_of_definition
 
-
+let is_not_float_mmu = function
+  | 34 | 44 (* floating instructions *) 
+  | 53 (* mmu *) -> false 
+  | _ -> true
 
 let prog_list_of_manual : raw_c_code manual -> E.program = 
   fun m ->
@@ -351,7 +354,7 @@ let prog_list_of_manual : raw_c_code manual -> E.program =
       
           (List.rev_map (fun inst -> 
             match inst.decoder.dec_title with
-              | Menu when (match inst.position with 34 | 44 (* floating instructions *) | 53 (* mmu *) -> false | _ -> true) ->
+              | Menu when is_not_float_mmu inst.position ->
                 Some 
                   (List.map (function
                     | C.FUNDEF ((_, (fun_name, _, _, _)), _, _, _) as c -> 
