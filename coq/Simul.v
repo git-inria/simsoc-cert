@@ -13,7 +13,7 @@ Instruction decoding and execution cycle.
 
 Set Implicit Arguments.
 
-Require Import Bitvec Arm Semantics State Message.
+Require Import Bitvec Arm Semantics Arm_State Message.
 
 (****************************************************************************)
 (** decoding result type *)

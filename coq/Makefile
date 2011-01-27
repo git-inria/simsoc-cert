@@ -15,8 +15,8 @@ MAKECOQ := $(MAKE) -f Makefile.coq
 
 COMPCERT := Coqlib Integers
 
-FILES := $(COMPCERT) Message Bitvec Config Exception Functions State Proc \
-	Util Semantics SCC Arm Simul Extraction
+FILES := $(COMPCERT) Message Bitvec Arm_Config Arm_Exception Arm_Functions Arm_State Arm_Proc \
+	Util Semantics Arm_SCC Arm Simul Extraction
 
 VFILES := $(FILES:%=%.v)
 

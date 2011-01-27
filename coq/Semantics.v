@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import State Util Bitvec Arm State List Message ZArith String.
+Require Import Arm_State Util Bitvec Arm Arm_State List Message ZArith String.
 
 (****************************************************************************)
 (** Semantic functions for pseudo-code constructions and processor

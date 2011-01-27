@@ -11,7 +11,7 @@ Page numbers refer to ARMv6.pdf.
 Exception handling. Step functions are taken from the generated file
 arm6/arm6exn.v. *)
 
-Require Import Config List ZArith Bitvec Arm SCC State Semantics Util Message.
+Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State Semantics Util Message.
 
 Module InstSem (Import C : CONFIG).
 
