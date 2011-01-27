@@ -13,7 +13,7 @@ ARM simulator.
 
 Set Implicit Arguments.
 
-Require Import Config Simul Bitvec Semantics State.
+Require Import Arm_Config Simul Bitvec Semantics Arm_State.
 
 (****************************************************************************)
 (** Configuration *)
@@ -48,14 +48,14 @@ End C.
 (** Simulator *)
 (****************************************************************************)
 
-Require arm6inst arm6dec Exception.
+Require arm6inst arm6dec Arm_Exception.
 
 Module I <: INST.
   Definition inst : Type := arm6inst.inst.
   Module S := arm6inst.InstSem(C).
   Definition step : state -> inst -> result := S.step.
   Definition decode : word -> decoder_result inst := arm6dec.decode.
-  Module E := Exception.InstSem(C).
+  Module E := Arm_Exception.InstSem(C).
   Definition handle_exception : state -> result := E.step.
 End I.
 
