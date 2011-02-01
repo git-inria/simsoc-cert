@@ -55,6 +55,7 @@ $SIMLIGHT arm_v6_UH_a.elf -r0=0x3ffff
 $SIMLIGHT arm_v6_UQSUB_a.elf -r0=0x3fffffff
 $SIMLIGHT arm_v6_USAD_a.elf -r0=0xff       
 $SIMLIGHT arm_v6_USAT_a.elf -r0=0xfff 
+$SIMLIGHT thumb_flags_t.elf -r0=0x1f
 $SIMLIGHT thumb_v6_SXUX_t.elf -r0=0xfffffff
 $SIMLIGHT thumb_v6_REV_t.elf -r0=0xf
 $SIMLIGHT thumb_v6_t.elf -r0=0xff
