@@ -727,7 +727,7 @@ let lib b ps =
                                                                      ; "Parameter FPSCR_MASK : nat. (* := 0x003FFFFF *)"
                                                                      ; ""]);
       end ;*)
-     (* FIXME moved to Sh4_Functions.v *) List.iter (function (Let ((ty, n), ns, is, _)) ->
+     (* FIXME moved to Sh4_Functions.v *) begin List.iter (function (Let ((ty, n), ns, is, _)) ->
       (*let gs, _ = V.vars i in*)
       let string_of_ty = function
         | Tint -> "(* 1 *) nat" 
@@ -766,7 +766,7 @@ let lib b ps =
              | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e 
              | _ -> f (inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is)*) )
         
-      | _ -> assert false (* by construction of SH4, this never happens *)) ps.header;
+      | _ -> assert false (* by construction of SH4, this never happens *)) ps.header ; if ps.header <> [] then begin bprintf bsem_head "\n" end end;
     List.iter prog ps.body;
 
     (* print preamble *)
@@ -785,8 +785,9 @@ let lib b ps =
     bprintf b "%a" Buffer.add_buffer bsem_head;
     (* print type definitions *)
     for k = 1 to 5 do
-      bprintf b "(* Addressing mode %d *)\nInductive mode%d : Type :=%a.\n\n"
-        k k Buffer.add_buffer bcons_mode.(k-1)
+      if Buffer.length bcons_mode.(k-1) <> 0 then
+        bprintf b "(* Addressing mode %d *)\nInductive mode%d : Type :=%a.\n\n"
+          k k Buffer.add_buffer bcons_mode.(k-1)
     done;
     bprintf b "(* Instructions *)\nInductive inst : Type :=%a.\n\n" Buffer.add_buffer bcons_inst;
     (* print semantic functions *)
