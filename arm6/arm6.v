@@ -53,10 +53,10 @@ Require arm6inst arm6dec Arm_Exception.
 Module I <: INST.
   Definition inst : Type := arm6inst.inst.
   Module S := arm6inst.InstSem(C).
-  Definition step : state -> inst -> result := S.step.
+  Definition step : inst -> semfun unit := S.step.
   Definition decode : word -> decoder_result inst := arm6dec.decode.
   Module E := Arm_Exception.InstSem(C).
-  Definition handle_exception : state -> result := E.step.
+  Definition handle_exception : semfun unit := E.step.
 End I.
 
 Module Export S := Simul.Make(I).

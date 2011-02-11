@@ -7,14 +7,14 @@ open BinPos
 open Bitvec
 open Datatypes
 open Integers
-open Proc
-open SCC
+open Arm_Proc
+open Arm_SCC
 open Simul
-open State
+open Arm_State
 open Util
 open Arm6
 open Semantics
-open Functions
+open Arm_Functions
 
 let str_of_msg = function
   | Message.EmptyMessage -> "EmptyMessage"
@@ -58,15 +58,16 @@ let coq_Z = function
  | x when x < 0 -> Zneg (positive (-x))
  | x -> Zpos (positive x);;
 
-let simul s n =
-  let num, r = S.simul s (nat n) in
-  let step = string_of_int (n - nat_to_int num) in
-    match r with
-      | SimOk s -> s
-      | SimKo (_s, m) ->
-          raise (Failure ("SimKo: " ^ str_of_msg m ^ " at step " ^ step));;
+let simul lbs = 
+  let n = nat_to_int (nb_next lbs) in
+  Simul.catch S.simul (fun m lbs ->
+    let num = nb_next lbs in
+    let step = string_of_int (n - nat_to_int num) in
+    failwith ("SimKo: " ^ str_of_msg m ^ " at step " ^ step)) lbs;;
 
-let next s = simul s 1;;
+let next = 
+  Simul.bind (fun lbs -> SimOk ((), { lbs with nb_next = n1 }))
+    (fun () -> simul);;
 
 let rec positive_to_int = function
   | Coq_xH -> 1
@@ -78,7 +79,7 @@ let coq_Z_to_int = function
   | Zneg p -> -(positive_to_int p)
   | Zpos p -> positive_to_int p;;
 
-let regz s n = (Proc.reg (State.proc s)) (R (coq_Z n));;
+let regz s n = Arm_Proc.reg (Arm_State.proc s) (R (coq_Z n));;
 let reg s n = coq_Z_to_int (regz s n);;
 
 let read_z s a = read s (coq_Z a) Bitvec.Word;;
@@ -100,15 +101,21 @@ let stack s =
     if (sp>stack_top) then raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4);;
 
+let return a lbs = SimOk (a, lbs)
+
+let mk_st state steps = 
+  { semst = { loc = [] ; bo = true ; s0 = state ; st = state } ; nb_next = nat steps }
+
 let check state steps expected name =
   try
-    let s = simul state steps in
-      if reg s 0 = expected then print_endline (name^" OK.")
-      else (
-        print_string ("Error in "^name^", r0 = ");
-        Printf.printf "%d (0x%x)" (reg s 0) (reg s 0); print_string " instead of ";
-        Printf.printf "%d (0x%x)" expected expected; print_endline "."
-      )
+    ignore (Simul.bind simul (fun () -> Simul.get_st (fun s -> 
+      return (if reg s 0 = expected then print_endline (name^" OK.")
+        else (
+          print_string ("Error in "^name^", r0 = ");
+          Printf.printf "%d (0x%x)" (reg s 0) (reg s 0); print_string " instead of ";
+          Printf.printf "%d (0x%x)" expected expected; print_endline "."
+        ))
+    )) (mk_st state steps))
   with Failure s -> print_endline ("Error in "^name^": "^s^".");;
 
 
@@ -121,23 +128,30 @@ type hexa = Ox of int;;
 let print_hexa f = function Ox n -> Format.fprintf f "0x%x" n;;
 #install_printer print_hexa;;
 
-let run_opt (s0: State.state) (max: int option): BinInt.coq_Z * (int * hexa) list =
-  let rec aux (s: State.state) (l: (int * hexa) list) : State.state * (int * hexa) list =
-    match l with
-      | (step, Ox pc) :: l' ->
-          if Some step = max then s, l
-          else
-            let s' = next s in
-            let pc' = (reg s' 15) - 8 in
-              if pc' = pc then s', (step+1, Ox pc) :: l'
-              else if pc' = pc+4 then aux s' ((step+1, Ox pc') :: l')
-              else aux s' ((step+1, Ox pc') :: (step+1, Ox pc') :: l')
-      | _ -> raise (Failure "inside run function")
-  in let sn, l = aux s0 [(0, Ox ((reg s0 15) - 8)); (0, Ox ((reg s0 15) - 8))]
-  in regz sn 0, l;;
+let run_opt (max : int option) : (BinInt.coq_Z * (int * hexa) list) Simul.simul_semfun =
+  let rec aux : (int * hexa) list -> (int * hexa) list Simul.simul_semfun = function
+    | (step, Ox pc) :: l' as l ->
+      if Some step = max then return l
+      else
+        Simul.bind Simul.save_s0_true (fun () -> 
+        Simul.bind next (fun () -> 
+        get_st (fun s' -> 
+        let pc' = (reg s' 15) - 8 in
+        (if pc' = pc then return
+         else if pc' = pc+4 then aux
+         else function x :: xs -> aux (x :: x :: xs) | _ -> assert false)
+          ((step+1, Ox pc') :: l')
+       )))
+    | _ -> raise (Failure "inside run function")
+  in 
 
-let run s0 = run_opt s0 None;;
-let runmax s0 max = run_opt s0 (Some max);;
+  Simul.bind (get_s0 (fun s0 -> aux [ (0, Ox ((reg s0 15) - 8))
+                                    ; (0, Ox ((reg s0 15) - 8))]))
+    (fun l -> 
+      get_st (fun sn -> return (regz sn 0, l)));;
+
+let run s0 = run_opt None (mk_st s0 1);;
+let runmax s0 max = run_opt (Some max) (mk_st s0 1);;
 
 #load "arm_v6_QADD_a.cmo";;
 check Arm_v6_QADD_a.initial_state 509 0x7efff "arm_v6_QADD";;

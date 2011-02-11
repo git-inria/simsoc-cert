@@ -412,9 +412,9 @@ let case bin loc nm k b (n, i) =
 
 let rec inst loc nm k b i = indent b k; inst_aux loc nm k b i
 
-and decl_loc f b x = bprintf b "(fun loc b st => %a loc b st)" f x
+and decl_loc f b x = bprintf b "(__ loc b st   (%a))" f x
 
-and decl_loc_postfix f b x = bprintf b "(fun loc b st => %a loc b st) ::" f x
+and decl_loc_postfix f b x = bprintf b "__ loc b st   (%a) ::" f x
 
 and pinst loc nm k b i = indent b k; decl_loc (inst_aux loc nm k) b i
 
@@ -541,7 +541,7 @@ let name b p =
     | InstARM -> ident b p.pident
     | InstThumb -> bprintf b "Thumb_%a" ident p.pident
     | Mode m -> bprintf b "%a_%a" addr_mode m ident p.pident;;
-
+(*
 (* result type of a program *)
 
 let mode_var_typ b = function
@@ -552,7 +552,7 @@ let result b p =
   match p.pkind with
     | InstARM | InstThumb -> ()
     | Mode k -> list "" mode_var_typ b (mode_vars k);;
-
+*)
 (* split an instruction block into two blocks:
 - the prefix of the block consisting of the affectations and cases
 - the remainder of the instructions *)
@@ -567,10 +567,12 @@ let split = function
 let block nm k b i =
   let is1, is2 = split i in
     List.iter (endline (inst [] nm k) b) is1;
-    bprintf b "%alet r := %a nil true s0 in" indent k (inst_aux [] nm k) (Block is2);;
+    bprintf b "%alet r := %a in" indent k (inst_aux [] nm k) (Block is2);;
+
+let repr_0 = "repr 0"
 
 (* default result component value *)
-let default b _ = string b ", repr 0";;
+let default b _ = string b (sprintf ", %s" repr_0);;
 
 let mode_var b = function
 (*REMOVE?  | "shifter_carry_out" as s -> bprintf b ", zne 0 %s" s*)
@@ -590,23 +592,35 @@ let pinst b p =
   match p.pkind with
     | InstARM -> 
         let loc = add_index (snd (V.vars p.pinst)) in
-        bprintf b "%a nil true s0" (inst loc (p.pident.iname) 2) p.pinst
+        bprintf b "%a" (inst loc (p.pident.iname) 2) p.pinst
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k ->
         let ls = mode_vars k in
-          if StrSet.mem p.pref problems then
-            bprintf b "  let r := %a nil true s0 in\n    (r%a)"
-              (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst
-              (list "" default) ls
+        if StrSet.mem p.pref problems then
+          begin
+            bprintf b "  let r := %a in\n"
+              (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst;
+            bprintf b "  fun lbs => match r lbs with\n";
+            bprintf b "    | Ok _ s1 => (do_then save_s0_true ; f %a) s1\n" 
+              (list " " (fun b _ -> bprintf b "(%s)" repr_0)) ls;
+            bprintf b "    | r => r\n";
+            bprintf b "  end";
+          end
         else
           match p.pinst with
             | If (e, i, None) ->
-                bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
-                  (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
-                  (list "" mode_var) ls (list "" default) ls
+              bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
+                (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
+                (list "" mode_var) ls (list "" default) ls
             | i ->
-                bprintf b "%a\n    (r%a)" (block (p.pident.iname) 2) i
-                  (list "" mode_var) ls;;
+              begin
+                bprintf b "%a\n  fun lbs => match r lbs with\n" 
+                  (block (p.pident.iname) 2) i;
+                bprintf b "    | Ok _ s1 => (do_then save_s0_true ; f %a) s1\n" 
+                  (list " " string) ls;
+                bprintf b "    | r => r\n";
+                bprintf b "  end";
+              end;;
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
 
@@ -614,8 +628,9 @@ let semfun b p gs =
   match p.pkind with
     | InstARM | Mode _ ->
         bprintf b
-          "(* %s %a *)\nDefinition %a_step (s0 : state)%a : result%a :=\n%a.\n\n"
-          p.pref Genpc.name p name p (list "" arg_typ) gs result p pinst p
+          "(* %s %a *)\nDefinition %a_step%s%a : semfun unit := _get_s0 (fun s0 => \n%a).\n\n"
+          p.pref Genpc.name p name p (if p.pkind = InstARM then "" else " f") 
+          (list "" arg_typ) gs pinst p
     | InstThumb -> ();; (* TODO: Thumb mode *)
 
 (*****************************************************************************)
@@ -657,21 +672,16 @@ let call bcall_inst bcall_mode p gs =
         begin match addr_mode_of_prog p gs with
           | None ->
               bprintf b "    | %a%a =>" name p args gs;
-              bprintf b " %a_step s0%a\n" name p args gs
+              bprintf b " %a_step%a\n" name p args gs
           | Some k ->
               bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
-              bprintf b
-                "\n      match mode%d_step s0 m_ with (r%a) =>\n"
-                k (list "" mode_var) (mode_vars k);
-              bprintf b "        match r with\n";
-              bprintf b "          | Ok _ _ s1 =>";
-              bprintf b " %a_step s1%a\n" name p args gs;
-              bprintf b "          | _ => r\n        end\n      end\n"
+              bprintf b " mode%d_step m_ (fun %a => %a_step%a)\n"
+                k (list " " string) (mode_vars k) name p args gs
         end
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
         bprintf b "    | %a%a =>" name p args gs;
-        bprintf b " %a_step s0%a\n" name p args gs;;
+        bprintf b " %a_step f%a\n" name p args gs;;
 
 (*****************************************************************************)
 (** Main coq generation function.
@@ -746,9 +756,9 @@ let lib b ps =
       (if is = [] then
          if ty = Tvoid then
            if ns = [] then
-             bprintf bsem_head "Parameter %s : local -> bool -> state -> result.\n" n 
+             bprintf bsem_head "Parameter %s : semfun unit.\n" n 
            else
-             bprintf bsem_head "Parameter %s : %a -> local -> bool -> state -> result.\n" n 
+             bprintf bsem_head "Parameter %s : %a -> semfun unit.\n" n 
                (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) ns
          else
            bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
@@ -773,7 +783,7 @@ let lib b ps =
     (let arm, sh4, is_arm = "Arm_", "Sh4_", ps.header = [] in
      let armsh4 = if is_arm then arm else sh4 in
     bprintf b
-"(* File generated by SimSoC-Cert. It provides the definitions of the types\nof %s instructions, and their semantics. *)\n\nRequire Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message.\n\n" 
+"(* File generated by SimSoC-Cert. It provides the definitions of the types\nof %s instructions, and their semantics. *)\n\nRequire Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message. \nNotation __ loc b st A := (_get_loc (fun loc => _get_bo (fun b => _get_st (fun st => A)))).\n\n" 
       (if is_arm then "ARMv6 addressing modes and" else "SH4") 
       armsh4
       armsh4
@@ -795,7 +805,7 @@ let lib b ps =
     Buffer.add_buffer b bsem;
     for k = 1 to 5 do
       if Buffer.length bcall_mode.(k-1) = 0 then () else 
-      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (s0 : state) (m : mode%d) :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
+      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (m : mode%d) f :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
     done;
-    bprintf b "(* Semantic function for instructions *)\nDefinition step (s0 : state) (i : inst) : result :=\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+    bprintf b "(* Semantic function for instructions *)\nDefinition step (i : inst) : semfun unit :=\n  do_then save_s0_true;\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
     bprintf b "End InstSem.\n";;

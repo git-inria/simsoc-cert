@@ -429,13 +429,6 @@ let decode b ps =
   (*print the import require and notations*)
   string b (sprintf "Require Import Bitvec List Util Sh4_Functions Sh4_Config Sh4 Sh4_State Sh4_Semantics ZArith %s Sh4_Simul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." "sh4inst");
 
-  (*print the decoder of addressing modes 1 - 5*)
-  for i = 1 to 5 do
-    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w16_of_word w with\n" i i;
-    (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
-    bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
-  done;
-
   (*print the instruction decoder*)
   bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w16_of_word w with\n";
   (list "" dec_inst) b ((*List.sort (fun a b -> order_inst a - order_inst b)*) (List.filter (is_uncond_inst) ps));
