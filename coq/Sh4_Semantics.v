@@ -2,11 +2,11 @@
 SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
+Formalization of the SH4 architecture following the:
 
-ARM Architecture Reference Manual, Issue I, July 2005.
+SH-4, Software Manual, Renesas 32-Bit RISC, Rev.6.00 2006.09
 
-Page numbers refer to ARMv6.pdf.
+Page numbers refer to Renesas_SH4_2006.pdf.
 
 Semantic functions for interpreting pseudo-code constructions.
 *)
@@ -31,10 +31,6 @@ Definition sod_of_id (i : nat) :=
     | id_value (*value*) => long -> single_or_double
     | _ => word -> single_or_double
   end.
-
-(*Inductive map_sod : Type :=
-  | mk_map_sod : forall i h l, sod_of_id i -> map_sod.
-*)
 
 Record map_sod : Type := mk_map_sod {
   id : nat;
@@ -63,14 +59,7 @@ Definition if_then (c : bool) (f : semfun) (loc : local)
 Definition if_then_else (c : bool) (f1 f2 : semfun) 
   (loc : local) (b : bool) (s : state)
   : result := if c then f1 loc b s else f2 loc b s.
-(*
-Definition if_CurrentModeHasSPSR (f : exn_mode -> semfun)
-  (loc : local) (b : bool) (s : state) : result :=
-  match mode s with
-    | usr | sys => unpredictable EmptyMessage loc b s
-    | exn em => f em loc b s
-  end.
-*)
+
 Definition return_ (_ : word) (loc : local)
   (b : bool) (s : state) : result :=
   todo ComplexSemantics loc b s.
@@ -158,43 +147,7 @@ Definition set_cpsr (v : word) (loc : local) (b : bool)
 Definition set_cpsr_bit (n : nat) (v : word) (loc : local)
   (b : bool) (s: state) : result :=
   Ok loc b (set_cpsr_bit s n v).
-(*
-Definition set_spsr (m : exn_mode) (v : word) 
-  (loc : local) (b : bool) (s : state) :
-  result := Ok loc b (set_spsr s m v).
-*)
+
 Definition set_reg (n : regnum) (v : word) 
   (loc : local) (b : bool) (s : state) : result
   := Ok loc (zne n 15) (set_reg s n v).
-(*
-Definition set_reg_mode (m : proc_mode) (k : regnum) (v : word)
-  (loc : local) (b : bool) (s : state) : 
-  result := Ok loc b (*FIXME?*) (set_reg_mode s m k v).
-
-Definition write (a : word) (n : size) (w : word) 
-  (loc : local) (b : bool) (s : state) :
-  result := Ok loc b (write s a n w).
-
-Definition MarkExclusiveGlobal (addr : word) (pid : word) (size : word)
-  (loc : local) (b : bool) (s : state) : result :=
-  Ok loc b (MarkExclusiveGlobal s addr (nat_of_Z pid)
-    (nat_of_Z size)).
-
-Definition MarkExclusiveLocal (addr : word) (pid : word) (size : word)
-  (loc : local) (b : bool) (s : state) : result :=
-  Ok loc b (MarkExclusiveLocal s addr (nat_of_Z pid) 
-    (nat_of_Z size)).
-
-Definition ClearExclusiveByAddress (addr: word) (pid : word) (size : word)
-  (loc : local) (b : bool) (s : state) : result :=
-  Ok loc b (ClearExclusiveByAddress s addr (nat_of_Z pid) (nat_of_Z size)).
-
-Definition ClearExclusiveLocal (pid : word) (loc : local)
-  (b : bool) (s : state) : result :=
-  Ok loc b (ClearExclusiveLocal s (nat_of_Z pid)).
-
-Definition IsExclusiveGlobal (s : state) (addr : word) (pid : word)
-  (size : nat) : bool := false.
-
-Definition IsExclusiveLocal (s : state) (addr : word) (pid : word)
-  (size : nat) : bool := false.*)

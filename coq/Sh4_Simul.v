@@ -2,11 +2,11 @@
 SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
+Formalization of the SH4 architecture following the:
 
-ARM Architecture Reference Manual, Issue I, July 2005.
+SH-4, Software Manual, Renesas 32-Bit RISC, Rev.6.00 2006.09
 
-Page numbers refer to ARMv6.pdf.
+Page numbers refer to Renesas_SH4_2006.pdf.
 
 Instruction decoding and execution cycle.
 *)
@@ -32,37 +32,6 @@ Section decoder_result.
 Notation DecUndefined := (DecUndefined_with_num 0).
 
 End decoder_result.
-
-Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
-  decoder_result inst :=
-  match condition w with
-    | Some oc => DecInst (g oc)
-    | None => @DecUndefined_with_num inst 1
-  end.
-
-Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
-  (w : word) (inst : Type) (g : mode -> opcode -> inst) :
-  decoder_result inst :=
-  match condition w with
-    | Some oc =>
-      match f w with
-        | DecInst i => DecInst (g i oc)
-        | DecError m => @DecError inst m
-        | DecUnpredictable => @DecUnpredictable inst
-        | DecUndefined => @DecUndefined_with_num inst 2
-      end
-    | None => @DecUndefined_with_num inst 3
-  end.
-
-Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
-  (w : word) (inst : Type) (g : mode -> inst) :
-  decoder_result inst :=
-  match f w with
-    | DecInst i => DecInst (g i)
-    | DecError m => @DecError inst m
-    | DecUnpredictable => @DecUnpredictable inst
-    | DecUndefined => @DecUndefined_with_num inst 2
-  end.
 
 (****************************************************************************)
 (** types and functions necessary for building a simulator *)
@@ -102,9 +71,7 @@ Module Make (Import I : INST).
   Definition next (s : state) : simul_result :=
     match inst_set (cpsr s) with
       | None => SimKo s InvalidInstructionSet
-      | Some Jazelle => SimKo s JazelleInstructionSetNotImplemented
-      | Some Thumb => SimKo s ThumbInstructionSetNotImplemented
-      | Some ARM =>
+      | Some SH4 =>
         let a := address_of_current_instruction s in
         let w := read s a Word in
           match decode w with
