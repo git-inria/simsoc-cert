@@ -221,11 +221,17 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
 
   and e_of_expression = function
     | C.VARIABLE "PC" -> E.Reg (E.Num "15", None)
-    | C.VARIABLE ("M" | "Q" | "S" | "T" as v) -> E.Range (E.CPSR, (E.Flag (v, "")))
     | C.VARIABLE ("GBR" | "PR" | "MACH" | "MACL" | "FPUL" | "FPSCR" | "SR" | "VBR" | "SSR" | "SPC" | "DBR" 
                  | "R0_BANK" | "R1_BANK" | "R2_BANK" | "R3_BANK" | "R4_BANK" | "R5_BANK" | "R6_BANK" | "R7_BANK"
-                 | "TRA" | "SGR" | "SR_MD" | "SR_BL" | "SR_RB" | "EXPEVT"
+                 | "TRA" | "SGR" | "EXPEVT"
                  as v) -> E.Reg (E.Var v, None)
+    | C.VARIABLE "T" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("1", "0"))
+    | C.VARIABLE "S" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("2", "1"))
+    | C.VARIABLE "Q" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("9", "8"))
+    | C.VARIABLE "M" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("10", "9"))
+    | C.VARIABLE "SR_BL" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("29", "28"))
+    | C.VARIABLE "SR_RB" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("30", "29"))
+    | C.VARIABLE "SR_MD" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("31", "30"))
 
     | C.VARIABLE i -> E.Var i
 

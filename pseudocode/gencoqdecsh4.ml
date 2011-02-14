@@ -433,16 +433,11 @@ let decode b ps =
   bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w16_of_word w with\n";
   (list "" dec_inst) b ((*List.sort (fun a b -> order_inst a - order_inst b)*) (List.filter (is_uncond_inst) ps));
   bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-
+(*
   bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w16_of_word w with\n";
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
   bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-
-  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n";
-  bprintf b "  match w32_of_word w with\n";
-  bprintf b "    | word32 1 1 1 1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>\n";
-  bprintf b "      decode_unconditional w\n";
-  bprintf b "    | _ => decode_conditional w\n";
-  bprintf b "  end.\n"
+*)
+  bprintf b "\n\nDefinition decode := decode_unconditional.\n";
 ;;
 

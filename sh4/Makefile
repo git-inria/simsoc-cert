@@ -24,7 +24,7 @@ sh4inst.txt: sh4.txt sh4.patch
 
 #
 
-sh4: sh4inst.vo sh4dec.vo
+sh4: sh4inst.vo sh4dec.vo sh4.vo
 
 %.vo: %.v
 	time -p coqc -q -R ../coq SimSoCCert $<

@@ -174,3 +174,24 @@ Definition _get_s0 {A} := bind_s s0 A (Ok tt).
 Definition _get_st {A} := bind_s st A (Ok tt).
 Definition _get_loc {A} := bind_s loc A (Ok tt).
 Definition _get_bo {A} := bind_s bo A (Ok tt).
+
+Definition Sleep_standby : semfun unit := Ok tt.
+Definition invalidate_operand_cache_block : word -> semfun unit := fun _ => Ok tt.
+Definition if_is_dirty_block_then_write_back : word -> semfun unit := fun _ => Ok tt.
+Definition if_is_write_back_memory_and_look_up_in_operand_cache_eq_miss_then_allocate_operand_cache_block : word -> semfun unit := fun _ => Ok tt.
+Definition Read_Byte : word -> word := fun x => x.
+Definition Read_Word : word -> word := fun x => x.
+Definition Read_Long : word -> word := fun x => x.
+Definition Write_Byte : word -> word -> semfun unit := fun _ _ => Ok tt.
+Definition Write_Word : word -> word -> semfun unit := fun _ _ => Ok tt.
+Definition Write_Long : word -> word -> semfun unit := fun _ _ => Ok tt.
+Definition Delay_Slot : word -> semfun unit := fun _ => Ok tt.
+
+(* *)
+
+Definition FPSCR_MASK := repr 4194303. (* FIXME write 0x003FFFFF instead *)
+Definition H_00000100 := repr 256. (* FIXME write 0x00000100 instead *)
+
+Definition succ := add (repr 1).
+Definition pred x := sub x (repr 1).
+Definition opp := sub (repr 0).

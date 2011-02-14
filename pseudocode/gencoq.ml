@@ -753,17 +753,17 @@ let lib b ps =
         | Tunsigned_int -> "(* 11 *) word" 
         | Tunsigned -> "(* 12 *) word" in
 
-      (if is = [] then
-         if ty = Tvoid then
+      (if is = [] then ignore (string_of_ty, ns, n, ty)
+         (*if ty = Tvoid then
            if ns = [] then
-             bprintf bsem_head "Parameter %s : semfun unit.\n" n 
+             bprintf bsem_head "(* 1 *) Parameter %s : semfun unit.\n" n 
            else
-             bprintf bsem_head "Parameter %s : %a -> semfun unit.\n" n 
+             bprintf bsem_head "(* 2 *) Parameter %s : %a -> semfun unit.\n" n 
                (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) ns
          else
-           bprintf bsem_head "Parameter %s : %a -> %s.\n" n 
+           bprintf bsem_head "(* 3 *) Parameter %s : %a -> %s.\n" n 
              (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) (if ns = [] then assert false else ns)
-             (string_of_ty ty)
+             (string_of_ty ty)*)
        else ()
          (* (* FIXME floating point specific operation *) 
            let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n" n   

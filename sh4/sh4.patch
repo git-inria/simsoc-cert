@@ -1,24 +1,24 @@
 --- sh4.txt	2011-01-20 17:22:24.785590004 +0800
-+++ sh4inst.txt	2011-01-26 11:10:44.000000000 +0800
++++ sh4inst.txt	2011-02-14 15:00:42.000000000 +0800
 @@ -9153,45 +9153,64 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
  Section 9 Instruction Descriptions
 +void Sleep_standby(void);
-+void allocate_operand_cache_block(unsigned long);
++/*void allocate_operand_cache_block(unsigned long);*/
 +
 +void fpu_exception_trap(void);
 +void inexact(void);
 +void invalidate_operand_cache_block(unsigned long);
-+_Bool is_dirty_block(unsigned long);
-+_Bool is_write_back_memory_and_look_up_in_operand_cache_eq_miss(unsigned long);
++void if_is_dirty_block_then_write_back(unsigned long);
++void if_is_write_back_memory_and_look_up_in_operand_cache_eq_miss_then_allocate_operand_cache_block(unsigned long);
 +void load_int(int, int);
 +void load_quad(int, int);
 +float sqrt(float);
 +void store_int(int, int);
 +void store_quad(int, int);
 +void undefined_operation(void);
-+void write_back(unsigned long);
++/*void write_back(unsigned long);*/
  
    unsigned char          Read_Byte(unsigned long Addr);
    unsigned short Read_Word(unsigned long Addr);
@@ -343,7 +343,7 @@
 +       (check_product_infinity(m+2,n+2) && (sign_of(m+2)^
 +  sign_of(n+2))) ||
 +       (check_product_infinity(m+3,n+3) && (sign_of(m+3)^
-+					    sign_of(n+3))));
++                                            sign_of(n+3))));
 +  }
 +  int check_positive_infinity(int m, int n)
 +  {
@@ -354,7 +354,7 @@
 +       (check_product_infinity(m+2,n+2) && (~sign_of(m+2)^
 +  sign_of(n+2))) ||
 +       (check_product_infinity(m+3,n+3) && (~sign_of(m+3)^
-+					    sign_of(n+3))));
++                                            sign_of(n+3))));
 +  }
 +
 +int check_product_invalid(int m, int n)
@@ -924,7 +924,7 @@
                 case PINF:
                 case NINF: invalid(n);           break;
 -               default:      zero(n,sign_of(m)^sign_of(n));break
-+		       default:      zero(n,sign_of(m)^sign_of(n));break;
++                       default:      zero(n,sign_of(m)^sign_of(n));break;
                 }       break;
            }
  }
@@ -1719,17 +1719,18 @@
   {
         long disp;
         disp=(0x0000000F & (long)d);
-@@ -14730,8 +14757,7 @@
+@@ -14730,9 +14757,7 @@
  
    MOVCAL(int n)             /*MOVCA.L      R0,@Rn */
           {
 -             if ((is_write_back_memory(R[n]))
 -                  && (look_up_in_operand_cache(R[n]) == MISS))
-+             if (is_write_back_memory_and_look_up_in_operand_cache_eq_miss(R[n]))
-                                allocate_operand_cache_block(R[n]);
+-                               allocate_operand_cache_block(R[n]);
++             if_is_write_back_memory_and_look_up_in_operand_cache_eq_miss_then_allocate_operand_cache_block(R[n]);
               Write_Long(R[n], R[0]);
               PC+=2;
-@@ -14877,7 +14903,7 @@
+          }
+@@ -14877,7 +14902,7 @@
  
    MULU(long m, long n) /* MULU Rm,Rn                 */
    {
@@ -1738,7 +1739,7 @@
           (unsigned long)(unsigned short)R[m];
            PC+=2;
    }
-@@ -15021,7 +15047,7 @@
+@@ -15021,7 +15046,7 @@
  
    NOT(long m, long n) /* NOT Rm,Rn */
    {
@@ -1747,16 +1748,25 @@
                PC+=2;
    }
  
-@@ -15099,7 +15125,7 @@
+@@ -15099,7 +15124,7 @@
  
    OCBP(int n)               /* OCBP @Rn */
    {
 -      if(is_dirty_block(R[n]))          write_back(R[n])
-+      if(is_dirty_block(R[n]))          write_back(R[n]);
++      if_is_dirty_block_then_write_back(R[n]);
        invalidate_operand_cache_block(R[n]);
        PC+=2;
    }
-@@ -15700,7 +15726,7 @@
+@@ -15140,7 +15165,7 @@
+ 
+   OCBWB(int n)               /* OCBWB @Rn */
+          {
+-             if(is_dirty_block(R[n]))           write_back(R[n]);
++             if_is_dirty_block_then_write_back(R[n]);
+              PC+=2;
+          }
+ 
+@@ -15700,7 +15725,7 @@
  
  Operation
  
@@ -1765,7 +1775,7 @@
    {
               int sgn=R[m] & 0x80000000;
               if (sgn==0)
-@@ -15712,7 +15738,7 @@
+@@ -15712,7 +15737,7 @@
                                   R[n] = 0xFFFFFFFF;
              }
              else
@@ -1774,7 +1784,7 @@
              PC+=2;
    }
  
-@@ -15866,7 +15892,7 @@
+@@ -15866,7 +15891,7 @@
  
  Operation
  
@@ -1783,7 +1793,7 @@
    {
           int sgn = R[m] & 0x80000000;
           if (sgn == 0)
-@@ -15874,7 +15900,7 @@
+@@ -15874,7 +15899,7 @@
           else if ((R[m] & 0x1F) == 0)
                       R[n] = 0;
           else
@@ -1792,7 +1802,7 @@
           PC+=2;
    }
  
-@@ -16310,7 +16336,7 @@
+@@ -16310,7 +16335,7 @@
  
    STCMSR(int n)          /* STC.L SR,@-Rn : Privileged */
          {
@@ -1801,7 +1811,7 @@
                Write_Long(R[n],SR);
                PC+=2;
          }
-@@ -16323,7 +16349,7 @@
+@@ -16323,7 +16348,7 @@
                                                 Section 9 Instruction Descriptions
  
       {
@@ -1810,7 +1820,7 @@
           Write_Long(R[n],GBR);
           PC+=2;
       }
-@@ -16331,7 +16357,7 @@
+@@ -16331,7 +16356,7 @@
  
  STCMVBR(int n)      /* STC.L VBR,@-Rn : Privileged */
       {
@@ -1819,7 +1829,7 @@
           Write_Long(R[n],VBR);
           PC+=2;
       }
-@@ -16339,7 +16365,7 @@
+@@ -16339,7 +16364,7 @@
  
  STCMSSR(int n)      /* STC.L SSR,@-Rn : Privileged */
       {
@@ -1828,7 +1838,7 @@
           Write_Long(R[n],SSR);
           PC+=2;
       }
-@@ -16347,7 +16373,7 @@
+@@ -16347,7 +16372,7 @@
  
  STCMSPC(int n)      /* STC.L SPC,@-Rn : Privileged */
       {
@@ -1837,7 +1847,7 @@
           Write_Long(R[n],SPC);
           PC+=2;
       }
-@@ -16355,7 +16381,7 @@
+@@ -16355,7 +16380,7 @@
  
  STCMSGR(int n)      /* STC.L SGR,@-Rn : Privileged */
       {
@@ -1846,7 +1856,7 @@
           Write_Long(R[n],SGR);
           PC+=2;
       }
-@@ -16368,7 +16394,7 @@
+@@ -16368,7 +16393,7 @@
  Section 9 Instruction Descriptions
  
          {
@@ -1855,7 +1865,7 @@
                Write_Long(R[n],DBR);
                PC+=2;
          }
-@@ -16377,7 +16403,7 @@
+@@ -16377,7 +16402,7 @@
    STCMRm_BANK(int n)             /* STC.L Rm_BANK,@-Rn : Privileged */
                                   /* m=0–7 */
          {
@@ -1864,7 +1874,7 @@
                Write_Long(R[n],Rm_BANK);
                PC+=2;
          }
-@@ -16444,7 +16470,7 @@
+@@ -16444,7 +16469,7 @@
  
    STSMMACH(int n)           /* STS.L MACH,@-Rn */
    {
@@ -1873,7 +1883,7 @@
        Write_Long(R[n],MACH);
        PC+=2;
    }
-@@ -16452,7 +16478,7 @@
+@@ -16452,7 +16477,7 @@
  
    STSMMACL(int n)           /* STS.L MACL,@-Rn */
    {
@@ -1882,7 +1892,7 @@
        Write_Long(R[n],MACL);
        PC+=2;
    }
-@@ -16460,7 +16486,7 @@
+@@ -16460,7 +16485,7 @@
  
    STSMPR(int n)          /* STS.L PR,@-Rn */
    {
@@ -1891,7 +1901,7 @@
        Write_Long(R[n],PR);
        PC+=2;
    }
-@@ -16510,18 +16536,18 @@
+@@ -16510,18 +16535,18 @@
  
  Operation
  
@@ -1915,7 +1925,7 @@
    {
          R[n]=FPSCR&0x003FFFFF;
          PC+=2;
-@@ -16529,7 +16555,7 @@
+@@ -16529,7 +16554,7 @@
    STS_RESTORE(int       n)   /* STS.L FPSCR,@-Rn       */
    {
          R[n]-=4;
@@ -1924,7 +1934,7 @@
          PC+=2;
    }
  
-@@ -16894,12 +16920,12 @@
+@@ -16894,12 +16919,12 @@
         TRA=imm<<2;
         SSR=SR;
         SPC=PC+2;
@@ -1942,7 +1952,7 @@
   }
  
  
-@@ -17786,4 +17812,4 @@
+@@ -17786,4 +17811,4 @@
  
  
  1753, Shimonumabe, Nakahara-ku, Kawasaki-shi, Kanagawa 211-8668 Japan   REJ09B0318-0600

@@ -13,7 +13,7 @@ Basic types and functions for describing the SH4 state.
 
 Set Implicit Arguments.
 
-Require Import Bitvec ZArith Coqlib Util.
+Require Import Integers Bitvec ZArith Coqlib Util.
 
 (****************************************************************************)
 (** Processor modes *)
@@ -25,50 +25,38 @@ Inductive proc_mode : Type := usr.
 (**  Registers *)
 (****************************************************************************)
 
-Parameter DBR : regnum.
-Parameter EXPEVT : regnum.
-Parameter FPSCR : regnum.
-Parameter FPUL : regnum.
-Parameter GBR : regnum.
-Parameter H_00000100 : regnum.
-Parameter MACH : regnum.
-Parameter MACL : regnum.
-Parameter PC : regnum.
-Parameter PR : regnum.
-Parameter PTEA : regnum.
-Parameter PTEH : regnum.
-Parameter PTEL : regnum.
-Parameter R0_BANK : regnum.
-Parameter R1_BANK : regnum.
-Parameter R2_BANK : regnum.
-Parameter R3_BANK : regnum.
-Parameter R4_BANK : regnum.
-Parameter R5_BANK : regnum.
-Parameter R6_BANK : regnum.
-Parameter R7_BANK : regnum.
-Parameter SGR : regnum.
-Parameter SPC : regnum.
-Parameter SR : regnum.
-Parameter SR_BL : regnum.
-Parameter SR_MD : regnum.
-Parameter SR_RB : regnum.
-Parameter SSR : regnum.
-Parameter TRA : regnum.
-Parameter VBR : regnum.
+Definition R0_BANK := mk_regnum 0. (* General Register *)
+Definition R1_BANK := mk_regnum 1. (* General Register *)
+Definition R2_BANK := mk_regnum 2. (* General Register *)
+Definition R3_BANK := mk_regnum 3. (* General Register *)
+Definition R4_BANK := mk_regnum 4. (* General Register *)
+Definition R5_BANK := mk_regnum 5. (* General Register *)
+Definition R6_BANK := mk_regnum 6. (* General Register *)
+Definition R7_BANK := mk_regnum 7. (* General Register *)
 
+Definition SR := mk_regnum 16. (* Control Register *)
+Definition SSR := mk_regnum 17. (* Control Register *)
+Definition GBR := mk_regnum 18. (* Control Register *)
+Definition MACH := mk_regnum 19. (* System Register *)
+Definition MACL := mk_regnum 20. (* System Register *)
+Definition PR := mk_regnum 21. (* System Register *)
+Definition VBR := mk_regnum 22. (* Control Register *)
+Definition PC := mk_regnum 23. (* System Register *)
+Definition SPC := mk_regnum 24. (* Control Register *)
+Definition SGR := mk_regnum 25. (* Control Register *)
+Definition DBR := mk_regnum 26. (* Control Register *)
 
-Parameter Mbit : nat.
-Parameter Qbit : nat.
-Parameter Sbit : nat.
-Parameter Tbit : nat.
+(* *)
 
-Parameter FPSCR_MASK : nat. (* := 0x003FFFFF.*)
+Definition FPSCR := mk_regnum 100. (* System Register (* Floating Point Unit *) *)
+Definition FPUL := mk_regnum 101. (* System Register (* Floating Point Unit *) *)
 
-Definition succ := add (repr 1).
-Definition pred x := sub x (repr 1).
-Definition opp := sub (repr 0).
-
-
+Definition PTEH := mk_regnum 102. (* MMU Related Register *)
+Definition PTEL := mk_regnum 103. (* MMU Related Register *)
+Definition PTEA := mk_regnum 104. (* MMU Related Register *)
+                              
+Definition EXPEVT := mk_regnum 105. (* Exception Related Register *)
+Definition TRA := mk_regnum 106. (* Exception Related Register *)
 
 (* *)
 
@@ -83,6 +71,13 @@ right. intro h. inversion h. contradiction.
 Qed.
 
 Definition reg_mode (m : proc_mode) (k : regnum) : register := R k.
+
+(****************************************************************************)
+(**  Memory *)
+(****************************************************************************)
+
+Inductive memory : Type :=
+| M : Int.int -> memory.
 
 (****************************************************************************)
 (** Program status registers *)
