@@ -38,7 +38,7 @@ let set_debug() =
 let set_check() = set_check(); set_verbose();;
 
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
-		   | DecBinTest | DecAsmTest | DecTest;;
+                   | DecBinTest | DecAsmTest | DecTest;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -147,13 +147,13 @@ let parse_args() =
         ignore(get_syntax_input_file());
         ignore(get_dec_input_file())
     | DecAsmTest ->
-	ignore(get_pc_input_file());
-	ignore(get_syntax_input_file());
-	ignore(get_dec_input_file())
+        ignore(get_pc_input_file());
+        ignore(get_syntax_input_file());
+        ignore(get_dec_input_file())
     | DecTest ->
-	ignore(get_pc_input_file());
-	ignore(get_syntax_input_file());
-	ignore(get_dec_input_file())
+        ignore(get_pc_input_file());
+        ignore(get_syntax_input_file());
+        ignore(get_dec_input_file())
 ;;
 
 (*****************************************************************************)
@@ -199,23 +199,23 @@ let check() =
       verbose "reparsing... ";
       Genpc.lib b ps;
       let ps' = parse_string (Buffer.contents b) in
-	if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
+        if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
 
 let norm split_msr_code =
   if get_norm() then
     let ps = get_pc_input() in
       verbose "normalization... ";
       let ps = Norm.prog (split_msr_code ps) in
-	if get_check() then
-	  let ps' = Norm.prog ps in
-	    if ps = ps' then verbose "ok\n" else error "failed"
-	else verbose "\n";
-	set_pc_input ps;
+        if get_check() then
+          let ps' = Norm.prog ps in
+            if ps = ps' then verbose "ok\n" else error "failed"
+        else verbose "\n";
+        set_pc_input ps;
         if is_set_syntax_input_file() then
           let ss = get_syntax_input() in
           let ss' = Norm.split_msr_syntax ss in
             set_syntax_input ss';
-	    check();;
+            check();;
 
 let parse_input_file() =
   let verbose s = verbose (sprintf (format_of_string s) (if get_sh4 () then "SH4" else "ARM")) in
@@ -234,10 +234,10 @@ let parse_input_file() =
     let input_file = get_pc_input_file () in
     let split_msr_code, pc =
       if get_sh4 () then
-	(fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
-	C2pc.Traduction.prog_list_of_manual (input_bin input_file : C2pc.raw_c_code C2pc.manual)
+        (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
+        C2pc.Traduction.prog_list_of_manual (input_bin input_file : C2pc.raw_c_code C2pc.manual)
       else
-	Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
+        Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
 
     set_pc_input pc;
     check();
@@ -248,9 +248,9 @@ let parse_input_file() =
 
     set_dec_input 
       (let v = (if get_sh4 () then 
-	  fun x -> C2pc.Traduction.maplist_of_manual (input_bin x) 
-	else
-	  input_bin) (get_dec_input_file()) in
+          fun x -> C2pc.Traduction.maplist_of_manual (input_bin x) 
+        else
+          input_bin) (get_dec_input_file()) in
        let () = ignore v in
        v)
   );;
@@ -265,17 +265,23 @@ let genr_output() =
           Simlight2.lib (get_output_file()) (get_pc_input())
             (get_syntax_input()) (get_dec_input()) wf
     | CoqInst -> print Gencoq.lib (get_pc_input())
-    | CoqDec -> print (if get_sh4 () then Gencoqdecsh4.decode else Gencoqdec.decode) (get_dec_input())
+    | CoqDec -> print (let open Dec in
+                       let module D = Gencoqdec.Make ((val (
+                         if get_sh4 () then
+                           (module Sh4 : DEC) 
+                         else
+                           (module Arm : DEC)) : DEC)) in
+                       D.decode) (get_dec_input())
     | MlDec -> print Genmldec.decode (get_dec_input())
     | DecBinTest ->
-	Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())
+        Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())
           (get_dec_input()) (get_seed ())
     | DecAsmTest ->
-	Gendectest.gen_asm_test (get_output_file()) (get_pc_input()) 
-	  (get_syntax_input()) (get_dec_input()) (get_seed ())
+        Gendectest.gen_asm_test (get_output_file()) (get_pc_input()) 
+          (get_syntax_input()) (get_dec_input()) (get_seed ())
     | DecTest -> Gendectest.gen_test (get_output_file()) (get_pc_input()) 
-	  (get_syntax_input()) (get_dec_input()) (get_seed ())
-;;   
+          (get_syntax_input()) (get_dec_input()) (get_seed ())
+;;
 
 let main() =
   parse_args();

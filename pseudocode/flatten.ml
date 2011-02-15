@@ -16,6 +16,7 @@ open Printf;;
 open Util;;
 open Ast;;
 open Dec;;
+open Dec.Arm;;
 open Codetype;;
 open Validity;;
 open Syntaxtype;;

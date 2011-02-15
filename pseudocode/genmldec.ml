@@ -16,6 +16,7 @@ open Printf;;
 open Util;;     (* for the "list" function *)
 open Codetype;; (* from the directory "refARMparsing" *)
 open Dec;;
+open Dec.Arm;;
 open Lightheadertype;;
 
 (*****************************************************************************)
@@ -25,7 +26,7 @@ open Lightheadertype;;
 let comment b (lh: lightheader) =
   let lightheader b (p: lightheader) =
     match p with LH (is, s)
-	-> bprintf b "%a - %s" (list "." int) is s
+        -> bprintf b "%a - %s" (list "." int) is s
   in
     bprintf b "(*%a*)" lightheader lh;;
 
@@ -77,9 +78,9 @@ let mode_of_inst (m: string list) (lst: (string*int*int) list) =
 let add_mode_param (md: kind) (n: string list) lst =
   match md with
     | DecInstARMCond | DecInstARMUncond ->
-	if (mode_of_inst n lst != 0) then
-	  List.append [("add_mode", 0, 0)] lst
-	else lst
+        if (mode_of_inst n lst != 0) then
+          List.append [("add_mode", 0, 0)] lst
+        else lst
     | DecInstThumb | DecMode _ | DecEncoding -> lst;;
 
 
@@ -104,15 +105,15 @@ let gen_pattern (lh ,ls) =
   let dec ls =
     match ls with
       | (Value s, _) ->
-	  begin match s with
-	    | true -> "true"
-	    | false -> "false"
-	  end
+          begin match s with
+            | true -> "true"
+            | false -> "false"
+          end
       | (Shouldbe s, i) ->
-	  begin match s with
-	    | true -> "sBO"^(string_of_int i)
-	    | false -> "sBZ"^(string_of_int i)
-	  end
+          begin match s with
+            | true -> "sBO"^(string_of_int i)
+            | false -> "sBZ"^(string_of_int i)
+          end
       | (Param1 c, _) -> Char.escaped (Char.lowercase c)^"_"
       | (Param1s s, _) -> s
       | (Range ("cond", _, _), _) -> ""
@@ -177,29 +178,29 @@ let remove_params (md: kind) n lst =
   (* We do that in two steps *)
   let remove_params_step1 lst =
     List.map (fun s -> if (
-		match md with
-		  | DecMode i -> is_not_param_add_mode i s
-		  | DecInstARMCond | DecInstARMUncond ->
-		      let im = mode_of_inst n lst in
-			is_not_param_inst im s
+                match md with
+                  | DecMode i -> is_not_param_add_mode i s
+                  | DecInstARMCond | DecInstARMUncond ->
+                      let im = mode_of_inst n lst in
+                        is_not_param_inst im s
                   | DecInstThumb -> false (* TODO: Thumb mode *)
-		  | DecEncoding -> false) then
-		("",0,0) else s) lst
+                  | DecEncoding -> false) then
+                ("",0,0) else s) lst
   in
     (*remove variable in other cases*)
   let remove_params_step2 lst =
     match n with
       (* some addressing mode cases use 'cond' in the AST, and others does not *)
       | ("M2" ::_ :: "offset" :: _ |"M2" ::_ :: _ :: "offset" :: _ | "M3" :: _ :: "offset" :: _) ->
-	  List.map (fun (s, i1, i2) ->
-		      if (s = "cond") then ("",0,0) else (s, i1, i2)) lst
+          List.map (fun (s, i1, i2) ->
+                      if (s = "cond") then ("",0,0) else (s, i1, i2)) lst
 
       | ("MRC"|"MCR"|"MCRR"|"CDP"|"MRRC")::_ ->
-	  List.map (fun (s, i1, i2) ->
-		      if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn")||(s = "opcode") then ("",0,0) else (s, i1, i2)) lst
+          List.map (fun (s, i1, i2) ->
+                      if (s = "opcode_1")||(s = "opcode_2")||(s ="CRd")||(s = "CRm")||(s = "CRn")||(s = "opcode") then ("",0,0) else (s, i1, i2)) lst
 
       | "M5" :: "Unindexed" :: _ ->
-	  List.map (fun (s, i1, i2) -> if (s = "u_") then ("",0,0) else (s, i1, i2)) lst
+          List.map (fun (s, i1, i2) -> if (s = "u_") then ("",0,0) else (s, i1, i2)) lst
 
       | "SWI" :: _ -> List.map (fun (s, i1, i2) -> if (s = "immed_24") then ("",0,0) else (s, i1, i2)) lst
 
@@ -216,13 +217,13 @@ let remove_params (md: kind) n lst =
 let inst_param ls =
   match ls with
     | (("s" | "m" | "n" | "d" | "dHi" | "dLo"), i, _) ->
-	Printf.sprintf "(regnum_from_bit n%d w)" i
-    | ("cond", _, _) ->	"condition" (*REMOVE:"(condition w)"*)
+        Printf.sprintf "(regnum_from_bit n%d w)" i
+    | ("cond", _, _) -> "condition" (*REMOVE:"(condition w)"*)
     | (s, p, l) ->
-	if l > 1 then
-	  Printf.sprintf "(bits n%d n%d w)" (p+l-1) p
-	else
-	  Printf.sprintf "%s" s
+        if l > 1 then
+          Printf.sprintf "(bits n%d n%d w)" (p+l-1) p
+        else
+          Printf.sprintf "%s" s
 ;;
 
 (*keep only one of the same elements in a range*)
@@ -231,36 +232,36 @@ let param_m (_, ls) =
   let res = Array.create (Array.length ls) ("", 0, 0) in
     for i = 0 to (Array.length ls -1) do
       match ls.(i) with
-	| Range (s, len, _) ->
-	    if s.[0] = 'R' then
-	      res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
-	    else
-	      if s = "ImmedL" then
-		res.(i) <- ("immedL", i, len)
-	      else
-		if s = "8_bit_immediate" then
-		  res.(i) <- ("immed_8", i, len)
-		else
-		  res.(i) <- (s, i, len)
-	| (Nothing | Value _ | Shouldbe _) ->
-	    res.(i) <- ("", 0, 0)
-	| Param1 c ->
-	    res.(i) <-  ((Printf.sprintf "%s_" (Char.escaped c)), i, 1)
-	| Param1s s ->
-	    res.(i) <- (s, i, 1)
+        | Range (s, len, _) ->
+            if s.[0] = 'R' then
+              res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
+            else
+              if s = "ImmedL" then
+                res.(i) <- ("immedL", i, len)
+              else
+                if s = "8_bit_immediate" then
+                  res.(i) <- ("immed_8", i, len)
+                else
+                  res.(i) <- (s, i, len)
+        | (Nothing | Value _ | Shouldbe _) ->
+            res.(i) <- ("", 0, 0)
+        | Param1 c ->
+            res.(i) <-  ((Printf.sprintf "%s_" (Char.escaped c)), i, 1)
+        | Param1s s ->
+            res.(i) <- (s, i, 1)
     done;
     for i = 0 to (Array.length ls -1) do
     match res.(i) with
       | ("immed", _, _) ->
-	  res.(i) <- ("", 0, 0)
+          res.(i) <- ("", 0, 0)
       | ("I", 25, _) ->
-	  res.(i) <- ("", 0, 0)
+          res.(i) <- ("", 0, 0)
       | (_, _, len) ->
-	  if len > 0 then
-	  for j = 1 to len -1 do
-	    res.(i + j) <- ("", 0, 0)
-	  done;
-	  done;
+          if len > 0 then
+          for j = 1 to len -1 do
+            res.(i + j) <- ("", 0, 0)
+          done;
+          done;
     res;;
 
 let to_lowercase (str, a, b) =
@@ -276,13 +277,13 @@ let params f (lh, ls) =
   let aux b =
     let lst =
       (List.filter ((<>) "")
-	 (List.map inst_param
-	       (remove_params md dname
-	          (add_mode_param md dname
+         (List.map inst_param
+               (remove_params md dname
+                  (add_mode_param md dname
                      (List.map to_lowercase
-		        (List.sort (fun (s1, _, _) (s2, _, _) ->
-				      Pervasives.compare s1 s2)
-		           (Array.to_list (param_m (lh,ls)))))))))
+                        (List.sort (fun (s1, _, _) (s2, _, _) ->
+                                      Pervasives.compare s1 s2)
+                           (Array.to_list (param_m (lh,ls)))))))))
     in
       if List.length lst > 1 then par (list ", " f) b lst
       else (list ", " f) b lst
@@ -317,17 +318,17 @@ let shouldbe_test (lh, ls) =
   let aux b =
     (*if ((List.mem (Shouldbe true) lst) && (not (List.mem (Shouldbe false) lst))) then
       bprintf b "if (%a) then\n      DecInst (%s %t)\n      else DecUnpredictable"
-	(list "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
+        (list "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
     else
       if (List.mem (Shouldbe false) lst && (not (List.mem (Shouldbe true) lst))) then
-	bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-	  (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+        bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else DecUnpredictable"
+          (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
       else
-	if (List.mem (Shouldbe false) lst && (List.mem (Shouldbe true) lst)) then
-	  bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-	 (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
-	else*)
-	  bprintf b "%s %t" (id_inst (lh,ls)) (params string (lh, ls))
+        if (List.mem (Shouldbe false) lst && (List.mem (Shouldbe true) lst)) then
+          bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
+         (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+        else*)
+          bprintf b "%s %t" (id_inst (lh,ls)) (params string (lh, ls))
   in aux;;
 
 (*****************************************************************************)
@@ -366,22 +367,22 @@ let dec_inst b (lh, ls) =
     match md with
       | DecInstARMCond -> 
           bprintf b "    %a\n    | Coq_word28 (%t)->\n      %t\n"
-	    comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) true)
+            comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) true)
       | DecInstARMUncond ->
           bprintf b "    %a\n    | Coq_word28 (%t)->\n      %t\n"
-	    comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) false)
+            comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) false)
       | DecInstThumb -> () (* TODO: Thumb mode *)
       | DecEncoding -> ()
       | DecMode i ->
-	  (*FIXME*)
-	  if i = 1 || (i = 2 && false) || (i = 3 && false) then
-	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      DecInst (%s %t)\n"
-	      comment lh (gen_pattern (lh, ls))
-	      (id_addr_mode (lh, ls)) (params string (lh, ls))
-	  else
-	    bprintf b "    %a\n    | Coq_word28 (%t) ->\n      decode_cond w (fun condition -> %s %t)\n"
-	      comment lh (gen_pattern (lh ,ls))
-	      (id_addr_mode (lh, ls)) (params string (lh, ls))
+          (*FIXME*)
+          if i = 1 || (i = 2 && false) || (i = 3 && false) then
+            bprintf b "    %a\n    | Coq_word28 (%t) ->\n      DecInst (%s %t)\n"
+              comment lh (gen_pattern (lh, ls))
+              (id_addr_mode (lh, ls)) (params string (lh, ls))
+          else
+            bprintf b "    %a\n    | Coq_word28 (%t) ->\n      decode_cond w (fun condition -> %s %t)\n"
+              comment lh (gen_pattern (lh ,ls))
+              (id_addr_mode (lh, ls)) (params string (lh, ls))
 ;;
 
 (*****************************************************************************)
@@ -395,12 +396,12 @@ let sort_add_mode_cases i lst =
   match i with
     | 1 ->
         (* "Rotate Right with extend" (RRX) must be before "Rotate right by immediate" *)
-	let order_ad p =
-	  match num p with
-	    | 13 -> 0
-	    | _ -> 1
-	in
-	  List.sort (fun a b -> order_ad a - order_ad b) lst
+        let order_ad p =
+          match num p with
+            | 13 -> 0
+            | _ -> 1
+        in
+          List.sort (fun a b -> order_ad a - order_ad b) lst
     | _ -> lst;;
 
 (* Numbers in pattern refers to instruction number, i.e.,

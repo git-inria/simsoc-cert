@@ -15,6 +15,7 @@ open Ast;;
 open Printf;;
 open Util;;
 open Dec;;
+open Dec.Arm;;
 
 let num = string;;
 
@@ -244,7 +245,7 @@ let rec exp p b = function
             | "15", "8" -> bprintf b "get%s_byte_1(%a)" signed (exp p) e
             | "23", "16" -> bprintf b "get%s_byte_2(%a)" signed (exp p) e
             | "31", "24" -> bprintf b "get%s_byte_3(%a)" signed (exp p) e
-        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2	
+        | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2   
       end
   | Coproc_exp (e, f, es) ->
       bprintf b "%s(proc,%a)" (func f) (list "," (exp p)) (e::es)
@@ -273,9 +274,9 @@ and inst_aux p k b = function
 
   | Let ((_, n), ns, is, _) ->
       bprintf b "function %s(%a) {\n%a%a\n  };" n   
-	(list ", " (fun b (ty, x) -> 
-	  string b (sprintf "%s %s" (G.explicit_annot_type ty x) x))) ns
-	indent k   (list "" (inst p (k+2))) is
+        (list ", " (fun b (ty, x) -> 
+          string b (sprintf "%s %s" (G.explicit_annot_type ty x) x))) ns
+        indent k   (list "" (inst p (k+2))) is
 
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
@@ -286,9 +287,9 @@ and inst_aux p k b = function
   | Case (e, s, o) ->
       bprintf b "switch (%a) {\n%a%a  default:\n%a\n  }"
         (exp p) e (list "" (case_aux p k)) s indent k
-	(fun b -> function
-	  | None -> bprintf b "%aabort();" indent (k+2)
-	  | Some i -> inst p (k+2) b i) o
+        (fun b -> function
+          | None -> bprintf b "%aabort();" indent (k+2)
+          | Some i -> inst p (k+2) b i) o
 
   | If (e, (Block _|If _ as i), None) ->
       bprintf b "if (%a) {\n%a\n%a}" (exp p) e (inst p (k+2)) i indent k
@@ -296,16 +297,16 @@ and inst_aux p k b = function
 
   | If (e, (Block _|If _ as i1), Some (Block _|If _ as i2)) ->
       bprintf b "if (%a) {\n%a\n%a} else {\n%a\n%a}"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, (Block _|If _ as i1), Some i2) ->
       bprintf b "if (%a) {\n%a\n%a} else\n%a"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
   | If (e, i1, Some (Block _|If _ as i2)) ->
       bprintf b "if (%a)\n%a\n%aelse {\n%a\n%a}"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
   | Return e -> bprintf b "return %a;\n" (exp p) e
 
 and case_aux p k b (n, i) =
@@ -320,7 +321,7 @@ and affect p k b dst src =
     | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
-	bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
+        bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
     | CPSR -> (
         match src with
           | SPSR None -> bprintf b "proc->cpsr = *spsr(proc)"
@@ -399,12 +400,12 @@ let prog b p =
 let decl b p =
   match p.xprog.pkind with
     | InstARM  ->
-	bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
+        bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
           comment p p.xid
           (list "" prog_arg) p.xgs p.xid
     | InstThumb -> () (* TODO: thumb mode *)
     | Mode m ->
-	let os =
+        let os =
           if mode_outputs.(m-1) = [] then (
             let os' = List.filter (fun (x, _) -> not (List.mem x optemps)) p.xls in
               mode_outputs.(m-1) <- os');
@@ -431,21 +432,21 @@ let lsm_hack p =
                  None)
   in match p.pkind with
     | InstARM when guard_ldm_stm p.pident ->
-	(* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
+        (* add 'if (W) then Rn = new_Rn' at the end of the main 'if' *)
         let i = match p.pinst with
           | If (c, Block (i1::i2::tl), None) -> If (c, Block (i1::i2::a::tl), None)
           | Block ([x; If (c, Block (i1::i2::tl), None)]) ->
-	      Block ([x; If (c, Block (i1::i2::a::tl), None)])
+              Block ([x; If (c, Block (i1::i2::a::tl), None)])
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | InstARM when p.pident.iname = "RFE" ->
-	(* add 'if (W) then Rn = new_Rn' at the end of the main block *)
+        (* add 'if (W) then Rn = new_Rn' at the end of the main block *)
         let i = match p.pinst with
           | Block (l) -> Block (a::l)
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | InstARM when p.pident.iname = "SRS" ->
-	(* add 'if (W) then R13_mode = new_Rn' at the end of the main block *)
+        (* add 'if (W) then R13_mode = new_Rn' at the end of the main block *)
         let a' = If (Var "W",
                      Proc("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"]),
                      None) in
@@ -454,7 +455,7 @@ let lsm_hack p =
           | _ -> raise (Failure ("Unexpected AST shape: " ^ p.pident.iname))
         in { p with pinst = i }
     | Mode 4 ->
-	(* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
+        (* replace 'If (...) then Rn = ...' by 'new_Rn = ...' *)
         { p with pinst = inst p.pinst }
     | _ -> p;;
 

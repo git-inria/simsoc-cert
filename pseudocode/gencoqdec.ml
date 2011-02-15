@@ -18,12 +18,18 @@ The main function is "decode". Other functions should not be called
 directly from outside this file.
 *)
 
+
 open Ast;;
 open Printf;;
 open Util;;     (* for the "list" function *)
 open Codetype;; (* from the directory "refARMparsing" *)
 open Dec;;
 open Lightheadertype;;
+
+module Make (Dec_proc : DEC) = 
+struct
+
+open Dec_proc
 
 (*****************************************************************************)
 (** generate the comment above the pattern *)
@@ -129,7 +135,7 @@ let gen_pattern (lh ,ls) =
   let aux b =
     match add_mode lh with
       | DecInstARMUncond -> 
-          let lst = Array.to_list (Array.sub x 0 28) in
+          let lst = Array.to_list (gen_pattern_get_array x) in
             (list "" dec) b (List.rev lst)
       | DecInstARMCond -> begin match name (lh ,ls) with
           | "BKPT" :: _ -> let lst = Array.to_list (Array.sub x 0 28) in
@@ -363,22 +369,22 @@ let dec_inst b (lh, ls) =
   let md = add_mode lh in
     match md with
       | DecInstARMCond ->
-          bprintf b "    %a\n    | word28 %t=>\n      %t\n"
-            comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) true)
+          bprintf b "    %a\n    | word%s %t=>\n      %t\n"
+            comment lh word_size (gen_pattern (lh, ls)) (mode_tst (lh, ls) true)
       | DecInstARMUncond -> 
-          bprintf b "    %a\n    | word28 %t=>\n      %t\n"
-            comment lh (gen_pattern (lh, ls)) (mode_tst (lh, ls) false)
+          bprintf b "    %a\n    | word%s %t=>\n      %t\n"
+            comment lh word_size (gen_pattern (lh, ls)) (mode_tst (lh, ls) false)
       | DecInstThumb -> () (* TODO: Thumb mode *)
       | DecEncoding -> ()
       | DecMode i ->
           (*FIXME*)
           if i = 1 || (i = 2 && false) || (i = 3 && false) then
-            bprintf b "    %a\n    | word28 %t=>\n      DecInst (%s %t)\n"
-              comment lh (gen_pattern (lh, ls))
+            bprintf b "    %a\n    | word%s %t=>\n      DecInst (%s %t)\n"
+              comment lh word_size (gen_pattern (lh, ls))
               (id_addr_mode (lh, ls)) (params string (lh, ls))
           else
-            bprintf b "    %a\n    | word28 %t=>\n      decode_cond w (fun condition => %s %t)\n"
-              comment lh (gen_pattern (lh ,ls))
+            bprintf b "    %a\n    | word%s %t=>\n      decode_cond w (fun condition => %s %t)\n"
+              comment lh word_size (gen_pattern (lh ,ls))
               (id_addr_mode (lh, ls)) (params string (lh, ls))
 ;;
 
@@ -420,7 +426,7 @@ let is_cond_inst (lh, _) = match add_mode lh with
   | DecInstARMCond | DecInstThumb -> true
   | DecEncoding | DecMode _ | DecInstARMUncond-> false;;
 
-let is_uncond_inst (lh, _) = match add_mode lh with
+let is_uncond_inst (lh, _) = specific_uncond_inst lh && match add_mode lh with
   | DecInstARMUncond | DecInstThumb -> true
   | DecEncoding | DecMode _ | DecInstARMCond-> false;;
 
@@ -432,30 +438,29 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require and notations*)
-  (let arm = "Arm_" in
-   (string b (sprintf "Require Import Bitvec List Util %sFunctions %sConfig %s %sState Semantics ZArith arm6inst Simul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." arm arm "Arm" arm)));
+  (
+   (string b (sprintf "Require Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith %s %sSimul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_proc_1 prefix_coq_main prefix_proc_1 prefix_proc_2 prefix_inst prefix_proc_2)));
 
-  (*print the decoder of addressing modes 1 - 5*)
-  for i = 1 to 5 do
-    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w28_of_word w with\n" i i;
-    (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
-    bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
-  done;
+  (*print the decoder of addressing modes 1 - 5 if needed *)
+  if display_cond then
+    for i = 1 to 5 do
+      bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w28_of_word w with\n" i i;
+      (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
+      bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
+    done;
 
   (*print the instruction decoder*)
-  bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
+  bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" word_size;
   (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
   bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-
-  bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w28_of_word w with\n";
-  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
-  bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-
-  bprintf b "\n\nDefinition decode (w : word) : decoder_result inst :=\n";
-  bprintf b "  match w32_of_word w with\n";
-  bprintf b "    | word32 1 1 1 1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>\n";
-  bprintf b "      decode_unconditional w\n";
-  bprintf b "    | _ => decode_conditional w\n";
-  bprintf b "  end.\n"
+  if display_cond then
+    begin
+      bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" word_size;
+      (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
+      bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
+    end;
+  bprintf b "\n\nDefinition decode ";
+  List.iter (bprintf b "%s\n") decode_body;
 ;;
 
+end
