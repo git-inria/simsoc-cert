@@ -36,8 +36,8 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 %.vo: %.v
 	coqc -q -R ../coq SimSoCCert $<
 
-%.v: %.elf ../testgen/elf2coq
-	../testgen/elf2coq $< $@
+%.v: %.elf ../testgen/arm2coq
+	../testgen/arm2coq $< $@
 
 %_a.elf: %.c common.h
 	arm-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
@@ -45,7 +45,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 %_t.elf: %.c common.h
 	arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
-../testgen/elf2coq: FORCE
+../testgen/arm2coq: FORCE
 	cd ../testgen/ && $(MAKE)
 
 FORCE:

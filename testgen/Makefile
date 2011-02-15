@@ -2,9 +2,9 @@
 CPPFLAGS=-I../elf # for elf.h and elf_loader.hpp
 CXXFLAGS=-Wall -Wextra
 
-default: elf2coq
+default: arm2coq
 
-elf2coq: main.o ../elf/elf_loader.o
+arm2coq: main.o ../elf/elf_loader.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
 main.o: main.cpp ../elf/elf_loader.hpp
@@ -13,6 +13,6 @@ main.o: main.cpp ../elf/elf_loader.hpp
 	cd ../elf && $(MAKE) $@
 
 clean:
-	rm -f elf2coq *.o
+	rm -f arm2coq *.o
 
 FORCE:
