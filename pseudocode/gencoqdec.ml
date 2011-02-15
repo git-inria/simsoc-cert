@@ -444,7 +444,7 @@ let decode b ps =
   (*print the decoder of addressing modes 1 - 5 if needed *)
   if display_cond then
     for i = 1 to 5 do
-      bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w28_of_word w with\n" i i;
+      bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w%s_of_word w with\n" i i word_size;
       (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
       bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
     done;
