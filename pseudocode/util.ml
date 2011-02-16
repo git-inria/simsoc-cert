@@ -145,6 +145,10 @@ let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
 let print f x =
   let b = Buffer.create 10000 in f b x; Buffer.output_buffer stdout b;;
 
+let begins_with b s = 
+  let lg = String.length s in
+  Buffer.length b >= lg && Buffer.sub b 0 lg = s
+
 (*****************************************************************************)
 (** warnings or errors *)
 (*****************************************************************************)
