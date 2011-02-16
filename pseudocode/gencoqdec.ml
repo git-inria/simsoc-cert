@@ -407,20 +407,6 @@ let sort_add_mode_cases i lst =
           List.sort (fun a b -> order_ad a - order_ad b) lst
     | _ -> lst;;
 
-(* Numbers in pattern refers to instruction number, i.e.,
- * the subsection in which the instruction is defined *)
-let order_inst p =
-  match num p with
-    | 45|8|59|67|16|90 -> -6 (* instruction without condition *)
-    | 84|85|86|87|88|89|129|113|114|115|146|147|148 -> -1 (* instructions without accumulator *)
-    | 9|10|11|13|39|40 -> 1 (* v5 instructions with SBO or SBZ can hide other v6 instructions *)
-    | 25|105|31|101 -> 2 (* loadstore instructions with a 'T' *)
-    | 28|102|104|30|26|29 -> 3
-    | 38 -> 4
-    | 19|20|21|22|96|97|98|35|106|116|117|99|100|23|24|41
-        |42|65|18|60|61|2|3|4|6|14|15 -> 5 (* other instuctions with a mode*)
-    | _ -> 0;;
-
 (*separate the instruction and address mode data*)
 let is_cond_inst (lh, _) = match add_mode lh with
   | DecInstARMCond | DecInstThumb -> true
@@ -438,27 +424,26 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require and notations*)
-  (
-   (string b (sprintf "Require Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith %s %sSimul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_proc_1 prefix_coq_main prefix_proc_1 prefix_proc_2 prefix_inst prefix_proc_2)));
+  bprintf b "Require Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith %s %sSimul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_proc_1 prefix_coq_main prefix_proc_1 prefix_proc_2 prefix_inst prefix_proc_2;
 
   (*print the decoder of addressing modes 1 - 5 if needed *)
   if display_cond then
     for i = 1 to 5 do
       bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w%s_of_word w with\n" i i word_size;
-      (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
+      list "" dec_inst b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
       bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
     done;
 
   (*print the instruction decoder*)
-  bprintf b "\n\nDefinition decode_unconditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" word_size;
-  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
-  bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-  if display_cond then
+  let print_decode_cond msg cond_or_uncond =
     begin
-      bprintf b "\n\nDefinition decode_conditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" word_size;
-      (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
+      bprintf b "\n\nDefinition decode_%sconditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" msg word_size;
+      list "" dec_inst b (sort_inst (List.filter cond_or_uncond ps));
       bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
-    end;
+    end in
+  print_decode_cond "un" is_uncond_inst;
+  if display_cond then print_decode_cond "" is_cond_inst;
+
   bprintf b "\n\nDefinition decode ";
   List.iter (bprintf b "%s\n") decode_body;
 ;;

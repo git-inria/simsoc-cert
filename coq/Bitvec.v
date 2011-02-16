@@ -137,6 +137,22 @@ Inductive w16 : Type := word16 : bool^^16 --> w16.
 Definition w16_of_word (w : int) : w16 :=
   nary_iter_decr (bits_of_Z 16 (unsigned w)) 16 15 word16.
 
+Inductive w4 : Type := word4 : bool^^4 --> w4.
+
+Definition w32_first4bits_of_word (w : int) : w4 :=
+  nary_iter_decr (bits_of_Z 32 (unsigned w)) 4 31 word4.
+
+Remark correct_get_first4bits : forall w, 
+  match w32_of_word w with
+    | word32 a b c d _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => (a, b, c, d)
+  end 
+  = 
+  match w32_first4bits_of_word w with
+    | word4 a b c d => (a, b, c, d)
+  end.
+  trivial.
+Qed.
+
 (****************************************************************************)
 (** bytes (8-bits words) *)
 (****************************************************************************)
