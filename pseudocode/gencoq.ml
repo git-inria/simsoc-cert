@@ -223,6 +223,57 @@ let is_not_num = function
   | Num _ -> false
   | _ -> true;;
 
+let is_cpsr_s0 = function
+  | "SETEND"|"Immediate"|"Register"|"Logical_shift_left_by_immediate"
+  | "Logical_shift_right_by_register"|"Rotate_right_by_immediate"
+  | "Logical_shift_left_by_register"|"Arithmetic_shift_right_by_immediate"
+  | "Arithmetic_shift_right_by_register"|"Rotate_right_by_register"
+  | "Rotate_right_with_extend"| "Scaled_register_offset" 
+  | "Scaled_register_pre_indexed"|"Scaled_register_post_indexed" -> true
+  | _ -> false
+
+let use_st nm = 
+  let under_if, under_if2 = ref false, ref false in
+  (* [decl_loc] contains a special call to [simplify_loc_st] and the moment where we call [decl_loc] is when we encounter a [If] constructor. 
+   * So in the case our subtree contains a [If], we can stop the evaluation of [use_st] by returning [false] at this moment (and everywhere inside the [If] subtree), because we will call again a new [use_st] which will return the right answer later. *)
+
+  inst_exists 
+    (fun i -> 
+      let () = 
+        begin
+          if !under_if then under_if2 := true else ();
+          match i with If _ -> under_if := true | _ -> ();
+        end in
+      false)
+    (fun e -> not !under_if2 && match e with
+      | Fun (s, _) -> depend_on_state s || is_cp15_reg1 s
+      | CPSR -> not (is_cpsr_s0 nm)
+      | Reg (Var s, None) -> not (List.mem s input_registers)
+      | Reg _ 
+      | Memory _ 
+      | SPSR _ 
+        -> true
+      | _ -> false)
+    ffalse
+
+let use_loc loc = 
+  let condition_var s = List.exists (fun (s', _, _) -> s' = s) loc in 
+  let condition_var_l l = List.exists (function Var s -> condition_var s | _ -> false) l in
+
+  inst_exists 
+    (function
+      | Proc (_, l) -> condition_var_l l
+      | Affect (_, Var s) -> condition_var s
+      | _ -> false)
+    (function
+      | BinOp (Var s, _, _)
+      | BinOp (_, _, Var s) 
+      | Memory (Var s, _)
+      | Range (Var s, _) -> condition_var s
+      | Fun (_, l) -> condition_var_l l
+      | _ -> false)
+    ffalse
+
 (* add parentheses around complex expressions *)
 
 let rec pexp' (loc: (string*string*int) list) nm sz b = function
@@ -332,15 +383,7 @@ and exp' loc nm sz b = function
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" (exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
-  | CPSR -> begin match nm with
-      | "SETEND"|"Immediate"|"Register"|"Logical_shift_left_by_immediate"
-      | "Logical_shift_right_by_register"|"Rotate_right_by_immediate"
-      | "Logical_shift_left_by_register"|"Arithmetic_shift_right_by_immediate"
-      | "Arithmetic_shift_right_by_register"|"Rotate_right_by_register"
-      | "Rotate_right_with_extend"| "Scaled_register_offset" 
-      | "Scaled_register_pre_indexed"|"Scaled_register_post_indexed"-> string b "cpsr s0"
-      | _ -> string b "cpsr st"
-    end
+  | CPSR -> string b (if is_cpsr_s0 nm then "cpsr s0" else "cpsr st")
   | Range (e, r) -> 
       begin match e, r with
         | BinOp (e1, "*", e2) , Bits (n1, n2) ->
@@ -410,17 +453,27 @@ let case bin loc nm k b (n, i) =
     | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
     | _ -> raise Not_found;;
 
+let simplify_loc_st_ s = function
+  | true, true -> sprintf "__ loc st   (%s)" s
+  | false, true -> sprintf "_____ st   (%s)" s
+  | true, false -> sprintf "____ loc   (%s)" s
+  | _ -> s
+
+let simplify_loc_st loc nm s x = simplify_loc_st_ s (use_loc loc x, use_st nm x)
+
 let rec inst loc nm k b i = indent b k; inst_aux loc nm k b i
 
-and decl_loc f b x = 
+and decl_loc loc nm f b x = 
   let b_tmp = Buffer.create 100 in
   let () = f b_tmp x in
-  (if begins_with b_tmp "___ " then
-      bprintf b "(%s)"
-   else
-      bprintf b "(__ loc st   (%s))") (Buffer.contents b_tmp)
+  let s = Buffer.contents b_tmp in
+  bprintf b "(%s)" 
+    (if begins_with b_tmp "___ " then
+        s
+     else 
+        simplify_loc_st loc nm s x)
 
-and pinst loc nm k b i = indent b k; decl_loc (inst_aux loc nm k) b i
+and pinst loc nm k b i = indent b k; decl_loc loc nm (inst_aux loc nm k) b i
 
 and loc_v i = snd (V.vars i)
 
@@ -456,22 +509,37 @@ and inst_aux loc nm k b = function
     let print k b l = 
       let f, _ = 
       List.fold_left (fun (f_last, k) (b_let, l) -> 
-        let b_tmp = Buffer.create 1000 in (*let indent_ k = String.make k ' ' in*)
-        if b_let then
-          let () = list "" (fun b_tmp b_t -> bprintf b_tmp "%s\n%a" (Buffer.contents b_t)   indent k) b_tmp l in
-          let cts = Buffer.contents b_tmp in
-          (fun f_next -> f_last (fun b -> bprintf b "__ loc st   (%s___ (%a)) :: nil" cts f_next)), k + 2
-        else
-          let () = list "" (*sprintf "\n%s" (indent_ k)*) (fun b_tmp b_t -> bprintf b_tmp "__ loc st   (%s) ::\n%a" (Buffer.contents b_t)   indent k) b_tmp l in
-          let cts = Buffer.contents b_tmp in
-          (fun f_next -> f_last (fun b -> bprintf b "%s%a" cts f_next)), k
+        let b_tmp = Buffer.create 1000 in
+        let f_print1, f_print2, f_incr =
+          if b_let then
+            (fun _ _ b f x -> bprintf b "%s\n%a" f x), 
+            (fun use_loc use_st b s f x -> 
+              bprintf b "%s :: nil" 
+                (simplify_loc_st_ 
+                   (sprintf "%s___ (%s)" s (let b = Buffer.create 100 in
+                                              let () = f b x in
+                                              Buffer.contents b)) (use_loc, use_st))),
+            fun x -> x + 2
+          else
+            (fun use_loc use_st b s f x -> 
+              bprintf b "%s ::\n%a" 
+                (simplify_loc_st_ (sprintf "(%s)" s) (use_loc, use_st)) f x), 
+            (fun _ _ b s f x -> bprintf b "%s%a" s f x), 
+            fun x -> x in
+        let () = list "" (fun b_tmp (use_loc, use_st, b_t) -> 
+          f_print1 use_loc use_st b_tmp (Buffer.contents b_t)   indent k) b_tmp l in
+        let cts = Buffer.contents b_tmp in
+        (fun f_next -> f_last (fun b -> 
+          f_print2 
+            (List.exists (function (true, _, _) -> true | _ -> false) l) 
+            (List.exists (function (_, true, _) -> true | _ -> false) l) b cts f_next)), f_incr k
       ) (bprintf b "%a", k + 6)
         
-        (separate (fun b -> begins_with b "let " (* FIXME detect a 'let'-form by changing the appropriate type instead of doing such a raw comparison with [b] *))
+        (separate (fun (_, _, b) -> begins_with b "let " (* FIXME detect a 'let'-form by changing the appropriate type instead of doing such a raw comparison with [b] *))
           (List.map (fun i -> 
             let b = Buffer.create 100 in 
             let () = bprintf b "%a" (inst_aux loc nm (k + 5)) i in
-            b) l)) in
+            use_loc loc i, use_st nm i, b) l)) in
       f in
     bprintf b "___ (%a)" (fun b -> print k b is (fun b () -> bprintf b "nil")) ()
 
@@ -831,7 +899,7 @@ let lib b ps =
     (let arm, sh4, is_arm = "Arm_", "Sh4_", ps.header = [] in
      let armsh4 = if is_arm then arm else sh4 in
     bprintf b
-"(* File generated by SimSoC-Cert. It provides the definitions of the types\nof %s instructions, and their semantics. *)\n\nRequire Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message. \nNotation __ loc st A := (_get_loc (fun loc => _get_st (fun st => A))).\nNotation ___ := block.\n\n" 
+"(* File generated by SimSoC-Cert. It provides the definitions of the types\nof %s instructions, and their semantics. *)\n\nRequire Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message. \nNotation ___ := block.\nNotation ____ loc A := (_get_loc (fun loc => A)).\nNotation _____ st A := (_get_st (fun st => A)).\nNotation __ loc st A := (____ loc (_____ st A)).\n\n" 
       (if is_arm then "ARMv6 addressing modes and" else "SH4") 
       armsh4
       armsh4
