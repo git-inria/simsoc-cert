@@ -276,14 +276,14 @@ let use_loc loc =
 
 (* add parentheses around complex expressions *)
 
-let rec pexp' (loc: (string*string*int) list) nm sz b = function
+let rec pexp' par (loc: (string*string*int) list) nm sz b = function
   | Var s as e -> 
-      if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") b e 
-      else (exp' loc nm sz) b e
+    (if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") 
+     else exp' loc nm sz) b e
   | Fun (f, []) as e when depend_on_config f -> (exp' loc nm sz) b e 
   | e -> par (exp' loc nm sz) b e
 
-and pexp loc nm b e = pexp' loc nm "" b e 
+and pexp loc nm b e = pexp' par loc nm "" b e 
 
 (* like pexp but prints numbers as integers (not words) *)
 and num_exp loc nm b = function
@@ -365,6 +365,7 @@ and exp' loc nm sz b = function
 
   (* default printing of binary operators (like function calls) *)
   | BinOp (e1, f, e2) ->
+    let pexp' = pexp' par in
       begin match nm with
         | "SMMLA" | "SMMLS" | "SMMUL" ->
             begin match f with
@@ -440,7 +441,7 @@ and range loc nm b = function
 (*****************************************************************************)
 
 (*REMOVE when finished! *)
-let todo s f b x = bprintf b "todo %s (* %a *)" s f x;;
+let todo s f b x = bprintf b "@todo unit %s (* %a *)" s f x;;
 
 let try_todo msg f b i =
   let b_try = Buffer.create 500 in 
@@ -453,13 +454,11 @@ let case bin loc nm k b (n, i) =
     | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
     | _ -> raise Not_found;;
 
-let simplify_loc_st_ s = function
-  | true, true -> sprintf "__ loc st   (%s)" s
-  | false, true -> sprintf "_____ st   (%s)" s
-  | true, false -> sprintf "____ loc   (%s)" s
+let simplify_loc_st s = function
+  | true, true -> sprintf "<:loc st:> %s" s
+  | false, true -> sprintf "<st> %s" s
+  | true, false -> sprintf "<.loc.> %s" s
   | _ -> s
-
-let simplify_loc_st loc nm s x = simplify_loc_st_ s (use_loc loc x, use_st nm x)
 
 let rec inst loc nm k b i = indent b k; inst_aux loc nm k b i
 
@@ -468,10 +467,10 @@ and decl_loc loc nm f b x =
   let () = f b_tmp x in
   let s = Buffer.contents b_tmp in
   bprintf b "(%s)" 
-    (if begins_with b_tmp "___ " then
+    (if begins_with b_tmp "[ " then (* before a [block], we do not prefix by [simplify_loc_st] *)
         s
      else 
-        simplify_loc_st loc nm s x)
+        simplify_loc_st s (use_loc loc x, use_st nm x))
 
 and pinst loc nm k b i = indent b k; decl_loc loc nm (inst_aux loc nm k) b i
 
@@ -490,58 +489,44 @@ and inst_aux loc nm k b = function
       (*FIXME: replace empty string by program name*)
 
   | Block is ->
-
-    let separate tag = 
-      let cons b1 l = b1, List.rev l in
-      function
-        | [] -> []
-        | x :: xs -> 
-          let b1, l, ls =
-            List.fold_left (fun (b1, l, acc) x ->
-              let b2 = tag x in
-              if b1 = b2 then
-                b2, x :: l, acc
-              else
-                b2, [x], cons b1 l :: acc
-            ) (tag x, [x], []) xs in
-          List.rev (cons b1 l :: ls) in
     
-    let print k b l = 
-      let f, _ = 
-      List.fold_left (fun (f_last, k) (b_let, l) -> 
+    let print b k l = 
+      let f, _, _ = 
+      List.fold_left (fun (f_last, k, was_aff) (b_let, l) -> 
         let b_tmp = Buffer.create 1000 in
-        let f_print1, f_print2, f_incr =
+
+        let f_print1, f_print2, f_incr, b_ident =
           if b_let then
-            (fun _ _ b f x -> bprintf b "%s\n%a" f x), 
-            (fun use_loc use_st b s f x -> 
-              bprintf b "%s :: nil" 
-                (simplify_loc_st_ 
-                   (sprintf "%s___ (%s)" s (let b = Buffer.create 100 in
-                                              let () = f b x in
-                                              Buffer.contents b)) (use_loc, use_st))),
-            fun x -> x + 2
+            (fun _ _ b s -> bprintf b "%s\n%a" s  indent k), 
+            (fun b s f x -> 
+              bprintf b "%a %s" (if was_aff then fun b _ -> bprintf b "\n%a;" indent k else fun _ x -> x) () 
+                (simplify_loc_st 
+                   (sprintf "%s[%s]" s (let b = Buffer.create 100 in
+                                        let () = f b x in
+                                        Buffer.contents b)) (List.exists (function (true, _, _) -> true | _ -> false) l, 
+                                                             List.exists (function (_, true, _) -> true | _ -> false) l))),
+            (fun x -> x + 2),
+            ""
           else
-            (fun use_loc use_st b s f x -> 
-              bprintf b "%s ::\n%a" 
-                (simplify_loc_st_ (sprintf "(%s)" s) (use_loc, use_st)) f x), 
-            (fun _ _ b s f x -> bprintf b "%s%a" s f x), 
-            fun x -> x in
-        let () = list "" (fun b_tmp (use_loc, use_st, b_t) -> 
-          f_print1 use_loc use_st b_tmp (Buffer.contents b_t)   indent k) b_tmp l in
+            (fun use_loc use_st b s -> bprintf b " %s"  (simplify_loc_st s (use_loc, use_st))), 
+            (fun b -> bprintf b "%s%a"), 
+            (fun x -> x),
+            sprintf "\n%s;" (String.make k ' ') in
+
+        let () = list b_ident (fun b_tmp (use_loc, use_st, b_t) -> 
+          f_print1 use_loc use_st b_tmp (Buffer.contents b_t)) b_tmp l in
         let cts = Buffer.contents b_tmp in
-        (fun f_next -> f_last (fun b -> 
-          f_print2 
-            (List.exists (function (true, _, _) -> true | _ -> false) l) 
-            (List.exists (function (_, true, _) -> true | _ -> false) l) b cts f_next)), f_incr k
-      ) (bprintf b "%a", k + 6)
+        (fun f_next -> f_last (fun b -> f_print2 b cts f_next)), f_incr k, not b_let
+
+      ) (bprintf b "%a", k, false)
         
         (separate (fun (_, _, b) -> begins_with b "let " (* FIXME detect a 'let'-form by changing the appropriate type instead of doing such a raw comparison with [b] *))
           (List.map (fun i -> 
             let b = Buffer.create 100 in 
-            let () = bprintf b "%a" (inst_aux loc nm (k + 5)) i in
+            let () = bprintf b "%a" (inst_aux loc nm (k + 3)) i in
             use_loc loc i, use_st nm i, b) l)) in
       f in
-    bprintf b "___ (%a)" (fun b -> print k b is (fun b () -> bprintf b "nil")) ()
+    bprintf b "[%a]" (fun b -> print b k is (fun b () -> bprintf b " " (* nil *))) ()
 
   | Let (_, _, is, _) -> 
       bprintf b "%a" (inst_aux loc nm k) (Block is)
@@ -559,8 +544,8 @@ and inst_aux loc nm k b = function
               "if_then_else %a (if_CurrentModeHasSPSR (fun em =>\n%a))\n%a"
               (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
         | _ ->
-            bprintf b "if_then_else %a\n%a\n%a"
-              (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
+            bprintf b "If %a\n%athen%a\n%aelse%a"
+              (pexp loc nm) e   indent k   (pinst loc nm (k+2)) i1   indent k   (pinst loc nm (k+2)) i2
       end
 
   (* try to generate the code of an affectation; in case of failure,
@@ -601,8 +586,8 @@ and affect' b v loc nm = function
           let name, tp, id = List.find (fun (s',_,_) -> s=s') loc in
           let sz = if tp = "long" then "64" else "" in 
               bprintf b "update_loc%s n%d (*%s*) %a" 
-                sz id name (pexp' loc nm sz) v
-        with Not_found -> bprintf b "let %s := %a in" s (pexp loc nm) v
+                sz id name (pexp' par loc nm sz) v
+        with Not_found -> bprintf b "let %s := %a in" s (pexp' (fun x -> x) loc nm "") v
       end
   (* affectation of a CPSR bit requires a special case *)
   | Range (CPSR, Flag (s, _)) -> 
@@ -668,13 +653,15 @@ let split = function
 
 let block nm k b i =
   let is1, is2 = split i in
+  begin
     List.iter (endline (inst [] nm k) b) is1;
-    bprintf b "%alet r := %a in" indent k (inst_aux [] nm k) (Block is2);;
+    (if is2 = [] then 
+        ()
+     else 
+        bprintf b "%ado_then %a;\n" indent k (inst_aux [] nm k) (Block is2));
+  end;;
 
 let repr_0 = "repr 0"
-
-(* default result component value *)
-let default b _ = string b (sprintf ", %s" repr_0);;
 
 let mode_var b = function
 (*REMOVE?  | "shifter_carry_out" as s -> bprintf b ", zne 0 %s" s*)
@@ -714,28 +701,22 @@ let pinst b p =
         let ls = mode_vars k in
         if StrSet.mem p.pref problems then
           begin
-            bprintf b "  let r := %a in\n"
+            bprintf b "  do_then (%a);\n"
               (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst;
-            bprintf b "  fun lbs => match r lbs with\n";
-            bprintf b "    | Ok _ s1 => (do_then save_s0_true ; f %a) s1\n" 
-              (list " " (fun b _ -> bprintf b "(%s)" repr_0)) ls;
-            bprintf b "    | r => r\n";
-            bprintf b "  end";
+            bprintf b "  ret_ {{ %a }}" 
+              (list " ; " (fun b _ -> bprintf b "%s" repr_0)) ls;
           end
         else
           match p.pinst with
-            | If (e, i, None) ->
-              bprintf b "  if %a then\n%a\n    (r%a)\n  else (Ok false st%a)"
+            | If (e, i, None) -> 
+              bprintf b "  if %a then\n%a\n    ret_ {{ %a }}\n  else\n    do_then conjure_up_false;\n    ret (false, {{ %a }})"
                 (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
-                (list "" mode_var) ls (list "" default) ls
+                (list " ; " string) ls (list " ; " string) ls
             | i ->
               begin
-                bprintf b "%a\n  fun lbs => match r lbs with\n" 
-                  (block (p.pident.iname) 2) i;
-                bprintf b "    | Ok _ s1 => (do_then save_s0_true ; f %a) s1\n" 
-                  (list " " string) ls;
-                bprintf b "    | r => r\n";
-                bprintf b "  end";
+                bprintf b "%a" (block (p.pident.iname) 2) i;
+                bprintf b "  ret_ {{ %a }}" 
+                  (list " ; " string) ls;
               end;;
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
@@ -744,9 +725,8 @@ let semfun b p gs =
   match p.pkind with
     | InstARM | Mode _ ->
         bprintf b
-          "(* %s %a *)\nDefinition %a_step%s%a : semfun unit := _get_s0 (fun s0 => \n%a).\n\n"
-          p.pref Genpc.name p name p (if p.pkind = InstARM then "" else " f") 
-          (list "" arg_typ) gs pinst p
+          "(* %s %a *)\nDefinition %a_step%a : semfun _ := <s0>\n%a.\n\n"
+          p.pref Genpc.name p name p (list "" arg_typ) gs pinst p
     | InstThumb -> ();; (* TODO: Thumb mode *)
 
 (*****************************************************************************)
@@ -797,7 +777,7 @@ let call bcall_inst bcall_mode p gs =
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in
         bprintf b "    | %a%a =>" name p args gs;
-        bprintf b " %a_step f%a\n" name p args gs;;
+        bprintf b " %a_step%a\n" name p args gs;;
 
 (*****************************************************************************)
 (** Main coq generation function.
@@ -808,10 +788,11 @@ For each instruction:
 (*****************************************************************************)
 
 let lib b ps =
+  let five = 5 in
   let bcons_inst = Buffer.create 5000
-  and bcons_mode = Array.init 5 (fun _ -> Buffer.create 1000)
+  and bcons_mode = Array.init five (fun _ -> Buffer.create 1000)
   and bcall_inst = Buffer.create 5000
-  and bcall_mode = Array.init 5 (fun _ -> Buffer.create 1000)
+  and bcall_mode = Array.init five (fun _ -> Buffer.create 1000)
   and bsem = Buffer.create 100000
   and bsem_head = Buffer.create 100000 in
   let prog p =
@@ -898,30 +879,52 @@ let lib b ps =
     (* print preamble *)
     (let arm, sh4, is_arm = "Arm_", "Sh4_", ps.header = [] in
      let armsh4 = if is_arm then arm else sh4 in
-    bprintf b
-"(* File generated by SimSoC-Cert. It provides the definitions of the types\nof %s instructions, and their semantics. *)\n\nRequire Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message. \nNotation ___ := block.\nNotation ____ loc A := (_get_loc (fun loc => A)).\nNotation _____ st A := (_get_st (fun st => A)).\nNotation __ loc st A := (____ loc (_____ st A)).\n\n" 
-      (if is_arm then "ARMv6 addressing modes and" else "SH4") 
-      armsh4
-      armsh4
-      (if is_arm then "Arm Arm_SCC" else "Sh4")
-      armsh4
-      (if is_arm then "" else "Sh4_") );
+     List.iter (bprintf b "%s\n")
+       [ "(* File generated by SimSoC-Cert. It provides the definitions of the types"
+       ; sprintf "of %s instructions, and their semantics. *)" (if is_arm then "ARMv6 addressing modes and" else "SH4") 
+       ; ""
+       ; sprintf "Require Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith Message." armsh4 armsh4 (if is_arm then "Arm Arm_SCC" else "Sh4") armsh4 (if is_arm then "" else "Sh4_")
+       ; "" ]);
     
     (* print header *)
     bprintf b "%a" Buffer.add_buffer bsem_head;
     (* print type definitions *)
-    for k = 1 to 5 do
+    for k = 1 to five do
       if Buffer.length bcons_mode.(k-1) <> 0 then
         bprintf b "(* Addressing mode %d *)\nInductive mode%d : Type :=%a.\n\n"
           k k Buffer.add_buffer bcons_mode.(k-1)
     done;
     bprintf b "(* Instructions *)\nInductive inst : Type :=%a.\n\n" Buffer.add_buffer bcons_inst;
     (* print semantic functions *)
-    bprintf b "(* Semantic functions of addressing modes and instructions *)\nModule InstSem (Import C : CONFIG).\n\n";
+    bprintf b "(* Semantic functions of addressing modes and instructions *)\nModule InstSem (Import C : CONFIG).\nDefinition ret_ {A} (x : A) := ret (true, x).\n\n";
     Buffer.add_buffer b bsem;
-    for k = 1 to 5 do
-      if Buffer.length bcall_mode.(k-1) = 0 then () else 
-      bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (m : mode%d) f :=\n  match m with\n%aend.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)
-    done;
-    bprintf b "(* Semantic function for instructions *)\nDefinition step (i : inst) : semfun unit :=\n  do_then save_s0_true;\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
+
+    (match
+        let rec aux k nb f = 
+          if k = 0 then
+            (nb, f)
+          else 
+            aux (k-1) 
+              (if Buffer.length bcall_mode.(k-1) = 0 then 
+                  succ nb
+               else
+                  nb)
+              (let k = succ (five - k) in
+               fun () -> 
+                 let () = f () in
+                 bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (m : mode%d) : _ -> semfun unit := mode_step\n  match m with\n%a  end.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)) in
+        aux five 0 (fun x -> x)
+     with
+       | five_, _ when five = five_ -> ()
+       | _, f -> 
+         begin 
+           List.iter (bprintf b "%s\n")
+             [ "Definition mode_step {A B C} f_mode f : semfun C :="
+             ; "  do (b, l) <- f_mode;"
+             ; "  apply (if b : bool then NaryFunctions.nfun_to_nfun A _ _ (next conjure_up_true) B f else f) l."
+             ; "" ];
+           f ();
+         end);
+
+    bprintf b "(* Semantic function for instructions *)\nDefinition step (i : inst) : semfun unit :=\n  do_then conjure_up_true;\n  match i with\n%aend.\n\n" Buffer.add_buffer bcall_inst;
     bprintf b "End InstSem.\n";;

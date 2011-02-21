@@ -32,6 +32,24 @@ let list_iteri f l =
     | [] -> ()
   in aux 0 f l;;
 
+(* [separate f l] produces a partition of [l], determined by the [f] function.
+ * Intuitively, we can easily retrieve [l] from the partition, by applying a
+ * [List.flatten] to it (modulo a call to [List.map snd]). *)
+let separate tag = 
+  let cons b1 l = b1, List.rev l in
+  function
+    | [] -> []
+    | x :: xs -> 
+      let b1, l, ls =
+        List.fold_left (fun (b1, l, acc) x ->
+          let b2 = tag x in
+          if b1 = b2 then
+            b2, x :: l, acc
+          else
+            b2, [x], cons b1 l :: acc
+        ) (tag x, [x], []) xs in
+      List.rev (cons b1 l :: ls)
+
 (*****************************************************************************)
 (** functions on arrays *)
 (*****************************************************************************)

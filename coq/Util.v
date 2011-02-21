@@ -147,3 +147,35 @@ End nary.
 
 Implicit Arguments nary_iter_incr [A B].
 Implicit Arguments nary_iter_decr [A B].
+
+(****************************************************************************)
+(** dependent list constructor *)
+(****************************************************************************)
+Unset Implicit Arguments.
+
+Inductive list_n {A : Type} : nat -> Type :=
+  | nil_n : list_n O
+  | cons_n : forall n, A -> list_n n -> list_n (S n).
+
+Notation "{{ }}" := nil_n.
+Notation "{{ a ; .. ; b }}" := (cons_n _ a .. (cons_n _ b nil_n) ..).
+
+(* Convert a [list_n] into a [list] with an extra property on its length. *)
+Definition list_of_list_n : forall A n, @list_n A n -> { l : list A | n = length l }.
+  induction n ; intros.
+  exists nil.
+  trivial.
+  inversion X.
+  destruct (IHn X1).
+  exists (X0 :: x).
+  simpl.
+  auto.
+Defined.
+
+(* Simple application of an n-ary function with its parameters in the list. *)
+Definition apply {A n B} (f : NaryFunctions.nfun A n B) (l : @list_n A n) : B.
+  refine (NaryFunctions.nuncurry _ _ _ f _).
+  destruct (list_of_list_n _ _ l).
+  rewrite e.
+  apply NaryFunctions.nprod_of_list.
+Defined.

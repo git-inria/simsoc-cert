@@ -74,6 +74,9 @@ Definition bind {A B} (m : simul_semfun A) (f : A -> simul_semfun B) : simul_sem
     | SimKo lbs m => SimKo lbs m
   end.
 
+Notation "'do' X <- A ; B" := (bind A (fun X => B))
+  (at level 200, X ident, A at level 100, B at level 200).
+
 Definition catch {A} (m : simul_semfun A) (f : _ -> simul_semfun A) : simul_semfun A :=
   fun lbs0 => 
   match m lbs0 with 
@@ -82,17 +85,17 @@ Definition catch {A} (m : simul_semfun A) (f : _ -> simul_semfun A) : simul_semf
   end.
 
 Definition bind_s fs A (m : simul_semfun unit) (f : state -> simul_semfun A) : simul_semfun A :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | SimOk a lbs1 => f (fs lbs1) lbs1
-    | SimKo s m => SimKo s m
-  end.
+  bind m (fun _ lbs1 => f (fs lbs1) lbs1).
 
-Definition get_s0 {A} := @bind_s (fun x => s0 (semst x)) A (SimOk tt).
-Definition get_st {A} := @bind_s (fun x => st (semst x)) A (SimOk tt).
+Definition next {A B} (f1 : simul_semfun A) (f2 : simul_semfun B) : simul_semfun B :=
+  do _ <- f1; f2.
 
-Definition save_s0_true (lbs : simul_state) :=
-  SimOk tt (mk_simul_state (let s := st (semst lbs) in mk_semstate nil true s s) (nb_next lbs)).
+Definition _get_st {A} := @bind_s (fun x => st (semst x)) A (SimOk tt).
+
+Notation "'<' st '>' A" := (_get_st (fun st => A)) (at level 200, A at level 100, st ident).
+
+Definition conjure_up_true (lbs : simul_state) :=
+  SimOk tt (mk_simul_state (mk_semstate nil true (st (semst lbs))) (nb_next lbs)).
 
 Module Make (Import I : INST).
 
@@ -104,7 +107,7 @@ Module Make (Import I : INST).
     end.
 
   Definition next : simul_semfun unit :=
-    get_st (fun s lbs => match inst_set (cpsr s) with
+    <s> fun lbs => match inst_set (cpsr s) with
       | None => SimKo lbs InvalidInstructionSet
       | Some SH4 =>
         let a := address_of_current_instruction s in
@@ -115,11 +118,11 @@ Module Make (Import I : INST).
             | DecUndefined_with_num fake => SimKo lbs ComplexSemantics (*handle_exception (add_exn s UndIns)*)
             | DecInst i =>
               match step i (semst lbs) with
-                | Ok _ lbs' => handle_exception (mk_simul_state (mk_semstate (loc lbs') (bo lbs') (s0 lbs') (incr_PC_ARM (bo lbs') (st lbs'))) (nb_next lbs))
+                | Ok _ lbs' => handle_exception (mk_simul_state (mk_semstate (loc lbs') (bo lbs') (incr_PC_ARM (bo lbs') (st lbs'))) (nb_next lbs))
                 | Ko m | Todo m => SimKo lbs m
               end
           end
-    end).
+    end.
 
   Function simul (lbs : simul_state) {measure nb_next lbs} : @simul_result unit :=
     match nb_next lbs with

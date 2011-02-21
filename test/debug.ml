@@ -104,11 +104,11 @@ let stack s =
 let return a lbs = SimOk (a, lbs)
 
 let mk_st state steps = 
-  { semst = { loc = [] ; bo = true ; s0 = state ; st = state } ; nb_next = nat steps }
+  { semst = { loc = [] ; bo = true ; st = state } ; nb_next = nat steps }
 
 let check state steps expected name =
   try
-    ignore (Simul.bind simul (fun () -> Simul.get_st (fun s -> 
+    ignore (Simul.bind simul (fun () -> Simul._get_st (fun s -> 
       return (if reg s 0 = expected then print_endline (name^" OK.")
         else (
           print_string ("Error in "^name^", r0 = ");
@@ -133,9 +133,9 @@ let run_opt (max : int option) : (BinInt.coq_Z * (int * hexa) list) Simul.simul_
     | (step, Ox pc) :: l' as l ->
       if Some step = max then return l
       else
-        Simul.bind Simul.save_s0_true (fun () -> 
+        Simul.bind Simul.conjure_up_true (fun () -> 
         Simul.bind next (fun () -> 
-        get_st (fun s' -> 
+        Simul._get_st (fun s' -> 
         let pc' = (reg s' 15) - 8 in
         (if pc' = pc then return
          else if pc' = pc+4 then aux
@@ -145,10 +145,10 @@ let run_opt (max : int option) : (BinInt.coq_Z * (int * hexa) list) Simul.simul_
     | _ -> raise (Failure "inside run function")
   in 
 
-  Simul.bind (get_s0 (fun s0 -> aux [ (0, Ox ((reg s0 15) - 8))
-                                    ; (0, Ox ((reg s0 15) - 8))]))
+  Simul.bind (Simul._get_st (fun s0 -> aux [ (0, Ox ((reg s0 15) - 8))
+                                           ; (0, Ox ((reg s0 15) - 8))]))
     (fun l -> 
-      get_st (fun sn -> return (regz sn 0, l)));;
+      Simul._get_st (fun sn -> return (regz sn 0, l)));;
 
 let run s0 = run_opt None (mk_st s0 1);;
 let runmax s0 max = run_opt (Some max) (mk_st s0 1);;

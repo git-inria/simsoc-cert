@@ -46,7 +46,6 @@ Definition local := list map_sod.
 Record semstate := mk_semstate
   { loc : local
   ; bo : bool
-  ; s0 : state
   ; st : state }.
 
 Inductive result {A} : Type :=
@@ -56,7 +55,7 @@ Inductive result {A} : Type :=
 
 Definition semfun A := semstate -> @result A.
 
-Definition ok_semstate {A} (a : A) loc bo s0 st := Ok a (mk_semstate loc bo s0 st).
+Definition ok_semstate {A} (a : A) loc bo st := Ok a (mk_semstate loc bo st).
 
 Definition todo {A} (m : message) : semfun A := fun _ => Todo m.
 
@@ -64,6 +63,8 @@ Definition unpredictable {A} (m : message) : semfun A := fun _ => Ko m.
 
 Definition if_then_else {A} (c : bool) (f1 f2 : semfun A) : semfun A := 
   if c then f1 else f2.
+
+Notation "'If' A 'then' B 'else' C" := (if_then_else A B C) (at level 200).
 
 Definition if_then (c : bool) (f : semfun unit) : semfun unit :=
   if_then_else c f (Ok tt).
@@ -92,33 +93,50 @@ Definition bind {A B} (m : semfun A) (f : A -> semfun B) : semfun B :=
 Notation "'do' X <- A ; B" := (bind A (fun X => B))
   (at level 200, X ident, A at level 100, B at level 200).
 
-Definition seq {A B} (f1 : semfun A) (f2 : semfun B) : semfun B :=
-  fun lbs0 =>
-  match f1 lbs0 with
-    | Ok a1 lbs1 =>
-      match f2 lbs1 with
-        | Ok a2 lbs2 => ok_semstate a2 (loc lbs2) (andb (bo lbs1) (bo lbs2)) (s0 lbs0) (st lbs2)
-        | Ko m => Ko m
-        | Todo m => Todo m
-      end
-      | Ko m => Ko m
-      | Todo m => Todo m
-  end.
+Definition bind2 {A B C} (f : semfun (A * B)) (g : A -> B -> semfun C) : semfun C :=
+  bind f (fun xy => g (fst xy) (snd xy)).
 
-Notation "'do_then' A ; B" := (seq A B)
+Notation "'do' ( X , Y ) <- A ; B" := (bind2 A (fun X Y => B))
+   (at level 200, X ident, Y ident, A at level 100, B at level 200).
+
+Definition ret {A} := @Ok A.
+
+Definition next {A B} (f1 : semfun A) (f2 : semfun B) : semfun B :=
+  do _ <- f1; f2.
+
+Notation "'do_then' A ; B" := (next A B)
   (at level 200 , A at level 100 , B at level 200).
 
-Definition block l := List.fold_left seq l (Ok tt).
+Definition bind_s {A} fs B (m : semfun unit) (f : A -> semfun B) : semfun B :=
+  bind m (fun _ lbs1 => f (fs lbs1) lbs1).
+
+Definition _get_loc {A} := bind_s loc A (Ok tt).
+Definition _get_bo {A} := bind_s bo A (Ok tt).
+Definition _get_st {A} := bind_s st A (Ok tt).
+
+Notation "'<.' loc '.>' A" := (_get_loc (fun loc => A)) (at level 200, A at level 100, loc ident).
+Notation "'<' st '>' A" := (_get_st (fun st => A)) (at level 200, A at level 100, st ident).
+Notation "'<:' loc st ':>' A" := (<.loc.> <st> A) (at level 200, A at level 100, loc ident, st ident).
+
+Definition _set_loc loc lbs := ok_semstate tt loc (bo lbs) (st lbs).
+Definition _set_bo b lbs := ok_semstate tt (loc lbs) b (st lbs).
+Definition _set_st st lbs := ok_semstate tt (loc lbs) (bo lbs) st.
+
+Definition block (l : list (semfun unit)) : semfun unit := 
+  let next_bo f1 f2 := next f1 (_get_bo f2) in
+  List.fold_left (fun f1 f2 =>
+    next_bo f1 (fun b1 => 
+    next_bo f2 (fun b2 => _set_bo (andb b1 b2))) ) l (Ok tt).
+
+Notation "[ ]" := (block nil).
+Notation "[ a ; .. ; b ]" := (block (a :: .. (b :: nil) ..)).
 
 Fixpoint loop_aux (p k : nat) (f : nat -> semfun unit) : semfun unit :=
-  fun lbs0 => 
   match k with
-    | 0 => Ok tt lbs0
+    | 0 => ret tt
     | S k' =>
-      match f p lbs0 with
-        | Ok _ lbs1 => loop_aux (S p) k' f lbs1
-        | r => r
-      end
+    do_then f p ;
+    loop_aux (S p) k' f
   end.
 
 Definition loop (p q : nat) := loop_aux p (q - p + 1).
@@ -132,7 +150,7 @@ Fixpoint update_loc_aux (nb : nat) (v :single_or_double) (loc : local)
   end.
 
 Definition update_loc_ V f (nb : nat) (v : V) : semfun unit :=
-  fun lbs => ok_semstate tt (update_loc_aux nb (f v) (loc lbs)) (bo lbs) (s0 lbs) (st lbs).
+  <.loc.> _set_loc (update_loc_aux nb (f v) loc).
 
 Definition update_loc := update_loc_ word Single.
 Definition update_loc64 := update_loc_ long Double.
@@ -145,33 +163,33 @@ Fixpoint get_loc_aux (nb : nat) (loc : local) :=
   end.
 
 Definition get_loc (nb : nat) (loc : local) :=
-  match (get_loc_aux nb loc) with
+  match get_loc_aux nb loc with
     | Single v => v
     | Double v => Word.repr (sbits64 31 0 v)
   end.
 
 Definition get_loc64 (nb : nat) (loc : local) :=
-  match (get_loc_aux nb loc) with
+  match get_loc_aux nb loc with
     | Single v => to64 w0 v
     | Double v => v
   end.
 
-Definition map_state f : semfun unit :=
-  fun lbs => ok_semstate tt (loc lbs) (bo lbs) (s0 lbs) (f (st lbs)).
+Definition map_st f : semfun unit :=
+  <st> _set_st (f st).
 
-Definition set_cpsr v := map_state (fun st => set_cpsr st v).
-Definition set_cpsr_bit n v := map_state (fun st => set_cpsr_bit st n v).
-Definition set_spsr m v := map_state (fun st => set_spsr st m v).
+Definition set_cpsr v := map_st (fun st => set_cpsr st v).
+Definition set_cpsr_bit n v := map_st (fun st => set_cpsr_bit st n v).
+Definition set_spsr m v := map_st (fun st => set_spsr st m v).
 
 Definition set_reg (n : regnum) (v : word) : semfun unit := 
-  fun lbs => ok_semstate tt (loc lbs) (zne n 15) (s0 lbs) (set_reg (st lbs) n v).
+  fun lbs => ok_semstate tt (loc lbs) (zne n 15) (set_reg (st lbs) n v).
 
 Definition set_reg_mode m k v :=
-  map_state (fun st => (*FIXME?*) set_reg_mode st m k v).
-Definition write a n w := map_state (fun st => write st a n w).
+  map_st (fun st => (*FIXME?*) set_reg_mode st m k v).
+Definition write a n w := map_st (fun st => write st a n w).
 
 Definition fExclusive f (addr : word) pid size := 
-  map_state (fun st => f st addr (nat_of_Z pid)
+  map_st (fun st => f st addr (nat_of_Z pid)
     (nat_of_Z size)).
 
 Definition MarkExclusiveGlobal := fExclusive MarkExclusiveGlobal.
@@ -179,7 +197,7 @@ Definition MarkExclusiveLocal := fExclusive MarkExclusiveLocal.
 Definition ClearExclusiveByAddress := fExclusive ClearExclusiveByAddress.
 
 Definition ClearExclusiveLocal pid :=
-  map_state (fun st => ClearExclusiveLocal st (nat_of_Z pid)).
+  map_st (fun st => ClearExclusiveLocal st (nat_of_Z pid)).
 
 Definition IsExclusiveGlobal (s : state) (addr : word) (pid : word)
   (size : nat) : bool := false.
@@ -187,23 +205,8 @@ Definition IsExclusiveGlobal (s : state) (addr : word) (pid : word)
 Definition IsExclusiveLocal (s : state) (addr : word) (pid : word)
   (size : nat) : bool := false.
 
-Definition save_s0_true (lbs : semstate) :=
-  let s := st lbs in
-  ok_semstate tt nil true s s.
+Definition conjure_up_true (lbs : semstate) :=
+  ok_semstate tt nil true (st lbs).
 
-Definition save_s0_false (lbs : semstate) :=
-  let s := st lbs in
-  ok_semstate tt nil false s s.
-
-Definition bind_s {A0} fs A (m : semfun unit) (f : A0 -> semfun A) : semfun A :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | Ok a lbs1 => f (fs lbs1) lbs1
-    | Ko m => Ko m
-    | Todo m => Todo m
-  end.
-
-Definition _get_s0 {A} := bind_s s0 A (Ok tt).
-Definition _get_st {A} := bind_s st A (Ok tt).
-Definition _get_loc {A} := bind_s loc A (Ok tt).
-Definition _get_bo {A} := bind_s bo A (Ok tt).
+Definition conjure_up_false (lbs : semstate) :=
+  ok_semstate tt nil false (st lbs).
