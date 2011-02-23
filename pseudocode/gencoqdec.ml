@@ -424,7 +424,7 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require and notations*)
-  bprintf b "Require Import Bitvec %sFunctions Semantics %s Message.\nImport Decoder.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_inst;
+  bprintf b "Require Import Bitvec %sFunctions Semantics %s Message.\nImport Decoder.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc prefix_inst;
 
   (*print the decoder of addressing modes 1 - 5 if needed *)
   if display_cond then

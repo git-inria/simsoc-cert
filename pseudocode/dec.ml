@@ -81,10 +81,8 @@ sig
   val gen_pattern_get_array : 'a array -> 'a array
   val word_size : string
   val specific_uncond_inst : Lightheadertype.lightheader -> bool
-  val prefix_proc_1 : string
-  val prefix_proc_2 : string
+  val prefix_proc : string
   val prefix_inst : string
-  val prefix_coq_main : string
   val display_cond : bool
   val decode_body : string list
   val sort_inst : (Lightheadertype.lightheader * 'a) list -> (Lightheadertype.lightheader * 'a) list
@@ -106,10 +104,8 @@ struct
   let word_size = string_of_int twenty_height
   let specific_uncond_inst _ = true
 
-  let prefix_proc_1 = "Arm_"
-  let prefix_proc_2 = ""
+  let prefix_proc = "Arm_"
   let prefix_inst = "arm6inst"
-  let prefix_coq_main = "Arm"
   let display_cond = true  
   let decode_body =
     [ "(w : word) : decoder_result inst :="
@@ -144,10 +140,8 @@ struct
     | LH (_ :: n :: _, _) -> C2pc.Traduction.is_not_float_mmu n
     | LH _ -> true
 
-  let prefix_proc_1 = "Sh4_"
-  let prefix_proc_2 = prefix_proc_1
+  let prefix_proc = "Sh4_"
   let prefix_inst = "sh4inst"
-  let prefix_coq_main = "Sh4"
   let display_cond = false
   let decode_body = [ ":= decode_unconditional." ]
   let sort_inst x = x
