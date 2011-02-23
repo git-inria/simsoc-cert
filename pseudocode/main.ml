@@ -264,7 +264,22 @@ let genr_output() =
         let wf = if is_set_weight_file() then Some (get_weight_file ()) else None in
           Simlight2.lib (get_output_file()) (get_pc_input())
             (get_syntax_input()) (get_dec_input()) wf
-    | CoqInst -> print Gencoq.lib (get_pc_input())
+    | CoqInst -> print (Gencoq.lib (if get_sh4 () then
+        (module struct
+          let nb_buff = 0
+          let preamble_name = "Sh4_"
+          let preamble_comment = "SH4"
+          let preamble_proc = "Sh4"
+          let preamble_import = ""
+        end : Gencoq.GENCOQ)
+      else
+        (module struct
+          let nb_buff = 5
+          let preamble_name = "Arm_"
+          let preamble_comment = "ARMv6 addressing modes and"
+          let preamble_proc = "Arm Arm_SCC"
+          let preamble_import = "State "
+        end : Gencoq.GENCOQ))) (get_pc_input())
     | CoqDec -> print (let open Dec in
                        let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then

@@ -426,13 +426,12 @@ let decode b ps =
   (*print the import require and notations*)
   bprintf b "Require Import Bitvec %sFunctions Semantics %s Message.\nImport Decoder.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc prefix_inst;
 
-  (*print the decoder of addressing modes 1 - 5 if needed *)
-  if display_cond then
-    for i = 1 to 5 do
-      bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w%s_of_word w with\n" i i word_size;
-      list "" dec_inst b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
-      bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
-    done;
+  (*print the decoder of addressing modes if needed *)
+  for i = 1 to nb_buff do
+    bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w%s_of_word w with\n" i i word_size;
+    list "" dec_inst b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
+    bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
+  done;
 
   (*print the instruction decoder*)
   let print_decode_cond msg cond_or_uncond =

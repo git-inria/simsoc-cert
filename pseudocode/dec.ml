@@ -86,6 +86,7 @@ sig
   val display_cond : bool
   val decode_body : string list
   val sort_inst : (Lightheadertype.lightheader * 'a) list -> (Lightheadertype.lightheader * 'a) list
+  val nb_buff : int
 end
 
 module Arm : DEC =
@@ -128,6 +129,7 @@ struct
       | 42|65|18|60|61|2|3|4|6|14|15 -> 5 (* other instuctions with a mode*)
       | _ -> 0;;
   let sort_inst l = List.sort (fun a b -> order_inst a - order_inst b) l
+  let nb_buff = 5
 end
 
 module Sh4 : DEC = 
@@ -145,4 +147,5 @@ struct
   let display_cond = false
   let decode_body = [ ":= decode_unconditional." ]
   let sort_inst x = x
+  let nb_buff = 0
 end
