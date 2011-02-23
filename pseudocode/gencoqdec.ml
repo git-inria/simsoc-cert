@@ -354,7 +354,7 @@ let mode_tst (lh, ls) c =
             bprintf b "decode_cond w (fun condition => %t)" 
               (shouldbe_test (lh, ls))
           else
-            bprintf b "DecInst (%t)" 
+            bprintf b "DecInst _ (%t)" 
               (shouldbe_test (lh, ls))
   in aux;;
 
@@ -379,7 +379,7 @@ let dec_inst b (lh, ls) =
       | DecMode i ->
           (*FIXME*)
           if i = 1 || (i = 2 && false) || (i = 3 && false) then
-            bprintf b "    %a\n    | word%s %t=>\n      DecInst (%s %t)\n"
+            bprintf b "    %a\n    | word%s %t=>\n      DecInst _ (%s %t)\n"
               comment lh word_size (gen_pattern (lh, ls))
               (id_addr_mode (lh, ls)) (params string (lh, ls))
           else
@@ -424,7 +424,7 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require and notations*)
-  bprintf b "Require Import Bitvec List Util %sFunctions %sConfig %s %sState %sSemantics ZArith %s %sSimul Message.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_proc_1 prefix_coq_main prefix_proc_1 prefix_proc_2 prefix_inst prefix_proc_2;
+  bprintf b "Require Import Bitvec %sFunctions Semantics %s Message.\nImport Decoder.\n\nLocal Notation \"0\" := false.\nLocal Notation \"1\" := true." prefix_proc_1 prefix_inst;
 
   (*print the decoder of addressing modes 1 - 5 if needed *)
   if display_cond then

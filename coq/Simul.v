@@ -2,172 +2,142 @@
 SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
-
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
 Instruction decoding and execution cycle.
 *)
 
 Set Implicit Arguments.
 
-Require Import Bitvec Arm Semantics Arm_State Message.
+Require Import Bitvec Semantics Message.
 Require Recdef.
 
-(****************************************************************************)
-(** decoding result type *)
-(****************************************************************************)
+Module Type SEMANTICS (Import P : PROC) (Import S : STATE P).
+  Parameter semstate : Set.
+  Parameter result : Type -> Type.
+  Definition semfun A := semstate -> @result A.
 
-Section decoder_result.
+  Parameter st : semstate -> state. (* FIXME monadic : hide *)
+  Parameter init : state -> semstate. (* FIXME monadic : hide *)
+  Parameter init2 : state -> semstate -> semstate. (* FIXME monadic : hide *)
+  Parameter inM : forall A B : Type, (A -> semstate -> B) -> (message -> B) -> result A -> B.
+  Parameter ret : forall A : Type, A -> semfun A.
+  Parameter incr_PC : semfun unit.
+  Parameter _get_st : forall A : Type, (state -> semfun A) -> semfun A.
+  Parameter raise : forall A : Type, message -> semfun A.
+  Parameter next : forall A B : Type, semfun A -> semfun B -> semfun B.
+  Parameter add_exn : exception -> semfun unit.
+End SEMANTICS.
 
- Variable inst : Type.
-
- Inductive decoder_result : Type :=
- | DecInst : inst -> decoder_result
- | DecUnpredictable : decoder_result
- | DecError : message -> decoder_result
- | DecUndefined_with_num : nat -> decoder_result.
-
-Notation DecUndefined := (DecUndefined_with_num 0).
-
-End decoder_result.
-
-Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
-  decoder_result inst :=
-  match condition w with
-    | Some oc => DecInst (g oc)
-    | None => @DecUndefined_with_num inst 1
-  end.
-
-Definition decode_cond_mode (mode : Type) (f : word -> decoder_result mode)
-  (w : word) (inst : Type) (g : mode -> opcode -> inst) :
-  decoder_result inst :=
-  match condition w with
-    | Some oc =>
-      match f w with
-        | DecInst i => DecInst (g i oc)
-        | DecError m => @DecError inst m
-        | DecUnpredictable => @DecUnpredictable inst
-        | DecUndefined => @DecUndefined_with_num inst 2
-      end
-    | None => @DecUndefined_with_num inst 3
-  end.
-
-Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
-  (w : word) (inst : Type) (g : mode -> inst) :
-  decoder_result inst :=
-  match f w with
-    | DecInst i => DecInst (g i)
-    | DecError m => @DecError inst m
-    | DecUnpredictable => @DecUnpredictable inst
-    | DecUndefined => @DecUndefined_with_num inst 2
-  end.
-
-(****************************************************************************)
-(** types and functions necessary for building a simulator *)
-(****************************************************************************)
-
-Module Type INST.
-  Variable inst : Type.
-  Variable step : inst -> semfun unit.
-  Variable decode : word -> decoder_result inst.
-  Variable handle_exception : semfun unit.
-End INST.
+Module Type FUNCTIONS (Import P : PROC).
+  Parameter next : forall A, (message -> A) -> A -> instruction_set -> A.
+End FUNCTIONS.
 
 (****************************************************************************)
 (** functor building a simulator *)
 (****************************************************************************)
 
-(* b true means that the last instruction executed was not a jump *)
-(* Because the PC register contains the address of the current instruction
- * plus 8 (cf A2.4.3), we add 8 to the PC if a jump occured (b false) *)
-(* The implementation assumes that the processor is in ARM mode *)
-Definition incr_PC_ARM (b: bool) (s : state) : state :=
-  set_reg s PC (add (reg_content s PC) (repr (if b then 4 else 8))).
+Module Make (Import P : PROC) (Import S : STATE P) (Import Semantics : SEMANTICS P S) (F : FUNCTIONS P).
 
-Record simul_state := mk_simul_state
-  { semst : semstate
-  ; nb_next : nat }.
+  (****************************************************************************)
+  (** types and functions necessary for building a simulator *)
+  (****************************************************************************)
 
-Inductive simul_result {A} : Type :=
-| SimOk : A -> simul_state -> simul_result
-| SimKo : simul_state (* state before the current instruction *)
-  -> message (* error message *) -> simul_result.
+  Notation "'do_then' A ; B" := (next A B)
+    (at level 200 , A at level 100 , B at level 200).
 
-Definition simul_semfun A := simul_state -> @simul_result A.
+  Module Type INST.
+    Variable inst : Type.
+    Variable step : inst -> semfun unit.
+    Variable decode : word -> decoder_result inst.
+    Variable handle_exception : semfun unit.
+  End INST.
 
-Definition bind {A B} (m : simul_semfun A) (f : A -> simul_semfun B) : simul_semfun B :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | SimOk a lbs1 => f a lbs1
-    | SimKo lbs m => SimKo lbs m
-  end.
+  Record simul_state := mk_simul_state
+    { semst : semstate
+    ; nb_next : nat }.
 
-Notation "'do' X <- A ; B" := (bind A (fun X => B))
-  (at level 200, X ident, A at level 100, B at level 200).
+  Inductive simul_result {A} : Type :=
+  | SimOk : A -> simul_state -> simul_result
+  | SimKo : simul_state (* state before the current instruction *)
+    -> message (* error message *) -> simul_result.
 
-Definition catch {A} (m : simul_semfun A) (f : _ -> simul_semfun A) : simul_semfun A :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | SimKo lbs m => f m lbs
-    | x => x
-  end.
+  Definition simul_semfun A := simul_state -> @simul_result A.
 
-Definition bind_s fs A (m : simul_semfun unit) (f : state -> simul_semfun A) : simul_semfun A :=
-  bind m (fun _ lbs1 => f (fs lbs1) lbs1).
+  Definition bind {A B} (m : simul_semfun A) (f : A -> simul_semfun B) : simul_semfun B :=
+    fun lbs0 => 
+    match m lbs0 with 
+      | SimOk a lbs1 => f a lbs1
+      | SimKo lbs m => SimKo lbs m
+    end.
 
-Definition next {A B} (f1 : simul_semfun A) (f2 : simul_semfun B) : simul_semfun B :=
-  do _ <- f1; f2.
+  Notation "'do' X <- A ; B" := (bind A (fun X => B))
+    (at level 200, X ident, A at level 100, B at level 200).
 
-Definition _get_st {A} := @bind_s (fun x => st (semst x)) A (SimOk tt).
+  Definition catch {A} (m : simul_semfun A) (f : _ -> simul_semfun A) : simul_semfun A :=
+    fun lbs0 => 
+    match m lbs0 with 
+      | SimKo lbs m => f m lbs
+      | x => x
+    end.
 
-Notation "'<' st '>' A" := (_get_st (fun st => A)) (at level 200, A at level 100, st ident).
+  Definition bind_s fs A (m : simul_semfun unit) (f : state -> simul_semfun A) : simul_semfun A :=
+    bind m (fun _ lbs1 => f (fs lbs1) lbs1).
 
-Definition conjure_up_true (lbs : simul_state) :=
-  SimOk tt (mk_simul_state (mk_semstate nil true (st (semst lbs))) (nb_next lbs)).
+  Definition next {A B} (f1 : simul_semfun A) (f2 : simul_semfun B) : simul_semfun B :=
+    do _ <- f1; f2.
 
-Module Make (Import I : INST).
+  Notation "'<' st '>' A" := (_get_st (fun st => A)) (at level 200, A at level 100, st ident).
 
-  Definition handle_exception : simul_semfun unit :=
+  Definition _get_st {A} := @bind_s (fun x => st (semst x)) A (SimOk tt).
+
+  Definition conjure_up_true (lbs : simul_state) :=
+    SimOk tt (mk_simul_state (init (st (semst lbs))) (nb_next lbs)).
+
+  Definition error {A} x lbs := @SimKo A lbs x.
+
+  Definition inM {A} (m : semfun A) : simul_semfun A :=
     fun lbs => 
-      match handle_exception (semst lbs) with
-      | Ok a lbs' => SimOk a (mk_simul_state lbs' (nb_next lbs))
-      | Ko m | Todo m => SimKo lbs m
-    end.
+    inM 
+      (fun a lbs' => SimOk a (mk_simul_state lbs' (nb_next lbs))) 
+      (SimKo lbs) 
+      (m (semst lbs)).
 
-  Definition next : simul_semfun unit := <s>
-    fun lbs => match inst_set (cpsr s) with
-      | None => SimKo lbs InvalidInstructionSet
-      | Some Jazelle => SimKo lbs JazelleInstructionSetNotImplemented
-      | Some Thumb => SimKo lbs ThumbInstructionSetNotImplemented
-      | Some ARM =>
-        let a := address_of_current_instruction s in
-        let w := read s a Word in
-          match decode w with
-            | DecError m => SimKo lbs m
-            | DecUnpredictable => SimKo lbs DecodingReturnsUnpredictable
-            | DecUndefined_with_num fake => handle_exception (mk_simul_state (let lbs := semst lbs in mk_semstate (loc lbs) (bo lbs) (add_exn s UndIns)) (nb_next lbs))
-            | DecInst i =>
-              match step i (semst lbs) with
-                | Ok _ lbs' => handle_exception (mk_simul_state (mk_semstate (loc lbs') (bo lbs') (incr_PC_ARM (bo lbs') (st lbs'))) (nb_next lbs))
-                | Ko m | Todo m => SimKo lbs m
-              end
+  Module Make (Import I : INST).
+
+    Definition raise {A} := raise A.
+
+    Definition next : semfun unit := <s>
+      match inst_set (cpsr s) with
+        | None => raise InvalidInstructionSet
+        | Some x => 
+          F.next raise (
+          let a := address_of_current_instruction s in
+          let w := read s a Word in
+            match decode w with
+              | DecError m => raise m
+              | DecUnpredictable => raise DecodingReturnsUnpredictable
+              | DecUndefined_with_num fake => 
+                  do_then add_exn UndIns;
+                  handle_exception
+              | DecInst i =>
+                  do_then step i;
+                  do_then incr_PC;
+                  handle_exception
+            end) x
+      end.
+
+    Function simul (lbs : simul_state) {measure nb_next lbs} : @simul_result unit :=
+      match nb_next lbs with
+        | 0%nat => SimOk tt lbs
+        | S n' =>
+          match inM next lbs with
+            | SimOk _ s' => simul (mk_simul_state (semst s') n')
+            | SimKo s m => SimKo s m
           end
-    end.
+      end.
+      unfold nb_next.
+      auto with *.
+    Defined.
 
-  Function simul (lbs : simul_state) {measure nb_next lbs} : @simul_result unit :=
-    match nb_next lbs with
-      | 0%nat => SimOk tt lbs
-      | S n' =>
-        match next lbs with
-          | SimOk _ s' => simul (mk_simul_state (semst s') n')
-          | SimKo s m => SimKo s m
-        end
-    end.
-    unfold nb_next.
-    auto with *.
-  Defined.
+  End Make.
 
 End Make.

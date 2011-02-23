@@ -6,15 +6,10 @@ open BinInt
 open BinPos
 open Bitvec
 open Datatypes
-open Integers
-open Arm_Proc
-open Arm_SCC
-open Simul
-open Arm_State
-open Util
 open Arm6
-open Semantics
-open Arm_Functions
+open Arm_Functions.Semantics.Coq__Arm_State
+open Arm_Functions.Semantics.S
+open Arm6.Simul
 
 let str_of_msg = function
   | Message.EmptyMessage -> "EmptyMessage"
@@ -60,7 +55,7 @@ let coq_Z = function
 
 let simul lbs = 
   let n = nat_to_int (nb_next lbs) in
-  Simul.catch S.simul (fun m lbs ->
+  catch S.simul (fun m lbs ->
     let num = nb_next lbs in
     let step = string_of_int (n - nat_to_int num) in
     failwith ("SimKo: " ^ str_of_msg m ^ " at step " ^ step)) lbs;;
@@ -98,7 +93,7 @@ let instr s =
 let stack s =
   let stack_top = 0xff000 in (* value given in common.h*)
   let sp = reg s 13 in
-    if (sp>stack_top) then raise (Failure "stack pointer above stack")
+    if (sp>stack_top) then Pervasives.raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4);;
 
 let return a lbs = SimOk (a, lbs)
@@ -142,7 +137,7 @@ let run_opt (max : int option) : (BinInt.coq_Z * (int * hexa) list) Simul.simul_
          else function x :: xs -> aux (x :: x :: xs) | _ -> assert false)
           ((step+1, Ox pc') :: l')
        )))
-    | _ -> raise (Failure "inside run function")
+    | _ -> Pervasives.raise (Failure "inside run function")
   in 
 
   Simul.bind (Simul._get_st (fun s0 -> aux [ (0, Ox ((reg s0 15) - 8))

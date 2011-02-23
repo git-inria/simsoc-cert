@@ -93,9 +93,28 @@ Definition inst_set (w : word) : option instruction_set := Some SH4.
 (** Exceptions *)
 (****************************************************************************)
 
+Inductive exception : Type :=
+  UndIns.
+
 (****************************************************************************)
 (* Exception priorities *)
 (****************************************************************************)
+
+Definition priority (e : exception) : BinInt.Z :=
+  match e with
+    | UndIns => 7 (* lowest *)
+  end.
+
+(*WARNING: by using this function, exceptions are always sorted from
+the highest priority to the lowest, so that the exception with highest
+priority is the first one *)
+
+Fixpoint insert (e : exception) (l : list exception) : list exception :=
+  match l with
+    | nil => e :: nil
+    | e' :: l' => if zlt (priority e) (priority e') then e :: l
+      else e' :: insert e l'
+  end.
 
 (****************************************************************************)
 (* The condition field *)

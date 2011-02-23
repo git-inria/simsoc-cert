@@ -37,6 +37,9 @@ Definition reg_content (s : state) (k : regnum) : word :=
 Definition set_reg (s : state) (k : regnum) (w : word) : state :=
   mk_state (set_reg (proc s) k w) (mem s).
 
+Definition add_exn (s : state) (e : exception) : state :=
+  mk_state (add_exn (proc s) e) (mem s).
+
 Definition read (s : state) (a : word) (n : size) : word :=
   repr 0.
 

@@ -8,12 +8,14 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 
 Page numbers refer to ARMv6.pdf.
 
-Functions used in the pseudocode, in alphabetical order.
 *)
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Arm Integers.
+Require Import Coqlib Util Bitvec Arm Integers Message Arm_State Semantics.
+
+(****************************************************************************)
+(** Functions used in the pseudocode, in alphabetical order. *)
 
 (****************************************************************************)
 (** Table A4-1 Bit mask constants (p. 227) *)
@@ -401,3 +403,119 @@ Zero-extends (propagates the zero bit) its argument to 32 bits. *)
 (****************************************************************************)
 
 Definition ZeroExtend (w : word) : word := zero_ext 32 w.
+
+(****************************************************************************)
+(****************************************************************************)
+
+Module State.
+  Definition CurrentModeHasSPSR (s : state) : bool := CurrentModeHasSPSR (mode s).
+
+  Definition InAPrivilegedMode (s : state) : bool := InAPrivilegedMode (mode s).
+
+  Definition ConditionPassed (s : state) (op : opcode) : bool :=
+    ConditionPassed (cpsr s) op.
+End State.
+
+Module Semantics.
+
+  Module _Arm <: PROC.
+    Definition exception := exception.
+    Definition instruction_set := instruction_set.
+    Definition UndIns := UndIns.
+    Definition PC := PC.
+    Definition inst_set := inst_set.
+  End _Arm. 
+
+  Module _Arm_State <: STATE _Arm.
+    Definition state := state.
+    Definition set_cpsr := set_cpsr.
+    Definition set_cpsr_bit := set_cpsr_bit.
+    Definition set_reg := set_reg.
+    Definition reg_content := reg_content.
+    Definition cpsr := cpsr.
+    Definition add_exn := add_exn.
+    Definition read := read.
+    Definition address_of_current_instruction := address_of_current_instruction.
+  End _Arm_State.
+
+  Module Export S := Semantics.Make _Arm _Arm_State. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+
+  Definition if_CurrentModeHasSPSR {A} (f : exn_mode -> semfun A) : semfun A :=
+    fun lb_s => 
+    match mode (st lb_s) with
+      | usr | sys => unpredictable EmptyMessage lb_s
+      | exn em => f em lb_s
+    end.
+
+  Definition set_spsr m v := map_st (fun st => set_spsr st m v).
+
+  Definition set_reg_mode m k v :=
+    map_st (fun st => (*FIXME?*) set_reg_mode st m k v).
+  Definition write a n w := map_st (fun st => write st a n w).
+
+  Definition fExclusive f (addr : word) pid size := 
+    map_st (fun st => f st addr (nat_of_Z pid)
+      (nat_of_Z size)).
+
+  Definition MarkExclusiveGlobal := fExclusive MarkExclusiveGlobal.
+  Definition MarkExclusiveLocal := fExclusive MarkExclusiveLocal.
+  Definition ClearExclusiveByAddress := fExclusive ClearExclusiveByAddress.
+
+  Definition ClearExclusiveLocal pid :=
+    map_st (fun st => ClearExclusiveLocal st (nat_of_Z pid)).
+
+  Definition IsExclusiveGlobal (s : state) (addr : word) (pid : word)
+    (size : nat) : bool := false.
+
+  Definition IsExclusiveLocal (s : state) (addr : word) (pid : word)
+    (size : nat) : bool := false.
+
+  (* b true means that the last instruction executed was not a jump *)
+  (* Because the PC register contains the address of the current instruction
+   * plus 8 (cf A2.4.3), we add 8 to the PC if a jump occured (b false) *)
+  (* The implementation assumes that the processor is in ARM mode *)
+  Definition incr_PC lbs' := 
+    let s := st lbs' in
+    ok_semstate tt (loc lbs') (bo lbs') (_Arm_State.set_reg s PC (add (reg_content s PC) (repr (if (bo lbs') then 4 else 8)))).
+End Semantics.
+
+Module Decoder.
+
+  Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
+    @decoder_result inst :=
+    match condition w with
+      | Some oc => DecInst _ (g oc)
+      | None => @DecUndefined_with_num inst 1
+    end.
+
+  Definition decode_cond_mode (mode : Type) (f : word -> @decoder_result mode)
+    (w : word) (inst : Type) (g : mode -> opcode -> inst) :
+    @decoder_result inst :=
+    match condition w  return @decoder_result inst with
+      | Some oc =>
+        match f w return @decoder_result inst with
+          | DecInst i => DecInst _ (g i oc)
+          | DecError m => @DecError inst m
+          | DecUnpredictable => @DecUnpredictable inst
+          | DecUndefined => @DecUndefined_with_num inst 2
+        end
+      | None => @DecUndefined_with_num inst 3
+    end. 
+
+  Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
+    (w : word) (inst : Type) (g : mode -> inst) :
+    decoder_result inst :=
+    match f w with
+      | DecInst i => DecInst _ (g i)
+      | DecError m => @DecError inst m
+      | DecUnpredictable => @DecUnpredictable inst
+      | DecUndefined => @DecUndefined_with_num inst 2
+    end.
+
+  Definition next {A} f_ko (f_ok : A) x := 
+    match x with
+      | Jazelle => f_ko JazelleInstructionSetNotImplemented
+      | Thumb => f_ko ThumbInstructionSetNotImplemented
+      | Arm => f_ok
+    end.
+End Decoder.

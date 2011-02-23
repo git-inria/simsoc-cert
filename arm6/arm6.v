@@ -13,7 +13,8 @@ ARM simulator.
 
 Set Implicit Arguments.
 
-Require Import Arm_Config Simul Bitvec Semantics Arm_State.
+Require Import Semantics Arm_Config Simul Bitvec Arm_Functions.
+Import Semantics.
 
 (****************************************************************************)
 (** Configuration *)
@@ -50,13 +51,35 @@ End C.
 
 Require arm6inst arm6dec Arm_Exception.
 
+Module _Semantics <: SEMANTICS _Arm _Arm_State.
+  Definition semstate := semstate.
+  Definition result := @result.
+  Definition semfun := semfun.
+  Definition st := st.
+  Definition init := init.
+  Definition init2 := init2.
+  Definition inM := @inM.
+  Definition ret := @ret.
+  Definition incr_PC := incr_PC.
+  Definition _get_st := @_get_st.
+  Definition raise := @raise.
+  Definition next := @next.
+  Definition add_exn := add_exn.
+End _Semantics.
+
+Module _Functions <: FUNCTIONS _Arm.
+  Definition next := @Arm_Functions.Decoder.next.
+End _Functions.
+
+Module Import Simul := Simul.Make _Arm _Arm_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+
 Module I <: INST.
   Definition inst : Type := arm6inst.inst.
-  Module S := arm6inst.InstSem(C).
+  Module S := arm6inst.InstSem C.
   Definition step : inst -> semfun unit := S.step.
   Definition decode : word -> decoder_result inst := arm6dec.decode.
-  Module E := Arm_Exception.InstSem(C).
+  Module E := Arm_Exception.InstSem C.
   Definition handle_exception : semfun unit := E.step.
 End I.
 
-Module Export S := Simul.Make(I).
+Module Export S := Simul.Make I.

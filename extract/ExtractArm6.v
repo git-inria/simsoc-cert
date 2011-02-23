@@ -30,7 +30,7 @@ Extract Constant arm6dec.decode_conditional => "Arm6mldec.decode_conditional".
 Extract Constant arm6dec.decode => "Arm6mldec.decode".
 
 Require Semantics.
-Extraction NoInline Semantics.if_CurrentModeHasSPSR.
+Extraction NoInline Arm_Functions.Semantics.if_CurrentModeHasSPSR.
 
 (*Print Extraction Inline.*)
 

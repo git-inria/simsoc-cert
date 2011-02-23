@@ -14,7 +14,7 @@ shared memory. We do not handle virtual memory either. *)
 
 Set Implicit Arguments.
 
-Require Import Arm_Proc Arm Arm_SCC Bitvec List Arm_Functions.
+Require Import Arm_Proc Arm Arm_SCC Bitvec List.
 
 Record state : Type := mk_state {
   (* Processor *)
@@ -64,13 +64,6 @@ Definition address_of_current_instruction (s : state) : word
 
 Definition address_of_next_instruction (s : state) : word
   := address_of_next_instruction (proc s).
-
-Definition CurrentModeHasSPSR (s : state) : bool := CurrentModeHasSPSR (mode s).
-
-Definition InAPrivilegedMode (s : state) : bool := InAPrivilegedMode (mode s).
-
-Definition ConditionPassed (s : state) (op : opcode) : bool :=
-  ConditionPassed (cpsr s) op.
 
 (****************************************************************************)
 (** System control coprocessor and Memory access/update functions *)

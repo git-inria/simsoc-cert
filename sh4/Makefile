@@ -43,7 +43,7 @@ instr.byte: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.m
 #
 
 clean:
-	ocamlbuild -clean
+	ocamlbuild -clean && rm -f sh4inst.v sh4dec.v sh4.vo
 
 nobackup:
 	rm -f *.bak *~ *.dup
