@@ -795,8 +795,7 @@ let lib b ps =
   and bcons_mode = Array.init five (fun _ -> Buffer.create 1000)
   and bcall_inst = Buffer.create 5000
   and bcall_mode = Array.init five (fun _ -> Buffer.create 1000)
-  and bsem = Buffer.create 100000
-  and bsem_head = Buffer.create 100000 in
+  and bsem = Buffer.create 100000 in
   let prog p =
     let gs, _ = V.vars p.pinst in
       semfun bsem p gs;
@@ -804,78 +803,6 @@ let lib b ps =
       call bcall_inst bcall_mode p gs
   in
     (* generate code *)
-
-    (let open C2pc.Traduction in 
-     begin
-       (* (* FIXME floatting instruction *) (* print __get function *)
-       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_%s : word -> word.\n" s) !map_affect;
-       bprintf bsem_head "\n";
-
-       (* print __get_special function *)
-       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter __get_special_%s : word -> word.\n" s) !map_affect_spec;
-       bprintf bsem_head "\n";
-       *)
-
-       (*
-       (* FIXME moved to Sh4.v *)
-       StringMap.iter (fun s _ -> bprintf bsem_head "Parameter %s : %s.\n" s "regnum") !map_param;
-       bprintf bsem_head "\n";*)
-     end);
-    (* (* FIXME moved to Sh4.v *) if ps.header = [] then
-      ()
-     else
-      begin
-        bprintf bsem_head "%s" (List.fold_left (sprintf "%s%s\n") "" [ (* (* FIXME float support *) "Parameter nat_of_word : word -> nat."
-                                                                     ; *) "Definition succ := add (repr 1)."
-                                                                     ; "Definition pred x := sub x (repr 1)."
-                                                                     ; "Definition opp := sub (repr 0)."
-                                                                     ; "Parameter Mbit : nat."
-                                                                     ; "Parameter Qbit : nat."
-                                                                     ; "Parameter Sbit : nat."
-                                                                     ; "Parameter Tbit : nat."
-                                                                     ; "Parameter FPSCR_MASK : nat. (* := 0x003FFFFF *)"
-                                                                     ; ""]);
-      end ;*)
-     (* FIXME moved to Sh4_Functions.v *) begin List.iter (function (Let ((ty, n), ns, is, _)) ->
-      (*let gs, _ = V.vars i in*)
-      let string_of_ty = function
-        | Tint -> "(* 1 *) nat" 
-        | Tlong -> "(* 2 *) Type" 
-        | Tfloat -> "(* 3 *) Type" 
-        | Tdouble -> "(* 4 *) Type"
-        | Tvoid -> "(* 5 *) result" 
-        | Tunsigned_long -> "(* 6 *) word" 
-        | Tchar -> "(* 7 *) Type"
-        | Tunsigned_char -> "(* 8 *) word"
-        | Tunsigned_short -> "(* 9 *) word"
-        | Tbool -> "(* 10 *) bool"
-        | Tunsigned_int -> "(* 11 *) word" 
-        | Tunsigned -> "(* 12 *) word" in
-
-      (if is = [] then ignore (string_of_ty, ns, n, ty)
-         (*if ty = Tvoid then
-           if ns = [] then
-             bprintf bsem_head "(* 1 *) Parameter %s : semfun unit.\n" n 
-           else
-             bprintf bsem_head "(* 2 *) Parameter %s : %a -> semfun unit.\n" n 
-               (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) ns
-         else
-           bprintf bsem_head "(* 3 *) Parameter %s : %a -> %s.\n" n 
-             (list " -> " (fun b (ty, _) -> string b (string_of_ty ty) )) (if ns = [] then assert false else ns)
-             (string_of_ty ty)*)
-       else ()
-         (* (* FIXME floating point specific operation *) 
-           let f x = bprintf bsem_head "Definition %s %a :=\n%a.\n\n" n   
-           (list " " (fun b (ty, s) -> 
-             string b (sprintf "(%s : %s)" (if s = "" then "_" else s) (string_of_ty ty)) )) ns x in
-         if ty = Tvoid then
-           f (decl_loc (inst (add_index (snd (V.vars (Block is)))) "" 2)) (Block is)
-         else 
-           match is with 
-             | [Return e] -> f (pexp (add_index (snd (V.vars (Block is)))) "") e 
-             | _ -> f (inst (add_index (snd (V.vars (Block is)))) "" 2) (Block is)*) )
-        
-      | _ -> assert false (* by construction of SH4, this never happens *)) ps.header ; if ps.header <> [] then begin bprintf bsem_head "\n" end end;
     List.iter prog ps.body;
 
     (* print preamble *)
@@ -889,8 +816,6 @@ let lib b ps =
        ; sprintf "Import %sSemantics." (if is_arm then "State " else "") 
        ; "" ]);
     
-    (* print header *)
-    bprintf b "%a" Buffer.add_buffer bsem_head;
     (* print type definitions *)
     for k = 1 to five do
       if Buffer.length bcons_mode.(k-1) <> 0 then
@@ -918,7 +843,7 @@ let lib b ps =
                  bprintf b "(* Semantic function for addressing mode %d *)\nDefinition mode%d_step (m : mode%d) : _ -> semfun unit := mode_step\n  match m with\n%a  end.\n\n" k k k Buffer.add_buffer bcall_mode.(k-1)) in
         aux five 0 (fun x -> x)
      with
-       | five_, _ when five = five_ -> ()
+       | nb, _ when five = nb -> ()
        | _, f -> 
          begin 
            List.iter (bprintf b "%s\n")
