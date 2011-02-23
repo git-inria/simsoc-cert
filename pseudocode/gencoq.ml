@@ -587,7 +587,9 @@ and affect' b v loc nm = function
           let sz = if tp = "long" then "64" else "" in 
               bprintf b "update_loc%s n%d (*%s*) %a" 
                 sz id name (pexp' par loc nm sz) v
-        with Not_found -> bprintf b "let %s := %a in" s (pexp' (fun x -> x) loc nm "") v
+        with Not_found -> 
+          let sz = if G.type_of_var s = "long" then "64" else "" in
+          bprintf b "let %s := %a in" s (pexp' (fun x -> x) loc nm sz) v
       end
   (* affectation of a CPSR bit requires a special case *)
   | Range (CPSR, Flag (s, _)) -> 
