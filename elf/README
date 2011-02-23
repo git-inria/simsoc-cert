@@ -6,7 +6,7 @@ section contains the corresponding instructions.
 Usage:
 
 1. generate a binary file:
-../pseudocode/main -idec ../arm6/arm6dec.dat -otest > test.bin
+../pseudocode/main -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat -isyntax ../arm6/arm6syntax.dat -s 0 -obin-test > test.bin
 
 2. convert to ELF:
 ../elf/bin2elf test.bin test.elf
