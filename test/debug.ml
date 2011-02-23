@@ -149,7 +149,49 @@ let run s0 = run_opt None (mk_st s0 1);;
 let runmax s0 max = run_opt (Some max) (mk_st s0 1);;
 
 #load "arm_v6_QADD_a.cmo";;
-check Arm_v6_QADD_a.initial_state 509 0x7efff "arm_v6_QADD";;
+check Arm_v6_QADD_a.initial_state 516 0x7ffff "arm_v6_QADD";;
+
+#load "arm_v6_QSUB_a.cmo";;
+check Arm_v6_QSUB_a.initial_state 790 0x3fffffff "arm_v6_QSUB";;
+
+#load "arm_v6_UQADD_a.cmo";;
+check Arm_v6_UQADD_a.initial_state 487 0x7FFFF "arm_v6_UQADD";;
+
+#load "arm_v6_UQSUB_a.cmo";;
+check Arm_v6_UQSUB_a.initial_state 760 0x3FFFFFFF "arm_v6_UQSUB";;
+
+#load "arm_v6_USAT_a.cmo";;
+check Arm_v6_USAT_a.initial_state 362 0xfff "arm_v6_USAT";;
+
+#load "arm_v6_SHSUB_a.cmo";;
+check Arm_v6_SHSUB_a.initial_state 205 63 "arm_v6_SHSUB";;
+
+#load "arm_v6_USAD_a.cmo";;
+check Arm_v6_USAD_a.initial_state 259 255 "arm_v6_USAD";;
+
+#load "arm_v6_UA_a.cmo";;
+check Arm_v6_UA_a.initial_state 749 0x1FFFFFF "arm_v6_UA";;
+
+#load "arm_v6_USUB_a.cmo";;
+check Arm_v6_USUB_a.initial_state 638 0xfffff "arm_v6_USUB";;
+
+#load "arm_v6_SML_a.cmo";;
+check Arm_v6_SML_a.initial_state 313 255 "arm_v6_SML";;
+
+#load "arm_v6_SMM_a.cmo";;
+check Arm_v6_SMM_a.initial_state 193 63 "arm_v6_SMM";;
+
+#load "arm_v6_SMU_a.cmo";;
+check Arm_v6_SMU_a.initial_state 991 0xFFFFFFF "arm_v6_SMU";;
+
+#load "arm_v6_UXTA_a.cmo";;
+check Arm_v6_UXTA_a.initial_state 414 0x7FFF "arm_v6_UXTA";;
+
+#load "arm_v6_UXTB_a.cmo";;
+check Arm_v6_UXTB_a.initial_state 411 0x7fff "arm_v6_UXTB";;
+
+#load "arm_v6_SHADD_a.cmo";;
+check Arm_v6_SHADD_a.initial_state 205 63 "arm_v6_SHADD";;
 
 #load "arm_v6_REV_a.cmo";;
 check Arm_v6_REV_a.initial_state 125 15 "arm_v6_REV";;
@@ -178,11 +220,11 @@ check Arm_v6_UMAAL_a.initial_state 207 0xff "arm_v6_UMAAL";;
 #load "arm_v6_UH_a.cmo";;
 check Arm_v6_UH_a.initial_state 594 0x3ffff "arm_v6_UH";;
 
-#load "arm_v6_SH_a.cmo";;
-check Arm_v6_SH_a.initial_state 205 63 "arm_v6_SH";;
+#load "arm_v6_SHADD_a.cmo";;
+check Arm_v6_SHADD_a.initial_state 205 63 "arm_v6_SHADD";;
 
-#load "arm_v6_SM_a.cmo";;
-check Arm_v6_SM_a.initial_state 617 0x3ffff "arm_v6_SM";;
+#load "arm_v6_SHSUB_a.cmo";;
+check Arm_v6_SHSUB_a.initial_state 205 63 "arm_v6_SHSUB";;
 
 #load "arm_multiple_a.cmo";;
 check Arm_multiple_a.initial_state 227 0x1ff "arm_multiple";;
