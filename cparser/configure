@@ -1,0 +1,3 @@
+#!/bin/bash
+echo COMPCERT="$1" > Makefile
+cat Makefile.in >> Makefile
