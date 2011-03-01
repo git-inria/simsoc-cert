@@ -7,10 +7,10 @@ DIRS=lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
 INCLUDES=$(patsubst %,-I $(COMPCERT)/%, $(DIRS))
 
-COQC=coqc $(INCLUDES)
+COQC=coqc -q $(INCLUDES)
 COQDEP=coqdep $(INCLUDES)
 COQDOC=coqdoc
-COQEXEC=coqtop $(INCLUDES) -I $(PWD) -batch -load-vernac-source
+COQEXEC=coqtop -q $(INCLUDES) -I $(PWD) -batch -load-vernac-source
 
 OCAMLBUILD=ocamlbuild
 OCB_OPTIONS=\
