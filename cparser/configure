@@ -1,3 +1,4 @@
 #!/bin/bash
-echo COMPCERT="$1" > Makefile
+ln -sf "$1" compcert
+echo COMPCERT="compcert" > Makefile
 cat Makefile.in >> Makefile

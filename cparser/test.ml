@@ -11,11 +11,10 @@
 (* *********************************************************************)
 
 open Printf
-(*
 open Clflags
 
 (* Location of the standard library *)
-*)
+
 let stdlib_path = ref(
   try
     Sys.getenv "COMPCERT_LIBRARY"
@@ -23,7 +22,7 @@ let stdlib_path = ref(
     Configuration.stdlib_path)
 
 let command cmd =
-  if true (*!option_v*) then begin
+  if !option_v then begin
     prerr_string "+ "; prerr_string cmd; prerr_endline ""
   end;
   Sys.command cmd
@@ -33,7 +32,7 @@ let quote_options opts =
 
 let safe_remove file =
   try Sys.remove file with Sys_error _ -> ()
-(*
+
 (* Printing of error messages *)
 
 let print_error oc msg =
@@ -43,7 +42,7 @@ let print_error oc msg =
   in
     List.iter print_one_error msg;
     output_char oc '\n'
-*)
+
 (* From C to preprocessed C *)
 
 let preprocess ifile ofile =
@@ -51,7 +50,7 @@ let preprocess ifile ofile =
     sprintf "%s -D__COMPCERT__ -I%s %s %s > %s"
       Configuration.prepro
       !stdlib_path
-      (quote_options [] (*!prepro_options*))
+      (quote_options !prepro_options)
       ifile ofile in
   if command cmd <> 0 then begin
     safe_remove ofile;
@@ -65,9 +64,9 @@ let compile_c_file sourcename ifile ofile =
   (* Simplification options *)
   let simplifs =
     "becv" (* blocks, impure exprs, implicit casts, volatiles: mandatory *)
-  ^ (if false (*!option_fstruct_passing*) then "s" else "")
-  ^ (if false (*!option_fstruct_assign*) then "S" else "")
-  ^ (if false (*!option_fbitfields*) then "f" else "") in
+  ^ (if !option_fstruct_passing then "s" else "")
+  ^ (if !option_fstruct_assign then "S" else "")
+  ^ (if !option_fbitfields then "f" else "") in
   (* Parsing and production of a simplified C AST *)
   let ast =
     match Cparser.Parse.preprocessed_file simplifs sourcename ifile with
@@ -76,7 +75,7 @@ let compile_c_file sourcename ifile ofile =
   (* Remove preprocessed file (always a temp file) *)
   safe_remove ifile;
   (* Save C AST if requested *)
-  if false (*!option_dparse*) then begin
+  if !option_dparse then begin
     let ofile = Filename.chop_suffix sourcename ".c" ^ ".parsed.c" in
     let oc = open_out ofile in
     Cparser.Cprint.program (Format.formatter_of_out_channel oc) ast;
@@ -87,12 +86,12 @@ let compile_c_file sourcename ifile ofile =
     match C2Clight.convertProgram ast with
     | None -> exit 2
     | Some p -> p in
-  let Csyntax_print.Monad_base.L (_, l) = Csyntax_print.Moo._program csyntax [] in
+
   let _ = 
+    let Csyntax_print.Monad_base.L (_, l) = Csyntax_print.Moo._program csyntax [] in
     let _ = Printf.eprintf "%s\n%!" (List.fold_left (fun acc s -> Printf.sprintf "%s%s" acc (Camlcoq.camlstring_of_coqstring s)) "" (List.rev l)) in
     () in
-  exit 0
-(*
+
   (* Save Csyntax if requested *)
   if !option_dclight then begin
     let ofile = Filename.chop_suffix sourcename ".c" ^ ".light.c" in
@@ -110,8 +109,8 @@ let compile_c_file sourcename ifile ofile =
   (* Save asm *)
   let oc = open_out ofile in
   PrintAsm.print_program oc ppc;
-  close_out oc*)
-(*
+  close_out oc
+
 (* From Cminor to asm *)
 
 let compile_cminor_file ifile ofile =
@@ -165,29 +164,29 @@ let linker exe_name files =
       (quote_options files)
       !stdlib_path in
   if command cmd <> 0 then exit 2
-*)
+
 (* Processing of a .c file *)
 
 let process_c_file sourcename =
   let prefixname = Filename.chop_suffix sourcename ".c" in
-  if false (*!option_E*) then begin
+  if !option_E then begin
     preprocess sourcename (prefixname ^ ".i")
   end else begin
     let preproname = Filename.temp_file "compcert" ".i" in
     preprocess sourcename preproname;
-    if false (*!option_S*) then begin
+    if !option_S then begin
       compile_c_file sourcename preproname (prefixname ^ ".s")
     end else begin
       let asmname =
-        if false (*!option_dasm*)
+        if !option_dasm
         then prefixname ^ ".s"
         else Filename.temp_file "compcert" ".s" in
       compile_c_file sourcename preproname asmname;
-      (*assemble asmname (prefixname ^ ".o")*)
+      assemble asmname (prefixname ^ ".o")
     end
   end;
   prefixname ^ ".o"
-(*
+
 (* Processing of a .cm file *)
 
 let process_cminor_file sourcename =
@@ -343,4 +342,3 @@ let _ =
   then begin
     linker !exe_name !linker_options
   end
-*)
