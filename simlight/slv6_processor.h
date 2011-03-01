@@ -56,7 +56,7 @@ static inline uint32_t reg(struct SLv6_Processor *proc, uint8_t reg_id) {
 
 static inline void set_reg(struct SLv6_Processor *proc, uint8_t reg_id, uint32_t data) {
   assert(reg_id!=15);
-  return set_reg_m(proc,reg_id,proc->cpsr.mode,data);
+  set_reg_m(proc,reg_id,proc->cpsr.mode,data);
 }
 
 static inline uint32_t inst_size(struct SLv6_Processor *proc) {
