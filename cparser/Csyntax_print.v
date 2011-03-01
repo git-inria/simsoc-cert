@@ -6,6 +6,8 @@ Require Import Csyntax.
 
 
 Module Rec.
+(** This module gives a destructor for each local type used to build the main type [Csyntax.program].
+Each declared function [_f] behaves approximatively as its [f_rect], except that mutually functions are handled using the 'Scheme' command, and if we are dealing with a recursive type, the recursive call is done implicitly. *)
 
 Definition _option {A B C} (a : _ -> C) f := @option_rect A (fun _ => B) (fun x => f (a x)).
 
@@ -240,7 +242,13 @@ Definition _fundef {A  FUNCTION IDENT TYPELIST TYPE}
 End Rec.
 
 
-Module Rec_weak. Import Rec.
+Module Rec_weak. 
+(** For each general function inside the module [Rec], we change its type to a lower one : each polymorphic type is explicit instancitated with a single polymorphic one. 
+This polymorphic information can be thought as an accumulator staying alive along the whole execution, it can be used for example with a monadic construction.
+After this change, we generalize each function construction "_ -> _ -> _ -> _ -> _" to a more general one "_ ^^ _ --> _" by using the NaryFunctions library.
+This is useful if we do not want to abstract manually the "fun _ => _" during the application time. 
+Note that we have to give explicitely a natural number describing the arity we are considering in each case. *)
+Import Rec.
 Require Import NaryFunctions.
 Notation "A ** n" := (A ^^ n --> A) (at level 29) : type_scope.
 
@@ -480,7 +488,9 @@ Definition _float _Z f := perform
 
 End Monad_base.
 
-Module Mo (Import M : MONAD). Import Rec Rec_weak.
+Module Mo (Import M : MONAD). 
+(** The pretty-printing is done inside this module : for each type, we explicitly write the name of the corresponding constructor inside a "string". *)
+Import Rec Rec_weak.
 Open Scope string_scope.
 Notation "'!' x" := (_U x _) (at level 9).
 (*Notation "{{ }}" := nil_n.*)
