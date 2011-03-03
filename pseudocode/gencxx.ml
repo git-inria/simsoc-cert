@@ -207,6 +207,8 @@ let rec exp p b = function
       bprintf b "(to_u64(%a) << 32)" (exp p) e
   | BinOp (e, ("<"|">=" as op), Num "0") ->
       bprintf b "(%a %s 0)" (exp p) (to_signed e) op
+  | BinOp (Num n, "*", e) | BinOp (e, "*", Num n)->
+      bprintf b "(%a * %s)" (exp p) e n
   | BinOp (e1, "*", e2) -> if p.xid.[0] = 'S'
     then bprintf b "(to_i64(%a) * to_i64(%a))" (exp p) e1 (exp p) e2
     else bprintf b "(to_u64(%a) * to_u64(%a))" (exp p) e1 (exp p) e2
