@@ -324,16 +324,17 @@ and affect p k b dst src =
         bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
     | CPSR -> (
         match src with
-          | SPSR None -> bprintf b "proc->cpsr = *spsr(proc)"
-          | SPSR (Some m) -> bprintf b "proc->cpsr = *spsr_m(proc,%s)" (mode m)
+          | SPSR None -> bprintf b "copy_StatusRegister(&proc->cpsr, spsr(proc))"
+          | SPSR (Some m) ->
+              bprintf b "copy_StatusRegister(&proc->cpsr, spsr_m(proc,%s))" (mode m)
           | _ -> bprintf b "set_StatusRegister(&proc->cpsr,%a)" (exp p) src)
     | SPSR None -> (
         match src with
-          | CPSR -> bprintf b "*spsr(proc) = proc->cpsr"
+          | CPSR -> bprintf b "copy_StatusRegister(spsr(proc), &proc->cpsr)"
           | _ -> bprintf b "set_StatusRegister(spsr(proc),%a)" (exp p) src)
     | SPSR (Some m) -> (
         match src with
-          | CPSR -> bprintf b "*spsr_m(proc,%s) = proc->cpsr" (mode m)
+          | CPSR -> bprintf b "copy_StatusRegister(spsr_m(proc,%s), &proc->cpsr)" (mode m)
           | _ -> bprintf b "set_StatusRegister(spsr_m(proc,%s),%a)" (mode m) (exp p) src)
     | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
     | Range (CPSR, Flag (s,_)) ->

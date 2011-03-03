@@ -50,4 +50,25 @@ void set_StatusRegister(struct SLv6_StatusRegister *sr, uint32_t x) {
   if (!ok) ERROR("invalid mode");
 }
 
+void copy_StatusRegister(struct SLv6_StatusRegister *dst,
+                         struct SLv6_StatusRegister *src) {
+  dst->background = src->background;
+  dst->N_flag = src->N_flag;
+  dst->Z_flag = src->Z_flag;
+  dst->C_flag = src->C_flag;
+  dst->V_flag = src->V_flag;
+  dst->Q_flag = src->Q_flag;
+  dst->J_flag = src->J_flag;
+  dst->GE0 = src->GE0;
+  dst->GE1 = src->GE1;
+  dst->GE2 = src->GE2;
+  dst->GE3 = src->GE3;
+  dst->E_flag = src->E_flag;
+  dst->A_flag = src->A_flag;
+  dst->I_flag = src->I_flag;
+  dst->F_flag = src->F_flag;
+  dst->T_flag = src->T_flag;
+  dst->mode = src->mode;
+}
+
 END_SIMSOC_NAMESPACE

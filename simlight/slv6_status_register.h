@@ -33,6 +33,8 @@ struct SLv6_StatusRegister {
 
 extern uint32_t StatusRegister_to_uint32(struct SLv6_StatusRegister*);
 extern void set_StatusRegister(struct SLv6_StatusRegister*, uint32_t);
+extern void copy_StatusRegister(struct SLv6_StatusRegister *dst,
+                                struct SLv6_StatusRegister *src);
 
 static inline void set_GE_32(struct SLv6_StatusRegister *sr, uint8_t n) {sr->GE2 = n&1; sr->GE3 = n>>1;}
 static inline void set_GE_10(struct SLv6_StatusRegister *sr, uint8_t n) {sr->GE0 = n&1; sr->GE1 = n>>1;}
