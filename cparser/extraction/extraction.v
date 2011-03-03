@@ -49,7 +49,7 @@ Extract Constant Memdata.encode_float => "Memdataaux.encode_float".
 Extract Constant Memdata.decode_float => "Memdataaux.decode_float".
 
 (* Memory - work around an extraction bug. *)
-Extraction NoInline Memory.Mem.valid_pointer.
+(*Extraction NoInline Memory.Mem.valid_pointer.*)
 
 (* Iteration *)
 Extract Constant Iteration.dependent_description' =>
@@ -89,7 +89,7 @@ Extraction Blacklist List String Int.
 
 (* Go! *)
 Cd "extraction".
-Recursive Extraction Library Compiler.
 
 Require Import Csyntax_print.
-Recursive Extraction Library Csyntax_print.
+Extraction Library NaryFunctions.
+(*Recursive*) Extraction Library Csyntax_print.

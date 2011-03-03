@@ -17,7 +17,7 @@ OCB_OPTIONS=\
   -j 2 \
   -no-hygiene \
   -no-links \
-  -I $(COMPCERT) \
+  -I $(COMPCERT) -I $(COMPCERT)/extraction \
   -I extraction $(INCLUDES)
 
 #all: extract_compcert nc
@@ -33,11 +33,10 @@ compil: Csyntax_print.v
 extraction:
 	rm -f extraction/*.ml extraction/*.mli
 	$(COQEXEC) extraction/extraction.v
-	cd extraction && ./fixextract
 
 test: test.ml
-	$(OCAMLBUILD) $(OCB_OPTIONS) test.byte
-	ln -sf _build/test.byte ccomp
+	$(OCAMLBUILD) $(OCB_OPTIONS) test.d.byte
+	ln -sf _build/test.d.byte ccomp
 
 nc: export_c_ast.ml
 	ocamlbuild -I $(COMPCERT)/cparser export_c_ast.native

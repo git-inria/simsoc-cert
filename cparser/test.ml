@@ -88,8 +88,13 @@ let compile_c_file sourcename ifile ofile =
     | Some p -> p in
 
   let _ = 
-    let Csyntax_print.Monad_base.L (_, l) = Csyntax_print.Moo._program csyntax [] in
-    let _ = Printf.eprintf "%s\n%!" (List.fold_left (fun acc s -> Printf.sprintf "%s%s" acc (Camlcoq.camlstring_of_coqstring s)) "" (List.rev l)) in
+    let Csyntax_print.Monad_list.L (_, l) = Csyntax_print.Constructor_list._program csyntax [] in
+    let _ = 
+      begin
+        Printf.eprintf "Check \n";
+        List.iter (fun s -> Printf.eprintf "%s" (Camlcoq.camlstring_of_coqstring s)) (List.rev l);
+        Printf.eprintf ".\n%!";
+      end in
     () in
 
   (* Save Csyntax if requested *)

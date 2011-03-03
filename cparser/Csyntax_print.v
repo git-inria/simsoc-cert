@@ -7,7 +7,11 @@ Require Import Csyntax.
 
 Module Rec.
 (** This module gives a destructor for each local type used to build the main type [Csyntax.program].
-Each declared function [_f] behaves approximatively as its [f_rect], except that mutually functions are handled using the 'Scheme' command, and if we are dealing with a recursive type, the recursive call is done implicitly. *)
+For each type [t], Coq furnishes us automatically a function named [t_rect]. We use it to write a function [_t] which behaviour is almost similar to [t_rect] except that :
+- if [t] is a mutually declared type, assume that [t] belongs to [t1 ... ti ... tn], then we use the 'Scheme' command to obtain a recursor [_ti_rect] which folds inside [t1 ... tn] (not like [ti_rect]). 
+As the constructors of [_t1 ... _tn] are the same, we just do only one general construction named [_t_] which will take one of [_t1 ... _tn] as an extra parameter. The type of this parameter has to be manually written by hand because of the used of higher order type (see the function [_ty_]).
+- if [t] is a recursive type, the parameter used before the recursive call parameter is thrown, we do not use it. 
+- an extra function of conversion is provided in the case we are converting a polymorphic function (see [_option] or [_list] for example). *)
 
 Definition _option {A B C} (a : _ -> C) f := @option_rect A (fun _ => B) (fun x => f (a x)).
 
@@ -44,17 +48,17 @@ Definition _init_data {A B C D E}
   (fun i i2 => f_addrof (_ident i) (_int i2)).
 
 Module _AST.
-Definition _program {A B D   F V : Type}
-  f_prod f_ni f_co
-  f_f f_v 
-  _ident _init_data
-  (f_mk : A -> B -> A -> D) 
-  (x : _ F V)
-  :=
-  f_mk
-    (_list (_prod _ident f_f f_prod) f_ni f_co (prog_funct x)) 
-    (_ident (prog_main x)) 
-    (_list (_prod (_prod _ident (_list _init_data f_ni f_co) f_prod) f_v f_prod) f_ni f_co (prog_vars x)).
+  Definition _program {A B D   F V : Type}
+    f_prod f_ni f_co
+    f_f f_v 
+    _ident _init_data
+    (f_mk : A -> B -> A -> D) 
+    (x : _ F V)
+    :=
+    f_mk
+      (_list (_prod _ident f_f f_prod) f_ni f_co (prog_funct x)) 
+      (_ident (prog_main x)) 
+      (_list (_prod (_prod _ident (_list _init_data f_ni f_co) f_prod) f_v f_prod) f_ni f_co (prog_vars x)).
 End _AST.
 
 Definition _signedness {A} := signedness_rect (fun _ => A).
@@ -243,11 +247,11 @@ End Rec.
 
 
 Module Rec_weak. 
-(** For each general function inside the module [Rec], we change its type to a lower one : each polymorphic type is explicit instancitated with a single polymorphic one. 
-This polymorphic information can be thought as an accumulator staying alive along the whole execution, it can be used for example with a monadic construction.
+(** For each general function inside the module [Rec], we cast its type to a lower one : each polymorphic type is explicitly instanciated with a single polymorphic one. 
+This polymorphic information can be thought as an accumulator staying alive during the whole execution, it can be used for example with a monadic construction.
 After this change, we generalize each function construction "_ -> _ -> _ -> _ -> _" to a more general one "_ ^^ _ --> _" by using the NaryFunctions library.
-This is useful if we do not want to abstract manually the "fun _ => _" during the application time. 
-Note that we have to give explicitely a natural number describing the arity we are considering in each case. *)
+This is useful for later because we will not want to abstract manually the "fun _ => _" during the application time. 
+Note that we have to give explicitely the arity of each constructor in each type. *)
 Import Rec.
 Require Import NaryFunctions.
 Notation "A ** n" := (A ^^ n --> A) (at level 29) : type_scope.
@@ -384,128 +388,54 @@ Definition _fundef {A} : _ -> _ -> _ -> _ ->
 End Rec_weak.
 
 
+Module List_n.
+  Inductive t {A : Type} : nat -> Type :=
+    | nil : t O
+    | cons : forall n, A -> t n -> t (S n).
+
+  (* Convert a [list_n] into a [list] with an extra property on its length. *)
+  Definition to_list : forall A n, @t A n -> { l : list A | n = List.length l }.
+    induction n ; intros.
+    exists List.nil.
+    trivial.
+    inversion X.
+    destruct (IHn X1).
+    exists (X0 :: x).
+    simpl.
+    auto.
+  Defined.
+End List_n.
 
 
-Module Type MONAD.
+Module Type CONSTRUCTOR.
   Require Import NaryFunctions String.
-  Inductive list_n {A : Type} : nat -> Type :=
-    | nil_n : list_n O
-    | cons_n : forall n, A -> list_n n -> list_n (S n).
 
   Parameter t : Type -> Type.
-  Parameter ret : forall A, A -> t A.
-  Parameter bind : forall A B, t A -> (A -> t B) -> t B.
+  Parameter u : Type.
+  Parameter _U : string -> forall n, t u ^^ n --> t u. (* uplet *)
+  Parameter _R : forall n, @List_n.t string n -> t u ^^ n --> t u. (* record *)
 
-  Parameter _U : string -> forall n, t unit ^^ n --> t unit. (* uplet *)
-  Parameter _R : forall n, @list_n string n -> t unit ^^ n --> t unit. (* record *)
-  Parameter _float : (Z -> t unit) -> float -> t unit.
-  Parameter _int : (Z -> t unit) -> int -> t unit.
-End MONAD.
+  Parameter _positive : positive -> t u.
+  Parameter _Z : Z -> t u.
+  Parameter _float : float -> t u.
+  Parameter _int : int -> t u.
+End CONSTRUCTOR.
 
-Module Monad_base <: MONAD.
-Require Import NaryFunctions String.
-Open Scope string_scope.
 
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
-
-Inductive list_n {A : Type} : nat -> Type :=
-  | nil_n : list_n O
-  | cons_n : forall n, A -> list_n n -> list_n (S n).
-
-(* Convert a [list_n] into a [list] with an extra property on its length. *)
-Definition list_of_list_n : forall A n, @list_n A n -> { l : list A | n = List.length l }.
-  induction n ; intros.
-  exists nil.
-  trivial.
-  inversion X.
-  destruct (IHn X1).
-  exists (X0 :: x).
-  simpl.
-  auto.
-Defined.
-
-Definition st := list string.
-Inductive state {A} :=
-  L (_ : A) (_ : st).
-
-Definition t A := st -> @state A.
-Definition ret {A} (a : A) := L a.
-
-Definition bind {A B} (m : t A) (f : A -> t B) : t B :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | L a lbs1 => f a lbs1
-  end.
-
-Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
-  bind f1 (fun _ =>  f2).
-
-Definition perform l := 
-  List.fold_left (fun acc m => next acc m) l (ret tt).
-
-Definition push s : t unit := fun st => ret tt (s :: st).
- 
-Definition _U s n := 
-  ncurry _ _ n
-  (fun cpl =>
-    List.fold_left (fun acc (m : t unit) => perform
-      [ acc
-      ; push " ("
-      ; m
-      ; push ")" ]
-    ) (nprod_to_list _ _ cpl) (push s)
-  ).
-
-Definition _R n (l : @list_n string n) : t unit ^^ n --> t unit :=
-  ncurry _ _ n
-  (fun cpl => perform
-    [ push "{| "
-    ; let f pref xs :=
-        fold_left (fun acc (l : string * t unit) => let (s, m) := l in perform
-          [ acc
-          ; push (pref ++ s ++ " := ")
-          ; m ]
-        ) xs (ret tt) in
-      match List.combine (let (l, _) := list_of_list_n _ _ l in l) (nprod_to_list _ _ cpl) with
-        | x :: xs => perform
-          [ f "" [x]
-          ; f " ; " xs ]
-        | l => f " ; " l
-      end
-    ; push " |}" ]
-  ).
-
-Definition _int (_Z : _ -> t unit) i : t unit := perform
-  [ push "Int.repr ("
-  ; _Z (Int.intval i)
-  ; push ")" ].
-
-Definition _float _Z f := perform
-  [ push "Float.floatofint ("
-  ; _int _Z (Float.intoffloat f)
-  ; push ")" ].
-
-End Monad_base.
-
-Module Mo (Import M : MONAD). 
+Module Constructor (C : CONSTRUCTOR). 
 (** The pretty-printing is done inside this module : for each type, we explicitly write the name of the corresponding constructor inside a "string". *)
-Import Rec Rec_weak.
+Import Rec Rec_weak C.
+Require Import NaryFunctions.
 Open Scope string_scope.
 Notation "'!' x" := (_U x _) (at level 9).
-(*Notation "{{ }}" := nil_n.*)
-Notation "{{ a ; .. ; b }}" := (_R _ (cons_n _ a .. (cons_n _ b nil_n) ..)).
-(* *)
-Definition _positive := _positive 
-  ! "xI" 
-  ! "xO" 
-  ! "xH".
-Definition _Z := _Z _positive 
-  ! "Z0" 
-  ! "Zpos" 
-  ! "Zneg".
-Definition _int := _int _Z.
-Definition _float := _float _Z.
+Notation "{{ a ; .. ; b }}" := (_R _ (List_n.cons _ a .. (List_n.cons _ b List_n.nil) ..)).
+
+Definition pair : t u ^^ 2 --> t u := ! "pair".
+Definition nil : t u ^^ 0 --> t u := ! "nil".
+Definition cons : t u ^^ 2 --> t u := ! "cons".
+Definition some : t u ^^ 1 --> t u := ! "Some".
+Definition none : t u ^^ 0 --> t u := ! "None".
+
 Definition _ident := _positive.
 
 Definition _init_data := _init_data _int _float _Z _ident
@@ -518,7 +448,7 @@ Definition _init_data := _init_data _int _float _Z _ident
   ! "Init_addrof".
 
 Module _AST.
-  Definition _program {B C} f_b f_c := @_AST._program _ B C ! "pair" ! "nil" ! "cons" f_b f_c _ident _init_data
+  Definition _program {B C} f_b f_c := @_AST._program _ B C pair nil cons f_b f_c _ident _init_data
     {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
 End _AST.
 
@@ -590,7 +520,7 @@ Definition _expr := _expr _float _int _type _ident _unary_operation _binary_oper
   ! "Esizeof"
   ! "Efield".
 Definition _label := _ident.
-Definition _statement := _statement ! "Some" ! "None" ! "nil" ! "cons"    _expr _label _int
+Definition _statement := _statement some none nil cons _expr _label _int
   ! "Sskip"
   ! "Sassign"
   ! "Scall"
@@ -607,13 +537,99 @@ Definition _statement := _statement ! "Some" ! "None" ! "nil" ! "cons"    _expr 
   ! "Sgoto"
   ! "LSdefault"
   ! "LScase".
-Definition _function := _function ! "pair" ! "nil" ! "cons" _ident _type _statement
+Definition _function := _function pair nil cons _ident _type _statement
   {{ "fn_return" ; "fn_params" ; "fn_vars" ; "fn_body" }}.
 Definition _fundef := _fundef _function _ident _typelist _type
   ! "Internal"
   ! "External".
 Definition _program := _AST._program _fundef _type.
 
-End Mo.
+End Constructor.
 
-Module Moo := Mo Monad_base.
+
+
+Module Monad_list.
+
+Require Import NaryFunctions String.
+Open Scope string_scope.
+
+Notation "[ ]" := nil.
+Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+
+Definition st := list string.
+Inductive state {A} :=
+  L (_ : A) (_ : st).
+
+Definition t A := st -> @state A.
+Definition u := unit.
+Definition ret {A} (a : A) := L a.
+
+Definition bind {A B} (m : t A) (f : A -> t B) : t B :=
+  fun lbs0 => 
+  match m lbs0 with 
+    | L a lbs1 => f a lbs1
+  end.
+
+Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
+  bind f1 (fun _ =>  f2).
+
+Definition perform l := 
+  List.fold_left (fun acc m => next acc m) l (ret tt).
+
+Definition push s : t unit := fun st => ret tt (s :: st).
+ 
+Definition _U s n := 
+  ncurry _ _ n
+  (fun cpl =>
+    List.fold_left (fun acc (m : t unit) => perform
+      [ acc
+      ; push " ("
+      ; m
+      ; push ")" ]
+    ) (nprod_to_list _ _ cpl) (push s)
+  ).
+
+Definition _R n (l : @List_n.t string n) : t unit ^^ n --> t unit :=
+  ncurry _ _ n
+  (fun cpl => perform
+    [ push "{| "
+    ; let f pref xs :=
+        fold_left (fun acc (l : string * t unit) => let (s, m) := l in perform
+          [ acc
+          ; push (pref ++ s ++ " := ")
+          ; m ]
+        ) xs (ret tt) in
+      match List.combine (let (l, _) := List_n.to_list _ _ l in l) (nprod_to_list _ _ cpl) with
+        | x :: xs => perform
+          [ f "" [x]
+          ; f " ; " xs ]
+        | l => f " ; " l
+      end
+    ; push " |}" ]
+  ).
+
+Notation "'!' x" := (_U x _) (at level 9).
+
+Definition _positive := Rec_weak._positive 
+  ! "xI" 
+  ! "xO" 
+  ! "xH".
+
+Definition _Z := Rec_weak._Z _positive 
+  ! "Z0"
+  ! "Zpos" 
+  ! "Zneg".
+
+Definition _int i := perform
+  [ push "Int.repr ("
+  ; _Z (Int.intval i)
+  ; push ")" ].
+
+Definition _float f := perform
+  [ push "Float.floatofint ("
+  ; _int (Float.intoffloat f)
+  ; push ")" ].
+
+End Monad_list.
+
+Module Constructor_list := Constructor Monad_list.
