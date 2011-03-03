@@ -88,7 +88,42 @@ let compile_c_file sourcename ifile ofile =
     | Some p -> p in
 
   let _ = 
-    let Csyntax_print.Monad_list.L (_, l) = Csyntax_print.Constructor_list._program csyntax [] in
+    let open Csyntax_print in
+
+    let module Camlcoq = 
+    struct
+      include Camlcoq
+
+      let ascii_of_char c = 
+        let f = 
+          let i = Char.code c in
+          fun n -> (i lsr n) land 1 <> 0 in
+        Ascii.Ascii (f 0, f 1, f 2, f 3, f 4, f 5, f 6, f 7)
+
+      let coqstring_of_camlstring s = 
+        let rec aux n acc = 
+          if n < 0 then
+            acc
+          else
+            aux (pred n) (String0.String (ascii_of_char s.[n], acc)) in
+        aux (pred (String.length s)) String0.EmptyString
+    end in
+
+    let module Monad_list = 
+    struct
+      include Monad_list
+
+      let camlpush s = push (Camlcoq.coqstring_of_camlstring s)
+
+      let _Z z = 
+        camlpush (Printf.sprintf "%ld%%Z" (Camlcoq.camlint_of_z z))
+
+      let _positive p = 
+        camlpush (Printf.sprintf "%ld%%positive" (Camlcoq.camlint_of_positive p))
+    end in
+
+    let Monad_list.L (_, l) = (let module Constructor_list = Constructor (Monad_list) in
+                               Constructor_list._program) csyntax [] in
     let _ = 
       begin
         Printf.eprintf "Check \n";
