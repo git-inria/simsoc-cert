@@ -81,7 +81,7 @@ let simsoc_dir =
               aux ();
             end in
       begin
-        Printf.fprintf oc "COMPCERT=\"%s\"\n" compcert_ln_name;
+        Printf.fprintf oc "COMPCERT=%s\n" compcert_ln_name;
         aux ();
         close_out oc;
         close_in ic;
