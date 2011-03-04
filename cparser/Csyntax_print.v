@@ -688,8 +688,8 @@ Definition _positive p := push (string_of_positive p).
 Definition _Z z := push (string_of_Z z).
 End Simpl.
 
-Definition _positive := Expand._positive.
-Definition _Z := Expand._Z.
+Definition _positive := Simpl._positive.
+Definition _Z := Simpl._Z.
 
 Definition _int i := perform
   [ push "Int.repr ("
