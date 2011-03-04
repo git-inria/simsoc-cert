@@ -1,9 +1,12 @@
-Require Import Coqlib.
-Require Import Integers.
-Require Import Floats.
-Require Import AST.
-Require Import Csyntax.
-
+Require Import 
+  (* compcert *)
+  Coqlib
+  Integers
+  Floats
+  AST
+  Csyntax
+  (* *)
+  Bvector.
 
 Module Rec.
 (** This module gives a destructor for each local type used to build the main type [Csyntax.program].
@@ -388,23 +391,20 @@ Definition _fundef {A} : _ -> _ -> _ -> _ ->
 End Rec_weak.
 
 
-Module List_n.
-  Inductive t {A : Type} : nat -> Type :=
-    | nil : t O
-    | cons : forall n, A -> t n -> t (S n).
-
-  (* Convert a [list_n] into a [list] with an extra property on its length. *)
-  Definition to_list : forall A n, @t A n -> { l : list A | n = List.length l }.
+Module Vector.
+  (* Convert a [vector] into a [list] with an extra property on its length. *)
+  Definition to_list : forall A n, vector A n -> { l : list A | n = List.length l }.
     induction n ; intros.
     exists List.nil.
     trivial.
     inversion X.
-    destruct (IHn X1).
-    exists (X0 :: x).
+    destruct (IHn X0).
+    exists (a :: x).
     simpl.
     auto.
   Defined.
-End List_n.
+
+End Vector.
 
 
 Module Type CONSTRUCTOR.
@@ -413,7 +413,7 @@ Module Type CONSTRUCTOR.
   Parameter t : Type -> Type.
   Parameter u : Type.
   Parameter _U : string -> forall n, t u ^^ n --> t u. (* uplet *)
-  Parameter _R : forall n, @List_n.t string n -> t u ^^ n --> t u. (* record *)
+  Parameter _R : forall n, vector string n -> t u ^^ n --> t u. (* record *)
 
   Parameter _positive : positive -> t u.
   Parameter _Z : Z -> t u.
@@ -428,7 +428,7 @@ Import Rec Rec_weak C.
 Require Import NaryFunctions.
 Open Scope string_scope.
 Notation "'!' x" := (_U x _) (at level 9).
-Notation "{{ a ; .. ; b }}" := (_R _ (List_n.cons _ a .. (List_n.cons _ b List_n.nil) ..)).
+Notation "{{ a ; .. ; b }}" := (_R _ (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..)).
 
 Definition pair : t u ^^ 2 --> t u := ! "pair".
 Definition nil : t u ^^ 0 --> t u := ! "nil".
@@ -589,7 +589,7 @@ Definition _U s n :=
     ) (nprod_to_list _ _ cpl) (push s)
   ).
 
-Definition _R n (l : @List_n.t string n) : t unit ^^ n --> t unit :=
+Definition _R n (l : vector string n) : t unit ^^ n --> t unit :=
   ncurry _ _ n
   (fun cpl => perform
     [ push "{| "
@@ -599,7 +599,7 @@ Definition _R n (l : @List_n.t string n) : t unit ^^ n --> t unit :=
           ; push (pref ++ s ++ " := ")
           ; m ]
         ) xs (ret tt) in
-      match List.combine (let (l, _) := List_n.to_list _ _ l in l) (nprod_to_list _ _ cpl) with
+      match List.combine (let (l, _) := Vector.to_list _ _ l in l) (nprod_to_list _ _ cpl) with
         | x :: xs => perform
           [ f "" [x]
           ; f " ; " xs ]
@@ -608,6 +608,7 @@ Definition _R n (l : @List_n.t string n) : t unit ^^ n --> t unit :=
     ; push " |}" ]
   ).
 
+Module Expand.
 Notation "'!' x" := (_U x _) (at level 9).
 
 Definition _positive := Rec_weak._positive 
@@ -619,6 +620,76 @@ Definition _Z := Rec_weak._Z _positive
   ! "Z0"
   ! "Zpos" 
   ! "Zneg".
+End Expand.
+
+Module Simpl.
+Require Import Euclid.
+Require Import Ascii.
+Require Import Recdef.
+
+Definition ascii_to_string a := String a "".
+Coercion ascii_to_string : ascii >-> string.
+Definition ascii_of_number n := ascii_of_nat (n + 48).
+Coercion ascii_of_number : nat >-> ascii.
+
+Open Scope nat_scope.
+
+Remark gt_10_0 : 10 > 0.
+  omega.
+Qed.
+
+Function string_of_nat_aux (acc : string) (n : nat) {wf lt n} : string := 
+  match n with
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => n ++ acc
+  | _ => 
+    let (q, pr_q) := quotient 10 gt_10_0 n in
+    let (r, _) := modulo 10 gt_10_0 n in 
+      string_of_nat_aux (r ++ acc)
+      q
+  end.
+  intros.
+  inversion pr_q.
+  omega.
+  auto with *.
+Defined.
+
+(* (* WARNING This proof is not accepted by Coq 8.2, but 8.3 is ok. *)
+Function string_of_nat_aux (acc : string) (n : nat) {wf lt n} : string := 
+  match n with
+  | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => n ++ acc
+  | _ => 
+    string_of_nat_aux 
+      (let (r, _) := modulo 10 gt_10_0 n in r ++ acc) 
+      (let (q, _) := quotient 10 gt_10_0 n in q)
+  end.
+  intros.
+  match goal with |- context [ ?Q ?a ?b ?c ] => destruct (Q a b c) as (q, pr_q) end.
+  inversion pr_q.
+  omega.
+  auto with *.
+Qed.
+*)
+
+Definition string_of_nat_ := string_of_nat_aux "".
+
+Definition string_of_positive_ p :=
+  string_of_nat_ (nat_of_P p).
+
+Definition string_of_positive p := string_of_positive_ p ++ "%positive".
+
+Definition string_of_Z z := 
+  match z with
+    | Z0 => "0"
+    | Zpos p => string_of_positive_ p
+    | Zneg p => "-" ++ string_of_positive_ p
+  end ++ "%Z".
+
+Definition _positive p := push (string_of_positive p).
+Definition _Z z := push (string_of_Z z).
+End Simpl.
+
+Definition _positive := Expand._positive.
+Definition _Z := Expand._Z.
 
 Definition _int i := perform
   [ push "Int.repr ("

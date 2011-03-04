@@ -89,7 +89,7 @@ let compile_c_file sourcename ifile ofile =
 
   let _ = 
     let open Csyntax_print in
-
+(*
     let module Camlcoq = 
     struct
       include Camlcoq
@@ -121,7 +121,7 @@ let compile_c_file sourcename ifile ofile =
       let _positive p = 
         camlpush (Printf.sprintf "%ld%%positive" (Camlcoq.camlint_of_positive p))
     end in
-
+*)
     let Monad_list.L (_, l) = (let module Constructor_list = Constructor (Monad_list) in
                                Constructor_list._program) csyntax [] in
     let _ = 

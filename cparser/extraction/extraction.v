@@ -92,4 +92,6 @@ Cd "extraction".
 
 Require Import Csyntax_print.
 Extraction Library NaryFunctions.
+Extraction Library Bvector.
+Extraction Library Euclid.
 (*Recursive*) Extraction Library Csyntax_print.
