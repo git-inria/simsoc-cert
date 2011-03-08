@@ -25,6 +25,7 @@ let mk_code l =
   ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
 
 let preprocess_parse_c : string list manual -> raw_c_code manual = fun m -> 
+  (** the preprocessing [C_parse.preprocess] function needs to receive a single C file (for replacing all directive variable for example), that is why we concatenate the header and all the instructions *)
   let (pos, code), l_pos =
     List.fold_left (fun ((pos, acc_s), l_pos) l -> 
       List.fold_left (fun (pos, acc_s) s -> succ pos, Printf.sprintf "%s%s\n" acc_s s)
@@ -34,15 +35,15 @@ let preprocess_parse_c : string list manual -> raw_c_code manual = fun m ->
   let _, (_, l, ll) =
     List.fold_left 
       (fun (pos, (l_pos, acc_l, acc_ll)) s -> 
-	pred pos, 
-	match l_pos with
-	  | [] -> 
-	    [], s :: acc_l, acc_ll
-	  | x :: xs -> 
-	    if pos = x then
-	      xs, [s], acc_l :: acc_ll
-	    else
-	      l_pos, s :: acc_l, acc_ll) 
+        pred pos, 
+        match l_pos with
+          | [] -> 
+            [], s :: acc_l, acc_ll
+          | x :: xs -> 
+            if pos = x then
+              xs, [s], acc_l :: acc_ll
+            else
+              l_pos, s :: acc_l, acc_ll) 
       (pos, (l_pos, [], [])) 
       (C_parse.expand_line_space (C_parse.preprocess code)) in
 
@@ -105,19 +106,19 @@ let _ =
   let analyse dec_title l = 
     match dec_title with
       | Menu -> 
-	map_analyse :=
-	List.fold_left (
-	  fun map -> 
-	    let f s nb = 
-	      String_map.add s (if String_map.mem s map then Int_set.add nb (String_map.find s map) else Int_set.empty) map
-	    in
-	    function
-	  | I_1, nb -> f "1" nb
-	  | I_0, nb -> f "0" nb
-	  | I_n, nb -> f "n" nb
-	  | I_m, nb -> f "m" nb
-	  | I_i, nb -> f "i" nb
-	  | I_d, nb -> f "d" nb) !map_analyse l
+        map_analyse :=
+        List.fold_left (
+          fun map -> 
+            let f s nb = 
+              String_map.add s (if String_map.mem s map then Int_set.add nb (String_map.find s map) else Int_set.empty) map
+            in
+            function
+          | I_1, nb -> f "1" nb
+          | I_0, nb -> f "0" nb
+          | I_n, nb -> f "n" nb
+          | I_m, nb -> f "m" nb
+          | I_i, nb -> f "i" nb
+          | I_d, nb -> f "d" nb) !map_analyse l
       | Menu_PR 
       | Menu_NO_PR  
       | Menu_NO_SZ -> () in
@@ -225,7 +226,7 @@ let _ =
         let c_code = 
           (match decoder.dec_other with
             | (x1, _, _) when (match String.sub x1 0 4 with "9.50" | "9.92" -> true | _ -> false) -> 
-	      
+              
               let r_bank = Str.regexp ".*_BANK" in
               let r_accol_end = Str.regexp ".*}" in
               let replace c_code =
@@ -237,8 +238,8 @@ let _ =
                 let l1, l2 = replace c_code in
                 let l2, l3 = replace l2 in
                 l1 @ l2 @ l3
-		  
-	    | _ -> fun x -> x) (l3 @ [n]) in
+                  
+            | _ -> fun x -> x) (l3 @ [n]) in
 
         aux t ({ position = S.pos t 
                ; explanation_desc = l2 
@@ -256,7 +257,7 @@ let _ =
   begin
     (if false then (* this part is used to know the size of each register inside the decoder array *)
       begin
-	String_map.fold (fun k m () -> Printf.eprintf "%s [%s]\n%!" k (Int_set.fold (fun k acc -> Printf.sprintf "%s%d " acc k) m "")) !map_analyse ();
+        String_map.fold (fun k m () -> Printf.eprintf "%s [%s]\n%!" k (Int_set.fold (fun k acc -> Printf.sprintf "%s%d " acc k) m "")) !map_analyse ();
       end
     (* 
        0 [1 2 3 4 5 6 7 8 9 10 11 12 ]
@@ -270,7 +271,7 @@ let _ =
       ());
     if false && display_c then
       begin 
-	List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
+        List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
       end; 
     List.iter (fun sec -> 
       begin 
