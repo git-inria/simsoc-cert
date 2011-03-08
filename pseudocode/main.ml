@@ -235,7 +235,7 @@ let parse_input_file() =
     let split_msr_code, pc =
       if get_sh4 () then
         (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
-        C2pc.Traduction.prog_list_of_manual (input_bin input_file : C2pc.raw_c_code C2pc.manual)
+        C2pc.program_of_manual (let open C2pc_manual in (input_bin input_file : raw_c_code manual))
       else
         Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
 
@@ -248,7 +248,7 @@ let parse_input_file() =
 
     set_dec_input 
       (let v = (if get_sh4 () then 
-          fun x -> C2pc.Traduction.maplist_of_manual (input_bin x) 
+          fun x -> C2pc.maplist_of_manual (input_bin x) 
         else
           input_bin) (get_dec_input_file()) in
        let () = ignore v in

@@ -139,7 +139,7 @@ struct
   let word_size = "16"
 
   let specific_uncond_inst = function 
-    | LH (_ :: n :: _, _) -> C2pc.Traduction.is_not_float_mmu n
+    | LH (_ :: n :: _, _) -> C2pc.is_not_float_mmu n
     | LH _ -> true
 
   let prefix_proc = "Sh4_"
