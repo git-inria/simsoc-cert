@@ -88,7 +88,6 @@ let compile_c_file sourcename ifile ofile =
     | Some p -> p in
 
   let _ = 
-    let open Csyntax_print in
 (*
     let module Camlcoq = 
     struct
@@ -122,13 +121,12 @@ let compile_c_file sourcename ifile ofile =
         camlpush (Printf.sprintf "%ld%%positive" (Camlcoq.camlint_of_positive p))
     end in
 *)
-    let Monad_list.L (_, l) = (let module Constructor_list = Constructor (Monad_list) in
-                               Constructor_list._program) csyntax [] in
     let _ = 
       begin
-        Printf.eprintf "Check \n";
-        List.iter (fun s -> Printf.eprintf "%s" (Camlcoq.camlstring_of_coqstring s)) (List.rev l);
-        Printf.eprintf ".\n%!";
+        Gc.set { (Gc.get ()) with Gc.stack_limit = max_int };
+        List.iter (fun s -> Printf.eprintf "%s" (Camlcoq.camlstring_of_coqstring s)) (Csyntax_print.program_fundef_type csyntax);
+        Printf.eprintf "%!";
+        exit 0;
       end in
     () in
 
