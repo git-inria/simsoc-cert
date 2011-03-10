@@ -405,14 +405,53 @@ Module Vector.
 End Vector.
 
 
+
+
+(* OCaml implementation side *)
+
+Module Type STRING.
+  Require Import String Ascii.
+
+  Parameter t : Type.
+
+  Parameter of_string : string -> t.
+
+  Parameter rindex : nat (* pos *) -> t -> t -> option nat.
+  Parameter empty : t.
+  Parameter length : t -> nat.
+  Parameter make : nat -> ascii -> t.
+  Parameter append : t -> t -> t.
+End STRING.
+
+Module Type UTIL (S : STRING).
+  Parameter string_of_nat : nat -> S.t.
+  Parameter string_of_positive : positive -> S.t.
+  Parameter string_of_Z : Z -> S.t.
+  (* WARNING we can also implement these [string_of_...] functions in Coq, but in the case of not tail recursive function, we may have a ([Stack_overflow], in byte code) or a (Segmentation_fault, in native code). *)
+
+  Parameter name : positive -> option S.t.
+  Parameter fold : forall A, (positive -> S.t -> A -> A) -> A -> A.
+End UTIL.
+
+Module Type BUFFER (S : STRING).
+  Parameter t : Type.
+  
+  Parameter empty : t.
+  Parameter print : S.t -> t -> t.
+  Parameter print_newline : t -> t.
+  Parameter pos : t -> nat. (* number of character since the last call to [print_newline] or [empty] *)
+End BUFFER.
+
+(* *** *)
+
 Module Type CONSTRUCTOR.
   Require Import NaryFunctions String.
 
   Parameter t : Type -> Type.
   Parameter v : Type.
-  Definition u := (bool * t v) % type.
+  Parameter u : Type.
 
-  Parameter push : string -> t v.
+  Parameter print : string -> t v.
 
   Parameter save_pos : t v. (* save the current column number in a stack, by looking where is the previous newline *)
   Parameter delete_pos : t v. (* pop the stack *)
@@ -421,6 +460,7 @@ Module Type CONSTRUCTOR.
 
   Parameter perform : list (t v) -> t v.
   Parameter ret : forall A, A -> t A.
+  Parameter ret_u : bool -> t v -> t u.
   Parameter tt : v.
 
   Parameter _U : 
@@ -436,6 +476,7 @@ Module Type CONSTRUCTOR.
 
   Parameter _positive : positive -> t u.
   Parameter _Z : Z -> t u.
+  Parameter _ident : positive -> t u.
   Parameter _float : float -> t u.
   Parameter _int : int -> t u.
   Parameter _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
@@ -456,6 +497,8 @@ Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 Notation "'\n'" := indent.
 
+Definition ret_u s := ret_u false (print s).
+
 Section pr. (** Additional constructors (same as [_U]) is defined here *)
 
 Definition ret {A} := ret A.
@@ -474,13 +517,13 @@ Definition _U_constr : string (* name of the constructor *) -> forall n, t u ^^ 
   intros s n.
   case_eq n ; intros.
   apply ncurry.
-  intros. exact (ret (false, push s)). 
+  intros. exact (ret_u s). 
 
   clear n H ; rename n0 into n.
-  apply (_U true (push (s ++ " ")) (ret tt)).
+  apply (_U true (print (s ++ " ")) (ret tt)).
   induction n.
   exact (Vnil _).
-  apply Vcons. exact (push " "). trivial.
+  apply Vcons. exact (print " "). trivial.
   apply surr_empty.
 Defined.
 
@@ -498,23 +541,23 @@ Definition _R : forall n, vector string n -> t u ^^ n --> t u.
   intros n l.
   case_eq n ; intros.
   apply ncurry.
-  intros. exact (ret (false, push "{||}")).
+  intros. exact (ret_u "{||}").
 
-  apply (_U false (perform [ save_pos ; push "{| "] ) (perform [ push " |}" ; delete_pos ]) ).
-  apply Vector.init. exact (fun _ => perform [ \n ; push " ; " ]).
+  apply (_U false (perform [ save_pos ; print "{| "] ) (perform [ print " |}" ; delete_pos ]) ).
+  apply Vector.init. exact (fun _ => perform [ \n ; print " ; " ]).
   subst n.
   refine (Vector.map _ _ l) ; clear.
   intros x.
-  exact (false, (push (x ++ " := "), ret tt)).
+  exact (false, (print (x ++ " := "), ret tt)).
 Defined.
 
 Definition _U2 : string -> forall n, vector (option (string * string)) (S n) -> t u ^^ (S n) --> t u.
   intros s n l.
-  apply (_U (not_b (eq_zero n)) (push (s ++ " ")) (ret tt) _ (Vector.init _ (fun _ => push " "))).
+  apply (_U (not_b (eq_zero n)) (print (s ++ " ")) (ret tt) _ (Vector.init _ (fun _ => print " "))).
   refine (Vector.map _ _ l) ; intros.
   refine (true, _).  
   case_eq H ; intros.
-  exact (let (p1, p2) := p in (push p1, push p2)).
+  exact (let (p1, p2) := p in (print p1, print p2)).
   exact (ret tt, ret tt).
 Defined.
 
@@ -527,7 +570,19 @@ Notation "| x · y" := (_U2 x _ y) (at level 9).
 Definition some : t u ^^ 1 --> t u := ! "Some".
 Definition none : t u ^^ 0 --> t u := ! "None".
 
-Definition _ident := _positive.
+(*
+Definition _positive := Rec_weak._positive 
+  ! "xI" 
+  ! "xO" 
+  ! "xH".
+
+Definition _Z := Rec_weak._Z _positive 
+  ! "Z0"
+  ! "Zpos" 
+  ! "Zneg".
+*)
+
+(*Definition _ident := _positive.*)
 
 Definition _init_data := _init_data _int _float _Z _ident
   ! "Init_int8"
@@ -569,9 +624,9 @@ Definition _type_ T (ty : forall A : Type,
   ! "Tunion"
   ! "Tcomp_ptr"
   ! (*"Tnil"*)  "··"
-  (*! "Tcons"*) (_U_infix2 (push " ~> "))
+  (*! "Tcons"*) (_U_infix2 (print " ~> "))
   ! (*"Fnil"*) "-·"
-  (*! "Fcons"*) (_U_infix3 (push "-") (push " -~> ")).
+  (*! "Fcons"*) (_U_infix3 (print "-") (print " -~> ")).
 Definition _type := _type_ _ (@_type).
 Definition _typelist := _type_ _ (@_typelist).
 Definition _unary_operation := _unary_operation 
@@ -615,8 +670,8 @@ Definition _statement := _statement some none _list _expr _label _int
   ! "Sskip"
   ! "Sassign"
   ! "Scall"
-  (*! "Ssequence"*) (_U_infix2 (perform [ indent_depth ; push ">> " ]))
-  (*! "Sifthenelse"*) (_U true (perform [ save_pos ; push "If " ]) delete_pos _ [| perform [ push " then" ; \n ; push "  " ] ; perform [ \n ; push "else" ; \n ; push "  " ] |] (surr_empty _))
+  (*! "Ssequence"*) (_U_infix2 (perform [ indent_depth ; print ">> " ]))
+  (*! "Sifthenelse"*) (_U true (perform [ save_pos ; print "If " ]) delete_pos _ [| perform [ print " then" ; \n ; print "  " ] ; perform [ \n ; print "else" ; \n ; print "  " ] |] (surr_empty _))
   ! "Swhile"
   ! "Sdowhile"
   ! "Sfor"
@@ -641,17 +696,109 @@ End Constructor.
 
 
 
-Module Monad_list.
 
-Require Import NaryFunctions String.
+
+(* *** *)
+
+Module Type MONAD_SIMPLE (S : STRING).
+  Parameter t : Type -> Type.
+  Parameter v : Type.
+
+  Parameter bind : forall A B : Type, t A -> (A -> t B) -> t B.
+  Parameter perform : list (t v) -> t v.
+  Parameter print : S.t -> t v.
+  Parameter ret : forall A, A -> t A.
+
+  Parameter add_depth : t v.
+  Parameter remove_depth : t v.
+
+  Parameter indent : t v.
+  Parameter indent_depth : t v.
+  Parameter save_pos : t v.
+  Parameter delete_pos : t v.
+  Parameter tt : v. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+End MONAD_SIMPLE.
+
+Module Type PARENTHESIS (S : STRING) (M : MONAD_SIMPLE S).
+  Import M.
+  Parameter u : Type.
+
+  Parameter ret_u : bool -> t v -> t u.
+  Parameter eval : (bool * (t v * t v)) * t u -> t v.
+  Parameter exec : t u -> t v.
+End PARENTHESIS.
+
+(* *** *)
+
+Module Lazy (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
+
+Require Import String.
 Open Scope string_scope.
+Coercion S.of_string : string >-> S.t.
+Implicit Arguments bind [A B]. 
+Implicit Arguments ret [A].
+
+Definition u := (bool * t v) % type.
 
 Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
-Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
+
+Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
+  let (a, m) := a in
+  let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
+  perform 
+  [ m1
+  ; bind m (fun b_m => let (b, m) := b_m in if andb bb b then perform [ print "(" ; m ; print ")" ] else m)
+  ; m2 ].
+
+Definition ret_u : bool -> t v -> t u := fun b m => ret (b, m).
+
+Definition exec (m : t u) : t v := 
+  bind m (fun b_m => let (_, m) := b_m in m).
+End Lazy.
+
+
+
+Module Strict (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
+
+Require Import String.
+Open Scope string_scope.
+Coercion S.of_string : string >-> S.t.
+Implicit Arguments bind [A B]. 
+Implicit Arguments ret [A].
+
+Definition u := v.
+
+Notation "[ ]" := nil.
+Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+
+Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
+  let (a, m) := a in
+  let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
+  perform 
+  [ m1
+  ; print "("
+  ; m
+  ; print ")"
+  ; m2 ].
+
+Definition ret_u : bool -> t v -> t u := fun b m => m.
+Definition exec (m : t u) : t v := m.
+End Strict.
+
+(* *** *)
+
+
+
+Module Monad_simple (S : STRING) (B : BUFFER S) <: MONAD_SIMPLE S.
+
+Require Import Ascii.
+
+Notation "[ ]" := nil.
+Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
 Record st := mk_st
-  { buf : list string
+  { buf : B.t
   ; pos : list nat
   ; depth : nat }.
 
@@ -659,7 +806,6 @@ Inductive state {A} :=
   L (_ : A) (_ : st).
 
 Definition t A := st -> @state A.
-Definition u := (bool * t unit) % type.
 Definition v := unit.
 Definition ret {A} (a : A) := L a.
 
@@ -675,83 +821,54 @@ Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
 Definition perform l := 
   List.fold_left (fun acc m => next acc m) l (ret tt).
 
-Definition push s : t unit := 
-  fun st =>
-  ret tt (mk_st (s :: buf st) (pos st) (depth st)).
+Definition print_newline : t unit := fun st =>
+  ret tt (mk_st (B.print_newline (buf st)) (pos st) (depth st)).
 
-Definition add_depth : t unit :=
-  fun st => 
+Definition print s : t unit := fun st =>
+  ret tt (mk_st (B.print s (buf st)) (pos st) (depth st)).
+
+Definition add_depth : t unit := fun st => 
   ret tt (mk_st (buf st) (pos st) (S (depth st))).
 
-Definition remove_depth : t unit :=
-  fun st =>
+Definition remove_depth : t unit := fun st =>
   ret tt (mk_st (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat)). 
 
-Module String.
-Definition rev := 
-  (fix aux acc s := 
-  match s with
-    | String a s => aux (String a acc) s
-    | _ => acc
-  end) EmptyString.
-
-Definition make (n : nat) (c : Ascii.ascii) :=
-  (fix aux n :=
-  match n with
-  | 0 => EmptyString
-  | S n => String c (aux n)
-  end %nat) n.
-End String.
-
-Notation "'\n' x" := (String "010" x) (at level 9).
-
-Definition save_pos : t unit :=
-  fun st =>
+Definition save_pos : t unit := fun st =>
   let buf_st := buf st in
-  
-  ret tt (mk_st buf_st ((fix aux l (pos : nat) :=
-    match l with
-      | [] => pos
-      | x :: xs => 
-        match index 0 \n"" (String.rev x) with
-        | Some n => (pos + n)%nat
-        | None => aux xs (pos + length x)%nat
-        end
-    end) buf_st 0%nat :: pos st) (depth st)).
+  ret tt (mk_st buf_st (B.pos buf_st :: pos st) (depth st)).
 
-Require Import Ascii.
-
-Definition indent : t unit :=
+Definition indent_ f : t unit :=
   fun st =>
-  push (\n (String.make (match pos st with
-  | [] => 0
-  | x :: _ => x
-  end) " " % char)) st.
+  perform
+    [ print_newline
+    ; print (S.make (f st match pos st with
+      | [] => 0
+      | x :: _ => x
+      end % nat) " ") ] st.
 
-Definition indent_depth : t unit :=
-  fun st =>
-  push (\n (String.make (2 * depth st + match pos st with
-  | [] => 0
-  | x :: _ => x
-  end) " " % char)) st.
+Definition indent : t unit := indent_ (fun _ x => x).
+Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
 
-Definition delete_pos : t unit :=
-  fun st =>
+Definition delete_pos : t unit := fun st =>
   ret tt (mk_st (buf st) (List.tail (pos st)) (depth st)).
 
-Definition and_b (b1 b2 : bool) : bool.
-  intros.
-  case_eq b1 ; case_eq b2 ; intros.
-  exact true. exact false. exact false. exact false.
-Defined.
+Definition tt := tt. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+End Monad_simple.
 
-Definition eval (a : (bool * (t v * t v)) * _) := 
-  let (a, m) := a in
-  let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
-  perform 
-  [ m1
-  ; bind m (fun (b_m : bool * t unit) => let (b, m) := b_m in if and_b bb b then perform [ push "(" ; m ; push ")" ] else m)
-  ; m2 ].
+
+
+
+Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S (*with Definition v := unit (* WARNING coq 8.2pl2, extraction error : do not uncomment *) *) ) (Import L : PARENTHESIS S M) <: CONSTRUCTOR.
+
+Require Import NaryFunctions String.
+Open Scope string_scope.
+Coercion S.of_string : string >-> S.t.
+Notation "a ++ b" := (S.append a b).
+
+Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
+Notation "[ ]" := nil.
+Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+Implicit Arguments ret [A].
 
 Definition _U_aux : forall
   (b : bool)
@@ -766,9 +883,9 @@ Definition _U_aux : forall
   intros.
   case_eq l. tauto.
   intros x xs _.
-  refine (ret (b, _)) ; clear b.
+  refine (ret_u b _) ; clear b.
   (* (* put this below to display the depth as a Coq comment *)  
-    fun st => push ("(*" ++ (String (ascii_of_nat (depth st + 48)) EmptyString) ++ "*)") st ;     *)
+    fun st => print ("(*" ++ (String (ascii_of_nat (depth st + 48)) EmptyString) ++ "*)") st ;     *)
   refine (perform [ add_depth ; pref ; _ ; suff ; remove_depth ]) ; clear pref suff.
   inversion surr ; clear surr ; rename X into surr.
   refine (_ (eval (a, x))) ; clear a x n0 H1.
@@ -795,22 +912,8 @@ Definition _U :
   auto with *.
 Defined.
 
+(*Require Import Ascii.*)
 (*
-Module Expand.
-Notation "'!' x" := (_U_constr x _) (at level 9).
-
-Definition _positive := Rec_weak._positive 
-  ! "xI" 
-  ! "xO" 
-  ! "xH".
-
-Definition _Z := Rec_weak._Z _positive 
-  ! "Z0"
-  ! "Zpos" 
-  ! "Zneg".
-End Expand.
-*)
-
 Module Simpl.
 Require Import Euclid.
 Require Import Recdef.
@@ -826,7 +929,7 @@ Remark gt_10_0 : 10 > 0.
   omega.
 Qed.
 
-Function string_of_nat_aux (acc : string) (n : nat) {wf lt n} : string := 
+Function string_of_nat_aux (acc : S.t) (n : nat) {wf lt n} : S.t := 
   match n with
   | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => n ++ acc
   | _ => 
@@ -858,67 +961,113 @@ Function string_of_nat_aux (acc : string) (n : nat) {wf lt n} : string :=
 Qed.
 *)
 
-Definition string_of_nat_ := string_of_nat_aux "".
 
-Definition string_of_positive_ p :=
-  string_of_nat_ (nat_of_P p).
+(*
+Definition string_of_nat_ (n : nat) : string.
+  intros.
+  case_eq (le_lt_dec n 0) ; intros.
+  exact (string_of_nat_aux "" n).
+  exact "".
+Defined.*)
+  (*string_of_nat_aux "" n.*)
+
+Definition string_of_nat_ := U.string_of_nat.
+(*
+Definition string_of_nat_ (_ : nat) := "".
+(*match n with 0 => "" | S _ => "" end.*)
+*)
+
+Definition string_of_positive_ (*p*) := U.string_of_positive.
+(*  string_of_nat_ (nat_of_P p).*)
 
 Definition string_of_positive p := "`" ++ string_of_positive_ p.
 
-Definition string_of_Z z := 
+(*
+Definition string_of_Z z :=
   match z with
     | Z0 => "0"
     | Zpos p => string_of_positive_ p
     | Zneg p => "-" ++ string_of_positive_ p
   end.
+*)
+Definition string_of_Z := U.string_of_Z.
 
-Definition _positive p := push (string_of_positive p).
-Definition _Z z := push (string_of_Z z).
+Definition _positive p := print (string_of_positive p).
+Definition _Z z := print (string_of_Z z).
 End Simpl.
+*)
 
-Definition _positive p := ret (false, Simpl._positive p).
-Definition _Z z := ret (false, Simpl._Z z).
 
-Definition number f_conv (m : t u) := ret (false, perform
-  [ push f_conv
-  ; bind m (fun b_m => let (_, m) := b_m in m) ]).
+Definition _positive p := ret_u false (print ("`" ++ U.string_of_positive p)).
+Definition _Z z := ret_u false (print (U.string_of_Z z)).
+
+Definition _ident i := 
+  match U.name i with
+    | Some s => ret_u false (print s)
+    | None => _positive i
+  end.
+
+Definition number f_conv (m : t u) := 
+  ret_u false (eval (false, (print f_conv, ret tt), m)).
 
 Definition _int i := number "``" (_Z (Int.intval i)).
 Definition _float f := number "·" (_int (Float.intoffloat f)).
 
 Definition _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
   intros A B fa fb (a, b).
-  eapply (_U_aux false (push "(") (push ")") _ {{ push ", " }} (Vector.init _ (fun _ => (false, (ret tt, ret tt)))) [ fa a ; fb b ]).
+  eapply (_U_aux false (print "(") (print ")") _ {{ print ", " }} (Vector.init _ (fun _ => (false, (ret tt, ret tt)))) [ fa a ; fb b ]).
   auto with *.
 Defined.
 
 Definition _list : forall A, (A -> t u) -> list A -> t u.
   intros A f l.
   case_eq l ; intros.
-  exact (ret (false, push "[]")).
-  apply (_U_aux false (perform [ save_pos ; push "[ " ]) (perform [ push " ]" ; delete_pos ]) (List.length l) (Vector.init _ (fun _ => perform [ indent ; push "; " ] )) 
+  exact (ret_u false (print "[]")).
+  apply (_U_aux false (perform [ save_pos ; print "[ " ]) (perform [ print " ]" ; delete_pos ]) (List.length l) (Vector.init _ (fun _ => perform [ indent ; print "; " ] )) 
     (Vector.init _ (fun _ => (false, (ret tt, ret tt)))) (List.map f l)).
   rewrite H. simpl.
   auto with *.
 Defined.
 
+Definition v := v.
 Definition tt := tt.
-
+Definition t := t.
+Definition u := u.
+Definition print s := print (S.of_string s).
+Definition save_pos := save_pos.
+Definition delete_pos := delete_pos.
+Definition indent := indent.
+Definition indent_depth := indent_depth.
+Definition perform := perform.
+Definition ret := ret.
+Definition ret_u := ret_u.
 End Monad_list.
 
 
 
-(** Main function *)
-Module Constructor_list := Constructor Monad_list.
-Require Import String.
-Import Monad_list.
 
-Definition program_fundef_type ast := 
-  match bind (Constructor_list._program ast)
-    (fun b_m => let (_, m) := b_m in m) (mk_st nil [] 0)
-  with
-    L _ st => List.app 
-      (List.map (fun s => s ++ \n"")
+(** Main function *)
+
+Module Main (S : STRING) (U : UTIL S) (B : BUFFER S).
+
+Implicit Arguments U.fold [A].
+
+Module M := Monad_simple S B.
+Module L := Lazy S M.
+Module C := Monad_list S U M L.
+Module Constructor_list := Constructor C.
+
+Import M.
+
+Require Import String.
+Open Scope string_scope.
+
+Notation "[ ]" := nil.
+Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+Notation "a ++ b" := (S.append a b).
+
+Definition prologue := 
+  [ List.map S.of_string
       [ "Require Import" 
       ; "  (* compcert *)"
       ; "  Coqlib"
@@ -927,7 +1076,10 @@ Definition program_fundef_type ast :=
       ; "  AST"
       ; "  Csyntax"
       ; "  ."
-      ; ""
+      ; "" ]
+  ; U.fold (fun p s l => ("Definition " ++ s ++ " := " ++ U.string_of_positive p ++ " % positive.") :: l) []
+  ; List.map S.of_string
+      [ ""
       ; "Notation ""` x"" := (x % positive) (at level 9)."
       ; "Notation ""`` x"" := (Int.repr x) (at level 9)."
       ; "Notation ""· x"" := (Float.floatofint x) (at level 9)."
@@ -952,8 +1104,20 @@ Definition program_fundef_type ast :=
       ; "Notation ""'Λ'"" := Tfunction."
       ; "Notation ""'If' a 'then' b 'else' c"" := (Sifthenelse a b c) (at level 9)."
       ; ""
+      ; "Definition a :=" ] ].
 
-      ; "Definition a :=" ])
-      (List.rev ((\n"." ++ \n"Print a.") :: buf st))
-  end
-.
+Definition epilogue := 
+  List.map S.of_string
+      [ ""
+      ; "." 
+      ; "Print a." ].
+
+Definition b_perform buf l :=
+  List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.
+
+Definition program_fundef_type ast := 
+  match L.exec (Constructor_list._program ast) (mk_st (List.fold_left b_perform prologue B.empty) [] 0) with
+    L _ st => b_perform (buf st) epilogue
+  end.
+
+End Main.

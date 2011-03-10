@@ -87,8 +87,17 @@ let compile_c_file sourcename ifile ofile =
     | None -> exit 2
     | Some p -> p in
 
+  (* Save Csyntax if requested *)
+  if true then begin
+    let ofile = Filename.chop_suffix sourcename ".c" ^ ".light.c" in
+    let oc = open_out ofile in
+    PrintCsyntax.print_program (Format.formatter_of_out_channel oc) csyntax;
+    close_out oc
+  end;
+(*exit 0;*)
+
   let _ = 
-(*
+
     let module Camlcoq = 
     struct
       include Camlcoq
@@ -108,35 +117,72 @@ let compile_c_file sourcename ifile ofile =
         aux (pred (String.length s)) String0.EmptyString
     end in
 
-    let module Monad_list = 
+    let module S =
     struct
-      include Monad_list
-
-      let camlpush s = push (Camlcoq.coqstring_of_camlstring s)
-
-      let _Z z = 
-        camlpush (Printf.sprintf "%ld%%Z" (Camlcoq.camlint_of_z z))
-
-      let _positive p = 
-        camlpush (Printf.sprintf "%ld%%positive" (Camlcoq.camlint_of_positive p))
+      type t = string
+              
+      let of_string = Camlcoq.camlstring_of_coqstring
+      let rindex _ c s = match try Some (String.rindex s c.[0]) with _ -> None with None -> None | Some n -> Some (Camlcoq.nat_of_camlint (Int32.of_int n))
+      let empty = ""
+      let length s = (Camlcoq.nat_of_camlint (Int32.of_int (String.length s)))
+      let make n c = String.make (Camlcoq.camlint_of_nat n) (Camlcoq.char_of_ascii c)
+      let append = (^)
     end in
-*)
+
+    let module U =
+    struct
+      open Camlcoq
+        
+      let string_of_nat n =
+        sprintf "%d" (camlint_of_nat n)
+      let string_of_positive n = 
+        sprintf "%ld" (camlint_of_positive n)
+      let string_of_Z n = 
+        sprintf "%ld" (camlint_of_z n)
+      let replace = 
+        Str.global_replace (Str.regexp_string "$") "_"
+      let name p = 
+        match try Some (Hashtbl.find Camlcoq.string_of_atom p) with Not_found -> None with
+          | None -> None
+          | Some s -> Some (replace s)
+      let fold f = Hashtbl.fold (fun p s -> f p (replace s)) Camlcoq.string_of_atom
+    end in
+
+    let module B = 
+    struct
+      type t = { n : int }
+          
+      let empty = { n = 0 } 
+        
+      let print s t =
+        let s = s in
+        let () = printf "%s" s in
+        { n = t.n + String.length s }
+          
+      let print_newline t =
+        let () = printf "\n" in
+        empty
+          
+      let pos t = Camlcoq.nat_of_camlint (Int32.of_int t.n)
+        
+      let draw_tbl () = 
+        begin
+          printf "(*\n";
+          Hashtbl.fold (fun p s _ -> printf "%ld %s\n" (Camlcoq.camlint_of_positive p) (String.escaped s) ) Camlcoq.string_of_atom ();
+          printf "*)\n";
+        end
+    end in
+
+    let module Csyntax_print = Csyntax_print.Main (S) (U) (B) in
+
     let _ = 
       begin
-        Gc.set { (Gc.get ()) with Gc.stack_limit = max_int };
-        List.iter (fun s -> Printf.eprintf "%s" (Camlcoq.camlstring_of_coqstring s)) (Csyntax_print.program_fundef_type csyntax);
-        Printf.eprintf "%!";
+        Csyntax_print.program_fundef_type csyntax;
+        (*B.draw_tbl ();*)
         exit 0;
       end in
     () in
 
-  (* Save Csyntax if requested *)
-  if !option_dclight then begin
-    let ofile = Filename.chop_suffix sourcename ".c" ^ ".light.c" in
-    let oc = open_out ofile in
-    PrintCsyntax.print_program (Format.formatter_of_out_channel oc) csyntax;
-    close_out oc
-  end;
   (* Convert to Asm *)
   let ppc =
     match Compiler.transf_c_program csyntax with
