@@ -139,46 +139,44 @@ let compile_c_file sourcename ifile ofile =
         sprintf "%ld" (camlint_of_positive n)
       let string_of_Z n = 
         sprintf "%ld" (camlint_of_z n)
-      let replace = 
-        Str.global_replace (Str.regexp_string "$") "_"
+      let replace =
+        let reg = Str.regexp "\\$\\| " in
+        function
+          | "end" -> "_end"
+          | s -> Str.global_replace reg "_" s
+
       let name p = 
         match try Some (Hashtbl.find Camlcoq.string_of_atom p) with Not_found -> None with
           | None -> None
           | Some s -> Some (replace s)
-      let fold f = Hashtbl.fold (fun p s -> f p (replace s)) Camlcoq.string_of_atom
     end in
 
     let module B = 
     struct
-      type t = { n : int }
+      type t = { n : int ; buf : Buffer.t }
           
-      let empty = { n = 0 } 
+      let empty _ = { n = 0 ; buf = Buffer.create 1000 } 
         
       let print s t =
-        let s = s in
-        let () = printf "%s" s in
-        { n = t.n + String.length s }
+        let () = bprintf t.buf "%s" s in
+        { t with n = t.n + String.length s }
           
       let print_newline t =
-        let () = printf "\n" in
-        empty
+        let () = bprintf t.buf "\n" in
+        { t with n = 0 }
           
       let pos t = Camlcoq.nat_of_camlint (Int32.of_int t.n)
-        
-      let draw_tbl () = 
-        begin
-          printf "(*\n";
-          Hashtbl.fold (fun p s _ -> printf "%ld %s\n" (Camlcoq.camlint_of_positive p) (String.escaped s) ) Camlcoq.string_of_atom ();
-          printf "*)\n";
-        end
+
+      let add_buffer t1 t2 = 
+        let () = Buffer.add_buffer t1.buf t2.buf in
+        { t1 with n = t2.n }
     end in
 
     let module Csyntax_print = Csyntax_print.Main (S) (U) (B) in
 
     let _ = 
       begin
-        Csyntax_print.program_fundef_type csyntax;
-        (*B.draw_tbl ();*)
+        Buffer.output_buffer stdout (Csyntax_print.program_fundef_type csyntax).B.buf;
         exit 0;
       end in
     () in

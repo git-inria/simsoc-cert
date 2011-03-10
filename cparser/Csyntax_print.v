@@ -430,16 +430,16 @@ Module Type UTIL (S : STRING).
   (* WARNING we can also implement these [string_of_...] functions in Coq, but in the case of not tail recursive function, we may have a ([Stack_overflow], in byte code) or a (Segmentation_fault, in native code). *)
 
   Parameter name : positive -> option S.t.
-  Parameter fold : forall A, (positive -> S.t -> A -> A) -> A -> A.
 End UTIL.
 
 Module Type BUFFER (S : STRING).
   Parameter t : Type.
   
-  Parameter empty : t.
+  Parameter empty : forall A, A -> t.
   Parameter print : S.t -> t -> t.
   Parameter print_newline : t -> t.
   Parameter pos : t -> nat. (* number of character since the last call to [print_newline] or [empty] *)
+  Parameter add_buffer : t -> t -> t.
 End BUFFER.
 
 (* *** *)
@@ -717,6 +717,8 @@ Module Type MONAD_SIMPLE (S : STRING).
   Parameter save_pos : t v.
   Parameter delete_pos : t v.
   Parameter tt : v. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+
+  Parameter add_used_var : positive -> S.t -> t v.
 End MONAD_SIMPLE.
 
 Module Type PARENTHESIS (S : STRING) (M : MONAD_SIMPLE S).
@@ -797,10 +799,15 @@ Require Import Ascii.
 Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
+Require Import Ordered.
+Require Import FMapAVL.
+Module PositiveMap := FMapAVL.Make OrderedPositive.
+
 Record st := mk_st
   { buf : B.t
   ; pos : list nat
-  ; depth : nat }.
+  ; depth : nat
+  ; used_var : PositiveMap.t S.t }.
 
 Inductive state {A} :=
   L (_ : A) (_ : st).
@@ -821,21 +828,27 @@ Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
 Definition perform l := 
   List.fold_left (fun acc m => next acc m) l (ret tt).
 
-Definition print_newline : t unit := fun st =>
-  ret tt (mk_st (B.print_newline (buf st)) (pos st) (depth st)).
+Definition get_st f : t unit := fun st =>
+  ret tt (f mk_st st).
 
-Definition print s : t unit := fun st =>
-  ret tt (mk_st (B.print s (buf st)) (pos st) (depth st)).
+Definition print_newline : t unit := get_st (fun f st =>
+  f (B.print_newline (buf st)) (pos st) (depth st) (used_var st)).
 
-Definition add_depth : t unit := fun st => 
-  ret tt (mk_st (buf st) (pos st) (S (depth st))).
+Definition print s : t unit := get_st (fun f st =>
+  f (B.print s (buf st)) (pos st) (depth st) (used_var st)).
 
-Definition remove_depth : t unit := fun st =>
-  ret tt (mk_st (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat)). 
+Definition add_depth : t unit := get_st (fun f st => 
+  f (buf st) (pos st) (S (depth st)) (used_var st)).
 
-Definition save_pos : t unit := fun st =>
+Definition remove_depth : t unit := get_st (fun f st =>
+  f (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat) (used_var st)). 
+
+Definition save_pos : t unit := get_st (fun f st =>
   let buf_st := buf st in
-  ret tt (mk_st buf_st (B.pos buf_st :: pos st) (depth st)).
+  f buf_st (B.pos buf_st :: pos st) (depth st) (used_var st)).
+
+Definition add_used_var p s : t unit := get_st (fun f st =>
+  f (buf st) (pos st) (depth st) (PositiveMap.add p s (used_var st))).
 
 Definition indent_ f : t unit :=
   fun st =>
@@ -850,9 +863,10 @@ Definition indent : t unit := indent_ (fun _ x => x).
 Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
 
 Definition delete_pos : t unit := fun st =>
-  ret tt (mk_st (buf st) (List.tail (pos st)) (depth st)).
+  ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st)).
 
 Definition tt := tt. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+
 End Monad_simple.
 
 
@@ -1003,7 +1017,7 @@ Definition _Z z := ret_u false (print (U.string_of_Z z)).
 
 Definition _ident i := 
   match U.name i with
-    | Some s => ret_u false (print s)
+    | Some s => ret_u false (perform [ add_used_var i s ; print s ])
     | None => _positive i
   end.
 
@@ -1050,8 +1064,6 @@ End Monad_list.
 
 Module Main (S : STRING) (U : UTIL S) (B : BUFFER S).
 
-Implicit Arguments U.fold [A].
-
 Module M := Monad_simple S B.
 Module L := Lazy S M.
 Module C := Monad_list S U M L.
@@ -1066,8 +1078,8 @@ Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 Notation "a ++ b" := (S.append a b).
 
-Definition prologue := 
-  [ List.map S.of_string
+Definition coq_output_1 := 
+  List.map S.of_string
       [ "Require Import" 
       ; "  (* compcert *)"
       ; "  Coqlib"
@@ -1076,9 +1088,9 @@ Definition prologue :=
       ; "  AST"
       ; "  Csyntax"
       ; "  ."
-      ; "" ]
-  ; U.fold (fun p s l => ("Definition " ++ s ++ " := " ++ U.string_of_positive p ++ " % positive.") :: l) []
-  ; List.map S.of_string
+      ; "" ].
+Definition coq_output_2 :=
+  List.map S.of_string
       [ ""
       ; "Notation ""` x"" := (x % positive) (at level 9)."
       ; "Notation ""`` x"" := (Int.repr x) (at level 9)."
@@ -1104,9 +1116,8 @@ Definition prologue :=
       ; "Notation ""'Λ'"" := Tfunction."
       ; "Notation ""'If' a 'then' b 'else' c"" := (Sifthenelse a b c) (at level 9)."
       ; ""
-      ; "Definition a :=" ] ].
-
-Definition epilogue := 
+      ; "Definition a :=" ].
+Definition coq_output_3 := 
   List.map S.of_string
       [ ""
       ; "." 
@@ -1114,10 +1125,18 @@ Definition epilogue :=
 
 Definition b_perform buf l :=
   List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.
+Implicit Arguments B.empty [A].
 
 Definition program_fundef_type ast := 
-  match L.exec (Constructor_list._program ast) (mk_st (List.fold_left b_perform prologue B.empty) [] 0) with
-    L _ st => b_perform (buf st) epilogue
+  match L.exec (Constructor_list._program ast) (mk_st (B.empty tt) [] 0 (PositiveMap.empty _)) with
+    L _ st => b_perform 
+      (B.add_buffer (List.fold_left b_perform 
+      [ coq_output_1 
+      ; List.map (fun p_s : (_ * _) => let (p, s) := p_s in 
+          "Definition " ++ s ++ " := " ++ U.string_of_positive p ++ " % positive."
+        ) (PositiveMap.elements (used_var st))
+      ; coq_output_2 ] (B.empty tt)) (buf st)) 
+      coq_output_3
   end.
 
 End Main.
