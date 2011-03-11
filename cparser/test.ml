@@ -141,9 +141,10 @@ let compile_c_file sourcename ifile ofile =
         sprintf "%ld" (camlint_of_z n)
       let replace =
         let reg = Str.regexp "\\$\\| " in
+        let open Datatypes in
         function
-          | "end" -> "_end"
-          | s -> Str.global_replace reg "_" s
+          | "end" -> Coq_pair ("_end", Some "end")
+          | s -> let s2 = Str.global_replace reg "_" s in Coq_pair (s2, if s2 = s then None else Some s)
 
       let name p = 
         match try Some (Hashtbl.find Camlcoq.string_of_atom p) with Not_found -> None with
