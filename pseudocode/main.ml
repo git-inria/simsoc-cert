@@ -38,7 +38,8 @@ let set_debug() =
 let set_check() = set_check(); set_verbose();;
 
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
-                   | DecBinTest | DecAsmTest | DecTest;;
+                   | DecBinTest | DecAsmTest | DecTest
+                   | ClightInst ;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -94,6 +95,8 @@ let rec options() =
   " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output Coq instructions (implies -norm, requires -ipc)";
+  "-oclight-inst", Unit (fun () -> set_norm(); set_output_type ClightInst),
+  " Output Clight instructions (implies -norm, requires -ipc)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
   "-oml-dec", Unit (fun () -> set_output_type MlDec),
@@ -134,6 +137,8 @@ let parse_args() =
         if is_set_dec_input_file() then
           error "option -ocoq-inst incompatible with -idec"
         else ignore(get_pc_input_file())
+    | ClightInst ->
+        ignore(get_pc_input_file()); ignore(get_dec_input_file())
     | CoqDec ->
         if is_set_pc_input_file() then
           error "option -ocoq-dec incompatible with -ipc"
@@ -191,6 +196,8 @@ let parse_file fn =
 let get_pc_input, set_pc_input = get_set { Ast.header = []; Ast.body = [] };;
 let get_dec_input, set_dec_input = get_set [];;
 let get_syntax_input, set_syntax_input = get_set [];;
+let get_pc_input_cl, set_pc_input_cl = get_set {Ast_clight.hd = [];
+                                               Ast_clight.bd = []};;
 
 let check() =
   if get_check() then
@@ -280,6 +287,8 @@ let genr_output() =
           let preamble_proc = "Arm Arm_SCC"
           let preamble_import = "State "
         end : Gencoq.GENCOQ))) (get_pc_input())
+    | ClightInst -> Clight_printer.print_prog (get_pc_input())
+        (get_syntax_input()) (get_dec_input())
     | CoqDec -> print (let open Dec in
                        let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then
