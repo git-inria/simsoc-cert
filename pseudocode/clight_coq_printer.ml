@@ -13,7 +13,7 @@
 open Printf
 open Clflags
 
-(* Location of the standard library *)
+(* Location of the compatibility library *)
 
 let stdlib_path = ref(
   try
@@ -47,9 +47,11 @@ let print_error oc msg =
 
 let preprocess ifile ofile =
   let cmd =
-    sprintf "%s -D__COMPCERT__ -I%s %s %s > %s"
+    sprintf "%s -D__COMPCERT__ %s %s %s > %s"
       Configuration.prepro
-      !stdlib_path
+      (if Configuration.need_stdlib_wrapper
+       then sprintf "-I%s" !stdlib_path
+       else "")
       (quote_options !prepro_options)
       ifile ofile in
   if command cmd <> 0 then begin
@@ -63,9 +65,10 @@ exception SimSoCCert of Buffer.t
 (* From preprocessed C to asm *)
 
 let compile_c_file sourcename ifile ofile =
+  Sections.initialize();
   (* Simplification options *)
   let simplifs =
-    "becv" (* blocks, impure exprs, implicit casts, volatiles: mandatory *)
+    "b" (* blocks: mandatory *)
   ^ (if !option_fstruct_passing then "s" else "")
   ^ (if !option_fstruct_assign then "S" else "")
   ^ (if !option_fbitfields then "f" else "") in
@@ -85,19 +88,11 @@ let compile_c_file sourcename ifile ofile =
   end;
   (* Conversion to Csyntax *)
   let csyntax =
-    match C2Clight.convertProgram ast with
+    match C2C.convertProgram ast with
     | None -> exit 2
     | Some p -> p in
-(*
-  (* Save Csyntax if requested *)
-  if true then begin
-    let ofile = Filename.chop_suffix sourcename ".c" ^ ".light.c" in
-    let oc = open_out ofile in
-    PrintCsyntax.print_program (Format.formatter_of_out_channel oc) csyntax;
-    close_out oc
-  end;
-(*exit 0;*)
-*)
+  flush stderr;
+
   let _ = 
 
     let module Camlcoq = 
@@ -179,8 +174,21 @@ let compile_c_file sourcename ifile ofile =
 
     raise (SimSoCCert (Csyntax_print.program_fundef_type csyntax).B.buf) in
 
+  (* Prepare to dump Csyntax, Clight, RTL, etc, if requested *)
+  let set_dest dst opt ext =
+    dst := if !opt then Some (Filename.chop_suffix sourcename ".c" ^ ext)
+                   else None in
+  set_dest PrintCsyntax.destination option_dcmedium ".compcert.c";
+  set_dest PrintClight.destination option_dclight ".light.c";
+  set_dest PrintCminor.destination option_dcminor ".cm";
+  set_dest PrintRTL.destination_rtl option_drtl ".rtl";
+  set_dest PrintRTL.destination_tailcall option_dtailcall ".tailcall.rtl";
+  set_dest PrintRTL.destination_castopt option_dcastopt ".castopt.rtl";
+  set_dest PrintRTL.destination_constprop option_dconstprop ".constprop.rtl";
+  set_dest PrintRTL.destination_cse option_dcse ".cse.rtl";
+  set_dest PrintLTLin.destination option_dalloc ".alloc.ltl";
   (* Convert to Asm *)
-  let ppc =
+  let asm =
     match Compiler.transf_c_program csyntax with
     | Errors.OK x -> x
     | Errors.Error msg ->
@@ -188,12 +196,13 @@ let compile_c_file sourcename ifile ofile =
         exit 2 in
   (* Save asm *)
   let oc = open_out ofile in
-  PrintAsm.print_program oc ppc;
+  PrintAsm.print_program oc asm;
   close_out oc
 
 (* From Cminor to asm *)
 
 let compile_cminor_file ifile ofile =
+  Sections.initialize();
   let ic = open_in ifile in
   let lb = Lexing.from_channel ic in
   try
@@ -238,11 +247,13 @@ let assemble ifile ofile =
 
 let linker exe_name files =
   let cmd =
-    sprintf "%s -o %s %s -L%s -lcompcert"
+    sprintf "%s -o %s %s %s"
       Configuration.linker
       (Filename.quote exe_name)
       (quote_options files)
-      !stdlib_path in
+      (if Configuration.need_stdlib_wrapper
+       then sprintf "-L%s -lcompcert" !stdlib_path
+       else "") in
   if command cmd <> 0 then exit 2
 
 (* Processing of a .c file *)
@@ -302,24 +313,32 @@ Preprocessing options:
   -U<symb>       Undefine preprocessor symbol
 Language support options (use -fno-<opt> to turn off -f<opt>) :
   -fbitfields    Emulate bit fields in structs [off]
-  -flonglong     Treat 'long long' as 'long' and 'long double' as 'double' [off]
+  -flonglong     Partial emulation of 'long long' types [on]
   -fstruct-passing  Emulate passing structs and unions by value [off]
   -fstruct-assign   Emulate assignment between structs or unions [off]
   -fvararg-calls Emulate calls to variable-argument functions [on]
 Code generation options:
-  -fmadd         Use fused multiply-add and multiply-sub instructions
+  -fmadd         Use fused multiply-add and multiply-sub instructions [off]
   -fsmall-data <n>  Set maximal size <n> for allocation in small data area
   -fsmall-const <n>  Set maximal size <n> for allocation in small constant area
 Tracing options:
   -dparse        Save C file after parsing and elaboration in <file>.parse.c
+  -dc            Save generated Compcert C in <file>.compcert.c
   -dclight       Save generated Clight in <file>.light.c
+  -dcminor       Save generated Cminor in <file>.cm
+  -drtl          Save unoptimized generated RTL in <file>.rtl
+  -dtailcall     Save RTL after tail call optimization in <file>.tailcall.rtl
+  -dcastopt      Save RTL after cast optimization in <file>.castopt.rtl
+  -dconstprop    Save RTL after constant propagation in <file>.constprop.rtl
+  -dcse          Save RTL after CSE optimization in <file>.cse.rtl
+  -dalloc        Save LTL after register allocation in <file>.alloc.ltl
   -dasm          Save generated assembly in <file>.s
 Linking options:
   -l<lib>        Link library <lib>
   -L<dir>        Add <dir> to search path for libraries
   -o <file>      Generate executable in <file> (default: a.out)
 General options:
-  -stdlib <dir>  Set the path of the Compcert run-time library
+  -stdlib <dir>  Set the path of the Compcert run-time library [MacOS X only]
   -v             Print external commands before invoking them
 "
 
@@ -395,7 +414,15 @@ let cmdline_actions =
   "-o$", String(fun s -> exe_name := s);
   "-stdlib$", String(fun s -> stdlib_path := s);
   "-dparse$", Set option_dparse;
+  "-dc$", Set option_dcmedium;
   "-dclight$", Set option_dclight;
+  "-dcminor", Set option_dcminor;
+  "-drtl$", Set option_drtl;
+  "-dtailcall$", Set option_dtailcall;
+  "-dcastopt$", Set option_dcastopt;
+  "-dconstprop$", Set option_dconstprop;
+  "-dcse$", Set option_dcse;
+  "-dalloc$", Set option_dalloc;
   "-dasm$", Set option_dasm;
   "-E$", Set option_E;
   "-S$", Set option_S;
@@ -423,8 +450,15 @@ let main sys =
   try
     let () = 
   ignore (
-  Cparser.Machine.config := Cparser.Machine.ilp32ll64;
-  Cparser.Builtins.set C2Clight.builtins;
+  Gc.set { (Gc.get()) with Gc.minor_heap_size = 524288 };
+  Cparser.Machine.config :=
+    begin match Configuration.arch with
+    | "powerpc" -> Cparser.Machine.ppc_32_bigendian
+    | "arm"     -> Cparser.Machine.arm_littleendian
+    | "ia32"    -> Cparser.Machine.x86_32
+    | _         -> assert false
+    end;
+  Cparser.Builtins.set C2C.builtins;
   CPragmas.initialize();
   parse_cmdline sys cmdline_actions usage_string;
   if !linker_options <> [] 
@@ -435,3 +469,4 @@ let main sys =
     None
   with
   SimSoCCert m -> Some m
+
