@@ -999,12 +999,12 @@ Definition coq_output_2 :=
       ; "Notation ""{< a := b >}"" := (Tunion a b) (at level 9)."
       ; "Notation ""[| a := b |]"" := (Tstruct a b) (at level 9)."
       ; ""
-      ; "Definition a :=" ].
+      ; "Definition program_fundef_type :=" ].
 Definition coq_output_3 := 
   List.map S.of_string
       [ ""
       ; "." 
-      ; "Print a." ].
+      ; "Print program_fundef_type." ].
 
 Definition b_perform buf l :=
   List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.

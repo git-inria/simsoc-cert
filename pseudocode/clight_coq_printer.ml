@@ -58,6 +58,8 @@ let preprocess ifile ofile =
     exit 2
   end
 
+exception SimSoCCert of Buffer.t
+
 (* From preprocessed C to asm *)
 
 let compile_c_file sourcename ifile ofile =
@@ -86,7 +88,7 @@ let compile_c_file sourcename ifile ofile =
     match C2Clight.convertProgram ast with
     | None -> exit 2
     | Some p -> p in
-
+(*
   (* Save Csyntax if requested *)
   if true then begin
     let ofile = Filename.chop_suffix sourcename ".c" ^ ".light.c" in
@@ -95,7 +97,7 @@ let compile_c_file sourcename ifile ofile =
     close_out oc
   end;
 (*exit 0;*)
-
+*)
   let _ = 
 
     let module Camlcoq = 
@@ -175,12 +177,7 @@ let compile_c_file sourcename ifile ofile =
 
     let module Csyntax_print = Csyntax_print.Main (S) (U) (B) in
 
-    let _ = 
-      begin
-        Buffer.output_buffer stdout (Csyntax_print.program_fundef_type csyntax).B.buf;
-        exit 0;
-      end in
-    () in
+    raise (SimSoCCert (Csyntax_print.program_fundef_type csyntax).B.buf) in
 
   (* Convert to Asm *)
   let ppc =
@@ -338,7 +335,14 @@ let rec find_action s = function
   | (re, act) :: rem ->
       if Str.string_match re s 0 then Some act else find_action s rem
 
-let parse_cmdline spec usage =
+module type SYS = 
+sig
+  val argv : string array
+end
+
+let parse_cmdline sys =
+  let module Sys = (val sys : SYS) in
+  fun spec usage ->
   let acts = List.map (fun (pat, act) -> (Str.regexp pat, act)) spec in
   let error () =
     eprintf "Usage: %s" usage;
@@ -415,13 +419,19 @@ let cmdline_actions =
   @ f_opt "vararg-calls" option_fvararg_calls
   @ f_opt "madd" option_fmadd
 
-let _ =
+let main sys =
+  try
+    let () = 
+  ignore (
   Cparser.Machine.config := Cparser.Machine.ilp32ll64;
   Cparser.Builtins.set C2Clight.builtins;
   CPragmas.initialize();
-  parse_cmdline cmdline_actions usage_string;
+  parse_cmdline sys cmdline_actions usage_string;
   if !linker_options <> [] 
   && not (!option_c || !option_S || !option_E)
   then begin
     linker !exe_name !linker_options
-  end
+  end) in
+    None
+  with
+  SimSoCCert m -> Some m

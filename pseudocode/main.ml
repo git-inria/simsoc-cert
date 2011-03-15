@@ -39,7 +39,7 @@ let set_check() = set_check(); set_verbose();;
 
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
                    | DecBinTest | DecAsmTest | DecTest
-                   | ClightInst ;;
+                   | ClightInst | ClightCoqInst ;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -61,6 +61,9 @@ let is_set_weight_file, get_weight_file, set_weight_file =
 
 let is_set_seed, get_seed, set_seed =
   is_set_get_set "test generator seed" 0;;
+
+let is_set_coqcl_argv, get_coqcl_argv, set_coqcl_argv = 
+  is_set_get_set "coq argv" [||]
 
 (*****************************************************************************)
 (** command line parsing *)
@@ -94,9 +97,22 @@ let rec options() =
   "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
   " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
-  " Output Coq instructions (implies -norm, requires -ipc)";
+  " Output instructions in Coq (implies -norm, requires -ipc)";
   "-oclight-inst", Unit (fun () -> set_norm(); set_output_type ClightInst),
-  " Output Clight instructions (implies -norm, requires -ipc)";
+  " Output instructions in Clight (implies -norm, requires -ipc)";
+  "-ocoqclight", Rest (fun _ -> if is_set_coqcl_argv () then () else
+      set_coqcl_argv (let rec aux n = 
+                        if n < 0 then
+                          assert false
+                        else if Sys.argv.(n) = "-ocoqclight" then
+                          n
+                        else
+                          aux (pred n) in 
+                      let lg = pred (Array.length Sys.argv) in
+                      let p = aux lg in
+                      Array.append (Array.sub Sys.argv 0 p) (Array.sub Sys.argv (succ p) (lg - p))
+      ) ; set_output_type ClightCoqInst),
+  " Output Clight ast of a C program in Coq (requires the same options as CompCert)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
   "-oml-dec", Unit (fun () -> set_output_type MlDec),
@@ -139,6 +155,7 @@ let parse_args() =
         else ignore(get_pc_input_file())
     | ClightInst ->
         ignore(get_pc_input_file()); ignore(get_dec_input_file())
+    | ClightCoqInst -> ()
     | CoqDec ->
         if is_set_pc_input_file() then
           error "option -ocoq-dec incompatible with -ipc"
@@ -242,7 +259,7 @@ let parse_input_file() =
     let split_msr_code, pc =
       if get_sh4 () then
         (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
-        C2pc.program_of_manual (let open C2pc_manual in (input_bin input_file : raw_c_code manual))
+        C2pc.program_of_manual (let open Manual in (input_bin input_file : raw_c_code manual))
       else
         Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
 
@@ -289,6 +306,11 @@ let genr_output() =
         end : Gencoq.GENCOQ))) (get_pc_input())
     | ClightInst -> Clight_printer.print_prog (get_pc_input())
         (get_syntax_input()) (get_dec_input())
+    | ClightCoqInst -> 
+      let open Clight_coq_printer in 
+      (match main (module struct let argv = get_coqcl_argv () end : SYS) with
+        | None -> Printf.printf "(* assert false *)\n%!"
+        | Some b -> Buffer.output_buffer stdout b)
     | CoqDec -> print (let open Dec in
                        let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then

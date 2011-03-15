@@ -67,28 +67,6 @@ end
 
 let compcert_ln_name = "compcert"
 
-
-let simsoc_dir = 
-  [ "cparser", 
-    (fun dir -> 
-      let oc, ic = open_out (sprintf "%s/Makefile" dir), open_in (sprintf "%s/Makefile.in" dir) in
-      let rec aux () = 
-        match try Some (input_line ic) with _ -> None with 
-          | None -> ()
-          | Some s -> 
-            begin
-              Printf.fprintf oc "%s\n" s;
-              aux ();
-            end in
-      begin
-        Printf.fprintf oc "COMPCERT=%s\n" compcert_ln_name;
-        aux ();
-        close_out oc;
-        close_in ic;
-      end)
-  ; "pseudocode", ignore
-  ; "sh4", ignore ]
-
 let _ = 
   let compcert_dir = Arg.parse () in
 
@@ -101,10 +79,10 @@ let _ =
           Printf.eprintf "%s is not a directory" s;
           exit 1;
         end)
-    (compcert_dir :: List.rev_map fst simsoc_dir) in
+    [ compcert_dir ] in
   
   List.iter (fun (s, f_after) -> 
-    let dest = sprintf "%s/%s" (abs_file s) compcert_ln_name in
+    let dest = sprintf "%s" compcert_ln_name in
     if 
       if Sys.file_exists dest then
         match try Some (Unix.readlink dest) with _ -> None with
@@ -113,11 +91,11 @@ let _ =
             false
           | Some dir ->
             let () = 
-              if compcert_dir = abs_file dir then
+              if abs_file compcert_dir = abs_file dir then
                 ()
               else
                 begin
-                  Printf.eprintf "press [Enter] to delete the symbolic link %s which points to %s, [Ctrl+C] to exit %!" dest dir;
+                  Printf.eprintf "press [Enter] to delete the symbolic link '%s' which points to '%s' or [Ctrl+C] to exit %!" dest dir;
                   ignore (read_line ());
                   Unix.unlink dest;
                   Unix.symlink compcert_dir dest;
@@ -130,5 +108,5 @@ let _ =
       f_after s
     else
       ()
-  ) simsoc_dir
+  ) [ compcert_ln_name, (fun _ -> ()) ]
 

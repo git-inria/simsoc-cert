@@ -1,4 +1,5 @@
-open C2pc_manual
+open Manual
+open Cparser
 
 module C = Cabs
 module E = Ast
@@ -304,7 +305,6 @@ let program_of_manual : raw_c_code manual -> E.program =
             (* FIXME prise en charge des flottants *) 
                 None
            ) m.section) }
-
 
 
 let maplist_of_manual : raw_c_code manual -> Codetype.maplist =

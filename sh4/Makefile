@@ -1,6 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
+.PHONY: default all
 all: cbc
 
 GEN := ../pseudocode/main.byt
@@ -27,26 +28,24 @@ sh4inst.txt: sh4.txt sh4.patch
 sh4: sh4inst.vo sh4dec.vo sh4.vo
 
 %.vo: %.v
-	time -p coqc -q -R ../coq SimSoCCert $<
+	time -p coqc -q -noglob -R ../coq SimSoCCert $<
 
 #
 
-instr.native: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
-	ocamlbuild -I compcert-1.8/cparser instr.native
-
-instr.d.byte: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
-	ocamlbuild -I compcert-1.8/cparser instr.d.byte
-
-instr.byte: c_parse.ml  instr.ml  manual.ml  pdf_page.ml  sh4_section.ml  util.ml
-	ocamlbuild -I compcert-1.8/cparser instr.byte
+default: 
+	cd .. && \
+	ocamlbuild -j 2 -no-hygiene -no-links \
+		sh4/instr.d.byte \
+		sh4/instr.native \
+		sh4/finalize
 
 #
 
 clean:
-	ocamlbuild -clean && rm -f sh4inst.v sh4dec.v sh4.vo
+	rm -f sh4inst.v sh4dec.v sh4.vo
 
 nobackup:
 	rm -f *.bak *~ *.dup
 
-cbc: instr.byte sh4inst.txt
-	cat sh4inst.txt | ./instr.byte > c_code.dat
+cbc: default sh4inst.txt
+	cat sh4inst.txt | ./instr > c_code.dat

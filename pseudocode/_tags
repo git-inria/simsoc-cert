@@ -1,0 +1,6 @@
+<*.{byte,native}>: use_str, use_Cparser
+
+<*.ml>: warn_A, warn_error_A
+
+<{ast,ast_clight,flatten,genpc,norm,gencxx,c2pc,sl2_patch,sl2_semantics,sl2_decoder,sl2_print,simlight2,clight_printer,gencoq,gendectest}.ml>: warn_e, warn_error_e
+<clight_coq_printer.ml>: warn_twenty_nine, warn_error_twenty_nine

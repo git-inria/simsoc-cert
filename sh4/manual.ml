@@ -70,7 +70,7 @@ type decoder =
 
 type raw_c_code = 
     { init : string list (* WARNING [init] is unused *)
-    ; code : Cabs.definition list (** representation of the C pseudocode, natural order : first element in the list = first line *) }
+    ; code : Cparser.Cabs.definition list (** representation of the C pseudocode, natural order : first element in the list = first line *) }
 
 type 'a instruction = 
     { explanation_desc : string list (** information present in the part "description" *) 
@@ -111,11 +111,11 @@ let list_of_string_01nmid s =
         | 'd' -> I_d
         | _ -> assert false (* by definition of [Str.matched_group], we can prove that this case is never reached *)
       ), let () = 
-	   if not (match s.[n] with '0' | '1' -> true | _ -> false) then
-	     match i with
-		 2 | 3 (* present in floating-point instruction (from 9.25 include to 9.46 include) *) | 4 | 8 | 12 -> ()
-	       | _ -> failwith (Printf.sprintf "%c %d" s.[n] i)
-	   else
-	     () in
-	 i) :: l) (n + i) in
+           if not (match s.[n] with '0' | '1' -> true | _ -> false) then
+             match i with
+                 2 | 3 (* present in floating-point instruction (from 9.25 include to 9.46 include) *) | 4 | 8 | 12 -> ()
+               | _ -> failwith (Printf.sprintf "%c %d" s.[n] i)
+           else
+             () in
+         i) :: l) (n + i) in
   aux [] 0

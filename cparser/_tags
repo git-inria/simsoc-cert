@@ -1,3 +1,0 @@
-<compcert/cparser/*.cmx>: for-pack(Cparser)
-<compcert/driver/Driver.*{byte,native}>: use_unix,use_str,use_Cparser
-<test.*{byte,native}>: use_unix,use_str,use_Cparser
