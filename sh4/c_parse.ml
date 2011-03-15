@@ -12,6 +12,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 *)
 
 open Util
+open Cparser
 
 module type C_PARSE = 
 sig

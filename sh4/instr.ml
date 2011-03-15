@@ -15,6 +15,7 @@ open Util
 open Pdf_page
 open Sh4_section
 open C_parse
+open Cparser
 open Manual
 
 let display_dec = false
