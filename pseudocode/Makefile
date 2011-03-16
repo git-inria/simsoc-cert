@@ -24,18 +24,14 @@ extraction:
 	mkdir -p tmp && \
 	$(COQEXEC) ExtractPseudocode.v
         # FIXME determine if it is necessary to : rm -f tmp/*.ml tmp/*.mli
-        #       after the 'mkdir'
+        #       after or before the 'mkdir'
 
-default: 
-#	ocamlbuild -j 2 -no-hygiene -no-links -ocamlopt 'ocamlopt -unsafe -noassert -inline 10000' 
+default:
 	cd .. && \
-	ocamlbuild -j 2 -no-hygiene -no-links -ocamlopt 'ocamlopt -unsafe -noassert ' \
+	ocamlbuild -j 2 -no-hygiene -no-links \
 		pseudocode/main.d.byte \
 		pseudocode/main.native \
-		pseudocode/finalize
-        # FIXME determine how to choose dynamically ocamlopt.opt or ocamlopt in ocamlbuild
-        # FIXME activate inlining at least just for pseudocode part, as was previously actived
-
+		pseudocode/main_finalize
 
 nobackup:
 	rm -f *.bak *~ *.dup

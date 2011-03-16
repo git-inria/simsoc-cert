@@ -13,9 +13,7 @@ COQC := $(COQBIN)coqc
 
 MAKECOQ := $(MAKE) -f Makefile.coq
 
-COMPCERT := Coqlib Integers
-
-FILES := $(COMPCERT) Message Bitvec Util Semantics \
+FILES := Message Bitvec Util Semantics \
 	Arm_Config Arm_Exception Arm_Functions Arm_State Arm_Proc Arm_SCC Arm \
 	Sh4_Config               Sh4_Functions Sh4_State Sh4_Proc         Sh4 \
 	Simul Extraction
@@ -26,7 +24,7 @@ default: Makefile.coq
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs"
 
 config Makefile.coq:
-	coq_makefile -R . $(NAME) $(VFILES) > Makefile.coq
+	coq_makefile -I ../compcert/lib -R . $(NAME) $(VFILES) > Makefile.coq
 
 clean:
 	rm -f `find . -name \*~ -o -name \*.d -o -name \*.glob -o -name \*.vo` graph.ps graph.dep

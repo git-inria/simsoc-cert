@@ -37,7 +37,7 @@ default:
 	ocamlbuild -j 2 -no-hygiene -no-links \
 		sh4/instr.d.byte \
 		sh4/instr.native \
-		sh4/finalize
+		sh4/instr_finalize
 
 #
 

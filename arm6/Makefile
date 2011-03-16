@@ -66,7 +66,7 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 	$(GEN) -idec $< -otest > $@ || (rm -f $@; exit 1)
 
 %.vo: %.v
-	time -p coqc -q -R ../coq SimSoCCert $<
+	time -p coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
 	$(GEN) -ipc $< -ocpp > $@

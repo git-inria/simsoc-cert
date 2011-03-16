@@ -34,7 +34,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	./v2ml.sh $<
 
 %.vo: %.v
-	coqc -q -R ../coq SimSoCCert $<
+	coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
 
 %.v: %.elf ../testgen/arm2coq
 	../testgen/arm2coq $< $@

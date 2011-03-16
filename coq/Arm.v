@@ -13,7 +13,7 @@ Basic types and functions for describing the ARM state.
 
 Set Implicit Arguments.
 
-Require Import Bitvec ZArith Coqlib Util.
+Require Import Bitvec ZArith Axioms Coqlib Util.
 
 (****************************************************************************)
 (** A2.2 Processor modes (p. 41) *)
@@ -68,15 +68,15 @@ Proof.
 destruct x; destruct y; intros; try (right; discriminate).
 destruct (Regnum.eq_dec k k0). subst. auto.
 right. intro h. inversion h. contradiction.
-destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (Z_eq_dec k k0). subst. rewrite (proof_irr h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (Z_eq_dec k k0). subst. rewrite (proof_irr h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (Z_eq_dec k k0). subst. rewrite (proof_irr h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (Z_eq_dec k k0). subst. rewrite (proof_irr h0 h). auto.
 right. intro p. inversion p. contradiction.
-destruct (Z_eq_dec k k0). subst. rewrite (proof_irrelevance _ h0 h). auto.
+destruct (Z_eq_dec k k0). subst. rewrite (proof_irr h0 h). auto.
 right. intro p. inversion p. contradiction.
 Qed.
 

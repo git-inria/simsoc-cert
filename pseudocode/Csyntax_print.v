@@ -583,7 +583,7 @@ Module Type MONAD_SIMPLE (S : STRING).
 
   Parameter add_used_var : positive -> S.t * option S.t -> t v. (* update the monadic map with the information describing the association of (position, name) *)
 
-  Parameter tt : v. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+  Parameter tt : v.
 End MONAD_SIMPLE.
 
 Module Type PARENTHESIS (S : STRING) (M : MONAD_SIMPLE S).
@@ -979,13 +979,13 @@ Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
 Definition delete_pos : t unit := fun st =>
   ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st)).
 
-Definition tt := tt. (* WARNING coq 8.2pl2, extraction error : do not delete this line *)
+Definition tt := tt.
 
 End Monad_simple.
 
 (* *** *)
 
-Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S (*with Definition v := unit (* WARNING coq 8.2pl2, extraction error : do not uncomment *) *) ) (Import L : PARENTHESIS S M) <: CONSTRUCTOR S M L.
+Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S) (Import L : PARENTHESIS S M) <: CONSTRUCTOR S M L.
 
 Open Scope string_scope.
 Coercion S.of_string : String.string >-> S.t.

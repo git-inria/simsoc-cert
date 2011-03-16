@@ -33,7 +33,7 @@ cd tmp
 root=../..
 
 echo extract OCaml files ...
-time -p coqc -q -R $root/coq SimSoCCert -I $root/arm6 ../ExtractArm6.v || exit $?
+time -p coqc -q -I $root/compcert/lib -R $root/coq SimSoCCert -I $root/arm6 ../ExtractArm6.v || exit $?
 
 echo compute dependencies ...
 ocamldep *.ml *.mli > .depend || exit $?
