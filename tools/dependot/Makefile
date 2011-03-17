@@ -2,7 +2,10 @@ BIN= ../bin
 TARGET= dependot
 
 $(TARGET): $(TARGET).ml
-	ocamlc $(TARGET).ml -o $(TARGET)
+	cd ../.. && \
+	ocamlbuild -j 2 -no-hygiene -no-links \
+		tools/dependot/$(TARGET).native \
+		tools/dependot/$(TARGET)_finalize
 
 install: $(TARGET)
 	install ${TARGET} $(BIN)
@@ -18,7 +21,7 @@ check: $(TARGET) exemple.dot
 	cat $< | ./$(TARGET) | dot -Tps > $@
 
 clean:
-	rm -f *~ *.cm? $(TARGET) exemple.dot exemple.ps
+	rm -f *~ $(TARGET) exemple.dot exemple.ps
 
 distrib:
 	rm -rf build-dependot

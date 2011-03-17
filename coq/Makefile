@@ -62,7 +62,7 @@ graphdep: graph.ps
 	cat $< | ../tools/bin/dependot | dot -Tps > $@
 
 graph.dep: $(VFILES)
-	cat $(VFILES:%=%.d) | sed -e 's/ .*glob:/:/' -e 's,\./,,g' > $@
+	cat $(VFILES:%=%.d) | sed -e 's/ .*glob:/:/' -e 's,\.\./,,g' -e 's,\./,,g' -e 's,/,__,g' > $@
 
 %:
 	$(MAKECOQ) OTHERFLAGS="-dont-load-proofs" $@

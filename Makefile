@@ -24,4 +24,6 @@ config:
 
 clean:
 	rm -f *~
+	ocamlbuild -clean
+	rm -rf extract/tmp
 	@for d in $(SUBDIRS); do make -C $$d $@; done

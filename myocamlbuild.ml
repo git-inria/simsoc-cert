@@ -39,7 +39,15 @@ let ln_s src dest =
 let rule_finalize f_cmd env _ =
   let fic = env "%.native" in
   let open Pathname in
-    Seq (ln_s ("../_build" / fic) (concat parent_dir_name (remove_extensions fic))
+    Seq (ln_s (Printf.sprintf "%s_build" 
+                 ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
+                   (** return the number of occurence of '/' in [fic] *)
+                   let rec aux pos l = 
+                     match try Some (String.rindex_from fic pos '/') with _ -> None with
+                       | None -> l
+                       | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
+                   aux (pred (String.length fic)) "")
+               / fic) (concat parent_dir_name (remove_extensions fic))
           (* FIXME find a more generical way to create this symbolic link *) :: f_cmd fic)
 
 (** --------------------------------------------- *)
@@ -74,9 +82,11 @@ let _ = dispatch & function
       (** definition of context *)
       List.iter (fun x -> Pathname.define_context x ("compcert" :: (* The directory [compcert/cfrontend] needs to have a relative path notion to [cparser], but [cparser] is inside [compcert], so we have to add [compcert]. *)
                                                         l_compcert)) l_compcert;
-      Pathname.define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ; "sh4" ];
-      Pathname.define_context "extract/tmp" [ "compcert/extraction" ; "extract/tmp" ];
+      Pathname.define_context "arm6" (l_compcert @ [ "extract/tmp" ; "arm6" ]);
+      Pathname.define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "extract/tmp" ];
       Pathname.define_context "pseudocode" (l_compcert @ [ "extract/tmp" ; "sh4" ; "refARMparsing" ; "pseudocode" ]);
+      Pathname.define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ; "sh4" ];
+      Pathname.define_context "test" (l_compcert @ [ "extract/tmp" ; "test" ]);
 
       (** ----------------------------------- *)
       (** activation of specific options for... *)

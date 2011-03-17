@@ -11,30 +11,26 @@ ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
 
 THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags $(C_FILES)
 
-default: $(ARM_FILES:%=%_a.cmo) $(THUMB_FILES:%=%_t.cmo)
+###
+
+COQC=coqc -q -noglob -I ../compcert/lib -R ../coq SimSoCCert
+COQEXEC=coqtop -q -I ../compcert/lib -R ../coq SimSoCCert
+
+default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
+	cd .. && \
+	ocamlbuild -j 2 -no-hygiene -no-links \
+		test/debug.native \
+		test/debug_finalize
+
 
 elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 
-.PRECIOUS: $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) \
-	  $(ARM_FILES:%=%_a.elf) \
-	  $(ARM_FILES:%=%_a.ml) $(ARM_FILES:%=%_a.mli) \
-	  $(ARM_FILES:%=%_a.cmi) \
-	  $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) \
-	  $(THUMB_FILES:%=%_t.elf) \
-	  $(THUMB_FILES:%=%_t.ml) $(THUMB_FILES:%=%_t.mli) \
-	  $(THUMB_FILES:%=%_t.cmi)
-
-%.cmo: %.ml %.cmi ../extract/tmp/extract.cma
-	ocamlc -c -g -I ../extract/tmp extract.cma $<
-
-%.cmi: %.mli ../extract/tmp/extract.cma
-	ocamlc -c -I ../extract/tmp extract.cma $<
-
-%.ml %.mli: %.v %.vo
-	./v2ml.sh $<
+.PRECIOUS: $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
+	   $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
 
 %.vo: %.v
-	coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
+	$(COQC) $<
+	@(f=`basename $< .v` ; echo "Cd \"../extract/tmp\". Require Extraction $$f. Extraction Library $$f." | $(COQEXEC)) 2>&1 > /dev/null
 
 %.v: %.elf ../testgen/arm2coq
 	../testgen/arm2coq $< $@
@@ -51,11 +47,5 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 FORCE:
 
 clean:
-	rm -f $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) \
-	  $(ARM_FILES:%=%_a.elf) $(ARM_FILES:%=%_a.glob) \
-	  $(ARM_FILES:%=%_a.ml) $(ARM_FILES:%=%_a.mli) \
-	  $(ARM_FILES:%=%_a.cmi) $(ARM_FILES:%=%_a.cmo) \
-	  $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) \
-	  $(THUMB_FILES:%=%_t.elf) $(THUMB_FILES:%=%_t.glob) \
-	  $(THUMB_FILES:%=%_t.ml) $(THUMB_FILES:%=%_t.mli) \
-	  $(THUMB_FILES:%=%_t.cmi) $(THUMB_FILES:%=%_t.cmo)
+	rm -f $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
+	      $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)

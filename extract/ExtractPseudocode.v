@@ -108,5 +108,4 @@ Cd "tmp".
 Require Import Csyntax_print.
 Extraction Library NaryFunctions.
 Extraction Library Bvector.
-Unset Extraction Optimize.
 Extraction Library Csyntax_print.

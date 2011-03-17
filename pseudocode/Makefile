@@ -22,7 +22,8 @@ proof: $(FILES:.v=.vo)
 extraction:
 	cd ../extract && \
 	mkdir -p tmp && \
-	$(COQEXEC) ExtractPseudocode.v
+	$(COQEXEC) ExtractPseudocode.v && \
+	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' tmp/Csyntax_print.ml # manual eta-expansion with "Coq 8.3pl1 (January 2011)"
         # FIXME determine if it is necessary to : rm -f tmp/*.ml tmp/*.mli
         #       after or before the 'mkdir'
 
