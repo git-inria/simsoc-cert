@@ -12,7 +12,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Sh4 Integers Sh4_State Semantics.
+Require Import Coqlib Util Bitvec Sh4 Integers Sh4_State Semantics Message.
 
 Module Semantics.
   Module _Sh4 <: PROC.
@@ -37,17 +37,17 @@ Module Semantics.
 
   Module Export S := Semantics.Make _Sh4 _Sh4_State. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
 
-  Definition Delay_Slot : word -> semfun unit := fun _ => Ok tt.
-  Definition if_is_dirty_block_then_write_back : word -> semfun unit := fun _ => Ok tt.
-  Definition if_is_write_back_memory_and_look_up_in_operand_cache_eq_miss_then_allocate_operand_cache_block : word -> semfun unit := fun _ => Ok tt.
-  Definition invalidate_operand_cache_block : word -> semfun unit := fun _ => Ok tt.
-  Definition Read_Byte : word -> word := fun x => x.
-  Definition Read_Word : word -> word := fun x => x.
-  Definition Read_Long : word -> word := fun x => x.
-  Definition Sleep_standby : semfun unit := Ok tt.
-  Definition Write_Byte : word -> word -> semfun unit := fun _ _ => Ok tt.
-  Definition Write_Word : word -> word -> semfun unit := fun _ _ => Ok tt.
-  Definition Write_Long : word -> word -> semfun unit := fun _ _ => Ok tt.
+  Definition Delay_Slot : word -> semfun unit := fun _ => todo ComplexSemantics.
+  Definition if_is_dirty_block_then_write_back : word -> semfun unit := fun _ => todo ComplexSemantics.
+  Definition if_is_write_back_memory_and_look_up_in_operand_cache_eq_miss_then_allocate_operand_cache_block : word -> semfun unit := fun _ => todo ComplexSemantics.
+  Definition invalidate_operand_cache_block : word -> semfun unit := fun _ => todo ComplexSemantics.
+  Definition Read_Byte : word -> semfun word := fun _ => todo ComplexSemantics.
+  Definition Read_Word : word -> semfun word := fun _ => todo ComplexSemantics.
+  Definition Read_Long : word -> semfun word := fun _ => todo ComplexSemantics.
+  Definition Sleep_standby : semfun unit := todo ComplexSemantics.
+  Definition Write_Byte : word -> word -> semfun unit := fun _ _ => todo ComplexSemantics.
+  Definition Write_Word : word -> word -> semfun unit := fun _ _ => todo ComplexSemantics.
+  Definition Write_Long : word -> word -> semfun unit := fun _ _ => todo ComplexSemantics.
 
 
   Definition Logical_Shift_Left := shl.

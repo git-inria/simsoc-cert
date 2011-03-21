@@ -555,7 +555,22 @@ and inst_aux loc nm k b = function
       
 
   | Affect (e, v) as i ->
-      try_todo "Affect" (fun b -> affect' b v loc nm e) b i
+      try_todo "Affect" (fun b -> 
+        match 
+          match v with
+            | Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) -> Some (s, v, fun x -> x)
+            | BinOp (Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) as e_fun, op, e) -> Some (s, e_fun, fun x -> BinOp (x, op, e))
+            | _ -> None
+        with
+          | Some (s, e_fun, f) ->
+            let s = String.lowercase (String.sub s 5 4) in
+            bprintf b "bind %a (fun %s => %a)" 
+              (pexp loc nm) e_fun
+              s
+              (fun b -> affect' b (f (Var s)) loc nm) e
+          | None ->
+            affect' b v loc nm e
+      ) b i
 
   (* adhoc treatment of case's: as case's are only used for defining
      the variable index, we convert a case which branches define index

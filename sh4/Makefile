@@ -4,7 +4,7 @@
 .PHONY: default all
 all: cbc
 
-GEN := ../pseudocode/main.byt
+GEN := ../pseudocode/main
 
 ####
 
@@ -28,7 +28,7 @@ sh4inst.txt: sh4.txt sh4.patch
 sh4: sh4inst.vo sh4dec.vo sh4.vo
 
 %.vo: %.v
-	time -p coqc -q -noglob -R ../coq SimSoCCert $<
+	time -p coqc -q -noglob -I ../compcert/lib -R ../coq SimSoCCert $<
 
 #
 
