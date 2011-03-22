@@ -154,7 +154,9 @@ let parse_args() =
           error "option -ocoq-inst incompatible with -idec"
         else ignore(get_pc_input_file())
     | ClightInst ->
-        ignore(get_pc_input_file()); ignore(get_dec_input_file())
+        if is_set_dec_input_file() then
+          error "option -ocoq-inst incompatible with -idec"
+        else ignore(get_pc_input_file())
     | ClightCoqInst -> ()
     | CoqDec ->
         if is_set_pc_input_file() then
@@ -213,8 +215,8 @@ let parse_file fn =
 let get_pc_input, set_pc_input = get_set { Ast.header = []; Ast.body = [] };;
 let get_dec_input, set_dec_input = get_set [];;
 let get_syntax_input, set_syntax_input = get_set [];;
-let get_pc_input_cl, set_pc_input_cl = get_set {Ast_clight.hd = [];
-                                               Ast_clight.bd = []};;
+let get_pc_input_cl, set_pc_input_cl = 
+  get_set { Ast.header = []; Ast.body = [] };;
 
 let check() =
   if get_check() then
@@ -304,8 +306,7 @@ let genr_output() =
           let preamble_proc = "Arm Arm_SCC"
           let preamble_import = "State "
         end : Gencoq.GENCOQ))) (get_pc_input())
-    | ClightInst -> Clight_printer.print_prog (get_pc_input())
-        (get_syntax_input()) (get_dec_input())
+    | ClightInst -> ()
     | ClightCoqInst -> 
       let open Clight_coq_printer in 
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
