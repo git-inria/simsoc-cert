@@ -44,7 +44,7 @@ struct
       (Arg.align
          [ "-h", Unit print_help,
            " Display this list of options"
-         ; "-d", String (fun s -> l_dir := s :: !l_dir),
+         ; "-compcert-dir", String (fun s -> l_dir := s :: !l_dir),
            " Directory of CompCert" ])
 
   and print_options oc =

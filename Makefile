@@ -5,7 +5,7 @@ MAKEFLAGS := --no-print-directory
 
 SUBDIRS := tools refARMparsing pseudocode coq testgen
 
-TARGETS := arm6
+TARGETS := arm6 sh4
 
 .PHONY: default clean all $(SUBDIRS) $(TARGETS)
 

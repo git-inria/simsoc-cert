@@ -3,8 +3,17 @@
 
 TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax parsesyntax convert_syntax
 
+ifeq ($(VERBOSE),1)
+  SHOW := @true
+  HIDE :=
+else
+  SHOW := @echo
+  HIDE := @
+endif
+
 default: 
-	cd .. && \
+	$(SHOW) OCAMLBUILD $(TARGETS)
+	$(HIDE) cd .. && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
 		$(patsubst %,refARMparsing/%.native, $(TARGETS)) \
 		$(patsubst %,refARMparsing/%_finalize, $(TARGETS))

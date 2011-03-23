@@ -1,8 +1,17 @@
 BIN= ../bin
 TARGET= dependot
 
+ifeq ($(VERBOSE),1)
+  SHOW := @true
+  HIDE :=
+else
+  SHOW := @echo
+  HIDE := @
+endif
+
 $(TARGET): $(TARGET).ml
-	cd ../.. && \
+	$(SHOW) OCAMLBUILD $(TARGET)
+	$(HIDE) cd ../.. && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
 		tools/dependot/$(TARGET).native \
 		tools/dependot/$(TARGET)_finalize
