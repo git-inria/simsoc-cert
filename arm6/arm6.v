@@ -55,9 +55,7 @@ Module _Semantics <: SEMANTICS _Arm _Arm_State.
   Definition semstate := semstate.
   Definition result := @result.
   Definition semfun := semfun.
-  Definition st := st.
-  Definition init := init.
-  Definition init2 := init2.
+  Definition conjure_up_true := conjure_up_true.
   Definition inM := @inM.
   Definition ret := @ret.
   Definition incr_PC := incr_PC.

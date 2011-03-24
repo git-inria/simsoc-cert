@@ -36,8 +36,8 @@ let ln_s src dest =
     ln_s src dest
 
 (** [rule_finalize f] provide a function which can be use with [rule]. It creates a link to the binary. [f] is an extra action which can be performed after the creation of the link. *)
-let rule_finalize f_cmd env _ =
-  let fic = env "%.native" in
+let rule_finalize nc f_cmd env _ =
+  let fic = env ("%." ^ nc) in
   let open Pathname in
     Seq (ln_s (Printf.sprintf "%s_build" 
                  ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
@@ -109,10 +109,14 @@ let _ = dispatch & function
       (** declaration of extra rules *)
       rule "[pseudocode/%_finalize] perform a ln -s to the binary and strip it" 
         ~prod: "pseudocode/%_finalize" ~deps: [ "pseudocode/%.native" ]
-        (fun env -> rule_finalize (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (fun s -> "pseudocode" / (env s)));
+        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (fun s -> "pseudocode" / (env s)));
 
       rule "[%_finalize] perform a ln -s to the binary" 
         ~prod: "%_finalize" ~deps: [ "%.native" ]
-        (rule_finalize (fun _ -> []));
+        (rule_finalize "native" (fun _ -> []));
+
+      rule "[%_finalize_bc] perform a ln -s to the binary" 
+        ~prod: "%_finalize_bc" ~deps: [ "%.byte" ]
+        (rule_finalize "byte" (fun _ -> []));
     end
   | _ -> ()

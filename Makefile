@@ -12,7 +12,7 @@ TARGETS := arm6 sh4
 .SUFFIXES:
 
 default: $(SUBDIRS)
-	@echo; echo "do make [$(TARGETS)] to generate the simulator"
+	@echo; echo "do [make $(TARGETS)] to generate the simulator"
 
 all: default $(TARGETS) extract test
 

@@ -128,6 +128,9 @@ Extraction Library Util.
 Extraction Library Message.
 Extraction Library Semantics.
 Extraction Library Simul.
+
+(* *)
+
 Extraction Library Arm.
 Extraction Library Arm_Config.
 Extraction Library Arm_Proc.
@@ -139,3 +142,20 @@ Extraction Library Arm_Functions.
 Extraction Library arm6.
 Extraction Library arm6dec.
 Extraction Library arm6inst.
+
+(* *)
+
+Require sh4dec.
+Require sh4.
+
+Extraction Library Sh4.
+Extraction Library Sh4_Config.
+Extraction Library Sh4_Proc.
+(*Extraction Library Sh4_SCC.*)
+Extraction Library Sh4_State.
+(*Extraction Library Sh4_Exception.*)
+Extraction Library Sh4_Functions.
+
+Extraction Library sh4.
+Extraction Library sh4dec.
+Extraction Library sh4inst.

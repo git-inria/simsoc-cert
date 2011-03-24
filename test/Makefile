@@ -30,8 +30,8 @@ default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
 	$(SHOW) OCAMLBUILD test/debug
 	$(HIDE) cd .. && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
-		test/debug.native \
-		test/debug_finalize
+		test/debug.byte \
+		test/debug_finalize_bc
 
 
 elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)

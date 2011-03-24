@@ -92,9 +92,6 @@ Module Make (Import P : PROC) (Import S : STATE P).
   Definition return_ {A} (_ : word) : semfun A :=
     todo ComplexSemantics.
 
-  Definition memof (_: word) : word := repr 0. (* SH4 todo : C pointer *)
-  Definition addrof (_: word) : word := repr 0. (* SH4 todo : C pointer *)
-
   Definition bind {A B} (m : semfun A) (f : A -> semfun B) : semfun B :=
     fun lbs0 => 
     match m lbs0 with 
@@ -201,11 +198,6 @@ Module Make (Import P : PROC) (Import S : STATE P).
 
   Definition conjure_up_false (lbs : semstate) :=
     ok_semstate tt nil false (st lbs).
-
-  Definition init :=
-    mk_semstate nil true. 
-
-  Definition init2 st lbs := mk_semstate (loc lbs) (bo lbs) st.
 
   Definition inM {A B} (f_ok : A -> _ -> B) f_ko x := 
     match x with 

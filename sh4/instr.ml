@@ -70,16 +70,12 @@ let structure_line =
     | _ -> assert false in
   aux []
 
-module String_map = Map.Make (struct type t = string let compare = compare end)
-module Int_set = Set.Make (struct type t = int let compare = compare end)
-
-let _ = 
+let manual_of_in_channel o_file = 
   let module S = SH4_section in
 
-  let t = 
-    match try Some Sys.argv.(1) with _ -> None with
-      | Some s -> S.init s
-      | None -> S.init_channel stdin in
+  let t = match o_file with
+    | Some s -> S.init s
+    | None -> S.init_channel stdin in
 
   (** These regexp characterize the end of any C code present in the documentation *)
   let accol_end = Str.regexp " *} *" (* C code usually end with a '}' delimiter *) in
@@ -103,26 +99,6 @@ let _ =
       | "" -> Empty
       | _ -> failwith importation_error in
 
-  let map_analyse = ref String_map.empty in
-  let analyse dec_title l = 
-    match dec_title with
-      | Menu -> 
-        map_analyse :=
-        List.fold_left (
-          fun map -> 
-            let f s nb = 
-              String_map.add s (if String_map.mem s map then Int_set.add nb (String_map.find s map) else Int_set.empty) map
-            in
-            function
-          | I_1, nb -> f "1" nb
-          | I_0, nb -> f "0" nb
-          | I_n, nb -> f "n" nb
-          | I_m, nb -> f "m" nb
-          | I_i, nb -> f "i" nb
-          | I_d, nb -> f "d" nb) !map_analyse l
-      | Menu_PR 
-      | Menu_NO_PR  
-      | Menu_NO_SZ -> () in
 
   let rec aux t l_section =
     match S.input_instr t with 
@@ -249,114 +225,101 @@ let _ =
                ; explanation_other = l 
                ; decoder = decoder } :: l_section) in
 
+  (*preprocess_parse_c*) parse_c { entete = S.c_code t ; section = aux t [] }
 
-  let manual = (*preprocess_parse_c*) parse_c { entete = S.c_code t ; section = aux t [] }  in
+type argument = 
+  | File of string (* filename *)
+  | Print_pc
+  | Print_dec
 
-  let () = output_value stdout manual in
-  let () = exit 0 in
+module type ARG = 
+sig
+  val parse : unit -> argument list
+end
 
-  begin
-    (if false then (* this part is used to know the size of each register inside the decoder array *)
-      begin
-        String_map.fold (fun k m () -> Printf.eprintf "%s [%s]\n%!" k (Int_set.fold (fun k acc -> Printf.sprintf "%s%d " acc k) m "")) !map_analyse ();
-      end
-    (* 
-       0 [1 2 3 4 5 6 7 8 9 10 11 12 ]
-       1 [1 2 3 4 5 7 ]
-       d [4 8 12 ]
-       i [8 ]
-       m [4 ]
-       n [4 ]
-    *) 
-    else
-      ());
-    if false && display_c then
-      begin 
-        List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
-      end; 
-    List.iter (fun sec -> 
-      begin 
-        if false && display_c then
-          begin
-            Printf.printf "/* 9.%d */\n" sec.position;
-            Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
-          end;
-        if display_c then
-          begin
-          match sec.decoder.dec_title with
-            | Menu ->
-            (*Printf.printf "/* 9.%d */" sec.position;*)
+module Arg : ARG = 
+struct
+  open Arg
+  open Printf
 
-            (** algorithm for coupling the line present in the decoder and the pseudo code *)
-            let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
-            and n2 = List.length sec.c_code.code (** number of function defined in C *) in
-            let () = if n1 = n2 then () else assert false in
-
-              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-            List.iter (let module C = Cabs in
-                       function 
-                         | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-                           match () with 
-                             | _ when m "[0-9_A-Z]+$" -> ()
-                             | _ -> assert false (*Printf.printf "%s\n%!" s*) ) sec.c_code.code
-            | Menu_PR -> 
-              begin
-              Printf.printf "/* 9.%d PR */" sec.position;
-
-              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-              let n1 = List.fold_left (fun acc -> function Dec_usual _, _ -> succ acc | _ -> acc) 0 sec.decoder.dec_tab (** number of line in the array *)
-              and n2 = 
-              List.fold_right (let module C = Cabs in
-                         function 
-                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-                             match () with 
-                               | _ when m "[0-9_A-Z]+$" -> succ
-                               | _ when m "[0-9_a-z]+$" -> (fun x -> x)
-                               | _ -> assert false ) sec.c_code.code 0 in
-              let () = if n1 = n2 then () else Printf.printf "/* %d %d */\n" n1 n2 in
-              ()
-              end
-            | Menu_NO_PR -> 
-              begin
-              Printf.printf "/* 9.%d NOPR */" sec.position;
-
-              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-              List.iter (let module C = Cabs in
-                         function 
-                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-                             match () with 
-                               | _ when m "[0-9_A-Z]+$" -> ()
-                               | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
-                               | _ -> assert false ) sec.c_code.code;
-              end
-            | Menu_NO_SZ -> 
-              begin
-              Printf.printf "/* 9.%d NOSZ */" sec.position;
-
-              (** test to verify that every function has a name in uppercase ('_' and number are allowed) *)
-              List.iter (let module C = Cabs in
-                         function 
-                           | C.FUNDEF ((_, (s, _, _, _)), _, _, _) -> let m r = Str.string_match (Str.regexp r) s 0 in
-                             match () with 
-                               | _ when m "[0-9_A-Z]+$" -> ()
-                               | _ when m "[0-9_a-z]+$" -> Printf.printf "%s\n%!" s 
-                               | _ -> assert false ) sec.c_code.code;
-              end
-
-          end;
-
-        if display_dec then
-          List.iter (function
-            | Dec_usual line, _ ->
-              begin
-                Printf.printf "#%s#\n" ((*List.fold_left (Printf.sprintf "%s%s|") "" *) sec.decoder.dec_title_long);
-                Printf.printf "|%s|\n" line.before_code ;
-                    (*List.iter (fun s -> Printf.printf "|%s|\n" s) l2;
-                Printf.printf "\n";*)
-              end
-            | Dec_dash _, _ -> ()) sec.decoder.dec_tab;
-
-      end) manual.section;
-
-    Printf.printf "%!";
+  module Util =
+  struct
+    let error s = eprintf "error: %s\n" s; exit 1
   end
+
+  open Util
+
+  let usage_msg = "usage: " ^ Sys.argv.(0) ^ " option ...\n"
+
+  let error s = error (sprintf "%s\n%s" s usage_msg)
+  let l_dir = ref []
+  let push e = 
+    l_dir := e :: !l_dir
+
+  let rec options () = 
+    List.sort 
+      (fun (x, _, _) (y, _, _) -> compare x y) 
+      (Arg.align
+         [ "-h", Unit print_help,
+           " Display this list of options"
+         ; "-f", String (fun s -> push (File s)),
+           " File to input from"
+         ; "-print_pseudocode", Unit (fun _ -> push Print_pc),
+           " Display the C code" 
+         ; "-print_decoder", Unit (fun _ -> push Print_dec),
+           " Display the decoder information" ])
+
+  and print_options oc =
+    List.iter (fun (k, _, d) -> fprintf oc "%s: %s\n" k d) (options ())
+
+  and print_help () = 
+    begin
+      print_endline usage_msg;
+      print_options stdout;
+      exit 0;
+    end
+
+  let parse () = 
+    let () = Arg.parse (options ()) (fun _ -> error "invalid option") usage_msg in
+    !l_dir
+end
+
+
+let _ = 
+  let l = Arg.parse () in
+  let manual = manual_of_in_channel (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) in
+
+  if List.exists ((=) Print_pc) l then
+    begin
+      List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
+      
+      List.iter (fun sec -> 
+        begin
+          Printf.printf "/* 9.%d */\n" sec.position;
+          Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
+(*          Check.decoder_title sec;*)
+        end;
+      ) manual.section;
+      
+      Printf.printf "%!";
+    end
+
+  else if List.exists ((=) Print_dec) l then
+    begin
+      List.iter (fun sec -> 
+        List.iter (function
+          | Dec_usual line, _ ->
+            begin
+              Printf.printf "#%s#\n" ((*List.fold_left (Printf.sprintf "%s%s|") "" *) sec.decoder.dec_title_long);
+              Printf.printf "|%s|\n" line.before_code ;
+              (*List.iter (fun s -> Printf.printf "|%s|\n" s) l2;
+                Printf.printf "\n";*)
+            end
+          | Dec_dash _, _ -> ()) sec.decoder.dec_tab
+      ) manual.section;
+      
+      Printf.printf "%!";
+    end
+
+  else
+    output_value stdout manual

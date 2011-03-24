@@ -16,11 +16,11 @@ Require Import Coqlib Util Bitvec Sh4 Integers Sh4_State Semantics Message.
 
 Module Semantics.
   Module _Sh4 <: PROC.
-    Definition exception := Sh4.exception.
-    Definition instruction_set := Sh4.instruction_set.
-    Definition UndIns := Sh4.UndIns.
+    Definition exception := exception.
+    Definition instruction_set := instruction_set.
+    Definition UndIns := UndIns.
     Definition PC := PC.
-    Definition inst_set := Sh4.inst_set.
+    Definition inst_set := inst_set.
   End _Sh4.
 
   Module _Sh4_State <: STATE _Sh4.

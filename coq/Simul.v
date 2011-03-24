@@ -15,9 +15,7 @@ Module Type SEMANTICS (Import P : PROC) (Import S : STATE P).
   Parameter result : Type -> Type.
   Definition semfun A := semstate -> @result A.
 
-  Parameter st : semstate -> state. (* FIXME monadic : hide *)
-  Parameter init : state -> semstate. (* FIXME monadic : hide *)
-  Parameter init2 : state -> semstate -> semstate. (* FIXME monadic : hide *)
+  Parameter conjure_up_true : semfun unit.
   Parameter inM : forall A B : Type, (A -> semstate -> B) -> (message -> B) -> result A -> B.
   Parameter ret : forall A : Type, A -> semfun A.
   Parameter incr_PC : semfun unit.
@@ -87,19 +85,16 @@ Module Make (Import P : PROC) (Import S : STATE P) (Import Semantics : SEMANTICS
 
   Notation "'<' st '>' A" := (_get_st (fun st => A)) (at level 200, A at level 100, st ident).
 
-  Definition _get_st {A} := @bind_s (fun x => st (semst x)) A (SimOk tt).
-
-  Definition conjure_up_true (lbs : simul_state) :=
-    SimOk tt (mk_simul_state (init (st (semst lbs))) (nb_next lbs)).
-
-  Definition error {A} x lbs := @SimKo A lbs x.
-
   Definition inM {A} (m : semfun A) : simul_semfun A :=
     fun lbs => 
     inM 
       (fun a lbs' => SimOk a (mk_simul_state lbs' (nb_next lbs))) 
       (SimKo lbs) 
       (m (semst lbs)).
+
+  Definition conjure_up_true := inM conjure_up_true.
+
+  Definition error {A} x lbs := @SimKo A lbs x.
 
   Module Make (Import I : INST).
 
