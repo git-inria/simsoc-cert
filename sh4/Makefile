@@ -56,7 +56,7 @@ default:
 #
 
 clean:
-	rm -f sh4inst.v sh4dec.v sh4.vo
+	rm -f sh4inst.v sh4dec.v sh4inst.vo sh4dec.vo sh4.vo
 
 nobackup:
 	rm -f *.bak *~ *.dup

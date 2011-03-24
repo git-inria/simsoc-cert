@@ -7,7 +7,7 @@ SUBDIRS := tools refARMparsing pseudocode coq testgen
 
 TARGETS := arm6 sh4
 
-.PHONY: default clean all $(SUBDIRS) $(TARGETS) extract test
+.PHONY: default clean clean-all all $(SUBDIRS) $(TARGETS) extract test
 
 .SUFFIXES:
 
@@ -27,3 +27,6 @@ clean:
 	ocamlbuild -clean
 	rm -rf extract/tmp
 	@for d in $(SUBDIRS); do make -C $$d $@; done
+
+clean-all: clean
+	@for d in $(TARGETS) extract test; do make -C $$d clean; done

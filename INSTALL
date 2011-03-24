@@ -77,6 +77,9 @@ INSTALLATION
 
              make clean
 
+   An alternative, and cleaner approach is [make clean-all] which do a 
+   [make clean] following by a [make clean] on [arm6 sh4 extract test].
+
 
 --------------------------------------------------------------------
 
