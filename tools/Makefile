@@ -1,7 +1,7 @@
 # SimSoC-Cert, a Coq library on processor architectures for embedded systems.
 # See the COPYRIGHTS and LICENSE files.
 
-SUBDIRS := order_deps dependot
+SUBDIRS := dependot
 
 .PHONY: default clean $(SUBDIRS)
 
