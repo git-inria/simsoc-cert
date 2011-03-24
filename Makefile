@@ -7,7 +7,7 @@ SUBDIRS := tools refARMparsing pseudocode coq testgen
 
 TARGETS := arm6 sh4
 
-.PHONY: default clean all $(SUBDIRS) $(TARGETS)
+.PHONY: default clean all $(SUBDIRS) $(TARGETS) extract test
 
 .SUFFIXES:
 

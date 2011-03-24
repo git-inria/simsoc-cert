@@ -2,25 +2,34 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
 
-PREREQUISITES:
+PREREQUISITES
 
 * The CompCert compiler, version 1.8.1.
-It is available from http://compcert.inria.fr/download.html
+  It is available from http://compcert.inria.fr/download.html
 
-* All the prerequisites required for CompCert, described in compcert-1.8.1/README.
+* All the prerequisites required for CompCert, described in 
+  compcert-1.8.1/README.
 
 * The compilation of CompCert done, inside compcert-1.8.1 :
-  -  ./configure <target> 
-     where target is described in compcert-1.8.1/README
-  -  make proof extraction
 
-* For ARM tests, a binary called 'arm-elf-gcc' need to be accessible from the path.
-This binary can be found for example inside the SimSoC project.
+             ./configure <target> && make proof extraction
+
+    where <target> is described in compcert-1.8.1/README
+
+* For ARM tests, a binary called 'arm-elf-gcc' need to be accessible from the 
+  path.
+  This binary can be found for example inside the SimSoC project.
 
 
-INSTALLATION:
+--------------------------------------------------------------------
 
-We assume that all the following operations are done at the top directory.
+             We assume that all the following operations are done at the top
+             directory.
+
+--------------------------------------------------------------------
+
+
+INSTALLATION
 
 1- Configure the system.
 
@@ -29,11 +38,18 @@ We assume that all the following operations are done at the top directory.
    where <path> is the directory where CompCert is.
    This creates a symbolic link named 'compcert' inside the top directory.
 
+?- An alternative, and faster approach to steps 2 to 5 is
+
+             make all
+
+   Here comes the steps 2 to 5.
+
 2- Compile the pseudo-code generator.
 
              make
 
-   This compiles all the Coq sources, extracts them extract/tmp, and compiles all the OCaml sources needed to obtain the generator from ARM6 and SH4.
+   This compiles all the Coq sources, extracts them extract/tmp, and compiles
+   all the OCaml sources needed to obtain the generator from ARM6 and SH4.
 
 3- Convert the PDF manual into several COQ files by using the generator.
 
@@ -41,22 +57,39 @@ We assume that all the following operations are done at the top directory.
 
    This transforms 
      arm6.pdf  into  arm6inst.v + arm6dec.v  ,
-     sh4.pdf  into  sh4inst.v + sh4dec.v  .
+      sh4.pdf  into   sh4inst.v +  sh4dec.v  .
 
 4- Add the COQ manual to the simulator project.
 
-             cd extract && make
+             make extract
 
    The simulator and some remaining Coq sources are extracted in extract/tmp.
 
-5- Compile the simulator and launch the tests for ARM.
+5- Compile the whole simulator with what is necessary to test it.
 
-             cd test && make && ./debug
+             make test
 
-   For each test C file, we generate an OCaml file inside extract/tmp, to run as input with the simulator.
-   Note that the 'make' invocation takes 10 minutes or so on a recent machine.
-   ./debug runs the simulator with all the extracted test (if they are mentioned in debug.ml).
+   For each C file in the directory 'test', we generate an OCaml file inside
+   'extract/tmp', to run as input with the simulator.
+   Note that this step takes 10 minutes or so on a recent machine.
 
 0- Clean to project.
 
              make clean
+
+
+--------------------------------------------------------------------
+
+
+USAGE
+
+* To launch the tests for ARM.
+
+             ./test/debug
+
+  The tests appearing in test/debug.ml are run with the simulator, which outputs
+  the name of the program being tested, following by OK if the result is what it
+  is expected.
+
+
+--------------------------------------------------------------------
