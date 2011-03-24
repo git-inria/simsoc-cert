@@ -98,7 +98,7 @@ let rec options() =
   " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output instructions in Coq (implies -norm, requires -ipc)";
-  "-oclight-inst", Unit (fun () -> set_norm(); set_output_type ClightInst),
+  "-oclight-inst", String (fun s -> set_norm(); set_output_type ClightInst; set_output_file s),
   " Output instructions in Clight (implies -norm, requires -ipc)";
   "-ocoqclight", Rest (fun _ -> if is_set_coqcl_argv () then () else
       set_coqcl_argv (let rec aux n = 
@@ -306,7 +306,12 @@ let genr_output() =
           let preamble_proc = "Arm Arm_SCC"
           let preamble_import = "State "
         end : Gencoq.GENCOQ))) (get_pc_input())
-    | ClightInst -> ()
+    | ClightInst ->
+        let oc = open_out (get_output_file()) in
+          PrintClight.print_program (Format.formatter_of_out_channel oc) 
+            (Ps2cl_ast_trans.prog_trans (get_pc_input()));
+          close_out oc
+        (*PrintClight.print_if (Ps2cl_ast_trans.prog_trans (get_pc_input()))*)
     | ClightCoqInst -> 
       let open Clight_coq_printer in 
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
