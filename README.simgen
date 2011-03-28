@@ -1,4 +1,5 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
 --------------------------------------------------------------------
 
 This files describes the possible usages of the code generator simgen.
