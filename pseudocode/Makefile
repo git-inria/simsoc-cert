@@ -9,10 +9,11 @@ DIRS=lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
 INCLUDES=$(patsubst %,-I $(COMPCERT)/%, $(DIRS))
 
+# command for compilation of Coq files
 COQC=coqc -q -noglob -dont-load-proofs $(INCLUDES)
-COQEXEC=coqtop -q $(INCLUDES) -I ../pseudocode -batch -load-vernac-source
 
-FILES=Csyntax_print.v
+# command for extracting OCaml files from Coq files
+COQEXEC=coqtop -q $(INCLUDES) -batch -load-vernac-source
 
 ifeq ($(VERBOSE),1)
   SHOW := @true
@@ -22,21 +23,9 @@ else
   HIDE := @
 endif
 
-.PHONY: all proof extraction default nobackup tags bintest
+.PHONY: default nobackup clean tags bintest
 
-all: proof extraction default
-
-proof: $(FILES:.v=.vo)
-
-extraction:
-	$(SHOW) COQTOP extract/ExtractPseudocode
-	$(HIDE) mkdir -p tmp && \
-	$(COQEXEC) extraction.v 2>&1 > /dev/null && \
-	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' tmp/Csyntax_print.ml # manual eta-expansion with "Coq 8.3pl1 (January 2011)"
-        # FIXME determine if it is necessary to : rm -f tmp/*.ml tmp/*.mli
-        #       after or before the 'mkdir'
-
-default:
+default: extraction/Csyntax_print.ml
 	$(SHOW) OCAMLBUILD pseudocode/main
 	$(HIDE) cd .. && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
@@ -44,8 +33,21 @@ default:
 		pseudocode/main.native \
 		pseudocode/main_finalize
 
+extraction/Csyntax_print.ml: extraction extraction.v
+	$(SHOW) COQEXEC extraction.v
+	$(HIDE) $(COQEXEC) extraction.v && \
+	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/Csyntax_print.ml # manual eta-expansion with Coq 8.3pl1
+
+extraction:
+	mkdir -p extraction
+
+extraction.v: Csyntax_print.vo
+
 nobackup:
-	rm -f *.bak *~ *.dup
+	rm -f *~
+
+clean:
+	rm -rf extraction *.vo
 
 tags:
 	otags -sr '.mli' -r .
@@ -59,5 +61,5 @@ bintest:
 .SUFFIXES: .v .vo
 
 .v.vo:
-	@echo "COQC $*.v"
-	@$(COQC) $*.v
+	$(SHOW) COQC $*.v
+	$(HIDE) $(COQC) $*.v

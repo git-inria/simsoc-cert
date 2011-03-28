@@ -102,9 +102,7 @@ Load extractionMachdep.
 Extraction Blacklist List String Int.
 
 (* Go! *)
-(* we assume we are in the extract directory *)
-Cd "tmp".
-
+Cd "extraction".
 Require Import Csyntax_print.
 Extraction Library NaryFunctions.
 Extraction Library Bvector.
