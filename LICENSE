@@ -1,5 +1,5 @@
-SimSoC-Cert, a Coq library for certifying Systems-on-Chips
-----------------------------------------------------------
+SimSoC-Cert, a toolkit for generating certified processor simulators
+--------------------------------------------------------------------
 
 The aim of SimSoC-Cert is to provide tools for:
 
