@@ -25,6 +25,7 @@ endif
 .PRECIOUS: $(PROC).txt $(FILES)
 
 default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo $(PROC)mldec.ml #$(PROC)exn.vo
+
 testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)syntax.txt
 	md5sum $(PROC)inst.arm.ref $(PROC)inst.arm $(PROC)dec.dat.ref $(PROC)dec.dat $(PROC)syntax.dat.ref $(PROC)syntax.dat
 	diff $(PROC)inst.arm.ref $(PROC)inst.arm
@@ -89,7 +90,7 @@ testrefARMparsing: $(PROC)inst.arm $(PROC)dec.dat $(PROC)syntax.dat $(PROC)synta
 
 %.vo: %.v
 	$(SHOW) COQC $<
-	$(HIDE) time -p coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
+	$(HIDE) coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(GEN)
 	$(SHOW) PSEUDOCODE $< $@
@@ -107,7 +108,7 @@ $(DIR)/keepoper $(DIR)/oneline_expr $(DIR)/keepsyntax $(DIR)/parsesyntax $(DIR)/
 	cd $(DIR) && $(MAKE) `basename $@`
 
 clean:
-	rm -f *~ *.glob *.vo $(FILES) *.cmi *.cmo *.cmx *.o
+	rm -f *.glob *.vo *.orig $(FILES) $(PROC).txt $(PROC)syntax.txt
 
 usage-patch-inst:
 	echo update $(PROC)inst.txt to the desired contents, then make patch-inst
