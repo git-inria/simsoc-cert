@@ -1,4 +1,14 @@
 
+
+- remove order_deps
+
+- add a comment explaining the purpose of lightheadertype and
+   syntaxtype
+
+- rename ps2cl_ast_trans.ml into ps2c.ml
+
+- rename clight_coq_printer.ml into Driver_new.ml
+
 - add interface files (.mli)
 
 - if there is only one processor, then we can simplify the
