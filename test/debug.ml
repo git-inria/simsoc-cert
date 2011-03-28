@@ -1,3 +1,8 @@
+(*
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
+*)
+
 open BinInt
 open BinPos
 open Bitvec

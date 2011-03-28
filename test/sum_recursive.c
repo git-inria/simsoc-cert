@@ -1,4 +1,8 @@
-/* Example for the Coq simulator */
+/*
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
+ */
+
 /* After 740 instructions executed, r0 should contain 1+2+...+42=903 */
 
 #include "common.h"

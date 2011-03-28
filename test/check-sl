@@ -1,5 +1,10 @@
 #!/bin/bash
+
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
 SIMLIGHT="../simlight/simlight -d -i"
+
 set -e # exit on error
 set -x # verbose
 
