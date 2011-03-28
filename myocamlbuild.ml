@@ -35,15 +35,19 @@ end
 
 open Ocamlbuild_plugin
 
-(** [ln_s] behaves as the previously defined [ln_s] except that nothing is done in the case the destination file already exists. *)
+(** [ln_s] behaves as the previously defined [ln_s] except that a 'touch' to the destination file is done in the case it already exists. *)
 let ln_s src dest = 
   if Sys.file_exists dest then
-    Nop
+    Cmd (S [ A "touch" ; P dest ])
   else
     ln_s src dest
 
-(** [rule_finalize _ f] provide a function which can be use with [rule]. It creates a link to the binary. [f] is an extra action which can be performed after the creation of the link. *)
-let rule_finalize nc f_cmd env _ =
+(** [rule_finalize _ f o_file] provides a value of type [action] which can be use with [rule]. 
+  It creates a link to the binary if it does not exist yet. 
+  If [o_file] = [Some filename], the name of the link is [filename], otherwise it is same as the binary.
+  The modification time of the link is always older than the binary. 
+  [f] is an extra action which can be performed after the creation of the link. *)
+let rule_finalize nc f_cmd o_file env _ =
   let fic = env ("%." ^ nc) in
   let open Pathname in
     Seq (ln_s (Printf.sprintf "%s_build" 
@@ -54,13 +58,14 @@ let rule_finalize nc f_cmd env _ =
                        | None -> l
                        | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
                    aux (pred (String.length fic)) "")
-               / fic) (concat parent_dir_name (remove_extensions fic))
+               / fic) (concat parent_dir_name (match o_file with None -> remove_extensions fic | Some file -> file))
           (* FIXME find a more generical way to create this symbolic link *) :: f_cmd fic)
 
 (** --------------------------------------------- *)
-(** compcert specific informations *)
+(** The first declaration in 'compcert/Makefile' assign all the folders used by the compcert project to the variable 'DIRS'. 
+  We do the same here to the variable [l_compcert]. *)
 
-let arch, variant = 
+let arch, variant = (** we read the file compcert/Makefile.config to get the value associated to ARCH and VARIANT. *)
   let ic = open_in ("compcert" / "Makefile" -.- "config") in
   let rec aux l = 
     match try Some (input_line ic) with _ -> None with
@@ -82,25 +87,33 @@ let l_compcert = List.map ((/) "compcert")
 
 (** --------------------------------------------- *)
 
+(** In general, a directory has only itself as its scope (we have by default the equation : Pathname.define_context dir [dir]). 
+  This function provides the possibility to add manually all the directory where there is some dependencies to the considered directory.
+  Note that we can add more directory than required as long as there is no conflict between the name of files. However, the complexity time of ocamlbuild may vary. *)
+let define_context dir l = 
+  Pathname.define_context dir (l @ [dir])
+
 let _ = dispatch & function
   | After_rules ->
-    let define_context dir l = Pathname.define_context dir (l @ [dir]) in
     begin
       (** ----------------------------------- *)
-      (** definition of context *)
+      (** definition of context for : *)
+      (**   - the compcert project : *)
       List.iter (fun x -> Pathname.define_context x ("compcert" :: (* The directory [compcert/cfrontend] needs to have a relative path notion to [cparser], but [cparser] is inside [compcert], so we have to add [compcert]. *)
                                                         l_compcert)) l_compcert;
+      
+      (**   - the SimSoC-Cert project : *)
       define_context "arm6" (l_compcert @ [ "extract/tmp" ]);
+      define_context "arm6/parsing" [ "pseudocode" ];
       define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "pseudocode/extraction" ];
       define_context "pseudocode" (l_compcert @ [ "pseudocode/extraction" ; "sh4" ]);
       define_context "pseudocode/extraction" [ "compcert/extraction" ];
-      define_context "arm6/parsing" [ "pseudocode" ];
       define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
       define_context "test" (l_compcert @ [ "extract/tmp" ]);
 
       (** ----------------------------------- *)
-      (** activation of specific options for... *)
-      (**   ... compcert files *)
+      (** activation of specific options for : *)
+      (**   - the compcert project : *)  (* FIXME determine how to include compcert/myocamlbuild.ml *)
       (* force linking of libCparser.a when use_Cparser is set *)
       flag ["link"; "ocaml"; "native"; "use_Cparser"]
         (S[A"compcert/cfrontend/libCparser.a"]);
@@ -110,7 +123,7 @@ let _ = dispatch & function
       (* make sure libCparser.a is up to date *)
       dep  ["link"; "ocaml"; "use_Cparser"] ["compcert/cfrontend/libCparser.a"];
 
-      (**   ... other files *)
+      (**   - the SimSoC-Cert project : *)
       flag ["ocaml"; "compile" ; "pseudocode_native"] (S [ A "-unsafe" 
                                                          ; A "-noassert" 
                                                          ; A "-inline" ; A "10000" ]);
@@ -119,14 +132,14 @@ let _ = dispatch & function
       (** declaration of extra rules *)
       rule "[pseudocode/%_finalize] perform a ln -s to the binary and strip it" 
         ~prod: "pseudocode/%_finalize" ~deps: [ "pseudocode/%.native" ]
-        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (fun s -> "pseudocode" / (env s)));
+        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (None (*Some "pseudocode/simgen"*)) (fun s -> "pseudocode" / (env s)));
 
       rule "[%_finalize] perform a ln -s to the binary" 
-        ~prod: "%_finalize" ~deps: [ "%.native" ]
-        (rule_finalize "native" (fun _ -> []));
+        ~prod: "%_finalize" ~deps: [ "%.native" ] (* FIXME rename finalize into finalize_nc *)
+        (rule_finalize "native" (fun _ -> []) None);
 
       rule "[%_finalize_bc] perform a ln -s to the binary" 
         ~prod: "%_finalize_bc" ~deps: [ "%.byte" ]
-        (rule_finalize "byte" (fun _ -> []));
+        (rule_finalize "byte" (fun _ -> []) None);
     end
   | _ -> ()
