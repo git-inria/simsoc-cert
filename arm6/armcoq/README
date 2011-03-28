@@ -1,11 +1,6 @@
-        Test generator to validate the Coq formalization
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
+--------------------------------------------------------------------
 
-Prerequisites: gmake, g++, arm-elf-gcc
-
-To generate "sum_iterative.v", run the command:
-> make sum_iterative.v
-
-To estimate the number of instructions executed:
-> make sum_iterative.elf
-> $path_to_simsoc_build/examples/Demo/demo -v -DT=1 sum_iterative.elf
-... and look at the last line.
+Generate the Coq initial state of the ARMv6 processor corresponding to
+an ELF file (ARM little-endian).
