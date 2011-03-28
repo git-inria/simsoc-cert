@@ -1,6 +1,10 @@
 #!/usr/bin/env ocaml
-#load"unix.cma"
-#load"str.cma"
+
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+#load "unix.cma"
+#load "str.cma"
 
 open Printf
 
