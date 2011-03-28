@@ -4,14 +4,11 @@
 DIR := ..
 
 include $(DIR)/Makefile.common
-
-COMPCERT := $(DIR)/compcert
-
-include $(COMPCERT)/Makefile.config
+include $(DIR)/compcert/Makefile.config
 
 DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
-INCLUDES := $(patsubst %,-I $(COMPCERT)/%, $(DIRS))
+INCLUDES := $(patsubst %,-I $(DIR)/compcert/%, $(DIRS))
 
 # command for compilation of Coq files
 COQC := coqc -q -noglob -dont-load-proofs $(INCLUDES)
