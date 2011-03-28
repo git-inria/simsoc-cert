@@ -103,7 +103,7 @@ Extraction Blacklist List String Int.
 
 (* Go! *)
 Cd "extraction".
-Require Import Csyntax_print.
+Require Import RawCoq_Csyntax.
 Extraction Library NaryFunctions.
 Extraction Library Bvector.
-Extraction Library Csyntax_print.
+Extraction Library RawCoq_Csyntax.

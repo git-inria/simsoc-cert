@@ -2,7 +2,7 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Pretty-printer for Compcert.Csyntax.v.
+Pretty-printer for CompCert type [AST.program fundef type].
 *)
 
 Require Import 
@@ -1116,7 +1116,14 @@ Notation "a ++ b" := (S.append a b).
 
 Definition coq_output_1 := 
   List.map S.of_string
-      [ "Require Import" 
+      [ "(**"
+      ; "SimSoC-Cert, a toolkit for generating certified processor simulators"
+      ; "See the COPYRIGHTS and LICENSE files."
+      ; ""
+      ; "Sample CompCert value of type [AST.program fundef type]."
+      ; "*)"
+      ; ""
+      ; "Require Import" 
       ; "  (* compcert *)"
       ; "  Coqlib"
       ; "  Integers"

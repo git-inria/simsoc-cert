@@ -8,8 +8,6 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 
 - rename ps2cl_ast_trans.ml into ps2c.ml
 
-- rename clight_coq_printer.ml into Driver_new.ml
-
 - add interface files (.mli)
 
 - if there is only one processor, then we can simplify the
