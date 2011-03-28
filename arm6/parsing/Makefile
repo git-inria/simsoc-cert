@@ -1,20 +1,24 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-include ../Makefile.common
+DIR := ../..
 
-TARGETS = keepoper indentation oneline_expr keepbincode parsebincode \
+include $(DIR)/Makefile.common
+
+TARGETS := keepoper indentation oneline_expr keepbincode parsebincode \
 	keepsyntax parsesyntax convert_syntax
 
-default: 
-	$(SHOW) OCAMLBUILD $(TARGETS)
-	$(HIDE) cd .. && \
-	$(OCAMLBUILD) \
-		$(patsubst %,refARMparsing/%.native, $(TARGETS)) \
-		$(patsubst %,refARMparsing/%_finalize, $(TARGETS))
+default: $(TARGETS)
+
+$(TARGETS):
+	$(SHOW) OCAMLBUILD $@
+	$(HIDE) cd $(DIR) && \
+	$(OCAMLBUILD) $@.d.byte $@.native $@_finalize
 
 clean:
 	rm -f $(TARGETS)
+
+.PHONY: default clean testoper testbincode testsyntax
 
 # for debug:
 
