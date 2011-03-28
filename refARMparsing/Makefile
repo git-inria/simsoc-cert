@@ -1,25 +1,22 @@
-# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-TARGETS = keepoper indentation oneline_expr keepbincode parsebincode keepsyntax parsesyntax convert_syntax
+include ../Makefile.common
 
-ifeq ($(VERBOSE),1)
-  SHOW := @true
-  HIDE :=
-else
-  SHOW := @echo
-  HIDE := @
-endif
+TARGETS = keepoper indentation oneline_expr keepbincode parsebincode \
+	keepsyntax parsesyntax convert_syntax
 
 default: 
 	$(SHOW) OCAMLBUILD $(TARGETS)
 	$(HIDE) cd .. && \
-	ocamlbuild -j 2 -no-hygiene -no-links \
+	$(OCAMLBUILD) \
 		$(patsubst %,refARMparsing/%.native, $(TARGETS)) \
 		$(patsubst %,refARMparsing/%_finalize, $(TARGETS))
 
 clean:
-	rm -f *~ $(TARGETS)
+	rm -f $(TARGETS)
+
+# for debug:
 
 testoper:
 	./keepoper < arm6inst.txt > resu_keepoper
