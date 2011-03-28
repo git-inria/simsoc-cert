@@ -1,3 +1,10 @@
+(**
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+
+Driver for ocamlbuild.
+*)
+
 module Ocamlbuild_plugin = 
 struct
   (** This module replaces the module [Ocamlbuild_plugin] by adding the possibility to use the tags [warn_%s] and [warn_error_%s] where '%s' is the english word of a number, e.g. "twenty_nine" for 29. *)
@@ -87,7 +94,7 @@ let _ = dispatch & function
       define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "pseudocode/extraction" ];
       define_context "pseudocode" (l_compcert @ [ "pseudocode/extraction" ; "sh4" ]);
       define_context "pseudocode/extraction" [ "compcert/extraction" ];
-      define_context "refARMparsing" [ "pseudocode" ];
+      define_context "arm6/parsing" [ "pseudocode" ];
       define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
       define_context "test" (l_compcert @ [ "extract/tmp" ]);
 
