@@ -1,16 +1,20 @@
+# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# See the COPYRIGHTS and LICENSE files.
 
-CPPFLAGS=-I../elf # for elf.h and elf_loader.hpp
-CXXFLAGS=-Wall -Wextra
+DIR := ../..
+
+CPPFLAGS := -I$(DIR)/elf # for elf.h and elf_loader.hpp
+CXXFLAGS := -Wall -Wextra
 
 default: arm2coq
 
-arm2coq: main.o ../elf/elf_loader.o
+arm2coq: main.o $(DIR)/elf/elf_loader.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
-main.o: main.cpp ../elf/elf_loader.hpp
+main.o: main.cpp $(DIR)/elf/elf_loader.hpp
 
-../elf/elf_loader.hpp ../elf/elf_loader.o: FORCE
-	cd ../elf && $(MAKE) $@
+$(DIR)/elf/elf_loader.hpp $(DIR)/elf/elf_loader.o: FORCE
+	$(MAKE) -C $(DIR)/elf $@
 
 clean:
 	rm -f arm2coq *.o
