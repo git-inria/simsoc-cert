@@ -1,19 +1,25 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
 
 --------------------------------------------------------------------
 PREREQUISITES:
 
-* The sources of the CompCert compiler, version 1.8.1, available from
+* OCaml 3.12.0 available from http://caml.inria.fr/ .
+
+* Coq 8.3pl1 available from http://coq.inria.fr/ .
+
+* The sources of Compcert 1.8.1 available from
   http://compcert.inria.fr/ .
 
 * All the prerequisites required for CompCert, described in 
   compcert-1.8.1/README.
 
-* The compilation of CompCert done. See compcert-1.8.1/README.
+* The compilation of CompCert done with Coq 8.3pl1 as described in
+  compcert-1.8.1/README.
 
 * For ARM tests, a binary called 'arm-elf-gcc' need to be accessible
   from the path. This binary can be found for example inside the
-  SimSoC project (see http://formes.asia/cms/software/simsoc).
+  SimSoC project (http://formes.asia/cms/software/simsoc).
 
 --------------------------------------------------------------------
 COMPILATION OF THE MAIN TOOL:
@@ -29,10 +35,6 @@ COMPILATION OF THE MAIN TOOL:
 
              make
 
-   This creates the 'simgen' program in the top directory. Do 'psgen
-   -h' to get the list of the options. Read 'README.simgen' for more
-   details.
-
-0- Remove all generated files:
-
-             make clean
+   This creates the 'simgen' program in the 'pseudocode' directory. Do
+   'simgen -h' to get the list of the options. Read 'README.simgen'
+   for more details.
