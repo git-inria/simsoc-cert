@@ -1,3 +1,7 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
+--------------------------------------------------------------------
+
 This directory contains a small tool called "bin2elf", written in
 C++. This tool takes as input a binary file containing a list of ARM
 instructions in binary format, and outputs an ELF file which ".text"
@@ -6,14 +10,14 @@ section contains the corresponding instructions.
 Usage:
 
 1. generate a binary file:
-../pseudocode/main -ipc ../arm6/arm6inst.arm -idec ../arm6/arm6dec.dat -isyntax ../arm6/arm6syntax.dat -s 0 -obin-test > test.bin
+simgen -ipc arm6inst.arm -idec arm6dec.dat -isyntax arm6syntax.dat -s 0 -obin-test > test.bin
 
 2. convert to ELF:
-../elf/bin2elf test.bin test.elf
+bin2elf test.bin test.elf
 
 3. print the file in human readable format:
 arm-elf-objdump -d test.elf
 
 Some compatibility issues have been noticed between the generated ELF
-file and arm-elf-objdump version 2.19.  Tell the developpers if you
+file and arm-elf-objdump version 2.19. Tell the developpers if you
 encounter any problem with arm-elf-objdump version 2.20.

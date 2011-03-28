@@ -1,7 +1,12 @@
-CXXFLAGS=-Wall -Wextra
-CC = g++
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
 
-all: bin2elf  elf_loader.o
+CXXFLAGS := -Wall -Wextra
+CC := g++
+
+.PHONY: default clean
+
+default: bin2elf elf_loader.o
 
 bin2elf: bin2elf.o
 
