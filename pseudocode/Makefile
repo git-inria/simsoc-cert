@@ -1,14 +1,15 @@
-# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
 COMPCERT=../compcert
 
 include $(COMPCERT)/Makefile.config
+
 DIRS=lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
 INCLUDES=$(patsubst %,-I $(COMPCERT)/%, $(DIRS))
 
-COQC=coqc -q -noglob $(INCLUDES)
+COQC=coqc -q -noglob -dont-load-proofs $(INCLUDES)
 COQEXEC=coqtop -q $(INCLUDES) -I ../pseudocode -batch -load-vernac-source
 
 FILES=Csyntax_print.v
@@ -29,9 +30,8 @@ proof: $(FILES:.v=.vo)
 
 extraction:
 	$(SHOW) COQTOP extract/ExtractPseudocode
-	$(HIDE) cd ../extract && \
-	mkdir -p tmp && \
-	$(COQEXEC) ExtractPseudocode.v 2>&1 > /dev/null && \
+	$(HIDE) mkdir -p tmp && \
+	$(COQEXEC) extraction.v 2>&1 > /dev/null && \
 	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' tmp/Csyntax_print.ml # manual eta-expansion with "Coq 8.3pl1 (January 2011)"
         # FIXME determine if it is necessary to : rm -f tmp/*.ml tmp/*.mli
         #       after or before the 'mkdir'
