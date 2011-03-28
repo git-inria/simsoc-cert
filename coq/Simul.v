@@ -1,5 +1,5 @@
 (**
-SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
 Instruction decoding and execution cycle.

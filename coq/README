@@ -1,5 +1,6 @@
-SimSoC-Cert, a Coq library for certifying Systems-on-Chips
-----------------------------------------------------------
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+--------------------------------------------------------------------
 
 The aim of this Coq library (Coq is a proof assistant developped at
 INRIA available at http://coq.inria.fr/) is to provide formalizations
