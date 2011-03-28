@@ -20,7 +20,8 @@ default: $(PROC)inst.vo $(PROC)syntax.dat $(PROC)dec.vo $(PROC).vo \
 clean:
 	rm -f *.glob *.vo *.orig $(FILES) $(PROC).txt $(PROC)syntax.txt
 
-.PHONY: default clean patch-inst patch-dec patch-syntax testparsing $(SIMGEN)
+.PHONY: default clean patch-inst patch-dec patch-syntax testparsing \
+	$(SIMGEN) libcoq
 
 .PRECIOUS: $(PROC).txt $(FILES)
 
@@ -84,9 +85,9 @@ clean:
 	$(SHOW) $(SIMGEN) -idec $< -otest > $@
 	$(HIDE) $(SIMGEN) -idec $< -otest > $@ || (rm -f $@; exit 1)
 
-%.vo: %.v
+%.vo: %.v libcoq
 	$(SHOW) coqc $<
-	$(HIDE) coqc -q -I ../compcert/lib -R ../coq SimSoCCert $<
+	$(HIDE) coqc -q -I $(DIR)/compcert/lib -R $(DIR)/coq SimSoCCert $<
 
 %inst.cpp: %inst.arm $(SIMGEN)
 	$(SIMGEN) -ipc $< -ocpp > $@
@@ -101,7 +102,10 @@ parsing/keepoper parsing/oneline_expr parsing/keepsyntax parsing/parsesyntax par
 	$(MAKE) -C parsing `basename $@`
 
 $(SIMGEN):
-	$(MAKE) -C ../pseudocode
+	$(MAKE) -C $(DIR)/pseudocode
+
+libcoq:
+	$(MAKE) -C $(DIR)/coq
 
 ###########################################################################
 # update patches
