@@ -3,12 +3,12 @@ See the COPYRIGHTS and LICENSE files
 --------------------------------------------------------------------
 
 This directory contains tests, which can be used both with simlight
-(use the .elf file) and with the Caml simulator extracted from the Coq
-code (use the .ml file).
+(use the .elf file) and with the OCaml simulator extracted from the
+Coq code (use the .ml file).
 
 All tests are provided in the form of a C file. The tests whose name
 starts by "arm_" contain ARM inlined assembly code. The tests whose
-name starts by "thumb_" contain Thumb inlined assembly code.  To
+name starts by "thumb_" contain Thumb inlined assembly code. To
 compile them, an arm-elf-gcc cross-compiler is necessary.
 
 Each test stores a status in the register r0 and next enters an
@@ -20,13 +20,18 @@ provided to the simulation function. For files which can be compiled
 either as ARM or as Thumb, the number corresponds to the ARM case.
 
 In most of the test programs, the status is organized as a bit vector:
-each atomic test set one bit. Thus, looking a the binary
-representation of the result tell you which atomic test failed.
+each atomic test set one bit. Thus, looking at the binary
+representation of the result tells you which atomic test failed.
 
 The shell script "check" executes all the tests with simlight, and
 compare the result (last r0 value) with the expected value.
 
+To estimate the number of instructions executed, it is possible to use
+SimSoC as follows:
+> $path_to_simsoc_build/examples/Demo/demo -v -DT=1 sum_iterative.elf
+... and look at the last line.
+
 TODO:
 
 - The code coverage is poor (<50% of cxx/slv6_iss_expanded.c). In
-particular, there are no tests for the new ARMv6 instructions.
+particular, there are no test for the new ARMv6 instructions.
