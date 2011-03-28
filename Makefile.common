@@ -8,3 +8,5 @@ else
   SHOW := @echo
   HIDE := @
 endif
+
+OCAMLBUILD := ocamlbuild -j 2 -no-hygiene -no-links
