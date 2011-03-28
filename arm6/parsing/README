@@ -1,0 +1,21 @@
+Getting parsable pseudo-code of instructions, by adding
+well-parenthesed BEGIN END according to indentation
+
+
+                     pdftotext                      patches
+Stage 1: ARMv6.pdf -------------> ARMv6.txt.orig ------------> ARMv6.txt
+
+NB: some manual patches (typos etc.) registered in ARMv6.txt.patch
+
+                       keepoper
+Stage 2: ARMv6.txt  -------------> operV6.txt
+
+Keeps the code of operations
+
+                     some preproc + indentation
+Stage 3: operV6.txt -----------------------------> indentV6.txt
+
+
+                             ***
+
+Preparing the generation of a certified decoder
