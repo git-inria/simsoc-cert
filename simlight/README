@@ -1,3 +1,7 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+--------------------------------------------------------------------
+
 Executing:
 > make
 ... generates an executable "simlight", which is a simple simulator for ARMv6.
