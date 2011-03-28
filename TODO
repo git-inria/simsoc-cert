@@ -1,6 +1,5 @@
 
-
-- remove order_deps
+- call main file simgen
 
 - add a comment explaining the purpose of lightheadertype and
    syntaxtype
