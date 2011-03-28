@@ -1,3 +1,10 @@
+(**
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+
+   Convert C used in the SH4 manual to pseudocode.
+*)
+
 open Manual
 open Cparser
 

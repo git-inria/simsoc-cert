@@ -1,3 +1,10 @@
+(**
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+
+Pretty-printer for Compcert.Csyntax.v.
+*)
+
 Require Import 
   (* compcert *)
   Coqlib
@@ -7,7 +14,7 @@ Require Import
   AST
   Csyntax
   Ordered
-  (* *)
+  (* stdlib *)
   Bvector
   NaryFunctions
   FMapAVL.

@@ -1,28 +1,14 @@
 (**
-SimSoC-Cert, a library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
-
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
-Generator of the instruction decoder for Coq.
-
-We must generate 6 decoder functions:
-- one decoder for each addressing mode
-- one decoder for the instruction
-
-The main function is "decode". Other functions should not be called
-directly from outside this file.
+Generator of the Coq instruction decoder.
 *)
-
 
 open Ast;;
 open Printf;;
-open Util;;     (* for the "list" function *)
-open Codetype;; (* from the directory "refARMparsing" *)
+open Util;;
+open Codetype;;
 open Dec;;
 open Lightheadertype;;
 
@@ -70,7 +56,7 @@ let id_inst (ps: maplist_element) =
 
 (* return the addressing mode used by the instruction 'm' according to its name and parameters*)
 (* m is the name of the instruction *)
-(* The fisrt element of an lst element is a parameter name *)
+(* The first element of an lst element is a parameter name *)
 let mode_of_inst (m: string list) (lst: (string*int*int) list) =
   let parameter_names = List.map (fun (s,_,_) -> s) lst in
   let inst_basename = List.hd m in

@@ -1,5 +1,8 @@
 #!/bin/bash 
 
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
 if [ $# -eq 1 ]; then
     SEED=$1
     ./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat \

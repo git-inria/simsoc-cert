@@ -1,73 +1,68 @@
 (**
-SimSoC-Cert, a library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
-
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
-Generate additional C/C++ code for implementing dynamic translation in Simlight.
+   Generate additional C/C++ code for implementing dynamic translation in
+   Simlight.
 *)
 
 (* Transformation flow:
- * 
- * In general, patch functions are in sl2_patch.ml, and generation functions are
- * in this file.
- * 
- * At the beginning, we have one list of progs (cf ast.ml) and another list of
- * coding tables (cf codetype.ml). There is a third list describing the ASM
- * syntax (cf syntaxtype.ml). Each list item describes either an instruction or
- * an addressing mode case.
- * 
- * - MSR is splitted in MSRreg and MSRimm (cf file norm.ml)
- *   o there are two functions: msr_split_code and msr_split_syntax. Decoding tables
- *     are already separated. 
- * - the pseudo-code is normalized (cf file norm.ml)
- * - the address write-back is disabled in the M2, M3, and M4 addressing modes
- * - the 3-uplets <instruction, addressing mode case, syntax> are flattened (cf file
-     flatten.ml)
- *   o during flattening, some patches are applied: patch_W, patch_SRS, patch SRS_RFE
- *
- * From this point, we manipulate "flat programs" (cf flatten.ml). The notion of
- * addressing mode has disappeared.
- *
- * - We remove the Thumb instruction MOV(3), because it is identical to CPY
- * - Where possible, we swap the conjunctions so that the CP15 U bit is tested after
- *   the alignment. This is an optimization try, maybe useless.
- * - We improve the instructions that use the coprocessor (+ disable LDC and STC).
- * - We fix a problem about "address of next instruction".
- * - We compute the list of parameters and variables used by the pseudo-code
- * - We replace some sub-expressions by "computed parameters"
- * - We remove the ConditionPassed tests
- * - We insert the writebacks at the end of the instructions (previously removed
- *   from the addressing mode cases)
- * - We specialize the instructions for some boolean parameter values
- * - We compute the list of instruction groups. All instructions in a group have
- *   the same list of parameters
- * 
- * From this point, we manipulate extended programs; i.e., flat program with 
- * symbol tables.
- *
- * - We create the unconditional variants of the conditional instructions
- *
- * Now, the code generation can start.
- *
- * - We generate the instruction type and sub-types.
- * - We generate the tables containing, among other things, the instruction names
- * - We generate the may_branch function
- * - We generate the 4 decoders: {thumb, arm32} x {decode_and_store, decode_and_exec}
- *   cf sl2_decoder.ml
- * - We generate a small program, which is used only to control the size of the
- *   instruction type
- * - We generate (part of) the ARM to LLVM translator
- * - We generate the ASM printers. We need 2 versions:
- *   o one C version using fprintf and FILE*
- *   o one C++ version using streams 
- * - We generate the semantics function (cf sl2_semantics.ml). We need 2 versions:
- *   o one version with an expanded list of atomic arguments
- *   o one version taking an SLv6_Instruction* as argument
+   
+   In general, patch functions are in sl2_patch.ml, and generation functions are
+   in this file.
+   
+   At the beginning, we have one list of progs (cf ast.ml) and another list of
+   coding tables (cf codetype.ml). There is a third list describing the ASM
+   syntax (cf syntaxtype.ml). Each list item describes either an instruction or
+   an addressing mode case.
+   
+   - MSR is splitted in MSRreg and MSRimm (cf file norm.ml)
+     o there are two functions: msr_split_code and msr_split_syntax. Decoding tables
+       are already separated. 
+   - the pseudo-code is normalized (cf file norm.ml)
+   - the address write-back is disabled in the M2, M3, and M4 addressing modes
+   - the 3-uplets <instruction, addressing mode case, syntax> are flattened (cf file
+   flatten.ml)
+     o during flattening, some patches are applied: patch_W, patch_SRS, patch SRS_RFE
+
+   From this point, we manipulate "flat programs" (cf flatten.ml). The notion of
+   addressing mode has disappeared.
+
+   - We remove the Thumb instruction MOV(3), because it is identical to CPY
+   - Where possible, we swap the conjunctions so that the CP15 U bit is tested after
+     the alignment. This is an optimization try, maybe useless.
+   - We improve the instructions that use the coprocessor (+ disable LDC and STC).
+   - We fix a problem about "address of next instruction".
+   - We compute the list of parameters and variables used by the pseudo-code
+   - We replace some sub-expressions by "computed parameters"
+   - We remove the ConditionPassed tests
+   - We insert the writebacks at the end of the instructions (previously removed
+     from the addressing mode cases)
+   - We specialize the instructions for some boolean parameter values
+   - We compute the list of instruction groups. All instructions in a group have
+     the same list of parameters
+   
+   From this point, we manipulate extended programs; i.e., flat program with 
+   symbol tables.
+
+   - We create the unconditional variants of the conditional instructions
+
+   Now, the code generation can start.
+
+   - We generate the instruction type and sub-types.
+   - We generate the tables containing, among other things, the instruction names
+   - We generate the may_branch function
+   - We generate the 4 decoders: {thumb, arm32} x {decode_and_store, decode_and_exec}
+     cf sl2_decoder.ml
+   - We generate a small program, which is used only to control the size of the
+     instruction type
+   - We generate (part of) the ARM to LLVM translator
+   - We generate the ASM printers. We need 2 versions:
+     o one C version using fprintf and FILE*
+     o one C++ version using streams 
+   - We generate the semantics function (cf sl2_semantics.ml). We need 2 versions:
+     o one version with an expanded list of atomic arguments
+     o one version taking an SLv6_Instruction* as argument
  *)
 
 open Ast;;
@@ -219,8 +214,8 @@ let dump_sizeof bn gs =
 (** Generation of the LLVM generator *)
 
 (* We generate only the function "generate_one_instruction",
- * which is included in the file "arm_v6_llvm_generator.cpp".
- * The generated file cannot be compiled outside SimSoC. *)
+   which is included in the file "arm_v6_llvm_generator.cpp".
+   The generated file cannot be compiled outside SimSoC. *)
 
 let llvm_generator bn xs =
   let case b (x: xprog) = 

@@ -1,14 +1,8 @@
 (**
-SimSoC-Cert, a library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
-
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
-Pseudocode AST to clight AST.
+Convert a pseudocode AST into a Csyntax AST.
 *)
 
 open Util;;
