@@ -33,7 +33,7 @@ let set_check() = set_check(); set_verbose();;
 
 type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
                    | DecBinTest | DecAsmTest | DecTest
-                   | ClightInst | ClightCoqInst ;;
+                   | ClightCoqInst | CompcertCInst;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
   is_set_get_set "input file name for pseudocode instructions" "";;
@@ -92,8 +92,8 @@ let rec options() =
   " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   " Output instructions in Coq (implies -norm, requires -ipc)";
-  "-oclight-inst", String (fun s -> set_norm(); set_output_type ClightInst; set_output_file s),
-  " Output instructions in Clight (implies -norm, requires -ipc)";
+  "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
+  " Output instructions in CompcertC (implies -norm, requires -ipc)";
   "-ocoqclight", Rest (fun _ -> if is_set_coqcl_argv () then () else
       set_coqcl_argv (let rec aux n = 
                         if n < 0 then
@@ -147,7 +147,7 @@ let parse_args() =
         if is_set_dec_input_file() then
           error "option -ocoq-inst incompatible with -idec"
         else ignore(get_pc_input_file())
-    | ClightInst ->
+    | CompcertCInst ->
         if is_set_dec_input_file() then
           error "option -ocoq-inst incompatible with -idec"
         else ignore(get_pc_input_file())
@@ -300,14 +300,12 @@ let genr_output() =
           let preamble_proc = "Arm Arm_SCC"
           let preamble_import = "State "
         end : Gencoq.GENCOQ))) (get_pc_input())
-    | ClightInst ->
-        let oc = open_out (get_output_file()) in
-          PrintClight.print_program (Format.formatter_of_out_channel oc) 
-            (Ps2cl_ast_trans.prog_trans (get_pc_input()));
-          close_out oc
-        (*PrintClight.print_if (Ps2cl_ast_trans.prog_trans (get_pc_input()))*)
+    | CompcertCInst -> 
+        (match Ps2cl_ast_trans.print_cc (get_pc_input()) with
+          | None -> Printf.printf "(* assert false *)\n%!"
+          | Some b -> Buffer.output_buffer stdout b)
     | ClightCoqInst -> 
-      let open Clight_coq_printer in 
+      let open Clight_coq_printer in
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
         | None -> Printf.printf "(* assert false *)\n%!"
         | Some b -> Buffer.output_buffer stdout b)

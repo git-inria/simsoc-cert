@@ -7,20 +7,35 @@ Convert a pseudocode AST into a Csyntax AST.
 
 open Util;;
 open Ast;;
-open Clight;;
 open Csyntax;;
 open Datatypes;;
 open Printf;;
 
-
-(*let input_registers = ["n"; "m"; "s"; "dLo"];;*)
-
+(* specific expression of generating code *)
 let mode m = Genpc.string_of_mode m;;
 
 let access_type = function
   | Byte -> "byte"
   | Half -> "half"
   | Word -> "word";;
+
+let cpsr_flag = function
+  | "31" -> "N_flag"
+  | "30" -> "Z_flag"
+  | "29" -> "C_flag"
+  | "28" -> "V_flag"
+  | "27" -> "Q_flag"
+  | "24" -> "J_flag"
+  | "19" -> "GE3"
+  | "18" -> "GE2"
+  | "17" -> "GE1"
+  | "16" -> "GE0"
+  | "9" -> "E_flag"
+  | "8" -> "A_flag"
+  | "7" -> "I_flag"
+  | "6" -> "F_flag"
+  | "5" -> "T_flag"
+  | s -> "TODO_cpsr_flag_"^s;;
 
 (* Transformation form Pseudocode type_param to Csyntax typ*)
 let rec typ_trans (t: Ast.type_param) =
@@ -69,27 +84,6 @@ let num str = Camlcoq.z_of_camlint (Int32.of_string str);;
 let bin str = Camlcoq.z_of_camlint (Int32.of_string str);;
 let hex str = Camlcoq.z_of_camlint (Int32.of_string str);;
 
-(* Transformation form Pseudocode expr to Clight expr*)
-let rec exp_trans' lst = function
-  | Num str -> Econst_int (num str, Tint (I32, Signed))
-  | Hex str -> Econst_int (hex str, Tint (I32, Signed))
-  | Bin str -> Econst_int (bin str, Tint (I32, Signed))
-  | Float_zero -> Econst_float (0.0, Tfloat F32)
-  | Var str -> Clight.Evar (Camlcoq.intern_string str, Tint (I8, Unsigned))
-  | If_exp (e1, e2, e3) -> 
-      Clight.Econdition 
-        (exp_trans' lst e1,exp_trans' lst e2,exp_trans' lst e3, Tint (I8, Unsigned))
-  | BinOp (e1, str, e2) -> 
-      Clight.Ebinop 
-        (binop_trans str, exp_trans' lst e1, exp_trans' lst e2, Tint (I32, Unsigned))
-  | Fun _|CPSR|SPSR _|Range (_,Bits _)|Range (_,Flag _)|Range (_,Index _)
-  | Unaffected -> Clight.Evar (Camlcoq.intern_string "unaffect", Tvoid)
-  | Unpredictable_exp -> Clight.Evar (Camlcoq.intern_string "ETODO", Tvoid)
-  | Memory (_, n) -> Clight.Evar (Camlcoq.intern_string ("read_"^(access_type n)), Tvoid)
-  | Coproc_exp _|Reg _ -> 
-      Clight.Evar (Camlcoq.intern_string "Etodo", Tvoid)
-;;
-(*
 let id s = Camlcoq.intern_string s;;
 
 let typeof_mmu =
@@ -101,189 +95,235 @@ let typeof_mmu =
            Fnil)))))
 let typeof_sr = 
   Tstruct (id "SLv6_StatusRegister",
-          Fcons (id "Nflag",Tint (I8,Unsigned),Fnil))
+           Fcons (id "N_flag",Tint (I8,Unsigned),
+           Fcons (id "Z_flag",Tint (I8,Unsigned),
+           Fcons (id "C_flag",Tint (I8,Unsigned),
+           Fcons (id "V_flag",Tint (I8,Unsigned),
+           Fcons (id "Q_flag",Tint (I8,Unsigned),
+           Fcons (id "J_flag",Tint (I8,Unsigned),
+           Fcons (id "GE0",Tint (I8,Unsigned),
+           Fcons (id "GE1",Tint (I8,Unsigned),
+           Fcons (id "GE2",Tint (I8,Unsigned),
+           Fcons (id "GE3",Tint (I8,Unsigned),
+           Fcons (id "E_flag",Tint (I8,Unsigned),
+           Fcons (id "A_flag",Tint (I8,Unsigned),
+           Fcons (id "I_flag",Tint (I8,Unsigned),
+           Fcons (id "F_flag",Tint (I8,Unsigned),
+           Fcons (id "T_flag",Tint (I8,Unsigned),
+           Fcons (id "mode",Tint (I32,Unsigned),
+           Fcons (id "background",Tint (I32,Unsigned),
+           Fnil))))))))))))))))))
 let typeof_sc =
-  Tstruct (id "")
+  Tstruct (id "SLv6_SystemCoproc",
+           Fcons (id "ee_bit",Tint (I8,Unsigned),
+           Fcons (id "u_bit",Tint (I8,Unsigned),
+           Fcons (id "v_bit",Tint (I8,Unsigned),
+           Fnil))))
 let typeof_proc =
-  Tstruct (Camlcoq.intern_string "SLv6_Processor", 
+  Tstruct (id "SLv6_Processor", 
            Fcons (id "mmu_ptr",Tpointer(typeof_mmu),
            Fcons (id "cpsr",typeof_sr,
            Fcons (id "spsr[5]",typeof_sr,
-           Fcons (id "cp15",)))))
-(* Transformation form Pseudocode expr to Csyntax expr*)
+           Fcons (id "cp15",typeof_sc,
+           Fcons (id "id",Tint (I8,Unsigned),
+           Fcons (id "user_regs[16]",Tint (I32,Unsigned),
+           Fcons (id "fiq_regs[7]",Tint (I32,Unsigned),
+           Fcons (id "irq_regs[2]",Tint (I32,Unsigned),
+           Fcons (id "svc_regs[2]",Tint (I32,Unsigned),
+           Fcons (id "abt_regs[2]",Tint (I32,Unsigned),
+           Fcons (id "und_regs[2]",Tint (I32,Unsigned),
+           Fcons (id "pc",Tpointer (Tint (I32,Unsigned)),
+           Fnil)))))))))))));;
+
+(* Transformation form Pseudocode expr to CompcertC expr*)
+
 let rec exp_trans = function
   |Num str -> Eval (Values.Vint (num str),Tint (I32, Signed))
   |Hex str -> Eval (Values.Vint (hex str),Tint (I32, Signed))
   |Bin str -> Eval (Values.Vint (bin str),Tint (I32, Signed))
   |Float_zero -> Eval (Values.Vfloat 0.0,Tfloat F32)
-  |Var str -> Evar (Camlcoq.intern_string str,Tint (I32, Unsigned))
+  |Var str -> Evar (id str,Tint (I32, Unsigned))
   |If_exp (e1, e2, e3) -> 
      Econdition (exp_trans e1,exp_trans e2,exp_trans e3,Tint (I8, Unsigned))
   |BinOp (e1, str, e2) -> 
      Ebinop (binop_trans str, exp_trans e1, exp_trans e2,Tint (I32, Unsigned))
-  |Coproc_exp _|Fun _|CPSR|SPSR _|Range (_,Bits _)|Range (_,Flag _)|Range (_,Index _)
-  |Unaffected -> Ecall (Evar (Camlcoq.intern_string "ETodo", Tvoid),[],Tvoid)
-  |Unpredictable_exp -> Ecall (Evar (Camlcoq.intern_string "unpredicatable",Tvoid),[],Tvoid)
+  |Unpredictable_exp -> Ecall (Evar (id "unpredicatable",Tvoid),Enil,Tvoid)
   |Memory (e, n) -> 
-     Evcall (Evar (Camlcoq.intern_string ("read_"^(access_type n)),Tvoid),
-             exp_trans e, 
+     Ecall (Evar (id ("read_"^(access_type n)),Tvoid),
+             Econs (exp_trans e, Enil), 
              (match n with
                 |Byte->Tint (I8,Unsigned)
                 |Half->Tint (I16,Unsigned)
                 |Word->Tint (I32,Unsigned)))
   |Reg (e,None)->
-     Ecall (Evar (Camlcoq.intern_string "reg",Tvoid),
-            [Evar (Camlcoq.intern_string "proc",typeof_proc);exp_trans e],Tint (I32,Unsigned))
+     Ecall (Evar (id "reg",Tvoid),
+            Econs (Evar (id "proc",typeof_proc), 
+            Econs (exp_trans e, Enil)),Tint (I32,Unsigned))
+  |Reg (e,Some m) ->
+     Ecall (Evar (id "reg_m",Tvoid),
+            Econs (Evar (id "proc",typeof_proc), 
+            Econs (exp_trans e, 
+            Econs (Evar (id (mode m),Tint (I32,Unsigned)),
+            Enil))),Tint (I32,Unsigned))
+  |Coproc_exp (e,f,es) ->Ecall (Evar (id f, Tint (I32,Unsigned)),
+                               Econs (exp_trans e,explst es),Csyntax.typeof (exp_trans e))
+  |Fun (f,es)-> Ecall (Evar (id f,Tvoid), (implicit_arg es f),Tvoid)
+  |CPSR->
+     Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
+            Econs (Eaddrof (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),typeof_sr),Enil),Tint (I32,Unsigned))
+  |SPSR None ->
+     Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
+            Econs (Ecall (Evar (id "spsr",typeof_sr),
+                          Econs (Evar (id "proc",typeof_proc),Enil),Tint (I32,Unsigned)),Enil),Tint (I32,Unsigned))
+  |SPSR (Some m)->
+     Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
+            Econs (Ecall (Evar (id "spsr_m",typeof_sr),
+                          Econs (Evar (id "proc",typeof_proc),
+                          Econs (Evar (id (mode m),typeof_proc),Enil)),Tint (I32,Unsigned)),Enil),Tint (I32,Unsigned))
+  |Range (e,Bits (n1,n2))->
+     Ecall (Evar (id "get_bits",Tint (I32,Signed)),
+            Econs (exp_trans e,
+            Econs (Eval (Values.Vint (num n1),Tint (I32,Unsigned)),
+            Econs (Eval (Values.Vint (num n2),Tint (I32,Unsigned)),Enil))),Tint (I32,Unsigned))
+  |Range (_,Flag (s,_))-> (*"proc->cpsr.%s_flag"*)
+     Efield (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),id (s^"_flag"), Tint (I8,Unsigned))
+  |Range (CPSR,Index (Num n)) -> (*"proc->cpsr.%s"*)
+     Efield (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),id (cpsr_flag n), Tint (I8,Unsigned))
+  |Range (e1,Index e2) ->
+     Ecall (Evar (id "get_bit",Tint (I32,Signed)),
+            Econs (exp_trans e1,Econs (exp_trans e2,Enil)),Tint (I32,Unsigned))
+  |Unaffected -> Ecall (Evar (id "ETodo", Tvoid),Enil,Tvoid)
+
+and explst = function
+  |[] -> Enil
+  |h::t -> Econs (exp_trans h,explst t)
+
+and implicit_arg es = function
+  |"ConditionPassed" ->
+     Econs (Eaddrof (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),typeof_sr),explst es)
+  |"write_word" | "write_half" | "write_byte" ->
+     Econs (Efield (Evar (id "proc",typeof_proc),id "mmu_ptr",typeof_mmu),explst es)
+  |"CP15_reg1_EEbit" | "CP15_reg1_Ubit" | "CP15_reg1_Vbit" -> 
+     Econs (Eaddrof (Efield (Evar (id "proc",typeof_proc),id "cp15",typeof_sc),typeof_sc),explst es)
+  |"InAPrivilegedMode"|"CurrentModeHasSPSR"|"address_of_next_instruction"
+  |"address_of_current_instruction"|"high_vectors_configured"|"set_reg_m" ->
+     Econs (Evar (id "proc", typeof_proc),explst es)
+  | _ -> explst es
 ;;
-*)
-(* transformation from pseudocode instruction to clight statement*)
-let rec stm_trans' lst = function
-  | Block insts ->
+
+(* transformation from pseudocode instruction to CompcertC statement*)
+let rec stm_trans = function
+  |Block insts ->
       (match insts with
-        | [] -> Clight.Sskip
-        | i :: is -> Clight.Ssequence (stm_trans' lst i, stm_trans' lst (Block is)))
-  | Let (_, _, insts, _) -> stm_trans' lst (Block insts)
-  | Unpredictable -> Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "unpredictable", Tvoid), [])
-
-  | Affect (dst, src) -> affect lst dst src
-  | Return e -> Clight.Sreturn (Some (exp_trans' lst e))
-  | Case (e, s, o) ->
-      Clight.Sswitch (exp_trans' lst e, switch_aux lst s o)
-  | Coproc (e, f, es) -> 
-      Clight.Scall (None, Clight.Evar (Camlcoq.intern_string f, Tvoid),
-                    List.map (exp_trans' lst) ([e]@es))
-  | For (counter, min, max, i) ->
-      Clight.Ssequence (stm_trans' lst i,Clight.Sfor' 
-           (Clight.Ebinop (Olt, Clight.Evar (Camlcoq.intern_string counter, Tint (I32, Unsigned)),
-                           Econst_int (num max, Tint (I32, Unsigned)), Tint (I32, Unsigned)),
-            Clight.Sassign (Clight.Evar (Camlcoq.intern_string counter, Tint (I32, Unsigned)),
-                            Econst_int (num min, Tint (I32, Unsigned))),
-            Clight.Sassign (Clight.Evar (Camlcoq.intern_string counter, Tint (I32, Unsigned)),
-                            Clight.Ebinop (Oadd, Clight.Evar (Camlcoq.intern_string counter, Tint (I32, Unsigned)),
-                                           Econst_int (num "1", Tint (I8, Unsigned)),
-                                           Tint (I32, Unsigned)))))
-  | Assert e -> Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "_assert_fail", Tvoid), 
-                              [exp_trans' lst e])
-  | While (e, i) -> Clight.Sdowhile (exp_trans' lst e, stm_trans' lst i)
-  | Proc (f, es) -> Clight.Scall (None, Clight.Evar (Camlcoq.intern_string f, Tvoid), 
-                                  List.map (exp_trans' lst) es)
-  | If (e, i1, i2) -> 
-      Clight.Sifthenelse (exp_trans' lst e, stm_trans' lst i1, 
-                          (match i2 with
-                             | None -> Clight.Sskip
-                             | Some i -> stm_trans' lst i ))
-
+        |[] -> Csyntax.Sskip
+        |i::is -> Csyntax.Ssequence (stm_trans i, stm_trans (Block is)))
+  |Let (_, _, insts, _) -> stm_trans (Block insts)
+  |Unpredictable -> Sdo (Ecall (Evar (id "unpredictable", Tvoid),Enil,Tvoid))
+  |Affect (dst, src) -> affect dst src
+  |Return e -> Sreturn (Some (exp_trans e))
+  |Case (e,s,o) ->
+     Csyntax.Sswitch (exp_trans e, switch_aux s o)
+  |Coproc (e, f, es) -> 
+     Csyntax.Sdo (Ecall (Evar (id f, Tvoid),explst ([e]@es), Tvoid))
+  |For (counter,min,max,i) ->
+     Csyntax.Sfor (Sdo (Eassign (Evar (id counter,Tint (I32,Unsigned)),
+                                 (Eval (Values.Vint (num min),Tint (I32,Unsigned))),Tint (I32,Unsigned))),
+                   Ebinop (Olt,Evar (id counter,Tint (I32,Unsigned)),Eval (Values.Vint (num max),Tint (I32,Unsigned)),Tint (I32,Unsigned)),
+                   Sdo (Epostincr (Incr,Evar (id counter,Tint (I32,Unsigned)),Tint (I32,Unsigned))),
+                   stm_trans i)
+  |Assert e -> Sdo (Ecall (Evar (id "_assert_fail", Tvoid),explst [e],Tvoid))
+  |While (e,i) -> Csyntax.Sdowhile (exp_trans e,stm_trans i)
+  |Proc (f,es) -> Sdo (Ecall (Evar (id f,Tvoid),explst es,Tvoid))
+  |If (e,i1,i2) -> Csyntax.Sifthenelse (exp_trans e,stm_trans i1, 
+                                        (match i2 with
+                                           | None -> Csyntax.Sskip
+                                           | Some i -> stm_trans i ))
 
 (*specific cases for registers and ranges assignement*)
-and affect lst dst src =
+and affect dst src =
   match dst with
     |Reg (Var s,None) -> 
         (match s with
-           |"d" -> Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_reg_or_pc", Tvoid),
-                                [Clight.Evar (Camlcoq.intern_string "proc", Tint (I32, Unsigned));
-                                 Clight.Evar (Camlcoq.intern_string "d", Tint (I32, Unsigned)); 
-                                 exp_trans' lst src])
-          |"15" -> Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_pc_raw", Tvoid), 
-                                 [Clight.Evar (Camlcoq.intern_string"proc", Tint (I32, Unsigned)); 
-                                  exp_trans' lst src])
-          |_ -> Clight.Scall (None,Clight.Evar (Camlcoq.intern_string "set_reg", Tvoid), 
-                              [Clight.Evar (Camlcoq.intern_string "proc", Tint (I32, Unsigned));
-                               Clight.Evar (Camlcoq.intern_string "d", Tint (I32, Unsigned)); exp_trans' lst src]))
-    |Reg (Var s,Some m) ->
-       Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_reg_m",Tvoid),  
-                     [Clight.Evar (Camlcoq.intern_string "proc", Tint (I32, Unsigned));
-                      Clight.Evar (Camlcoq.intern_string s, Tint (I32, Unsigned)); 
-                      Clight.Evar (Camlcoq.intern_string (mode m), Tint (I32, Unsigned)); 
-                      exp_trans' lst src])
+           |"d"-> Sdo (Ecall (Evar (id "set_reg_or_pc",Tvoid),
+                               Econs (Evar (id "proc",typeof_proc),
+                               Econs (Evar (id "d",Tint (I8,Unsigned)),
+                               Econs (exp_trans src,Enil))),Tvoid))
+           |"15"-> Sdo (Ecall (Evar (id "set_pc_raw", Tvoid), 
+                               Econs (Evar (id "proc",typeof_proc),Enil),Tvoid))
+           |s -> Sdo (Ecall (Evar (id "set_reg",Tvoid),
+                             Econs (Evar (id "proc",typeof_proc),
+                             Econs (Evar (id s,Tint (I8,Unsigned)),
+                             Econs (exp_trans src,Enil))),Tvoid)))
+    |Reg (Var s,Some m) -> Sdo (Ecall (Evar (id "set_reg_m",Tvoid),  
+                                       Econs (Evar (id "proc",typeof_proc),
+                                       Econs (Evar (id s,Tint (I8,Unsigned)),
+                                       Econs (Evar (id (mode m),Tint (I32, Unsigned)),
+                                       Econs (exp_trans src,Enil)))),Tvoid))
     |Range (e1,Index e2) ->
-        Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_bit", Tint (I32, Unsigned)), 
-             [exp_trans' lst e1; exp_trans' lst e2; exp_trans' lst src])
+        Sdo (Ecall (Evar (id "set_bit", Tint (I32, Unsigned)), 
+             Econs (exp_trans e1, Econs (exp_trans e2,Econs (exp_trans src, Enil))),Tvoid))
     |Range (e,Bits (n1, n2)) ->
-        Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_bits", Tint (I32, Unsigned)), 
-                      [exp_trans' lst e; Econst_int (num n1, Tint (I32, Unsigned));
-                       Econst_int (num n2, Tint (I32, Unsigned)); exp_trans' lst src])
+        Sdo (Ecall (Evar (id "set_field",Tint (I32, Unsigned)), 
+                    Econs (exp_trans e,
+                    Econs (Eval (Values.Vint (num n1),Tint (I32,Unsigned)),
+                    Econs (Eval (Values.Vint (num n2),Tint (I32,Unsigned)),Enil))),Tvoid))
     |CPSR -> 
         (match src with
-          |SPSR None -> 
-            Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "copy_StatusRegister", Tvoid),
-                   [Clight.Efield 
-                      (Clight.Eaddrof (Clight.Evar (Camlcoq.intern_string "proc", 
-                                                    Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil)), 
-                                       Tint (I32, Unsigned)), 
-                       Camlcoq.intern_string "cpsr", Tint (I32, Unsigned));
-                   Clight.Evar (Camlcoq.intern_string "spsr", 
-                                Tstruct (Camlcoq.intern_string "SLv6_StatusRegister", 
-                                         Fcons (Camlcoq.intern_string "proc",
-                                                Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil), Fnil)))])
-          |SPSR (Some m) -> 
-              Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "copy_StatusRegister", Tvoid),
-                            [Clight.Efield 
-                               (Clight.Eaddrof 
-                                  (Clight.Evar (Camlcoq.intern_string "proc", Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil)), 
-                                   Tint (I32, Unsigned)), Camlcoq.intern_string "cpsr", 
-                                Tint (I32, Unsigned));
-                             Clight.Evar (Camlcoq.intern_string "spsr_m", 
-                                          Tstruct (Camlcoq.intern_string "SLv6_StatusRegister", 
-                                                   Fcons (Camlcoq.intern_string "proc", 
-                                                          Tstruct (Camlcoq.intern_string "SLv6_Processor", 
-                                                                   Fcons (Camlcoq.intern_string (mode m), 
-                                                                          Tint (I32, Unsigned), 
-                                                                          Fnil)), Fnil)))])
+          |SPSR None -> (*"copy_StatusRegister(&proc->cpsr, spsr(proc))"*)
+             Sdo (Ecall (Evar (id "copy_StatusRegister", Tvoid),
+                  Econs (Efield (Eaddrof (Evar (id "proc", typeof_proc),Tint (I32,Unsigned)),id "cpsr",typeof_sr),
+                  Econs (Ecall (Evar (id "spsr",typeof_sr),Econs (Evar (id "proc",typeof_proc),Enil),typeof_sr),
+                  Enil)),Tvoid))
+          |SPSR (Some m) -> (*"copy_StatusRegister(&proc->cpsr, spsr_m(proc,m))"*)
+             Sdo (Ecall (Evar (id "copy_StatusRegister", Tvoid),
+                  Econs (Efield (Eaddrof (Evar (id "proc", typeof_proc),Tint (I32,Unsigned)),id "cpsr",typeof_sr),
+                  Econs (Ecall (Evar (id "spsr_m",typeof_sr),
+                                Econs (Evar (id "proc",typeof_proc),
+                                Econs (Evar (id (mode m),Tint (I32,Unsigned)),Enil)),typeof_sr),
+                  Enil)),Tvoid))
           |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|CPSR|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
-             Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_StatusRegister",Tvoid), 
-                               [exp_trans' lst e]))
+             Sdo (Ecall (Evar (id "set_StatusRegister",Tvoid),Econs (exp_trans e,Enil),Tvoid)))
     |SPSR None ->
         (match src with
-          |CPSR -> 
-          Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "copy_StatusRegister",Tvoid),
-                        [Clight.Evar 
-                           (Camlcoq.intern_string "spsr", Tstruct (Camlcoq.intern_string "SLv6_StatusRegister", 
-                                                     Fcons (Camlcoq.intern_string "proc", 
-                                                            Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil), 
-                                                            Fnil)));
-                         Clight.Efield 
-                           (Clight.Eaddrof (Clight.Evar (Camlcoq.intern_string "proc", 
-                                                    Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil)), 
-                                            Tint (I32, Unsigned)), 
-                            Camlcoq.intern_string "cpsr", Tint (I32, Unsigned))])
+          |CPSR -> (*"copy_StatusRegister(spsr(proc), &proc->cpsr)"*)
+             Sdo (Ecall (Evar (id "copy_StatusRegister",Tvoid),
+                         Econs (Ecall (Evar (id "spsr",typeof_sr),Econs (Evar (id "proc",typeof_proc),Enil),Tvoid),
+                         Econs (Efield (Eaddrof (Evar (id "proc", typeof_proc),Tint (I32,Unsigned)),id "cpsr",typeof_sr),
+                         Econs (Ecall (Evar (id "spsr",typeof_sr),Econs (Evar (id "proc",typeof_proc),Enil),typeof_sr),
+                         Enil))),Tvoid))
           |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|SPSR _|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
-              Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_StatusRegister", Tvoid), 
-                                [exp_trans' lst e]))
+             Sdo (Ecall (Evar (id "set_StatusRegister", Tvoid),Econs (exp_trans e,Enil),Tvoid)))
     |SPSR (Some m) ->
         (match src with
-          |CPSR -> 
-            Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "copy_StatusRegister", Tvoid),
-                   [Clight.Evar (Camlcoq.intern_string "spsr_m", Tstruct (Camlcoq.intern_string "SLv6_StatusRegister", 
-                                           Fcons (Camlcoq.intern_string "proc", 
-                                                  Tstruct (Camlcoq.intern_string "SLv6_Processor", 
-                                                           Fcons (Camlcoq.intern_string (mode m), 
-                                                                  Tint (I32, Unsigned), 
-                                                                  Fnil)), 
-                                                  Fnil)));
-                    Clight.Efield (Clight.Eaddrof 
-                                     (Clight.Evar (Camlcoq.intern_string "proc", 
-                                                   Tstruct (Camlcoq.intern_string "SLv6_Processor", Fnil)), 
-                                      Tint (I32, Unsigned)), Camlcoq.intern_string "cpsr", 
-                                   Tint (I32, Unsigned))])
-        |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|SPSR _|Reg _|Var _|Range (_,Bits _)
+          |CPSR -> (*"copy_StatusRegister(spsr_m(proc,m), &proc->cpsr)"*)
+             Sdo (Ecall (Evar (id "copy_StatusRegister", Tvoid),
+                         Econs (Ecall (Evar (id "spsr_m",typeof_sr),
+                                       Econs (Evar (id "proc",typeof_proc),
+                                       Econs (Evar (id (mode m),Tint (I32,Unsigned)),Enil)),Tvoid),
+                         Econs (Efield (Eaddrof (Evar (id "proc", typeof_proc),Tint (I32,Unsigned)),id "cpsr",typeof_sr),
+                         Econs (Ecall (Evar (id "spsr",typeof_sr),Econs (Evar (id "proc",typeof_proc),Enil),typeof_sr),
+                         Enil))),Tvoid))
+          |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|SPSR _|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
-            Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "set_StatusRegister", Tvoid), 
-                         [exp_trans' lst e]))
-    |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|Reg _|Var _|Range (_,Flag _)
-      |Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e  -> 
-       Sassign (exp_trans' lst dst, exp_trans' lst e)
-    
-and switch_aux lst s o =
+             Sdo (Ecall (Evar (id "set_StatusRegister",Tvoid),Econs (exp_trans e,Enil),Tvoid)))
+    |Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|Reg _|Var _|Range (_,Flag _)
+    |Unaffected|Unpredictable_exp|Memory _|Coproc_exp _  -> 
+       Sdo (Eassign (exp_trans dst,exp_trans src,Tvoid))
+
+and switch_aux s o =
   match s with
-    |[] -> begin match o with
-        |None -> Clight.LSdefault 
-            (Clight.Scall (None, Clight.Evar (Camlcoq.intern_string "abort", Tvoid), []))
-        |Some o -> Clight.LSdefault (stm_trans' lst o)
-      end
+    |[] -> (match o with
+              |None -> LSdefault 
+                 (Sdo (Ecall (Evar (id "abort", Tvoid), Enil, Tvoid)))
+              |Some o -> LSdefault (stm_trans o))
     |(str, i) :: t ->
-        Clight.LScase (num str, stm_trans' lst i, switch_aux lst t o)
+        LScase (num str, stm_trans i, switch_aux t o)
+
+and explst = function
+  |[] -> Enil
+  |h::t -> Econs (exp_trans h,explst t)
 ;;
 
 (*Global and local variables and their types of a pseudocode program *)
@@ -318,30 +358,124 @@ end;;
 
 module V = Ast.Make(G);;
 
-let var_index l =
-  let rec aux n = function
+let var_id l =
+  let rec aux = function
     | [] -> []
     | (a, b) :: t -> 
-        Coq_pair (Camlcoq.intern_string a, b) 
-        :: aux (n+1) t
-  in aux 1 l;;
+        Coq_pair (id a, b) 
+        :: aux t
+  in aux l;;
 
 (*pseudocode instruction to clight function*)
 let fn_trans p = 
   let gs, ls = V.vars p.pinst in
-  let ls_id = var_index ls and gs_id = var_index gs in
+  let ls_id = var_id ls and gs_id = var_id gs in
   {fn_return = Tvoid;
    fn_params = gs_id;
    fn_vars = ls_id;
-   Clight.fn_temps = [];
-   fn_body = stm_trans' ls (p.pinst)};;
+   fn_body = stm_trans (p.pinst)};;
 
-let fndef_trans p = Clight.Internal (fn_trans p);;
+let fndef_trans p = Internal (fn_trans p);;
 
-let fn_index p = Coq_pair (Camlcoq.intern_string p.pident.iname, fndef_trans p);;
+let fn_index p = Coq_pair (id p.pident.iname, fndef_trans p);;
 
 (*pseudocode programe to clight program*)
 let prog_trans ({ body = ps ; _ } : Ast.program) =
   { AST.prog_funct = List.map fn_index ps;
-    AST.prog_main = Camlcoq.positive_of_camlint Int32.one;
+    AST.prog_main = id "main";
     AST.prog_vars = []};;
+
+exception SimSoCCert of Buffer.t
+
+let print_v ps =
+
+  let csyntax = prog_trans ps in
+    flush stderr;
+
+  let module Camlcoq = 
+      struct
+        include Camlcoq
+          
+        let ascii_of_char c = 
+          let f = 
+            let i = Char.code c in
+              fun n -> (i lsr n) land 1 <> 0 in
+            Ascii.Ascii (f 0, f 1, f 2, f 3, f 4, f 5, f 6, f 7)
+              
+        let coqstring_of_camlstring s = 
+            let rec aux n acc = 
+              if n < 0 then
+                acc
+              else
+                aux (pred n) (String0.String (ascii_of_char s.[n], acc)) in
+              aux (pred (String.length s)) String0.EmptyString
+      end in
+    
+  let module S =
+      struct
+        type t = string
+            
+        let of_string = Camlcoq.camlstring_of_coqstring
+        let rindex _ c s = match try Some (String.rindex s c.[0]) with _ -> None with None -> None | Some n -> Some (Camlcoq.nat_of_camlint (Int32.of_int n))
+        let empty = ""
+        let length s = (Camlcoq.nat_of_camlint (Int32.of_int (String.length s)))
+        let make n c = String.make (Camlcoq.camlint_of_nat n) (Camlcoq.char_of_ascii c)
+        let append = (^)
+      end in
+    
+  let module U =
+      struct
+        open Camlcoq
+          
+        let string_of_nat n =
+          sprintf "%d" (camlint_of_nat n)
+        let string_of_positive n = 
+          sprintf "%ld" (camlint_of_positive n)
+        let string_of_Z n = 
+          sprintf "%ld" (camlint_of_z n)
+        let replace =
+          let reg = Str.regexp "\\$\\| " in
+          let open Datatypes in
+            function
+              | "end" -> Coq_pair ("_end", Some "end")
+              | s -> let s2 = Str.global_replace reg "_" s in Coq_pair (s2, if s2 = s then None else Some s)
+                                                                
+        let name p = 
+          match try Some (Hashtbl.find Camlcoq.string_of_atom p) with Not_found -> None with
+            | None -> None
+            | Some s -> Some (replace s)
+      end in
+    
+  let module B = 
+      struct
+        type t = { n : int ; buf : Buffer.t }
+            
+        let empty _ = { n = 0 ; buf = Buffer.create 1000 } 
+          
+        let print s t =
+          let () = bprintf t.buf "%s" s in
+            { t with n = t.n + String.length s }
+              
+        let print_newline t =
+          let () = bprintf t.buf "\n" in
+            { t with n = 0 }
+              
+        let pos t = Camlcoq.nat_of_camlint (Int32.of_int t.n)
+          
+        let add_buffer t1 t2 = 
+          let () = Buffer.add_buffer t1.buf t2.buf in
+            { t1 with n = t2.n }
+      end in
+    
+  let module Csyntax_print = Csyntax_print.Main (S) (U) (B) 
+  in raise (SimSoCCert (Csyntax_print.program_fundef_type csyntax).B.buf)
+;;
+
+let print_cc ps =
+  try
+    let () = 
+  ignore (print_v ps) in
+    None
+  with
+  SimSoCCert m -> Some m
+;;
