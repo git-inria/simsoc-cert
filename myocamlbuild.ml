@@ -35,7 +35,7 @@ let ln_s src dest =
   else
     ln_s src dest
 
-(** [rule_finalize f] provide a function which can be use with [rule]. It creates a link to the binary. [f] is an extra action which can be performed after the creation of the link. *)
+(** [rule_finalize _ f] provide a function which can be use with [rule]. It creates a link to the binary. [f] is an extra action which can be performed after the creation of the link. *)
 let rule_finalize nc f_cmd env _ =
   let fic = env ("%." ^ nc) in
   let open Pathname in
@@ -77,16 +77,19 @@ let l_compcert = List.map ((/) "compcert")
 
 let _ = dispatch & function
   | After_rules ->
+    let define_context dir l = Pathname.define_context dir (l @ [dir]) in
     begin
       (** ----------------------------------- *)
       (** definition of context *)
       List.iter (fun x -> Pathname.define_context x ("compcert" :: (* The directory [compcert/cfrontend] needs to have a relative path notion to [cparser], but [cparser] is inside [compcert], so we have to add [compcert]. *)
                                                         l_compcert)) l_compcert;
-      Pathname.define_context "arm6" (l_compcert @ [ "extract/tmp" ; "arm6" ]);
-      Pathname.define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "extract/tmp" ];
-      Pathname.define_context "pseudocode" (l_compcert @ [ "extract/tmp" ; "sh4" ; "refARMparsing" ; "pseudocode" ]);
-      Pathname.define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ; "sh4" ];
-      Pathname.define_context "test" (l_compcert @ [ "extract/tmp" ; "test" ]);
+      define_context "arm6" (l_compcert @ [ "extract/tmp" ]);
+      define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "pseudocode/extraction" ];
+      define_context "pseudocode" (l_compcert @ [ "pseudocode/extraction" ; "sh4" ]);
+      define_context "pseudocode/extraction" [ "compcert/extraction" ];
+      define_context "refARMparsing" [ "pseudocode" ];
+      define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
+      define_context "test" (l_compcert @ [ "extract/tmp" ]);
 
       (** ----------------------------------- *)
       (** activation of specific options for... *)
