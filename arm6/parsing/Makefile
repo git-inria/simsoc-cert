@@ -13,7 +13,7 @@ default: $(TARGETS)
 $(TARGETS):
 	$(SHOW) OCAMLBUILD $@
 	$(HIDE) cd $(DIR) && \
-	$(OCAMLBUILD) $@.d.byte $@.native $@_finalize
+	$(OCAMLBUILD) arm6/parsing/$@.d.byte arm6/parsing/$@.native arm6/parsing/$@_finalize
 
 clean:
 	rm -f $(TARGETS)
