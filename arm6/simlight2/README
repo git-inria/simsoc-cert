@@ -1,0 +1,50 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files.
+--------------------------------------------------------------------
+
+Executing:
+> make
+... generates an executable "simlight", which is a simple simulator
+for ARMv6.
+
+The simulator "simlight" is untimed, mono-threaded, without any
+peripheral. There are no MMU nor Coprocessors. The memory starts at
+address 4 and its size is 1 MB.
+
+Executing:
+> ./simlight
+... displays the available options.
+
+Recommended compilation command when compiled from emacs:
+cd /path/to/simsoc-cert/simlight2 && make -j2 && cd ../test && ./check2
+
+Known bugs and possible improvements:
+
+- [done] many instruction types in slv6_iss.h are identical. Thus, the
+  generated code could be shortened.
+
+- [BUG] some instructions (such as LDR) modifies the T flag after
+  modifying the PC. Because setting the PC depends on T, the branch
+  target can be erroneously 4 bytes before or 4 bytes after.
+
+- [done] the sequential algorithm of the decoder is slow. It could be
+  improved by a "switch" based decoder.
+
+- [done] more specialization may improve performance: S bit, L bit, W
+  bit, and U bit.
+
+- more specialization may improve performance: condition for B, Rd <>
+  PC, etc.
+
+- searching sub-expressions that can be computed at decode time is
+  currently done fully by hand. An automatic analyzer would be
+  helpful.
+
+- [BUG] coprocessor instructions of the form xxx2 are not managed at
+  all.
+
+- [done] we could add gcc directives for hot and cold semantics
+  functions
+
+- weights should be updated after specialization, else the hot/cold
+  partition is poor.
