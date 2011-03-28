@@ -97,26 +97,30 @@ Generates:
   declaration of the semantics function, with an expanded list of arguments
 - prefix_expanded.hot.c, prefix_expanded.cold.c:
   implementation of the previous header file
-- prefix_grouped.h: declaration of the semantics function, with the arguments
-                  stored in a structure type.
-prefix_grouped.hot.c, prefix_grouped.cold.c: implementation of the previous
-                                             header file.
-prefix_arm_decode_exec.c: decoder for ARM32 code, which directly call the
-                          semantics function.
-prefix_thumb_decode_exec.c: decoder for Thumb code, which directly call the
-                            semantics function.
-prefix_arm_decode_store.c: decoder for ARM32 code, which store the decoded
-                           instruction using the type defined in prefix.h.
-prefix_thumb_decode_store.c: decoder for Thumb code, which store the decoded
-                             instruction using the type defined in prefix.h.
-prefix-llvm_generator.hpp: part of an ARM to LLVM translator. This file
-                           cannot be compiled outside SimSoC.
-prefix_printer.h, prefix_printer.c: instruction printers using the ASM
-                                    format (C code using fprintf). 
-prefix_printer.hpp, prefix_printer.cpp: instruction printers using the ASM
-                                        format (C++ code using streams).
-print_sizes.c: stand-alone program to control the size of the instruction
-               type and subtypes. 
+- prefix_grouped.h:
+  declaration of the semantics function, with the arguments stored
+  in a structure type
+- prefix_grouped.hot.c, prefix_grouped.cold.c:
+  implementation of the previous header file
+- prefix_arm_decode_exec.c:
+  decoder for ARM32 code, which directly call the semantics function
+- prefix_thumb_decode_exec.c:
+  decoder for Thumb code, which directly call the semantics function
+- prefix_arm_decode_store.c:
+  decoder for ARM32 code, which store the decoded instruction
+  using the type defined in prefix.h
+- prefix_thumb_decode_store.c:
+  decoder for Thumb code, which store the decoded instruction
+  using the type defined in prefix.h
+- prefix-llvm_generator.hpp:
+  part of an ARM to LLVM translator. This file cannot be compiled
+  outside SimSoC.
+- prefix_printer.h, prefix_printer.c:
+  instruction printers using the ASM format (C code using fprintf)
+- prefix_printer.hpp, prefix_printer.cpp:
+  instruction printers using the ASM format (C++ code using streams)
+- print_sizes.c:
+  stand-alone program to control the size of the instruction type and subtypes
 
 Remark:
 - the pseudocode is automatically normalized (like with -norm).
