@@ -1,4 +1,7 @@
-This files describes the possible usages of the code generator ./main.
+SimSoC-Cert, a toolkit for generating certified processor simulators
+--------------------------------------------------------------------
+
+This files describes the possible usages of the code generator simgen.
 
 Files extensions:
 -----------------
@@ -85,13 +88,16 @@ Generate an optimized C simulator from an ARMv6 description:
 ./main -ipc file1.pc -idec file2.dat -isyntax file3.dat -oc4dt prefix
 
 Generates:
-prefix.h: the instruction type and the instruction numeric identifiers
-prefix.c: instruction names, and the "may_branch" function
-prefix_expanded.h: declaration of the semantics function, with an expanded
-                   list of arguments
-prefix_expanded.hot.c, prefix_expanded.cold.c: implementation of the previous
-                                               header file.
-prefix_grouped.h: declaration of the semantics function, with the arguments
+
+- prefix.h:
+  the instruction type and the instruction numeric identifiers
+- prefix.c:
+  instruction names, and the "may_branch" function
+- prefix_expanded.h:
+  declaration of the semantics function, with an expanded list of arguments
+- prefix_expanded.hot.c, prefix_expanded.cold.c:
+  implementation of the previous header file
+- prefix_grouped.h: declaration of the semantics function, with the arguments
                   stored in a structure type.
 prefix_grouped.hot.c, prefix_grouped.cold.c: implementation of the previous
                                              header file.
