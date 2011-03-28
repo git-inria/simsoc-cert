@@ -1,50 +1,43 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-COMPCERT=../compcert
+DIR := ..
+
+include $(DIR)/Makefile.common
+
+COMPCERT := $(DIR)/compcert
 
 include $(COMPCERT)/Makefile.config
 
-DIRS=lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
+DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
-INCLUDES=$(patsubst %,-I $(COMPCERT)/%, $(DIRS))
+INCLUDES := $(patsubst %,-I $(COMPCERT)/%, $(DIRS))
 
 # command for compilation of Coq files
-COQC=coqc -q -noglob -dont-load-proofs $(INCLUDES)
+COQC := coqc -q -noglob -dont-load-proofs $(INCLUDES)
 
 # command for extracting OCaml files from Coq files
-COQEXEC=coqtop -q $(INCLUDES) -batch -load-vernac-source
+COQTOP := coqtop -q $(INCLUDES) -batch -load-vernac-source
 
-ifeq ($(VERBOSE),1)
-  SHOW := @true
-  HIDE :=
-else
-  SHOW := @echo
-  HIDE := @
-endif
-
-.PHONY: default nobackup clean tags bintest
+.PHONY: default clean tags bintest
 
 default: extraction/Csyntax_print.ml
-	$(SHOW) OCAMLBUILD pseudocode/main
-	$(HIDE) cd .. && \
-	ocamlbuild -j 2 -no-hygiene -no-links \
+	$(SHOW) ocamlbuild pseudocode/main
+	$(HIDE) cd $(DIR) && \
+	$(OCAMLBUILD) \
 		pseudocode/main.d.byte \
 		pseudocode/main.native \
 		pseudocode/main_finalize
 
 extraction/Csyntax_print.ml: extraction extraction.v
-	$(SHOW) COQEXEC extraction.v
-	$(HIDE) $(COQEXEC) extraction.v && \
+	$(SHOW) coqtop extraction.v
+	$(HIDE) $(COQTOP) extraction.v && \
 	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/Csyntax_print.ml # manual eta-expansion with Coq 8.3pl1
 
 extraction:
 	mkdir -p extraction
 
 extraction.v: Csyntax_print.vo
-
-nobackup:
-	rm -f *~
 
 clean:
 	rm -rf extraction *.vo
@@ -61,5 +54,5 @@ bintest:
 .SUFFIXES: .v .vo
 
 .v.vo:
-	$(SHOW) COQC $*.v
+	$(SHOW) coqc $*.v
 	$(HIDE) $(COQC) $*.v
