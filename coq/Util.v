@@ -1,5 +1,6 @@
 (**
-SimSoC-Cert, a toolkit for generating certified processor simulators
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
 Miscellaneous definitions and lemmas extending the Coq standard library.
