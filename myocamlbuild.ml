@@ -104,10 +104,10 @@ let _ = dispatch & function
       
       (**   - the SimSoC-Cert project : *)
       define_context "arm6" (l_compcert @ [ "extract/tmp" ]);
-      define_context "arm6/parsing" [ "pseudocode" ];
-      define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "pseudocode/extraction" ];
-      define_context "pseudocode" (l_compcert @ [ "pseudocode/extraction" ; "sh4" ]);
-      define_context "pseudocode/extraction" [ "compcert/extraction" ];
+      define_context "arm6/parsing" [ "simgen" ];
+      define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "simgen/extraction" ];
+      define_context "simgen" (l_compcert @ [ "simgen/extraction" ; "sh4" ]);
+      define_context "simgen/extraction" [ "compcert/extraction" ];
       define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
       define_context "test" (l_compcert @ [ "extract/tmp" ]);
 
@@ -130,9 +130,9 @@ let _ = dispatch & function
 
       (** ----------------------------------- *)
       (** declaration of extra rules *)
-      rule "[pseudocode/%_finalize] perform a ln -s to the binary and strip it" 
-        ~prod: "pseudocode/%_finalize" ~deps: [ "pseudocode/%.native" ]
-        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (None (*Some "pseudocode/simgen"*)) (fun s -> "pseudocode" / (env s)));
+      rule "[simgen/%_finalize] perform a ln -s to the binary and strip it" 
+        ~prod: "simgen/%_finalize" ~deps: [ "simgen/%.native" ]
+        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (None (*Some "simgen/simgen"*)) (fun s -> "simgen" / (env s)));
 
       rule "[%_finalize] perform a ln -s to the binary" 
         ~prod: "%_finalize" ~deps: [ "%.native" ] (* FIXME rename finalize into finalize_nc *)
