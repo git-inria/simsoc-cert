@@ -9,4 +9,23 @@ else
   HIDE := @
 endif
 
+######################################################################
+# ocamlbuild
+
 BUILD := $(MAKE) -C $(DIR) -f Makefile.build
+
+######################################################################
+# configure
+
+$(DIR)/compcert/Makefile.config:
+	@echo 'do \'./configure -compcert-dir <dir>\' first'; exit 1
+
+######################################################################
+# tools
+
+SIMGEN := $(DIR)/simgen/main
+
+######################################################################
+# C compiler
+
+CC := gcc
