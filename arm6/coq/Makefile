@@ -1,0 +1,12 @@
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+DIR := ../..
+
+FILES := Config Functions SCC Exception Proc State
+
+VFILES := Arm.v $(FILES:%=Arm_%.v)
+
+INCLUDES := -I $(DIR)/compcert/lib -I $(DIR)/coq
+
+include $(DIR)/Makefile.coq
