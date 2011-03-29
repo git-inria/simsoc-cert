@@ -8,19 +8,15 @@ include $(DIR)/Makefile.common
 TARGETS := keepoper indentation oneline_expr keepbincode parsebincode \
 	keepsyntax parsesyntax convert_syntax
 
+.PHONY: default clean testoper testbincode testsyntax
+
 default: $(TARGETS)
 
 $(TARGETS):
-	$(SHOW) OCAMLBUILD $@
-	$(HIDE) cd $(DIR) && \
-	$(OCAMLBUILD) arm6/parsing/$@.d.byte arm6/parsing/$@.native arm6/parsing/$@_finalize
+	$(BUILD) arm6/parsing/$@
 
 clean:
 	rm -f $(TARGETS)
-
-.PHONY: default clean testoper testbincode testsyntax
-
-# for debug:
 
 testoper:
 	./keepoper < arm6inst.txt > resu_keepoper
