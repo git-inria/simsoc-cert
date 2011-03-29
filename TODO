@@ -1,6 +1,4 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
-- update arm6/test/Makefile
-
-DONE:
+- see TODO files in subdirectories

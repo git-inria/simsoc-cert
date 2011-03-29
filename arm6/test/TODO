@@ -1,5 +1,14 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+--------------------------------------------------------------------
 
---- Test of the new ARMv6 instructions
+- update arm6/test/Makefile
+
+- mv debug.ml in another more appropriate directory?
+
+- put all generated files (elf, v, vo) in extract/tmp subdirectory?
+
+--------------------------------------------------------------------
+Test of the new ARMv6 instructions
 
 Todo:
 
@@ -32,10 +41,3 @@ Done:
 - Thumb CPS, CPY SETEND in thumb_v6.c
 - Thumb REV, REV16, REVSH in thumb_v6_REV.c
 - Thumb SXTB, SXTH, UXTB, UXTH in thumb_v6_SXUX.c
-
------------------------------------------------------------------------------
---- OCaml and extraction
-
-- mv debug.ml in another more appropriate directory
-
-- put all generated files (elf, v, vo) in extract/tmp subdirectory?
