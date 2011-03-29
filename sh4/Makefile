@@ -9,8 +9,6 @@ include $(DIR)/Makefile.common
 
 all: cbc sh4
 
-SIMGEN := $(DIR)/simgen/main
-
 ####
 
 sh4.txt: sh4.txt.gz
@@ -38,7 +36,7 @@ sh4: sh4inst.vo sh4dec.vo sh4.vo
 
 %.vo: %.v
 	$(SHOW) COQC $<
-	$(HIDE) time -p coqc -q -noglob -I $(DIR)/compcert/lib -R $(DIR)/coq SimSoCCert $<
+	$(HIDE) coqc -q -noglob -I $(DIR)/compcert/lib -R $(DIR)/coq SimSoCCert $<
 
 #
 

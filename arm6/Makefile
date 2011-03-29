@@ -5,8 +5,6 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-SIMGEN := $(DIR)/simgen/main
-
 PROC := arm6
 
 FILES := $(PROC)inst.txt $(PROC)inst.arm $(PROC)inst.v \
