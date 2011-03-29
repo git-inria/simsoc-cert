@@ -1,9 +1,10 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
+include Makefile.common
+
 OCAMLBUILD := ocamlbuild -j 2 -no-hygiene -no-links
 
 %:
 	$(SHOW) ocamlbuild $@
-	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native $@_finalize \
-		&& ln -f -s _build/$@.native $@; # touch $@
+	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native $@_finalize
