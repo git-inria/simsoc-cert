@@ -1,6 +1,8 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
+# WARNING: requires DIR (relative path to root directory) to be defined
+
 ifeq ($(VERBOSE),1)
   SHOW := @true
   HIDE :=
@@ -8,6 +10,10 @@ else
   SHOW := @echo
   HIDE := @
 endif
+
+.PHONY: start default clean
+
+start: default
 
 ######################################################################
 # ocamlbuild
@@ -18,14 +24,25 @@ BUILD := $(MAKE) -C $(DIR) -f Makefile.build
 # configure
 
 $(DIR)/compcert/Makefile.config:
-	@echo 'do \'./configure -compcert-dir <dir>\' first'; exit 1
+	@echo "do \'./configure -compcert-dir <dir>\' first"; exit 1
+
+######################################################################
+# C compiler
+
+CC := gcc
 
 ######################################################################
 # tools
 
 SIMGEN := $(DIR)/simgen/main
 
-######################################################################
-# C compiler
+.PHONY: build-simgen
+build-simgen:
+	$(MAKE) -C $(DIR)/simgen
 
-CC := gcc
+DEPENDOT := $(DIR)/tools/dependot/dependot
+
+.PHONY: build-dependot
+build-dependot:
+	$(MAKE) -C $(DIR)/tools/dependot
+
