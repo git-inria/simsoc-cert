@@ -3,7 +3,10 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 
 - (re)move target bintest in Makefile
 
-- is compcert/Makefile.config really necessary?
+- keep only the really used code in CompCert_Driver.ml . Then we can :
+  - suppress the need to read compcert/Makefile.config at each invocation
+  - restrict the scope of the directory included in CompCert by default
+    (in the "Pathname.define_context")
 
 - add a comment explaining the purpose of lightheadertype and
    syntaxtype
