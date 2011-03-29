@@ -6,7 +6,7 @@
 prog=`basename $0`
 dir=`dirname $0`
 
-usage () { echo "usage: $prog [-h] <library-name>"; }
+usage () { echo "usage: $prog [-h] [library-name]"; }
 
 help () {
   cat <<EOF
@@ -20,10 +20,10 @@ EOF
 
 case "$1" in
 -h) usage; echo; help; exit 0;;
-*) libname=$1;;
 esac
 
-if test -z $libname; then usage; exit 1; fi
+libname="$1"
+if test -n "$libname"; then libname="${libname}."; fi
 
 cat $dir/begin.html
 echo "<ul>"
@@ -31,7 +31,7 @@ echo "<ul>"
 for f in `ls *.v`
 do
   g=`basename $f .v`
-  echo "<li><a href=\"$libname.$g.html\">$g</a></li>"
+  echo "<li><a href=\"$libname$g.html\">$g</a></li>"
 done
 
 echo "</ul>"
