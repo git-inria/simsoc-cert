@@ -1,0 +1,2 @@
+
+- abstract over messages and move Message to arm6/coq
