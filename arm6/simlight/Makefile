@@ -3,11 +3,11 @@
 
 DIR := ..
 
-SIMGEN := $(DIR)/simgen/main
+include $(DIR)/makefile.common
 
 .PHONY: clean default
 
-CPPFLAGS := -I../elf # for elf.h
+CPPFLAGS := -I$(DIR)/tools/bin2elf # for elf.h
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 CC := gcc
 
@@ -28,17 +28,16 @@ simlight: $(OBJECTS)
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-slv6_iss.h slv6_iss.c: $(SIMGEN) $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.dat
-	$(SIMGEN) -ocxx slv6_iss -ipc $(DIR)/arm6/arm6inst.arm \
-                           -idec $(DIR)/arm6/arm6dec.dat
+slv6_iss.h slv6_iss.c: $(SIMGEN) ../arm6inst.arm ../arm6dec.dat
+	$(SIMGEN) -ocxx slv6_iss -ipc ../arm6inst.arm -idec ../arm6dec.dat
 
 slv6_iss.c: slv6_iss.h
 
 $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
-$(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.dat: FORCE
-	$(MAKE) -C $(DIR)/arm6 $@
+../arm6inst.arm ../arm6dec.dat: FORCE
+	$(MAKE) -C .. $@
 
 clean:
 	rm -f $(OBJECTS) slv6_iss.c slv6_iss.h \

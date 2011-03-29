@@ -3,13 +3,12 @@
 
 DIR := ..
 
-SIMGEN := $(DIR)/simgen/main
+include $(DIR)/Makefile.common
 
-CPPFLAGS := -I../elf # for elf.h
+CPPFLAGS := -I$(DIR)/tools/bin2elf # for elf.h
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
 LDFLAGS :=
 LIBRARIES := #-lgcov
-CC := gcc
 
 SOURCES := slv6_iss.c common.c slv6_condition.c slv6_math.c \
         arm_mmu.c slv6_mode.c slv6_processor.c slv6_status_register.c \
@@ -40,28 +39,26 @@ GENFILES := $(GENFILES_MO) slv6_iss.c
 
 .PHONY: default clean
 
-default: simlight
+default: simlight2
 
-simlight: $(OBJECTS)
+simlight2: $(OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBRARIES)
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-$(GENFILES): $(SIMGEN) $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6syntax.dat \
-		$(DIR)/arm6/arm6dec.dat
-	$(SIMGEN) -v -oc4dt slv6_iss -ipc $(DIR)/arm6/arm6inst.arm \
-		-isyntax $(DIR)/arm6/arm6syntax.dat \
-		-idec $(DIR)/arm6/arm6dec.dat \
-		-iw weights.1 
+$(GENFILES): $(SIMGEN) ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
+	$(SIMGEN) -v -oc4dt slv6_iss -ipc ../arm6inst.arm \
+		-isyntax ../arm6syntax.dat -idec ../arm6dec.dat \
+		-iw weights.1
 
 $(GENFILES_MO): slv6_iss.c
 
 $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
-$(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.dat $(DIR)/arm6/arm6syntax.dat: FORCE
-	$(MAKE) -C $(DIR)/arm6 $@
+../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
+	$(MAKE) -C .. $@
 
 clean:
 	rm -f $(OBJECTS) $(GENFILES) simlight simlight.opt *.gcda *.gcno
