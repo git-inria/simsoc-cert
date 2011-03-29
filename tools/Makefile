@@ -1,17 +1,14 @@
-# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-SUBDIRS := dependot
+SUBDIRS := bin2elf dependot
 
 .PHONY: default clean $(SUBDIRS)
 
-.SUFFIXES:
-
 default: $(SUBDIRS)
 
-$(SUBDIRS) $(TARGETS):
-	@$(MAKE) -C $@
+$(SUBDIRS):
+	$(MAKE) -C $@
 
-%:
-	@rm -f *~
-	@for d in $(SUBDIRS); do make -C $$d $*; done
+clean:
+	@for d in $(SUBDIRS); do make -C $$d $@; done
