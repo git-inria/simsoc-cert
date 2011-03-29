@@ -33,7 +33,7 @@ End FUNCTIONS.
 (** functor building a simulator *)
 (****************************************************************************)
 
-Module Make (Import P : PROC) (Import S : STATE P) (Import Semantics : SEMANTICS P S) (F : FUNCTIONS P).
+Module Make (Import P : PROC) (Import S : STATE P) (Import Sem : SEMANTICS P S) (F : FUNCTIONS P).
 
   (****************************************************************************)
   (** types and functions necessary for building a simulator *)
