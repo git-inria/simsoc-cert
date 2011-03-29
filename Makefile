@@ -3,16 +3,13 @@
 
 TARGETS := arm6 sh4
 
-SUBDIRS := pseudocode $(TARGETS)
+SUBDIRS := simgen $(TARGETS)
 
 .PHONY: default clean simgen $(TARGETS)
 
 default: simgen
 
-simgen:
-	$(MAKE) -C pseudocode
-
-$(TARGETS):
+$(TARGETS) simgen:
 	$(MAKE) -C $@
 
 clean:
