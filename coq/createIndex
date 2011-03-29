@@ -1,17 +1,17 @@
 #!/bin/sh
 
-# SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+# SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-name=SimSoCCert
-
 prog=`basename $0`
+dir=`dirname $0`
 
-usage () { echo "usage: $prog [-h]"; }
+usage () { echo "usage: $prog [-h] <library-name>"; }
 
 help () {
   cat <<EOF
-Creates an index for $name files in doc/main.html.
+Generate on the stdout an html file containing an index for the Coq files
+of the current directory.
 
 Options:
 -h Provide this help and exit
@@ -20,20 +20,19 @@ EOF
 
 case "$1" in
 -h) usage; echo; help; exit 0;;
+*) libname=$1;;
 esac
 
-if test $# -ne 0; then usage; exit 1; fi
+if test -z $libname; then usage; exit 1; fi
 
-doc=`pwd`/doc/main.html
-
-cat doc/begin.html > $doc
-echo "<ul>" >> $doc
+cat $dir/begin.html
+echo "<ul>"
 
 for f in `ls *.v`
 do
   g=`basename $f .v`
-  echo "<li><a href=\"$name.$g.html\">$g</a></li>" >> $doc
+  echo "<li><a href=\"$libname.$g.html\">$g</a></li>"
 done
 
-echo "</ul>" >> $doc
-cat doc/end.html >> $doc
+echo "</ul>"
+cat $dir/end.html
