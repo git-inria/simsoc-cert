@@ -7,7 +7,7 @@ include $(DIR)/Makefile.common
 
 .SUFFIXES:
 
-LIBNAME := SimSoCCert
+#LIBNAME := SimSoCCert
 
 MAKECOQ := $(MAKE) -f Makefile.coq -r -j OTHERFLAGS='-dont-load-proofs'
 
@@ -31,7 +31,7 @@ tags:
 html:
 	mkdir -p html
 	coqdoc --html -toc -g -d html $(VFILES)
-	$(DIR)/tools/coqdoc/createIndex $(LIBNAME) > html/main.html
+	$(DIR)/tools/coqdoc/createIndex > html/main.html
 	cp $(DIR)/tools/coqdoc/coqdoc.css html
 
 #############################################################################
