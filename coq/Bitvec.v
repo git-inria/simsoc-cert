@@ -2,15 +2,9 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
+Bit vectors, based on Compcert.Integers file.
 
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
-Bit vectors, based on Xavier Leroy Compcert.Integers file.
-
-Defines also the following implicit coercions:
+Defines the following implicit coercions:
 
 regnum, byte, half, address, word > Z
 bool > word

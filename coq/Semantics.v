@@ -2,7 +2,7 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-Semantic functions for interpreting pseudo-code constructions.
+General semantic functions for interpreting pseudo-code constructions.
 *)
 
 Require Import Util Bitvec List Message ZArith String.
