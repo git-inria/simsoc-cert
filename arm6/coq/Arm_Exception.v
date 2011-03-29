@@ -11,7 +11,8 @@ Page numbers refer to ARMv6.pdf.
 Exception handling. Step functions are taken from the generated file
 arm6/arm6exn.v. *)
 
-Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State Arm_Functions Util Message.
+Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State
+  Arm_Functions Util Message.
 Import Semantics.
 
 Definition set_cpsr_bits s0 p n v := 
