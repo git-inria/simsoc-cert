@@ -9,7 +9,6 @@ include $(DIR)/makefile.common
 
 CPPFLAGS := -I$(DIR)/tools/bin2elf # for elf.h
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
-CC := gcc
 
 SOURCES := slv6_iss.c common.c slv6_condition.c slv6_math.c \
  arm_mmu.c slv6_mode.c slv6_processor.c slv6_status_register.c \
