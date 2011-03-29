@@ -3,8 +3,8 @@
 
 DIR := ..
 
-include $(DIR)/Makefile.common
 include $(DIR)/compcert/Makefile.config
+include $(DIR)/Makefile.common
 
 DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
@@ -18,13 +18,10 @@ COQTOP := coqtop -q $(INCLUDES) -batch -load-vernac-source
 
 .PHONY: default clean tags bintest
 
-default: extraction/RawCoq_Csyntax.ml
-	$(SHOW) ocamlbuild pseudocode/main
-	$(HIDE) cd $(DIR) && \
-	$(OCAMLBUILD) \
-		pseudocode/main.d.byte \
-		pseudocode/main.native \
-		pseudocode/main_finalize
+default: main
+
+main: extraction/RawCoq_Csyntax.ml
+	$(BUILD) simgen/main
 
 extraction/RawCoq_Csyntax.ml: extraction extraction.v
 	$(SHOW) coqtop extraction.v
@@ -46,10 +43,10 @@ bintest:
 	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -obin-test > test.bin
 	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -oasm-test test
 	../elf/bin2elf test.bin test.elf 
-	../simlight2/simlight -Adec ../pseudocode/test.elf | perl -p -e "s/[^\t]*\t//" | perl -p -e "s/CPY/MOV/" >tst.asm
+	../simlight2/simlight -Adec ../simgen/test.elf | perl -p -e "s/[^\t]*\t//" | perl -p -e "s/CPY/MOV/" >tst.asm
 
 .SUFFIXES: .v .vo
 
 .v.vo:
-	$(SHOW) coqc $*.v
-	$(HIDE) $(COQC) $*.v
+	$(SHOW) coqc $<
+	$(HIDE) $(COQC) $<
