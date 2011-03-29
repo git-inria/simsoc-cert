@@ -1,5 +1,6 @@
 (**
-SimSoC-Cert, a toolkit for generating certified processor simulators
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
 Formalization of the ARM architecture version 6 following the:
@@ -9,7 +10,7 @@ ARM Architecture Reference Manual, Issue I, July 2005.
 Page numbers refer to ARMv6.pdf.
 
 Exception handling. Step functions are taken from the generated file
-arm6/arm6exn.v. *)
+arm6exn.v. *)
 
 Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State
   Arm_Functions Util Message.
