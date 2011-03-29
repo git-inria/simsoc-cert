@@ -14,7 +14,7 @@ ARM simulator.
 Set Implicit Arguments.
 
 Require Import Semantics Arm_Config Simul Bitvec Arm_Functions.
-Import Semantics.
+Import Arm_Functions.Semantics.
 
 (****************************************************************************)
 (** Configuration *)
@@ -69,8 +69,8 @@ Module _Functions <: FUNCTIONS _Arm.
   Definition next := @Arm_Functions.Decoder.next.
 End _Functions.
 
-Module Import Simul := Simul.Make _Arm _Arm_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
-
+Module Import Simu := Simul.Make _Arm _Arm_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+(* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one, I have replaced it by "Simu". *)
 Module I <: INST.
   Definition inst : Type := arm6inst.inst.
   Module S := arm6inst.InstSem C.
@@ -80,4 +80,4 @@ Module I <: INST.
   Definition handle_exception : semfun unit := E.step.
 End I.
 
-Module Export S := Simul.Make I.
+Module Export S := Simu.Make I.

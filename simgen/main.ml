@@ -299,7 +299,7 @@ let genr_output() =
           let preamble_name = "Arm_"
           let preamble_comment = "ARMv6 addressing modes and"
           let preamble_proc = "Arm Arm_SCC"
-          let preamble_import = "State "
+          let preamble_import = "State Arm_Functions."
         end : Gencoq.GENCOQ))) (get_pc_input())
     | CompcertCInst -> 
       Buffer.output_buffer stdout (Ps2cl_ast_trans.print_cc (get_pc_input()))

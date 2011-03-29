@@ -28,16 +28,16 @@ arm6.txt: arm6.txt.gz
 # patch application
 
 arm6inst.txt: arm6.txt arm6inst.patch
-	cp -a $< $@ && patch $@ < $*inst.patch
+	cp -a $< $@ && patch $@ < arm6inst.patch
 
 #arm6exn.txt: arm6.txt arm6exn.patch
-#	cp -a $< $@ && patch $@ < $*exn.patch
+#	cp -a $< $@ && patch $@ < arm6exn.patch
 
 arm6dec.txt: arm6.txt arm6dec.patch
-	cp -a $< $@ && patch $@ < $*dec.patch
+	cp -a $< $@ && patch $@ < arm6dec.patch
 
 arm6syntax.txt: arm6.txt arm6syntax.patch
-	cp -a $< $@ && patch $@ < $*syntax.patch
+	cp -a $< $@ && patch $@ < arm6syntax.patch
 
 ###########################################################################
 # update patches
@@ -113,7 +113,7 @@ arm6test.bin: arm6dec.dat $(SIMGEN)
 
 %.vo: %.v libcoq
 	$(SHOW) coqc $<
-	$(HIDE) coqc -q -I $(DIR)/compcert/lib -R $(DIR)/coq SimSoCCert $<
+	$(HIDE) coqc -q -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq $<
 
 %inst.cpp: %inst.arm $(SIMGEN)
 	$(SIMGEN) -ipc $< -ocpp > $@
@@ -132,4 +132,4 @@ $(SIMGEN):
 	$(MAKE) -C $(DIR)/simgen
 
 libcoq:
-	$(MAKE) -C $(DIR)/coq
+	$(MAKE) -C $(DIR)/coq -C $(DIR)/arm6/coq

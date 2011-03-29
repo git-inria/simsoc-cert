@@ -14,7 +14,7 @@ arm6exn.v. *)
 
 Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State
   Arm_Functions Util Message.
-Import Semantics.
+Import Arm_Functions.Semantics.
 
 Definition set_cpsr_bits s0 p n v := 
   set_cpsr (set_bits p n v (cpsr s0)).

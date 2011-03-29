@@ -106,9 +106,9 @@ let _ = dispatch & function
       define_context "arm6" (l_compcert @ [ "extract/tmp" ]);
       define_context "arm6/parsing" [ "simgen" ];
       define_context "extract/tmp" [ "arm6" ; "compcert/extraction" ; "simgen/extraction" ];
-      define_context "simgen" (l_compcert @ [ "simgen/extraction" ; "sh4" ]);
+      define_context "simgen" (l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]);
       define_context "simgen/extraction" [ "compcert/extraction" ];
-      define_context "sh4" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
+      define_context "sh4/parsing" [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ];
       define_context "test" (l_compcert @ [ "extract/tmp" ]);
 
       (** ----------------------------------- *)
