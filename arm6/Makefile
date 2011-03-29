@@ -5,7 +5,7 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-SIMGEN := $(DIR)/pseudocode/main
+SIMGEN := $(DIR)/simgen/main
 
 PROC := arm6
 
@@ -102,7 +102,7 @@ parsing/keepoper parsing/oneline_expr parsing/keepsyntax parsing/parsesyntax par
 	$(MAKE) -C parsing `basename $@`
 
 $(SIMGEN):
-	$(MAKE) -C $(DIR)/pseudocode
+	$(MAKE) -C $(DIR)/simgen
 
 libcoq:
 	$(MAKE) -C $(DIR)/coq
