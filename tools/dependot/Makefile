@@ -1,42 +1,25 @@
-BIN= ../bin
-TARGET= dependot
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
 
-ifeq ($(VERBOSE),1)
-  SHOW := @true
-  HIDE :=
-else
-  SHOW := @echo
-  HIDE := @
-endif
+DIR := ../..
 
-$(TARGET): $(TARGET).ml
-	$(SHOW) OCAMLBUILD $(TARGET)
-	$(HIDE) cd ../.. && \
-	ocamlbuild -j 2 -no-hygiene -no-links \
-		tools/dependot/$(TARGET).native \
-		tools/dependot/$(TARGET)_finalize
+include $(DIR)/Makefile.common
 
-install: $(TARGET)
-	install ${TARGET} $(BIN)
+.PHONY: default clean check
 
-check: $(TARGET) exemple.dot
+default: dependot
+
+dependot:
+	$(BUILD) tools/dependot/dependot
+
+check: dependot exemple.dot
 	cmp exemple.dot exemple-ref.dot
 
-
 %.dot: %.dep
-	cat $< | ./$(TARGET) > $@
+	cat $< | ./dependot > $@
 
 %.ps: %.dep
-	cat $< | ./$(TARGET) | dot -Tps > $@
+	cat $< | ./dependot | dot -Tps > $@
 
 clean:
-	rm -f *~ $(TARGET) exemple.dot exemple.ps
-
-distrib:
-	rm -rf build-dependot
-	mkdir -p build-dependot
-	cp -a Makefile README dependot.ml exemple.dep exemple-ref.dot build-dependot
-	tar czf dependot.tar.gz build-dependot
-	rm -rf build-dependot
-
-ps: $(TARGET) exemple.ps
+	rm -f dependot exemple.dot exemple.ps
