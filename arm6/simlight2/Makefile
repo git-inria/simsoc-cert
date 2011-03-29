@@ -3,7 +3,7 @@
 
 DIR := ..
 
-SIMGEN := $(DIR)/pseudocode/main
+SIMGEN := $(DIR)/simgen/main
 
 CPPFLAGS := -I../elf # for elf.h
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
@@ -58,7 +58,7 @@ $(GENFILES): $(SIMGEN) $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6syntax.dat \
 $(GENFILES_MO): slv6_iss.c
 
 $(SIMGEN): FORCE
-	$(MAKE) -C $(DIR)/pseudocode
+	$(MAKE) -C $(DIR)/simgen
 
 $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.dat $(DIR)/arm6/arm6syntax.dat: FORCE
 	$(MAKE) -C $(DIR)/arm6 $@

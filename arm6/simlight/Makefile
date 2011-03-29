@@ -3,7 +3,7 @@
 
 DIR := ..
 
-SIMGEN := $(DIR)/pseudocode/main
+SIMGEN := $(DIR)/simgen/main
 
 .PHONY: clean default
 
@@ -35,7 +35,7 @@ slv6_iss.h slv6_iss.c: $(SIMGEN) $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.da
 slv6_iss.c: slv6_iss.h
 
 $(SIMGEN): FORCE
-	$(MAKE) -C $(DIR)/pseudocode
+	$(MAKE) -C $(DIR)/simgen
 
 $(DIR)/arm6/arm6inst.arm $(DIR)/arm6/arm6dec.dat: FORCE
 	$(MAKE) -C $(DIR)/arm6 $@
