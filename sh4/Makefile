@@ -5,9 +5,9 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-.PHONY: default parsing/instr all $(SIMGEN)
+.PHONY: default parsing/instr sh4 $(SIMGEN)
 
-default: sh4.dat
+default: sh4inst.vo sh4dec.vo sh4.vo extraction
 
 clean:
 	rm -f sh4.dat sh4inst.v sh4dec.v sh4inst.vo sh4dec.vo sh4.vo
@@ -50,6 +50,27 @@ sh4dec.v: sh4.dat $(SIMGEN)
 
 sh4: sh4inst.vo sh4dec.vo sh4.vo
 
-%.vo: %.v
+%.vo: %.v libcoq
 	$(SHOW) coqc $<
-	$(HIDE) coqc -q -I $(DIR)/compcert/lib -R $(DIR)/coq SimSoCCert $<
+	$(HIDE) coqc -q -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/sh4/coq $<
+
+$(SIMGEN):
+	$(MAKE) -C $(DIR)/simgen
+
+libcoq:
+	$(MAKE) -C $(DIR)/coq -C $(DIR)/sh4/coq
+
+###########################################################################
+# extraction
+
+include $(DIR)/compcert/Makefile.config
+
+DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
+INCLUDES := $(patsubst %,-I $(DIR)/compcert/%, $(DIRS))
+
+extraction: extraction.v
+	mkdir -p extraction
+	$(SHOW) coqtop extraction.v
+	$(HIDE) coqtop -q $(INCLUDES) -I $(DIR)/coq -I $(DIR)/sh4/coq -batch -load-vernac-source extraction.v
+
+extraction.v: sh4.vo

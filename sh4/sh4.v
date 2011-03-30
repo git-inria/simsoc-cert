@@ -14,7 +14,7 @@ SH4 simulator.
 Set Implicit Arguments.
 
 Require Import Semantics Sh4_Config Simul Bitvec Sh4_Functions Message.
-Import Semantics.
+Import Sh4_Functions.Semantics.
 
 (****************************************************************************)
 (** Configuration *)
@@ -48,8 +48,8 @@ Module _Functions <: FUNCTIONS _Sh4.
   Definition next := @Sh4_Functions.Decoder.next message.
 End _Functions.
 
-Module Import Simul := Simul.Make _Sh4 _Sh4_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
-
+Module Import Simu := Simul.Make _Sh4 _Sh4_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+(* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one. *)
 Module I <: INST.
   Definition inst : Type := sh4inst.inst.
   Module S := sh4inst.InstSem C.
@@ -58,4 +58,4 @@ Module I <: INST.
   Definition handle_exception := Ok tt.
 End I.
 
-Module Export S := Simul.Make I.
+Module Export S := Simu.Make I.

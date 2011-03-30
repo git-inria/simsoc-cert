@@ -70,7 +70,7 @@ Module _Functions <: FUNCTIONS _Arm.
 End _Functions.
 
 Module Import Simu := Simul.Make _Arm _Arm_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
-(* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one, I have replaced it by "Simu". *)
+(* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one. *)
 Module I <: INST.
   Definition inst : Type := arm6inst.inst.
   Module S := arm6inst.InstSem C.

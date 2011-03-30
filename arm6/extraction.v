@@ -103,8 +103,7 @@ Load extractionMachdep.
 Extraction Blacklist List String Int.
 
 (* Go! *)
-(* we assume we are in the extract directory *)
-Cd "tmp".
+Cd "extraction".
 
 Require arm6dec.
 Extract Constant arm6dec.decode_addr_mode1 => "Arm6mldec.decode_addr_mode1". 
@@ -142,20 +141,3 @@ Extraction Library Arm_Functions.
 Extraction Library arm6.
 Extraction Library arm6dec.
 Extraction Library arm6inst.
-
-(* *)
-
-Require sh4dec.
-Require sh4.
-
-Extraction Library Sh4.
-Extraction Library Sh4_Config.
-Extraction Library Sh4_Proc.
-(*Extraction Library Sh4_SCC.*)
-Extraction Library Sh4_State.
-(*Extraction Library Sh4_Exception.*)
-Extraction Library Sh4_Functions.
-
-Extraction Library sh4.
-Extraction Library sh4dec.
-Extraction Library sh4inst.

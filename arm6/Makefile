@@ -14,10 +14,10 @@ FILES := arm6inst.txt arm6inst.arm arm6inst.v \
 	arm6dec.v arm6mldec.ml arm6test.elf
 
 default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
-	arm6mldec.ml #arm6exn.vo
+	arm6mldec.ml extraction  #arm6exn.vo
 
 clean:
-	rm -f *.glob *.vo *.orig $(FILES) arm6.txt arm6syntax.txt
+	rm -rf extraction *.glob *.vo *.orig $(FILES) arm6.txt arm6syntax.txt
 
 .PRECIOUS: arm6.txt $(FILES)
 
@@ -133,3 +133,18 @@ $(SIMGEN):
 
 libcoq:
 	$(MAKE) -C $(DIR)/coq -C $(DIR)/arm6/coq
+
+###########################################################################
+# extraction
+
+include $(DIR)/compcert/Makefile.config
+
+DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
+INCLUDES := $(patsubst %,-I $(DIR)/compcert/%, $(DIRS))
+
+extraction: extraction.v
+	mkdir -p extraction
+	$(SHOW) coqtop extraction.v
+	$(HIDE) coqtop -q $(INCLUDES) -I $(DIR)/coq -I $(DIR)/arm6/coq -batch -load-vernac-source extraction.v
+
+extraction.v: arm6.vo

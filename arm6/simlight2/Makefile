@@ -1,7 +1,7 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-DIR := ..
+DIR := ../..
 
 include $(DIR)/Makefile.common
 
@@ -58,7 +58,7 @@ $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
 ../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
-	$(MAKE) -C .. $@
+	$(MAKE) -C .. $(shell basename $@)
 
 clean:
 	rm -f $(OBJECTS) $(GENFILES) simlight simlight.opt *.gcda *.gcno

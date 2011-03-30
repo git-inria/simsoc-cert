@@ -1,9 +1,9 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-DIR := ..
+DIR := ../..
 
-include $(DIR)/makefile.common
+include $(DIR)/Makefile.common
 
 .PHONY: clean default
 
@@ -36,7 +36,7 @@ $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
 ../arm6inst.arm ../arm6dec.dat: FORCE
-	$(MAKE) -C .. $@
+	$(MAKE) -C .. $(shell basename $@)
 
 clean:
 	rm -f $(OBJECTS) slv6_iss.c slv6_iss.h \

@@ -291,7 +291,7 @@ let genr_output() =
           let preamble_name = "Sh4_"
           let preamble_comment = "SH4"
           let preamble_proc = "Sh4"
-          let preamble_import = ""
+          let preamble_import = "Sh4_Functions."
         end : Gencoq.GENCOQ)
       else
         (module struct
