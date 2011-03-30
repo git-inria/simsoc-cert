@@ -59,6 +59,18 @@ struct
     match try Some (Hashtbl.find Camlcoq.string_of_atom p) with Not_found -> None with
       | None -> None
       | Some s -> Some (replace s)
+
+  let map_stringTable =
+    let open Datatypes in
+    let rec aux = function
+      | l, [] -> List.map (fun x -> Coq_pair (x, None)) l
+      | v :: vs, i :: is -> Coq_pair (v, Some i) :: aux (vs, is)
+      | _ -> assert false in
+    fun l_info ->
+      aux (l_info, 
+           Hashtbl.fold
+             (fun s _ l -> s :: l)
+             C2C.stringTable [])
 end
 
 module B = 
@@ -74,7 +86,9 @@ struct
   let print_newline t =
     let () = bprintf t.buf "\n" in
     { t with n = 0 }
-      
+
+  let print_ident i = print (sprintf "<%d>" i)
+
   let pos t = Camlcoq.nat_of_camlint (Int32.of_int t.n)
 
   let add_buffer t1 t2 = 
@@ -82,6 +96,31 @@ struct
     { t1 with n = t2.n }
 end
 
-module R = RawCoq_Csyntax.Main (S) (U) (B)
+module Kt = struct type t = Csyntax.coq_type let compare = compare end
+module Ktl = struct type t = Csyntax.typelist let compare = compare end
+
+module Map = 
+struct
+  module Make (O : Map.OrderedType) = 
+  struct
+    module M = Map.Make (O)
+    include M
+
+    let find k map = try Some (find k map) with Not_found -> None
+  end
+end
+
+module F = 
+struct
+  include Pervasives
+  type t = int
+  let zero = 0
+end
+
+module Map_t = Map.Make (Kt)
+module Map_tl = Map.Make (Ktl)
+module Map_f = Map.Make (F)
+
+module R = RawCoq_Csyntax.Main (Kt) (Ktl) (Map_t) (Map_tl) (S) (U) (F) (Map_f) (B)
 
 let to_buffer csyntax = (R.program_fundef_type csyntax).B.buf

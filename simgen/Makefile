@@ -26,7 +26,7 @@ main: extraction/RawCoq_Csyntax.ml
 extraction/RawCoq_Csyntax.ml: extraction extraction.v
 	$(SHOW) coqtop extraction.v
 	$(HIDE) $(COQTOP) extraction.v && \
-	sed -i '2830 s/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml # manual eta-expansion with Coq 8.3pl1
+	sed -i '3063 s/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml # manual eta-expansion with Coq 8.3pl1
 
 extraction:
 	mkdir -p extraction

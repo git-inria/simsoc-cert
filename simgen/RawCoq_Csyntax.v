@@ -552,17 +552,39 @@ Module Type UTIL (S : STRING).
   Parameter name : positive -> option (S.t * option S.t).
   (** look at the hashtbl [string_of_atom] inside 'Camlcoq.ml' and return the name of the corresponding positive if found. 
   If found, it returns the pair composed of the string name escaped and the original name ([None] in the case the original name do not conflict with a Coq keyword) *)
+  Parameter map_stringTable : forall A, list A -> list (A * option S.t).
 End UTIL.
 
-Module Type BUFFER (S : STRING).
+Module Type FRESH.
+  Parameter t : Type.
+
+  Parameter zero : t.
+  Parameter succ : t -> t.
+End FRESH.
+
+Module Type BUFFER (S : STRING) (F : FRESH).
   Parameter t : Type.
   
   Parameter empty : forall A, A -> t.
   Parameter print : S.t -> t -> t.
   Parameter print_newline : t -> t.
+  Parameter print_ident : F.t -> t -> t.
   Parameter pos : t -> nat. (* number of character since the last call to [print_newline] or [empty] *)
   Parameter add_buffer : t -> t -> t.
 End BUFFER.
+
+Module Type KEY.
+  Parameter t : Type.
+End KEY.
+
+Module Type MAP (K : KEY). (** using OCaml structural equality *)
+  Parameter t : Type -> Type.
+
+  Parameter add : forall A, K.t -> A -> t A -> t A.
+  Parameter find : forall A, K.t -> t A -> option A.
+  Parameter empty : forall A, t A.
+  Parameter fold : forall A B, (K.t -> A -> B -> B) -> t A -> B -> B. 
+End MAP.
 
 (****************************************************************************)
 (* Organization of the whole program of pretty printing *)
@@ -579,6 +601,8 @@ Module Type MONAD_SIMPLE (S : STRING).
   Parameter ret : forall A, A -> t A.
 
   Parameter print : S.t -> t v. (* print the string into the monadic buffer *)
+  Parameter print_type : type -> t v. (* special handling for type, where an identifier is printed instead of the raw type *)
+  Parameter print_typelist : typelist -> t v. (* special handling for typelist, where an identifier is printed instead of the raw type *)
 
   Parameter save_pos : t v. (* save the current column number in a stack, by looking where is the previous newline *)
   Parameter delete_pos : t v. (* pop the stack *)
@@ -633,6 +657,12 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
   Parameter _list : forall A, (A -> t u) -> list A -> t u.
   Parameter _option : forall A, (A -> t u) -> option A -> t u.
 End CONSTRUCTOR.
+
+Module Type CONSTRUCTOR_EXP (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
+  Import M P.
+  Parameter _type : type -> t u.
+  Parameter _typelist : typelist -> t u.
+End CONSTRUCTOR_EXP.
 
 (****************************************************************************)
 (* Implementation and activation of the main program *)
@@ -787,7 +817,10 @@ Definition _type_ T (ty : forall A : Type,
   ! (*"Fnil"*) "/** */"
   (*! "Fcons"*) (_U true (print "/* ") (ret tt) _ [| print " */ " ; perform [ print " ;" ; indent ] |] [| (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
 Definition _type := _type_ _ (@_type).
+(* _type : type -> t u ** 0 *)
 Definition _typelist := _type_ _ (@_typelist).
+(*_typelist : typelist -> t u ** 0*)
+Module Make (Import CE : CONSTRUCTOR_EXP S M P).
 Definition _unary_operation := _unary_operation 
   ! "Onotbool"
   ! "Onotint"
@@ -856,7 +889,7 @@ Definition _fundef := _fundef _function _AST._external_function _typelist _type
   ! "Internal"
   | (*! "External"*) "External" · [| true ; false ; true |].
 Definition _program := _AST._program _fundef _type.
-
+End Make.
 End Constructor.
 
 (* *** *)
@@ -917,10 +950,15 @@ End Strict.
 
 (* *** *)
 
-Module Monad_simple (S : STRING) (B : BUFFER S) <: MONAD_SIMPLE S.
+Module Monad_simple (F : FRESH) (K_type : KEY with Definition t := type) (K_typelist : KEY with Definition t := typelist) (S : STRING) (B : BUFFER S F) (Map_type : MAP K_type) (Map_typelist : MAP K_typelist) <: MONAD_SIMPLE S.
 Require Import Ascii.
 Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+
+Implicit Arguments Map_type.add [A].
+Implicit Arguments Map_type.find [A].
+Implicit Arguments Map_typelist.add [A].
+Implicit Arguments Map_typelist.find [A].
 
 Module PositiveMap := FMapAVL.Make OrderedPositive.
 
@@ -928,8 +966,11 @@ Record st := mk_st
   { buf : B.t
   ; pos : list nat
   ; depth : nat
-  ; used_var : PositiveMap.t (S.t * option S.t) }.
-
+  ; used_var : PositiveMap.t (S.t * option S.t)
+  ; ident : F.t
+  ; map_t : Map_type.t F.t
+  ; map_tlist : Map_typelist.t F.t }.
+ 
 Inductive state {A} :=
   L (_ : A) (_ : st).
 
@@ -953,23 +994,47 @@ Definition get_st f : t unit := fun st =>
   ret tt (f mk_st st).
 
 Definition print_newline : t unit := get_st (fun f st =>
-  f (B.print_newline (buf st)) (pos st) (depth st) (used_var st)).
+  f (B.print_newline (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
 Definition print s : t unit := get_st (fun f st =>
-  f (B.print s (buf st)) (pos st) (depth st) (used_var st)).
+  f (B.print s (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+
+Definition print_type t := get_st (fun f st =>
+  match
+    match Map_type.find t (map_t st) with
+    | None => let i := F.succ (ident st) in
+      (i, i, Map_type.add t i)
+    | Some i => (ident st, i, fun x => x) 
+    end
+  with
+    (id, i, ff) =>
+    f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (ff (map_t st)) (map_tlist st)
+  end).
+
+Definition print_typelist t := get_st (fun f st =>
+  match
+    match Map_typelist.find t (map_tlist st) with
+    | None => let i := F.succ (ident st) in
+      (i, i, Map_typelist.add t i)
+    | Some i => (ident st, i, fun x => x) 
+    end
+  with
+    (id, i, ff) =>
+    f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (map_t st) (ff (map_tlist st))
+  end).
 
 Definition add_depth : t unit := get_st (fun f st => 
-  f (buf st) (pos st) (S (depth st)) (used_var st)).
+  f (buf st) (pos st) (S (depth st)) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
 Definition remove_depth : t unit := get_st (fun f st =>
-  f (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat) (used_var st)). 
+  f (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat) (used_var st) (ident st) (map_t st) (map_tlist st)). 
 
 Definition save_pos : t unit := get_st (fun f st =>
   let buf_st := buf st in
-  f buf_st (B.pos buf_st :: pos st) (depth st) (used_var st)).
+  f buf_st (B.pos buf_st :: pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
 Definition add_used_var p s : t unit := get_st (fun f st =>
-  f (buf st) (pos st) (depth st) (PositiveMap.add p s (used_var st))).
+  f (buf st) (pos st) (depth st) (PositiveMap.add p s (used_var st)) (ident st) (map_t st) (map_tlist st)).
 
 Definition indent_ f : t unit :=
   fun st =>
@@ -984,7 +1049,7 @@ Definition indent : t unit := indent_ (fun _ x => x).
 Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
 
 Definition delete_pos : t unit := fun st =>
-  ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st)).
+  ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
 Definition tt := tt.
 
@@ -1091,16 +1156,21 @@ Defined.
 
 End Monad_list.
 
-
 (** Main function *)
 
-Module Main (S : STRING) (U : UTIL S) (B : BUFFER S).
+Module Main (K_t : KEY with Definition t := type) (K_tl : KEY with Definition t := typelist) (Map_t : MAP K_t) (Map_tl : MAP K_tl) (S : STRING) (U : UTIL S) (F : FRESH) (Map_f : MAP F) (B : BUFFER S F).
 (** Given all the OCaml module, this module produces a function doing the whole printing of the considered AST *)
 
-Module M := Monad_simple S B.
+Module M := Monad_simple F K_t K_tl S B Map_t Map_tl.
 Module L := Lazy S M.
 Module C := Monad_list S U M L.
 Module Constructor_list := Constructor S M L C.
+
+Module M_simpl.
+  Definition _type t := L.ret_u false (M.print_type t).
+  Definition _typelist t := L.ret_u false (M.print_typelist t).
+End M_simpl.
+Module C_list := Constructor_list.Make M_simpl.
 
 Import M.
 
@@ -1109,13 +1179,18 @@ Coercion S.of_string : String.string >-> S.t.
 
 Implicit Arguments B.empty [A].
 Implicit Arguments PositiveMap.empty [elt].
+Implicit Arguments Map_t.empty [A].
+Implicit Arguments Map_tl.empty [A].
+Implicit Arguments Map_t.fold [A B].
+Implicit Arguments Map_tl.fold [A B].
+Implicit Arguments Map_f.add [A].
+Implicit Arguments Map_f.fold [A B].
 
 Notation "[ ]" := nil.
 Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 Notation "a ++ b" := (S.append a b).
 
-Definition coq_output_1 := 
-  List.map S.of_string
+Definition coq_output_1 := List.map S.of_string
       [ "(**"
       ; "SimSoC-Cert, a toolkit for generating certified processor simulators"
       ; "See the COPYRIGHTS and LICENSE files."
@@ -1133,8 +1208,7 @@ Definition coq_output_1 :=
       ; "  Csyntax"
       ; "  ."
       ; "" ].
-Definition coq_output_2 :=
-  List.map S.of_string
+Definition coq_output_2 := List.map S.of_string
       [ ""
       ; "Notation ""` x"" := (x % positive) (at level 9)."
       ; "Notation ""`` x"" := (Int.repr x) (at level 9)."
@@ -1160,28 +1234,58 @@ Definition coq_output_2 :=
       ; "Notation ""'If' a 'then' b 'else' c"" := (Sifthenelse a b c) (at level 9)."
       ; "Notation ""{< a := b >}"" := (Tunion a b) (at level 9)."
       ; "Notation ""[| a := b |]"" := (Tstruct a b) (at level 9)."
-      ; ""
-      ; "Definition program_fundef_type :=" ].
-Definition coq_output_3 := 
-  List.map S.of_string
+      ; "" ].
+Definition coq_output_3 := List.map S.of_string
+      [ "Definition program_fundef_type :=" ].
+Definition coq_output_4 := List.map S.of_string
       [ ""
       ; "." 
-      ; "Print program_fundef_type." ].
+      ; "Check program_fundef_type : AST.program fundef type." ].
 
 Definition b_perform buf l :=
   List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.
 
+Definition buf_of_ {A} f (t : A) :=
+  match L.exec (f t) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
+    L _ st => buf st
+  end.
+
+Definition buf_of_type := buf_of_ Constructor_list._type.
+Definition buf_of_typelist := buf_of_ Constructor_list._typelist.
+
 Definition program_fundef_type ast := 
-  match L.exec (Constructor_list._program ast) (mk_st (B.empty tt) [] 0 PositiveMap.empty) with
-    L _ st => b_perform 
-      (B.add_buffer (List.fold_left b_perform 
+  let f buf_ty i :=
+    List.fold_left (fun buf f => f buf)
+      [ B.print "Notation """
+      ; B.print_ident i
+      ; B.print """ := "
+      ; B.print_newline
+      ; B.print "("
+      ; fun b => B.add_buffer b buf_ty
+      ; B.print ")."
+      ; B.print_newline 
+      ; B.print_newline ] in
+
+  match L.exec (C_list._program ast) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
+    L _ st => 
+      let map := Map_t.fold (fun t i => Map_f.add i (Constructor_list._type t)) (map_t st) (Map_f.empty _) in
+      let map := Map_tl.fold (fun t i => Map_f.add i (Constructor_list._typelist t)) (map_tlist st) map in
+      let (b, u) :=
+        Map_f.fold (fun i t (b_u : _ * _) =>
+          let (b, u) := b_u in
+          match L.exec t (mk_st (B.empty tt) [] 0 u F.zero Map_t.empty Map_tl.empty) with
+            L _ st => (f (buf st) i b, used_var st)
+          end) map (B.empty tt, used_var st) in
+
+      b_perform (B.add_buffer (b_perform (B.add_buffer (List.fold_left b_perform 
       [ coq_output_1 
-      ; List.map (fun p_s : (_ * (_ * _)) => let (p, s_o) := p_s in 
-          let (s, o) := s_o in
+      ; List.map (fun p_s : (_ * (_ * _)) => let (p, s_o) := p_s in let (s, o) := s_o in
           "Definition " ++ s ++ " := " ++ U.string_of_positive p ++ " % positive." ++ match o with Some s => " (* " ++ s ++ " *)" | None => "" end
-        ) (PositiveMap.elements (used_var st))
-      ; coq_output_2 ] (B.empty tt)) (buf st)) 
-      coq_output_3
+        ) (PositiveMap.elements u)
+      ; coq_output_2 ] (B.empty tt) ) b
+      ) coq_output_3) 
+      (buf st)
+      ) coq_output_4
   end.
 
 End Main.
