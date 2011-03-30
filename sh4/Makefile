@@ -58,7 +58,8 @@ $(SIMGEN):
 	$(MAKE) -C $(DIR)/simgen
 
 libcoq:
-	$(MAKE) -C $(DIR)/coq -C $(DIR)/sh4/coq
+	$(MAKE) -C $(DIR)/coq
+	$(MAKE) -C $(DIR)/sh4/coq
 
 ###########################################################################
 # extraction
