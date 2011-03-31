@@ -15,4 +15,5 @@ Enumerated type for used strings for turning extraction problems.
 Inductive message : Type :=
 | InvalidInstructionSet : message
 | DecodingReturnsUnpredictable : message
+| Case : message
 | ComplexSemantics : message.
