@@ -53,7 +53,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	$(HIDE) arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
 $(DIR)/arm6/elf2coq/arm2coq: FORCE
-	cd $(DIR)/tools/bin2elf/ && $(MAKE)
+	$(MAKE) -C $(DIR)/arm6/elf2coq
 
 FORCE:
 
