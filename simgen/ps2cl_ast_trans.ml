@@ -11,8 +11,11 @@ open Csyntax;;
 open Datatypes;;
 open Printf;;
 
+
 (* specific expression of generating code *)
 let mode m = Genpc.string_of_mode m;;
+
+let input_registers = ["n"; "m"; "s"; "dLo"];;
 
 let access_type = function
   | Byte -> "byte"
@@ -54,6 +57,39 @@ let rec typ_trans (t: Ast.type_param) =
     | Tunsigned_int -> Tint (I32, Unsigned)
 ;;
 
+
+(*Global and local variables and their types of a pseudocode program *)
+let type_of_var = function
+
+  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
+  | "shifter_carry_out" | "E" -> Tint (I8, Unsigned)
+      
+  | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
+  | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
+  | "immedH" | "immedL" | "offset_8" | "shift" 
+  | "opcode_1" | "opcode_2" | "CRn" | "CRm" -> Tint (I8, Unsigned)
+
+  | "cond" -> Tint (I32, Signed)
+  | "old_mode" | "mode" -> Tint (I32, Signed)
+  | "accvalue" | "result" | "value" -> Tint (I32, Unsigned)
+  | _ -> Tint (I32, Unsigned)
+
+module G = struct
+
+  type typ = Csyntax.coq_type;;
+
+  let global_type = type_of_var;;
+
+  let local_type s _ = type_of_var s
+
+  let rec explicit_annot_type ty _ = typ_trans ty
+  
+  let case_type = Tint (I32, Unsigned);;
+
+end;;
+
+module V = Ast.Make(G);;
+
 (* Operations transformation, from string to Csyntax type*)
 let unop_trans = function
   | "not" -> Onotbool
@@ -91,7 +127,7 @@ let typeof_mmu =
            Fcons (id "begin",Tint (I32,Unsigned),
            Fcons (id "size",Tint (I32,Unsigned),
            Fcons (id "end",Tint (I32,Unsigned),
-           Fcons (id "mem",Tpointer (Tint (I32,Unsigned)),
+           Fcons (id "mem",Tpointer (Tint (I8,Unsigned)),
            Fnil)))))
 let typeof_sr = 
   Tstruct (id "SLv6_StatusRegister",
@@ -121,17 +157,17 @@ let typeof_sc =
            Fnil))))
 let typeof_proc =
   Tstruct (id "SLv6_Processor", 
-           Fcons (id "mmu_ptr",Tpointer(typeof_mmu),
+           Fcons (id "mmu_ptr",Tpointer (typeof_mmu),
            Fcons (id "cpsr",typeof_sr,
-           Fcons (id "spsr[5]",typeof_sr,
+           Fcons (id "spsrs",Tarray (typeof_sr,num "5"),
            Fcons (id "cp15",typeof_sc,
            Fcons (id "id",Tint (I8,Unsigned),
-           Fcons (id "user_regs[16]",Tint (I32,Unsigned),
-           Fcons (id "fiq_regs[7]",Tint (I32,Unsigned),
-           Fcons (id "irq_regs[2]",Tint (I32,Unsigned),
-           Fcons (id "svc_regs[2]",Tint (I32,Unsigned),
-           Fcons (id "abt_regs[2]",Tint (I32,Unsigned),
-           Fcons (id "und_regs[2]",Tint (I32,Unsigned),
+           Fcons (id "user_regs",Tarray (Tint (I32,Unsigned),num "16"),
+           Fcons (id "fiq_regs",Tarray (Tint (I32,Unsigned),num "7"),
+           Fcons (id "irq_regs",Tarray (Tint (I32,Unsigned),num "2"),
+           Fcons (id "svc_regs",Tarray (Tint (I32,Unsigned),num "2"),
+           Fcons (id "abt_regs",Tarray (Tint (I32,Unsigned),num "2"),
+           Fcons (id "und_regs",Tarray (Tint (I32,Unsigned),num "2"),
            Fcons (id "pc",Tpointer (Tint (I32,Unsigned)),
            Fnil)))))))))))));;
 
@@ -142,12 +178,14 @@ let rec exp_trans = function
   |Hex str -> Eval (Values.Vint (hex str),Tint (I32, Signed))
   |Bin str -> Eval (Values.Vint (bin str),Tint (I32, Signed))
   |Float_zero -> Eval (Values.Vfloat 0.0,Tfloat F32)
-  |Var str -> Evar (id str,Tint (I32, Unsigned))
+  |Var str -> Evar (id str,type_of_var str)
   |If_exp (e1, e2, e3) -> 
      Econdition (exp_trans e1,exp_trans e2,exp_trans e3,Tint (I8, Unsigned))
   |BinOp (e1, str, e2) -> 
      Ebinop (binop_trans str, exp_trans e1, exp_trans e2,Tint (I32, Unsigned))
-  |Unpredictable_exp -> Ecall (Evar (id "unpredicatable",Tvoid),Enil,Tvoid)
+  |Unpredictable_exp -> 
+     Ecall (Evar (id "unpredicatable",Tfunction (Tnil,Tvoid)),Enil,
+            Tfunction(Tnil,Tvoid))
   |Memory (e, n) -> 
      Ecall (Evar (id ("read_"^(access_type n)),Tvoid),
              Econs (exp_trans e, Enil), 
@@ -155,19 +193,31 @@ let rec exp_trans = function
                 |Byte->Tint (I8,Unsigned)
                 |Half->Tint (I16,Unsigned)
                 |Word->Tint (I32,Unsigned)))
+  |Reg (Var s,None) -> 
+     if List.mem s input_registers then
+       Evar (id ("old_R"^s),Tint (I32,Unsigned))
+     else Ecall (Evalof (Evar (id "reg",Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tnil)),Tint (I32,Unsigned))),
+                         Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tnil)),Tint (I32,Unsigned))),
+            Econs (Evalof (Evar (id "proc",typeof_proc),typeof_proc), 
+            Econs (Evalof (Evar (id s,Tint (I8,Unsigned)),Tint (I8,Unsigned)),
+            Enil)),Tint (I32,Unsigned))
   |Reg (e,None)->
-     Ecall (Evar (id "reg",Tvoid),
-            Econs (Evar (id "proc",typeof_proc), 
-            Econs (exp_trans e, Enil)),Tint (I32,Unsigned))
+     Ecall (Evalof (Evar (id "reg",Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tnil)),Tint (I32,Unsigned))),
+                          Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tnil)),Tint (I32,Unsigned))),
+            Econs (Evalof (Evar (id "proc",typeof_proc),typeof_proc), 
+            Econs (Evalof (exp_trans e,typeof (exp_trans e)), Enil)),Tint (I32,Unsigned))
   |Reg (e,Some m) ->
-     Ecall (Evar (id "reg_m",Tvoid),
-            Econs (Evar (id "proc",typeof_proc), 
-            Econs (exp_trans e, 
-            Econs (Evar (id (mode m),Tint (I32,Unsigned)),
+     Ecall (Evalof (Evar (id "reg_m",Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tcons (Tint (I8,Unsigned),Tnil))),Tint (I32,Unsigned))),
+                    ),
+            Econs (Evalof (Evar (id "proc",typeof_proc),typeof_proc), 
+            Econs (Evalof (exp_trans e,typeof (exp_trans e)),
+            Econs (Evalof (Evar (id (mode m),Tint (I32,Unsigned)),Tint (I32,Unsigned)),
             Enil))),Tint (I32,Unsigned))
-  |Coproc_exp (e,f,es) ->Ecall (Evar (id f, Tint (I32,Unsigned)),
-                               Econs (exp_trans e,explst es),Csyntax.typeof (exp_trans e))
-  |Fun (f,es)-> Ecall (Evar (id f,Tvoid), (implicit_arg es f),Tvoid)
+  |Coproc_exp (e,f,es) ->Ecall (Evalof (Evar (id f, Tint (I32,Unsigned)),Tint (I32,Unsigned)),
+                                Econs (Evalof (exp_trans e,typeof (exp_trans e)),
+                                explst es),typeof (exp_trans e))
+  |Fun (f,es)->
+     Ecall (Evalof (Evar (id f,implicit_type f),(implicit_type f)),(implicit_arg es f),(implicit_type f))
   |CPSR->
      Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
             Econs (Eaddrof (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),typeof_sr),Enil),Tint (I32,Unsigned))
@@ -196,7 +246,7 @@ let rec exp_trans = function
 
 and explst = function
   |[] -> Enil
-  |h::t -> Econs (exp_trans h,explst t)
+  |h::t -> Econs (Evalof (exp_trans h,typeof (exp_trans h)),explst t)
 
 and implicit_arg es = function
   |"ConditionPassed" ->
@@ -209,6 +259,11 @@ and implicit_arg es = function
   |"address_of_current_instruction"|"high_vectors_configured"|"set_reg_m" ->
      Econs (Evar (id "proc", typeof_proc),explst es)
   | _ -> explst es
+
+and implicit_type = function
+  |"ConditionPassed" -> 
+     Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I32,Unsigned),Tnil)),Tint (I8,Unsigned))
+  |_ -> Tvoid
 ;;
 
 (* transformation from pseudocode instruction to CompcertC statement*)
@@ -326,38 +381,6 @@ and explst = function
   |h::t -> Econs (exp_trans h,explst t)
 ;;
 
-(*Global and local variables and their types of a pseudocode program *)
-let type_of_var = function
-
-  | "S" | "L" | "mmod" | "F" | "I" | "A" | "R" | "x" | "y" | "X" | "U" | "W"
-  | "shifter_carry_out" | "E" -> Tint (I8, Unsigned)
-      
-  | "n" | "d" | "m" | "s" | "dHi" | "dLo" | "imod" | "immed_8" | "rotate_imm"
-  | "field_mask" | "shift_imm" | "sat_imm" | "rotate" | "cp_num"
-  | "immedH" | "immedL" | "offset_8" | "shift" 
-  | "opcode_1" | "opcode_2" | "CRn" | "CRm" -> Tint (I8, Unsigned)
-
-  | "cond" -> Tint (I32, Signed)
-  | "old_mode" | "mode" -> Tint (I32, Signed)
-  | "accvalue" | "result" | "value" -> Tint (I32, Unsigned)
-  | _ -> Tint (I32, Unsigned)
-
-module G = struct
-
-  type typ = Csyntax.coq_type;;
-
-  let global_type = type_of_var;;
-
-  let local_type s _ = type_of_var s
-
-  let rec explicit_annot_type ty _ = typ_trans ty
-  
-  let case_type = Tint (I32, Unsigned);;
-
-end;;
-
-module V = Ast.Make(G);;
-
 let var_id l =
   let rec aux = function
     | [] -> []
@@ -366,14 +389,32 @@ let var_id l =
         :: aux t
   in aux l;;
 
+(*declaration for loading old_R *)
+let rec oldr_decl rs st =
+  let aux r =
+  Sdo (Eassign (Evar (id ("old_R"^r),Tint (I32,Unsigned)),
+                Ecall (Evar (id "reg",Tint (I32,Unsigned)),
+                       Econs (Evar (id "proc",typeof_proc), 
+                       Econs (Evar (id r,Tint (I32,Unsigned)), Enil)),
+                       Tint (I32,Unsigned)),Tint(I32,Unsigned)))
+  in match rs with
+    | [] -> st
+    | r::rs -> Ssequence (aux r, oldr_decl rs st)
+;;
+
 (*pseudocode instruction to clight function*)
 let fn_trans p = 
   let gs, ls = V.vars p.pinst in
-  let ls_id = var_id ls and gs_id = var_id gs in
+  let ls_id = var_id ls in
+  let gs_id = var_id gs in
+  let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
+  let old_r =  List.filter (fun x -> List.mem x input_registers) ss in
+  let fvar = 
+    (List.map (fun x->Coq_pair (id ("old_R"^x),Tint (I32,Unsigned))) old_r)@ls_id in
   {fn_return = Tvoid;
-   fn_params = gs_id;
-   fn_vars = ls_id;
-   fn_body = stm_trans (p.pinst)};;
+   fn_params = (Coq_pair (id "proc",Tpointer (typeof_proc)))::gs_id;
+   fn_vars = fvar;
+   fn_body = oldr_decl old_r (stm_trans (p.pinst))};;
 
 let fndef_trans p = Internal (fn_trans p);;
 

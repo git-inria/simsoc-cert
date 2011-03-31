@@ -291,7 +291,7 @@ let split_msr_code (ps: program): program =
           and reg_id = {p.pident with iname = "MSRreg"} in
             {p with pident = imm_id; pinst = imm} ::
               {p with pident = reg_id; pinst = reg} :: ps'
-      | [] -> raise (Failure "split_msr_code") in
+      | [] -> (*raise (Failure "split_msr_code") in*)[] in
   { ps with body = aux ps.body } ;;
 
 let lh_name (lh: lightheader) =
