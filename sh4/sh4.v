@@ -1,5 +1,6 @@
 (**
-SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
 Formalization of the SH4 architecture following the:
@@ -13,7 +14,7 @@ SH4 simulator.
 
 Set Implicit Arguments.
 
-Require Import Semantics Sh4_Config Simul Bitvec Sh4_Functions Message.
+Require Import Semantics Sh4_Config Simul Bitvec Sh4_Functions Sh4_Message.
 Import Sh4_Functions.Semantics.
 
 (****************************************************************************)
@@ -30,7 +31,7 @@ End C.
 
 Require sh4inst sh4dec.
 
-Module _Semantics <: SEMANTICS _Sh4 _Sh4_State.
+Module _Semantics <: SEMANTICS _Sh4 _Sh4_State _Sh4_Message.
   Definition semstate := semstate.
   Definition result := @result.
   Definition semfun := semfun.
@@ -42,13 +43,14 @@ Module _Semantics <: SEMANTICS _Sh4 _Sh4_State.
   Definition raise := @raise.
   Definition next := @next.
   Definition add_exn := add_exn.
+  Module Decoder_result := Decoder_result.
 End _Semantics.
 
-Module _Functions <: FUNCTIONS _Sh4.
-  Definition next := @Sh4_Functions.Decoder.next message.
+Module _Functions <: FUNCTIONS _Sh4 _Sh4_Message.
+  Definition next := @Sh4_Functions.Semantics.Decoder.next message.
 End _Functions.
 
-Module Import Simu := Simul.Make _Sh4 _Sh4_State _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+Module Import Simu := Simul.Make _Sh4 _Sh4_State _Sh4_Message _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
 (* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one. *)
 Module I <: INST.
   Definition inst : Type := sh4inst.inst.

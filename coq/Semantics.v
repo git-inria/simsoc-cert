@@ -6,7 +6,7 @@ See the COPYRIGHTS and LICENSE files.
 General semantic functions for interpreting pseudo-code constructions.
 *)
 
-Require Import Util Bitvec List Message ZArith String.
+Require Import Util Bitvec List ZArith String.
 
 Module Type PROC.
   Parameter exception : Type.
@@ -31,7 +31,34 @@ Module Type STATE (Import P : PROC).
   Parameter address_of_current_instruction : state -> word.
 End STATE.
 
-Module Make (Import P : PROC) (Import S : STATE P).
+Module Type MESSAGE.
+  Parameter message : Type.
+
+  Parameter ComplexSemantics : message.
+  Parameter InvalidInstructionSet : message.
+  Parameter DecodingReturnsUnpredictable : message.
+End MESSAGE.
+
+Module Decoder_result (Import M : MESSAGE).
+  (****************************************************************************)
+  (** decoding result type *)
+  (****************************************************************************)
+
+  Section decoder_result.
+    Variable inst : Type.
+
+    Inductive decoder_result : Type :=
+    | DecInst : inst -> decoder_result
+    | DecUnpredictable : decoder_result
+    | DecError : message -> decoder_result
+    | DecUndefined_with_num : nat -> decoder_result.
+
+    Notation DecUndefined := (DecUndefined_with_num 0).
+  End decoder_result.
+End Decoder_result.
+
+Module Make (Import P : PROC) (Import S : STATE P) (Import M : MESSAGE).
+  Module Export Decoder_result := Decoder_result M.
   (****************************************************************************)
   (** Semantic functions for pseudo-code constructions and processor
    ** with a list of variables*)
@@ -211,21 +238,3 @@ Module Make (Import P : PROC) (Import S : STATE P).
 
 End Make.
 
-
-(****************************************************************************)
-(** decoding result type *)
-(****************************************************************************)
-
-Section decoder_result.
-
-  Variable inst : Type.
-
-  Inductive decoder_result : Type :=
-  | DecInst : inst -> decoder_result
-  | DecUnpredictable : decoder_result
-  | DecError : message -> decoder_result
-  | DecUndefined_with_num : nat -> decoder_result.
-
-  Notation DecUndefined := (DecUndefined_with_num 0).
-
-End decoder_result.

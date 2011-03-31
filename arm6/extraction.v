@@ -1,5 +1,6 @@
 (**
-SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
 Formalization of the ARM architecture version 6 following the:
@@ -124,7 +125,6 @@ Require arm6.
 
 Extraction Library Bitvec.
 Extraction Library Util.
-Extraction Library Message.
 Extraction Library Semantics.
 Extraction Library Simul.
 
@@ -137,6 +137,7 @@ Extraction Library Arm_SCC.
 Extraction Library Arm_State.
 Extraction Library Arm_Exception.
 Extraction Library Arm_Functions.
+Extraction Library Arm_Message.
 
 Extraction Library arm6.
 Extraction Library arm6dec.

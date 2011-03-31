@@ -1,14 +1,15 @@
 (**
-SimSoC-Cert, a Coq library on processor architectures for embedded systems.
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
-Formalization of the ARM architecture version 6 following the:
+Formalization of the SH4 architecture following the:
 
-ARM Architecture Reference Manual, Issue I, July 2005.
+SH-4, Software Manual, Renesas 32-Bit RISC, Rev.6.00 2006.09
 
-Page numbers refer to ARMv6.pdf.
+Page numbers refer to Renesas_SH4_2006.pdf.
 
-Extraction of the arm6 simulator.
+Extraction of the sh4 simulator.
 *)
 
 Require Iteration.
@@ -112,7 +113,6 @@ Require Simul.
 
 Extraction Library Bitvec.
 Extraction Library Util.
-Extraction Library Message.
 Extraction Library Semantics.
 Extraction Library Simul.
 
@@ -126,6 +126,7 @@ Extraction Library Sh4_Proc.
 Extraction Library Sh4_State.
 (*Extraction Library Sh4_Exception.*)
 Extraction Library Sh4_Functions.
+Extraction Library Sh4_Message.
 
 Extraction Library sh4.
 Extraction Library sh4dec.

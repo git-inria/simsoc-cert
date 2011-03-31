@@ -3,7 +3,7 @@
 
 DIR := ../..
 
-FILES := Config Functions Proc State
+FILES := Message Config Functions Proc State
 
 VFILES := Sh4.v $(FILES:%=Sh4_%.v)
 

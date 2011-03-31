@@ -8,10 +8,10 @@ Coq functor building a simulator given the semantics of instructions
 
 Set Implicit Arguments.
 
-Require Import Bitvec Semantics Message.
+Require Import Bitvec Semantics.
 Require Recdef.
 
-Module Type SEMANTICS (Import P : PROC) (Import S : STATE P).
+Module Type SEMANTICS (Import P : PROC) (Import S : STATE P) (Import M : MESSAGE).
   Parameter semstate : Set.
   Parameter result : Type -> Type.
   Definition semfun A := semstate -> @result A.
@@ -24,31 +24,32 @@ Module Type SEMANTICS (Import P : PROC) (Import S : STATE P).
   Parameter raise : forall A : Type, message -> semfun A.
   Parameter next : forall A B : Type, semfun A -> semfun B -> semfun B.
   Parameter add_exn : exception -> semfun unit.
+  Module Export Decoder_result := Decoder_result M.
 End SEMANTICS.
 
-Module Type FUNCTIONS (Import P : PROC).
+Module Type FUNCTIONS (Import P : PROC) (Import M : MESSAGE).
   Parameter next : forall A, (message -> A) -> A -> instruction_set -> A.
+
+(*  Module Export D := Decoder_result M.*)
 End FUNCTIONS.
 
 (****************************************************************************)
 (** functor building a simulator *)
 (****************************************************************************)
 
-Module Make (Import P : PROC) (Import S : STATE P) (Import Sem : SEMANTICS P S) (F : FUNCTIONS P).
-
-  (****************************************************************************)
-  (** types and functions necessary for building a simulator *)
-  (****************************************************************************)
-
-  Notation "'do_then' A ; B" := (next A B)
-    (at level 200 , A at level 100 , B at level 200).
-
+Module Make (Import P : PROC) (Import S : STATE P) (Import M : MESSAGE) (Import Sem : SEMANTICS P S M) (F : FUNCTIONS P M).
   Module Type INST.
     Variable inst : Type.
     Variable step : inst -> semfun unit.
     Variable decode : word -> decoder_result inst.
     Variable handle_exception : semfun unit.
   End INST.
+  (****************************************************************************)
+  (** types and functions necessary for building a simulator *)
+  (****************************************************************************)
+
+  Notation "'do_then' A ; B" := (next A B)
+    (at level 200 , A at level 100 , B at level 200).
 
   Record simul_state := mk_simul_state
     { semst : semstate

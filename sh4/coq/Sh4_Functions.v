@@ -1,5 +1,6 @@
 (**
-SimSoC-Cert, a toolkit for generating certified processor simulators
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
 See the COPYRIGHTS and LICENSE files.
 
 Formalization of the SH4 architecture following the:
@@ -12,7 +13,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Sh4 Integers Sh4_State Semantics Message.
+Require Import Coqlib Util Bitvec Sh4 Integers Sh4_State Semantics Sh4_Message.
 
 Module Semantics.
   Module _Sh4 <: PROC.
@@ -35,7 +36,14 @@ Module Semantics.
     Definition address_of_current_instruction := address_of_current_instruction.
   End _Sh4_State.
 
-  Module Export S := Semantics.Make _Sh4 _Sh4_State. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+  Module _Sh4_Message <: MESSAGE.
+    Definition message := message.
+    Definition ComplexSemantics := ComplexSemantics.
+    Definition InvalidInstructionSet := InvalidInstructionSet.
+    Definition DecodingReturnsUnpredictable := DecodingReturnsUnpredictable.
+  End _Sh4_Message.
+
+  Module Export S := Semantics.Make _Sh4 _Sh4_State _Sh4_Message. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
 
   Definition Delay_Slot : word -> semfun unit := fun _ => todo ComplexSemantics.
   Definition if_is_dirty_block_then_write_back : word -> semfun unit := fun _ => todo ComplexSemantics.
@@ -63,8 +71,9 @@ Module Semantics.
   Definition incr_PC lbs' := 
     let s := st lbs' in
     ok_semstate tt (loc lbs') (bo lbs') (_Sh4_State.set_reg s PC (add (reg_content s PC) (repr (if (bo lbs') then 4 else 8)))).
+
+  Module Decoder.
+    Definition next {A B} (_: A -> B) (f_ok : B) (_ : instruction_set) := f_ok.
+  End Decoder.
 End Semantics.
 
-Module Decoder.
-  Definition next {A B} (_: A -> B) (f_ok : B) (_ : instruction_set) := f_ok.
-End Decoder.

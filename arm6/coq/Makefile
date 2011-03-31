@@ -3,7 +3,7 @@
 
 DIR := ../..
 
-FILES := Config Functions SCC Exception Proc State
+FILES := Message Config Functions SCC Exception Proc State
 
 VFILES := Arm.v $(FILES:%=Arm_%.v)
 

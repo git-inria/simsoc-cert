@@ -13,7 +13,7 @@ Page numbers refer to ARMv6.pdf.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Arm Integers Message Arm_State Semantics.
+Require Import Coqlib Util Bitvec Arm Integers Arm_Message Arm_State Semantics.
 
 (****************************************************************************)
 (** Functions used in the pseudocode, in alphabetical order. *)
@@ -439,7 +439,14 @@ Module Semantics.
     Definition address_of_current_instruction := address_of_current_instruction.
   End _Arm_State.
 
-  Module Export S := Semantics.Make _Arm _Arm_State. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
+  Module _Arm_Message <: MESSAGE.
+    Definition message := message.
+    Definition ComplexSemantics := ComplexSemantics.
+    Definition InvalidInstructionSet := InvalidInstructionSet.
+    Definition DecodingReturnsUnpredictable := DecodingReturnsUnpredictable.
+  End _Arm_Message.
+
+  Module Export S := Semantics.Make _Arm _Arm_State _Arm_Message. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
 
   Definition if_CurrentModeHasSPSR {A} (f : exn_mode -> semfun A) : semfun A :=
     fun lb_s => 
@@ -478,45 +485,47 @@ Module Semantics.
   Definition incr_PC lbs' := 
     let s := st lbs' in
     ok_semstate tt (loc lbs') (bo lbs') (_Arm_State.set_reg s PC (add (reg_content s PC) (repr (if (bo lbs') then 4 else 8)))).
+
+  Module Decoder.
+
+    Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
+      @decoder_result inst :=
+      match condition w with
+        | Some oc => DecInst _ (g oc)
+        | None => @DecUndefined_with_num inst 1
+      end.
+
+    Definition decode_cond_mode (mode : Type) (f : word -> @decoder_result mode)
+      (w : word) (inst : Type) (g : mode -> opcode -> inst) :
+      @decoder_result inst :=
+      match condition w  return @decoder_result inst with
+        | Some oc =>
+          match f w return @decoder_result inst with
+            | DecInst i => DecInst _ (g i oc)
+            | DecError m => @DecError inst m
+            | DecUnpredictable => @DecUnpredictable inst
+            | DecUndefined => @DecUndefined_with_num inst 2
+          end
+        | None => @DecUndefined_with_num inst 3
+      end. 
+
+    Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
+      (w : word) (inst : Type) (g : mode -> inst) :
+      decoder_result inst :=
+      match f w with
+        | DecInst i => DecInst _ (g i)
+        | DecError m => @DecError inst m
+        | DecUnpredictable => @DecUnpredictable inst
+        | DecUndefined => @DecUndefined_with_num inst 2
+      end.
+
+    Definition next {A} f_ko (f_ok : A) x := 
+      match x with
+        | Jazelle => f_ko JazelleInstructionSetNotImplemented
+        | Thumb => f_ko ThumbInstructionSetNotImplemented
+        | Arm => f_ok
+      end.
+  End Decoder.
+
 End Semantics.
 
-Module Decoder.
-
-  Definition decode_cond (w : word) (inst : Type) (g : opcode -> inst) :
-    @decoder_result inst :=
-    match condition w with
-      | Some oc => DecInst _ (g oc)
-      | None => @DecUndefined_with_num inst 1
-    end.
-
-  Definition decode_cond_mode (mode : Type) (f : word -> @decoder_result mode)
-    (w : word) (inst : Type) (g : mode -> opcode -> inst) :
-    @decoder_result inst :=
-    match condition w  return @decoder_result inst with
-      | Some oc =>
-        match f w return @decoder_result inst with
-          | DecInst i => DecInst _ (g i oc)
-          | DecError m => @DecError inst m
-          | DecUnpredictable => @DecUnpredictable inst
-          | DecUndefined => @DecUndefined_with_num inst 2
-        end
-      | None => @DecUndefined_with_num inst 3
-    end. 
-
-  Definition decode_mode (mode : Type) (f : word -> decoder_result mode)
-    (w : word) (inst : Type) (g : mode -> inst) :
-    decoder_result inst :=
-    match f w with
-      | DecInst i => DecInst _ (g i)
-      | DecError m => @DecError inst m
-      | DecUnpredictable => @DecUnpredictable inst
-      | DecUndefined => @DecUndefined_with_num inst 2
-    end.
-
-  Definition next {A} f_ko (f_ok : A) x := 
-    match x with
-      | Jazelle => f_ko JazelleInstructionSetNotImplemented
-      | Thumb => f_ko ThumbInstructionSetNotImplemented
-      | Arm => f_ok
-    end.
-End Decoder.

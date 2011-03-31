@@ -13,7 +13,7 @@ Exception handling. Step functions are taken from the generated file
 arm6exn.v. *)
 
 Require Import Arm_Config List ZArith Bitvec Arm Arm_SCC Arm_State
-  Arm_Functions Util Message.
+  Arm_Functions Util Arm_Message.
 Import Arm_Functions.Semantics.
 
 Definition set_cpsr_bits s0 p n v := 
