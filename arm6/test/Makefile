@@ -13,25 +13,20 @@ THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags $(C_FI
 
 ###
 
-COQC=coqc -q -noglob -I ../compcert/lib -R ../coq SimSoCCert
-COQEXEC=coqtop -q -I ../compcert/lib -R ../coq SimSoCCert
+DIR := ../..
+include $(DIR)/Makefile.common
 
-ifeq ($(VERBOSE),1)
-  SHOW := @true
-  HIDE :=
-else
-  SHOW := @echo
-  HIDE := @
-endif
+COQC=coqc -q -noglob -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq
+COQEXEC=coqtop -q -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq
 
 ###
 
 default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
-	$(SHOW) OCAMLBUILD test/debug
-	$(HIDE) cd .. && \
+	$(SHOW) OCAMLBUILD arm6/test/debug
+	$(HIDE) cd $(DIR) && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
-		test/debug.byte \
-		test/debug_finalize_bc
+		arm6/test/debug.byte \
+		arm6/test/debug_finalize_bc
 
 
 elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
@@ -43,11 +38,11 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	$(SHOW) COQC $<
 	$(HIDE) $(COQC) $<
 	$(SHOW) COQTOP $<
-	$(HIDE) (f=`basename $< .v` ; echo "Cd \"../extract/tmp\". Require Extraction $$f. Extraction Library $$f." | $(COQEXEC)) 2>&1 > /dev/null
+	$(HIDE) mkdir -p ../extraction && (f=`basename $< .v` ; echo "Cd \"../extraction\". Require Extraction $$f. Extraction Library $$f." | $(COQEXEC)) 2>&1 > /dev/null
 
-%.v: %.elf ../testgen/arm2coq
+%.v: %.elf $(DIR)/arm6/elf2coq/arm2coq
 	$(SHOW) ARM2COQ $< > $@
-	$(HIDE) ../testgen/arm2coq $< $@
+	$(HIDE) $(DIR)/arm6/elf2coq/arm2coq $< $@
 
 %_a.elf: %.c common.h
 	$(SHOW) ARM-ELF-GCC $< > $@
@@ -57,8 +52,8 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	$(SHOW) ARM-ELF-GCC $< > $@
 	$(HIDE) arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
-../testgen/arm2coq: FORCE
-	cd ../testgen/ && $(MAKE)
+$(DIR)/arm6/elf2coq/arm2coq: FORCE
+	cd $(DIR)/tools/bin2elf/ && $(MAKE)
 
 FORCE:
 

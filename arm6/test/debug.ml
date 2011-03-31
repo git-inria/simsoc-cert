@@ -9,7 +9,7 @@ open Bitvec
 open Datatypes
 
 let str_of_msg = 
-  let open Message in
+  let open Arm_Message in
   function
   | EmptyMessage -> "EmptyMessage"
   | ImpreciseDataAbort -> "ImpreciseDataAbort"
@@ -40,14 +40,14 @@ struct
   type state = Arm_State.state
 
 let simul lbs = 
-  let n = Camlcoq.camlint_of_nat (Arm6.Simul.nb_next lbs) in
-  Arm6.Simul.catch Arm6.S.simul (fun m lbs ->
-    let num = Arm6.Simul.nb_next lbs in
+  let n = Camlcoq.camlint_of_nat (Arm6.Simu.nb_next lbs) in
+  Arm6.Simu.catch Arm6.S.simul (fun m lbs ->
+    let num = Arm6.Simu.nb_next lbs in
     let step = string_of_int (n - Camlcoq.camlint_of_nat num) in
     failwith ("SimKo: " ^ str_of_msg m ^ " at step " ^ step)) lbs;;
 
 let next = 
-  Arm6.Simul.bind (fun lbs -> Arm6.Simul.SimOk ((), { lbs with Arm6.Simul.nb_next = n1 }))
+  Arm6.Simu.bind (fun lbs -> Arm6.Simu.SimOk ((), { lbs with Arm6.Simu.nb_next = n1 }))
     (fun () -> simul);;
 
 let (+) = Int32.add
@@ -75,16 +75,16 @@ let stack s =
     if (sp>stack_top) then Pervasives.raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4_l);;
 
-let return a lbs = Arm6.Simul.SimOk (a, lbs)
+let return a lbs = Arm6.Simu.SimOk (a, lbs)
 
 let mk_st state steps = 
-  { Arm6.Simul.semst = { Arm_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
+  { Arm6.Simu.semst = { Arm_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
 
-let get_st f x = f x.Arm6.Simul.semst.Arm_Functions.Semantics.S.st x
+let get_st f x = f x.Arm6.Simu.semst.Arm_Functions.Semantics.S.st x
 
 let check state steps expected name =
   try
-    ignore (Arm6.Simul.bind simul (fun () -> get_st (fun s -> 
+    ignore (Arm6.Simu.bind simul (fun () -> get_st (fun s -> 
       return (if reg s 0_l = expected then print_endline (name^" OK.")
         else (
           print_string ("Error in "^name^", r0 = ");
@@ -104,13 +104,13 @@ type hexa = Ox of int32;;
 let print_hexa f = function Ox n -> Format.fprintf f "0x%lx" n;;
 (*#install_printer print_hexa;;*)
 
-let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Simul.simul_semfun =
-  let rec aux : (int32 * hexa) list -> (int32 * hexa) list Arm6.Simul.simul_semfun = function
+let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Simu.simul_semfun =
+  let rec aux : (int32 * hexa) list -> (int32 * hexa) list Arm6.Simu.simul_semfun = function
     | (step, Ox pc) :: l' as l ->
       if Some step = max then return l
       else
-        Arm6.Simul.bind Arm6.Simul.conjure_up_true (fun () -> 
-        Arm6.Simul.bind next (fun () -> 
+        Arm6.Simu.bind Arm6.Simu.conjure_up_true (fun () -> 
+        Arm6.Simu.bind next (fun () -> 
         get_st (fun s' -> 
         let pc' = (reg s' 15_l) - 8_l in
         (if pc' = pc then return
@@ -121,7 +121,7 @@ let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Sim
     | _ -> Pervasives.raise (Failure "inside run function")
   in 
 
-  Arm6.Simul.bind (get_st (fun s0 -> aux [ (0_l, Ox ((reg s0 15_l) - 8_l))
+  Arm6.Simu.bind (get_st (fun s0 -> aux [ (0_l, Ox ((reg s0 15_l) - 8_l))
                                            ; (0_l, Ox ((reg s0 15_l) - 8_l))]))
     (fun l -> 
       get_st (fun sn -> return (regz sn 0_l, l)));;
@@ -181,6 +181,3 @@ let _ =
   (* check Simsoc_new1_a.initial_state 190505 255 "simsoc_new1"; *)
   (* check Sorting_a.initial_state 2487176 63 "sorting"; *)
   end
-
-let _ = (* this line with no OCaml side effect is here to be sure that ocamlbuild can compile the whole project with Sh4, without errors *)
-  Sh4dec.decode, Sh0.S.simul

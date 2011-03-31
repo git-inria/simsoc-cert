@@ -429,7 +429,7 @@ let is_addr_mode i (lh, _) = add_mode lh = DecMode i;;
 
 let decode b ps =
   (*print the import require*)
-  string b "open Bitvec\nopen Integers\nopen Message\nopen Simul\nopen Arm6inst\nopen Semantics\nopen Arm_Functions.Decoder\n";
+  string b "open Bitvec\nopen Integers\nopen Arm_Message\nopen Simul\nopen Arm6inst\nopen Semantics\nopen Arm_Functions.Semantics.Decoder\nopen Arm_Functions.Semantics.S.Decoder_result\n";
 
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
