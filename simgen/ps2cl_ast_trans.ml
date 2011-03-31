@@ -208,7 +208,7 @@ let rec exp_trans = function
             Econs (Evalof (exp_trans e,typeof (exp_trans e)), Enil)),Tint (I32,Unsigned))
   |Reg (e,Some m) ->
      Ecall (Evalof (Evar (id "reg_m",Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tcons (Tint (I8,Unsigned),Tnil))),Tint (I32,Unsigned))),
-                    ),
+                    Tfunction (Tcons (Tpointer typeof_proc,Tcons (Tint (I8,Unsigned),Tcons (Tint (I8,Unsigned),Tnil))),Tint (I32,Unsigned))),
             Econs (Evalof (Evar (id "proc",typeof_proc),typeof_proc), 
             Econs (Evalof (exp_trans e,typeof (exp_trans e)),
             Econs (Evalof (Evar (id (mode m),Tint (I32,Unsigned)),Tint (I32,Unsigned)),
@@ -219,7 +219,8 @@ let rec exp_trans = function
   |Fun (f,es)->
      Ecall (Evalof (Evar (id f,implicit_type f),(implicit_type f)),(implicit_arg es f),(implicit_type f))
   |CPSR->
-     Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
+     Ecall (Evalof (Evar (id "StatusRegister_to_uint32",Tfunction (Tcons (Tpointer typeof_sr,Tnil),Tint (I32,Unsigned))),
+                    Tfunction (Tcons (Tpointer typeof_sr,Tnil),Tint (I32,Unsigned))),
             Econs (Eaddrof (Efield (Evar (id "proc",typeof_proc),id "cpsr",typeof_sr),typeof_sr),Enil),Tint (I32,Unsigned))
   |SPSR None ->
      Ecall (Evar (id "StatusRegister_to_uint32",Tint (I32,Unsigned)),
