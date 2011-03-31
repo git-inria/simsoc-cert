@@ -26,7 +26,8 @@ main: extraction/RawCoq_Csyntax.ml
 extraction/RawCoq_Csyntax.ml: extraction extraction.v
 	$(SHOW) coqtop extraction.v
 	$(HIDE) $(COQTOP) extraction.v && \
-	sed -i '3063 s/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml # manual eta-expansion with Coq 8.3pl1
+	sed -i 's/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml # manual eta-expansion with Coq 8.3pl1
+        # REMARK as long as there is only one [Vector.to_list] in the file, it is allowed to not precise the line number (useful in the case this line changes often)
 
 extraction:
 	mkdir -p extraction

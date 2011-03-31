@@ -119,6 +119,19 @@ Module _AST.
       (_list _ (_prod _ _ _ident f_f) (prog_funct x)) 
       (_ident (prog_main x)) 
       (_list _ (_prod _ _ _ident (_globvar f_v)) (prog_vars x)).
+  Definition _program2 {A B C D E INIT_DATA GLOBVAR F V : Type}
+    (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
+    (_list : forall A, (A -> _) -> list A -> _)
+    (_list2 : forall A, (A -> _) -> list A -> _)
+    f_f (f_v : V -> E) 
+    _ident (_init_data : init_data -> INIT_DATA) (_globvar : _ -> _ -> GLOBVAR)
+    (f_mk : A -> B -> A -> D) 
+    (x : _ F V)
+    :=
+    f_mk
+      (_list _ (_prod _ _ _ident f_f) (prog_funct x)) 
+      (_ident (prog_main x)) 
+      (_list2 _ (_prod _ _ _ident (_globvar f_v)) (prog_vars x)).
 
   Definition _typ {A} := typ_rect (fun _ => A).
 
@@ -656,6 +669,7 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
   Parameter _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
   Parameter _list : forall A, (A -> t u) -> list A -> t u.
   Parameter _option : forall A, (A -> t u) -> option A -> t u.
+  Parameter map_stringTable : forall A, list A -> list (A * option S.t).
 End CONSTRUCTOR.
 
 Module Type CONSTRUCTOR_EXP (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
@@ -767,8 +781,24 @@ Definition _init_data := _init_data _int _float _Z _ident
 Module _AST.
   Definition _globvar {B} f_b := @_AST._globvar _ B _list _bool f_b _init_data
     {{ "gvar_info" ; "gvar_init" ; "gvar_readonly" ; "gvar_volatile" }}.
+(*
   Definition _program {B C} f_b f_c := @_AST._program _ B C _prod _list f_b f_c _ident _init_data _globvar
     {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
+*)
+  Definition _program_ : forall B C : Type, (B -> t u) -> (C -> t u) -> AST.program B C -> t u.
+  intros. eapply _AST._program2. eexact _prod. eexact _list.
+  cut (forall A : Type, (A -> S.t -> t u) -> list A -> t u).
+  intros. apply (X2 A). intros. refine (P.ret_u true (perform [_ ; indent ; _])). exact (print X6). apply P.eval. exact (true, (ret tt, ret tt), X3 X5).
+  exact X4.
+  intros. generalize (map_stringTable _ X3); intros.
+  apply (_list _ (fun (a_b : _ * _) => let (a, b) := a_b in X2 a b)).
+  refine (List.map _ X4).
+  intros (a, o). case_eq o ; intros. exact (a, "(*" ++ t0 ++ "*)"). exact (a, S.of_string "").
+  eexact X. eexact X0. exact _ident. eexact _init_data. exact _globvar. exact {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
+  trivial.
+  Defined.
+  Definition _program {B C} := _program_ B C.
+
   Definition _typ := _AST._typ
     ! "AST.Tint"
     ! "AST.Tfloat".
@@ -817,9 +847,8 @@ Definition _type_ T (ty : forall A : Type,
   ! (*"Fnil"*) "/** */"
   (*! "Fcons"*) (_U true (print "/* ") (ret tt) _ [| print " */ " ; perform [ print " ;" ; indent ] |] [| (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
 Definition _type := _type_ _ (@_type).
-(* _type : type -> t u ** 0 *)
 Definition _typelist := _type_ _ (@_typelist).
-(*_typelist : typelist -> t u ** 0*)
+
 Module Make (Import CE : CONSTRUCTOR_EXP S M P).
 Definition _unary_operation := _unary_operation 
   ! "Onotbool"
@@ -1153,6 +1182,8 @@ Definition _option : forall A, (A -> t u) -> option A -> t u.
   auto with *.
   exact (ret_u false (print "None")).
 Defined.
+
+Definition map_stringTable := U.map_stringTable.
 
 End Monad_list.
 
