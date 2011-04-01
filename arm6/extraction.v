@@ -107,15 +107,6 @@ Extraction Blacklist List String Int.
 Cd "extraction".
 
 Require arm6dec.
-Extract Constant arm6dec.decode_addr_mode1 => "Arm6mldec.decode_addr_mode1". 
-Extract Constant arm6dec.decode_addr_mode2 => "Arm6mldec.decode_addr_mode2". 
-Extract Constant arm6dec.decode_addr_mode3 => "Arm6mldec.decode_addr_mode3". 
-Extract Constant arm6dec.decode_addr_mode4 => "Arm6mldec.decode_addr_mode4". 
-Extract Constant arm6dec.decode_addr_mode5 => "Arm6mldec.decode_addr_mode5". 
-Extract Constant arm6dec.decode_unconditional => "Arm6mldec.decode_unconditional".
-Extract Constant arm6dec.decode_conditional => "Arm6mldec.decode_conditional".
-Extract Constant arm6dec.decode => "Arm6mldec.decode".
-
 Require Semantics.
 Extraction NoInline Arm_Functions.Semantics.if_CurrentModeHasSPSR.
 

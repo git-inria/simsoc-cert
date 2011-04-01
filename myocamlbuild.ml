@@ -106,8 +106,8 @@ let _ = dispatch & function
       List.iter (fun (n, l) -> define_context n l)
         [ "arm6", l_compcert @ [ "arm6/extraction" ]
         ; "arm6/parsing", [ "simgen" ]
-        ; "arm6/extraction", [ "arm6" ; "compcert/extraction" ; "simgen/extraction" ] 
-        ; "arm6/test", l_compcert @ [ "compcert/extraction" ; "simgen/extraction" ; "arm6/extraction" ]
+        ; "arm6/extraction", [ "compcert/extraction" ; "simgen/extraction" ] 
+        ; "arm6/test", l_compcert @ [ "arm6" ; "compcert/extraction" ; "simgen/extraction" ; "arm6/extraction" ]
         ; "simgen", l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]
         ; "simgen/extraction", [ "compcert/extraction" ]
         ; "sh4/parsing", [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ]

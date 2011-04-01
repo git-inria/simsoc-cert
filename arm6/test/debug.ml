@@ -31,11 +31,12 @@ let str_of_msg =
 
 module type TEST = 
 sig
-  type state 
-  val check : state -> int32 -> int32 -> string -> unit
+  val main : unit -> unit
 end
 
-module Arm_Test : TEST with type state = Arm_State.state =
+module type ARM6DEC = module type of Arm6dec
+
+module Arm_Test (Arm6dec : ARM6DEC) : TEST =
 struct
   type state = Arm_State.state
 
@@ -129,11 +130,8 @@ let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Sim
 let run s0 = run_opt None (mk_st s0 1_l);;
 let runmax s0 max = run_opt (Some max) (mk_st s0 1_l);;
 
-end
-
-
-let _ = 
-  let check f n1 n2 = Arm_Test.check f (Int32.of_int n1) (Int32.of_int n2) in
+let main () =
+  let check f n1 n2 = check f (Int32.of_int n1) (Int32.of_int n2) in
   begin
     check Arm_v6_QADD_a.initial_state 516 0x7ffff "arm_v6_QADD";
     check Arm_v6_QSUB_a.initial_state 790 0x3fffffff "arm_v6_QSUB";
@@ -181,3 +179,14 @@ let _ =
   (* check Simsoc_new1_a.initial_state 190505 255 "simsoc_new1"; *)
   (* check Sorting_a.initial_state 2487176 63 "sorting"; *)
   end
+
+end
+
+let _ = 
+  List.iter (fun (name, m) -> 
+    begin
+      Printf.printf "(* test of module %s *)\n%!" name; 
+      let module M = Arm_Test ((val m : ARM6DEC)) in M.main ();
+    end)
+    [ "arm6mldec", (module Arm6mldec : ARM6DEC)
+    ; "arm6dec", (module Arm6dec : ARM6DEC) ]
