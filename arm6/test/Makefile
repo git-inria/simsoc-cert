@@ -25,8 +25,8 @@ default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
 	$(SHOW) OCAMLBUILD arm6/test/debug
 	$(HIDE) cd $(DIR) && \
 	ocamlbuild -j 2 -no-hygiene -no-links \
-		arm6/test/debug.byte \
-		arm6/test/debug_finalize_bc
+		arm6/test/debug.native \
+		arm6/test/debug_finalize
 
 
 elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)

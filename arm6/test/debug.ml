@@ -31,7 +31,7 @@ let str_of_msg =
 
 module type TEST = 
 sig
-  val main : unit -> unit
+  val main : unit -> (string (* function name *) * float (* exectution time *)) list * float (* max execution time *) * float (* total time *)
 end
 
 module type ARM6DEC = module type of Arm6dec
@@ -132,61 +132,90 @@ let runmax s0 max = run_opt (Some max) (mk_st s0 1_l);;
 
 let main () =
   let check f n1 n2 = check f (Int32.of_int n1) (Int32.of_int n2) in
-  begin
-    check Arm_v6_QADD_a.initial_state 516 0x7ffff "arm_v6_QADD";
-    check Arm_v6_QSUB_a.initial_state 790 0x3fffffff "arm_v6_QSUB";
-    check Arm_v6_UQADD_a.initial_state 487 0x7FFFF "arm_v6_UQADD";
-    check Arm_v6_UQSUB_a.initial_state 760 0x3FFFFFFF "arm_v6_UQSUB";
-    check Arm_v6_USAT_a.initial_state 362 0xfff "arm_v6_USAT";
-    check Arm_v6_SHSUB_a.initial_state 205 63 "arm_v6_SHSUB";
-    check Arm_v6_USAD_a.initial_state 259 255 "arm_v6_USAD";
-    check Arm_v6_UA_a.initial_state 749 0x1FFFFFF "arm_v6_UA";
-    check Arm_v6_USUB_a.initial_state 638 0xfffff "arm_v6_USUB";
-    check Arm_v6_SML_a.initial_state 313 255 "arm_v6_SML";
-    check Arm_v6_SMM_a.initial_state 193 63 "arm_v6_SMM";
-    check Arm_v6_SMU_a.initial_state 991 0xFFFFFFF "arm_v6_SMU";
-    check Arm_v6_UXTA_a.initial_state 414 0x7FFF "arm_v6_UXTA";
-    check Arm_v6_UXTB_a.initial_state 411 0x7fff "arm_v6_UXTB";
-    check Arm_v6_SHADD_a.initial_state 205 63 "arm_v6_SHADD";
-    check Arm_v6_REV_a.initial_state 125 15 "arm_v6_REV";
-    check Arm_v6_SADD_a.initial_state 742 0x1FFFFFF "arm_v6_SADD";
-    check Arm_v6_SSUB_a.initial_state 638 0xfffff "arm_v6_SSUB";
-    check Arm_v6_SSAT_a.initial_state 632 0xfff "arm_v6_SSAT";
-    check Arm_v6_SSUB_a.initial_state 638 0xfffff "arm_v6_SSUB";
-    check Arm_v6_SXTA_a.initial_state 414 0x7fff "arm_v6_SXTA";
-    check Arm_v6_SXTB_a.initial_state 411 0x7fff "arm_v6_SXTB";
-    check Arm_v6_UMAAL_a.initial_state 207 0xff "arm_v6_UMAAL";
-    check Arm_v6_UH_a.initial_state 594 0x3ffff "arm_v6_UH";
-    check Arm_v6_SHADD_a.initial_state 205 63 "arm_v6_SHADD";
-    check Arm_v6_SHSUB_a.initial_state 205 63 "arm_v6_SHSUB";
-    check Arm_multiple_a.initial_state 227 0x1ff "arm_multiple";
-    check Arm_edsp_a.initial_state 679 8388607 "arm_edsp";
-    check Sum_iterative_a.initial_state 264 903 "sum_iterative";
-    check Sum_recursive_a.initial_state 740 903 "sum_recursive";
-    check Sum_direct_a.initial_state 18 903 "sum_direct";
-    check Arm_blx2_a.initial_state 26 3 "arm_blx2";
-    check Arm_cflag_a.initial_state 100 15 "arm_cflag";
-    check Arm_dpi_a.initial_state 964 524287 "arm_dpi";
-    check Arm_ldmstm_a.initial_state 119 7 "arm_ldmstm";
-    check Arm_ldrd_strd_a.initial_state 181 255 "arm_ldrd_strd";
-    check Arm_ldrstr_a.initial_state 486 0x7ffffff "arm_ldrstr";
-    check Arm_mrs_a.initial_state 727 0x7ffff "arm_mrs";
-    check Arm_msr_a.initial_state 639 0x1ffff "arm_msr";
-    check Arm_swi_a.initial_state 45 3 "arm_swi";
-    check Endian_a.initial_state 96 7 "endian";
-    check Multiply_a.initial_state 130 15 "multiply";
-    check Test_mem_a.initial_state 313 3 "test_mem";
-  (* check Simsoc_new1_a.initial_state 190505 255 "simsoc_new1"; *)
-  (* check Sorting_a.initial_state 2487176 63 "sorting"; *)
-  end
-
+  let l = 
+    [ check Arm_v6_QADD_a.initial_state 516 0x7ffff, "arm_v6_QADD"
+    ; check Arm_v6_QSUB_a.initial_state 790 0x3fffffff, "arm_v6_QSUB"
+    ; check Arm_v6_UQADD_a.initial_state 487 0x7FFFF, "arm_v6_UQADD"
+    ; check Arm_v6_UQSUB_a.initial_state 760 0x3FFFFFFF, "arm_v6_UQSUB"
+    ; check Arm_v6_USAT_a.initial_state 362 0xfff, "arm_v6_USAT"
+    ; check Arm_v6_SHSUB_a.initial_state 205 63, "arm_v6_SHSUB"
+    ; check Arm_v6_USAD_a.initial_state 259 255, "arm_v6_USAD"
+    ; check Arm_v6_UA_a.initial_state 749 0x1FFFFFF, "arm_v6_UA"
+    ; check Arm_v6_USUB_a.initial_state 638 0xfffff, "arm_v6_USUB"
+    ; check Arm_v6_SML_a.initial_state 313 255, "arm_v6_SML"
+    ; check Arm_v6_SMM_a.initial_state 193 63, "arm_v6_SMM"
+    ; check Arm_v6_SMU_a.initial_state 991 0xFFFFFFF, "arm_v6_SMU"
+    ; check Arm_v6_UXTA_a.initial_state 414 0x7FFF, "arm_v6_UXTA"
+    ; check Arm_v6_UXTB_a.initial_state 411 0x7fff, "arm_v6_UXTB"
+    ; check Arm_v6_SHADD_a.initial_state 205 63, "arm_v6_SHADD"
+    ; check Arm_v6_REV_a.initial_state 125 15, "arm_v6_REV"
+    ; check Arm_v6_SADD_a.initial_state 742 0x1FFFFFF, "arm_v6_SADD"
+    ; check Arm_v6_SSUB_a.initial_state 638 0xfffff, "arm_v6_SSUB"
+    ; check Arm_v6_SSAT_a.initial_state 632 0xfff, "arm_v6_SSAT"
+    ; check Arm_v6_SSUB_a.initial_state 638 0xfffff, "arm_v6_SSUB"
+    ; check Arm_v6_SXTA_a.initial_state 414 0x7fff, "arm_v6_SXTA"
+    ; check Arm_v6_SXTB_a.initial_state 411 0x7fff, "arm_v6_SXTB"
+    ; check Arm_v6_UMAAL_a.initial_state 207 0xff, "arm_v6_UMAAL"
+    ; check Arm_v6_UH_a.initial_state 594 0x3ffff, "arm_v6_UH"
+    ; check Arm_v6_SHADD_a.initial_state 205 63, "arm_v6_SHADD"
+    ; check Arm_v6_SHSUB_a.initial_state 205 63, "arm_v6_SHSUB"
+    ; check Arm_multiple_a.initial_state 227 0x1ff, "arm_multiple"
+    ; check Arm_edsp_a.initial_state 679 8388607, "arm_edsp"
+    ; check Sum_iterative_a.initial_state 264 903, "sum_iterative"
+    ; check Sum_recursive_a.initial_state 740 903, "sum_recursive"
+    ; check Sum_direct_a.initial_state 18 903, "sum_direct"
+    ; check Arm_blx2_a.initial_state 26 3, "arm_blx2"
+    ; check Arm_cflag_a.initial_state 100 15, "arm_cflag"
+    ; check Arm_dpi_a.initial_state 964 524287, "arm_dpi"
+    ; check Arm_ldmstm_a.initial_state 119 7, "arm_ldmstm"
+    ; check Arm_ldrd_strd_a.initial_state 181 255, "arm_ldrd_strd"
+    ; check Arm_ldrstr_a.initial_state 486 0x7ffffff, "arm_ldrstr"
+    ; check Arm_mrs_a.initial_state 727 0x7ffff, "arm_mrs"
+    ; check Arm_msr_a.initial_state 639 0x1ffff, "arm_msr"
+    ; check Arm_swi_a.initial_state 45 3, "arm_swi"
+    ; check Endian_a.initial_state 96 7, "endian"
+    ; check Multiply_a.initial_state 130 15, "multiply"
+    ; check Test_mem_a.initial_state 313 3, "test_mem"
+ (* ; check Simsoc_new1_a.initial_state 190505 255, "simsoc_new1" *)
+ (* ; check Sorting_a.initial_state 2487176 63, "sorting" *) ] in
+  let max_length = List.fold_left (fun m (_, s) -> max m (String.length s)) 0 l in
+  
+  List.fold_left (fun (acc, max_t, total) (f, s) -> 
+    let s = Printf.sprintf "%s%s" s (String.make (Pervasives.(-) max_length (String.length s)) ' ') in
+    let f_init = Unix.gettimeofday () in
+    let () = f s in
+    let t = Unix.gettimeofday () -. f_init in
+    (s, t) :: acc, max max_t t, total +. t) ([], min_float, 0.) l
 end
 
+open Printf
+
+let green = sprintf "\x1B\x5B32m%s\x1B\x5B39m"
+
 let _ = 
-  List.iter (fun (name, m) -> 
-    begin
-      Printf.printf "(* test of module %s *)\n%!" name; 
-      let module M = Arm_Test ((val m : ARM6DEC)) in M.main ();
-    end)
+  let l = 
     [ "arm6mldec", (module Arm6mldec : ARM6DEC)
-    ; "arm6dec", (module Arm6dec : ARM6DEC) ]
+    ; "arm6dec", (module Arm6dec : ARM6DEC) ] in
+
+  let [ n1, l1, t_max1
+      ; n2, l2, t_max2 ] = 
+    List.map (fun (name, m) -> 
+      let () = printf "(* test of module %s *)\n%!" name in 
+      let l, t_max, t_all = 
+        let module M = Arm_Test ((val m : ARM6DEC)) in M.main () in
+      let () = printf "(*   total : %.04f seconds *)\n%!" t_all in
+      name, List.rev l, t_max) l in
+
+  begin
+    List.iter (printf "%s ") [n1 ; n2];
+    printf "\n";
+    List.iter2 (
+      let f t_max = String.length (sprintf "%.04f" t_max) in
+      let t_max1, t_max2 = f t_max1, f t_max2 in
+      fun (s, t1) (_, t2) -> 
+        let i b0 t t_max = 
+          let s = sprintf "%.04f" t in
+          sprintf "%s%s" (String.make (t_max - (String.length s)) ' ') ((if t1 > t2 = b0 then green else fun x -> x) s) in
+        printf "%s %s %s\n" s (i false t1 t_max1) (i true t2 t_max2)
+    ) l1 l2;
+  end
