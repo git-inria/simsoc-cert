@@ -11,8 +11,14 @@ include $(DIR)/Makefile.common
 
 MAKECOQ := $(MAKE) -f Makefile.coq -r -j OTHERFLAGS='-dont-load-proofs'
 
+#############################################################################
+# default target
+
 default: Makefile.coq
 	$(MAKECOQ)
+
+#############################################################################
+# Makefile.coq: Makefile for compiling Coq files
 
 .PHONY: config
 .DELETE_ON_ERROR: Makefile.coq
@@ -20,12 +26,22 @@ config Makefile.coq:
 	$(SHOW) coq_makefile
 	$(HIDE) coq_makefile $(INCLUDES) $(VFILES) > Makefile.coq
 
+#############################################################################
+# cleaning
+
 clean::
 	$(MAKECOQ) clean
+	rm -f Makefile.coq
+
+#############################################################################
+# coq tags
 
 .PHONY: tags
 tags:
 	coqtags $(VFILES)
+
+#############################################################################
+# html documentation
 
 .PHONY: html
 html:
