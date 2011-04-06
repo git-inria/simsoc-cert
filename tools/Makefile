@@ -1,14 +1,17 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-SUBDIRS := bin2elf dependot
+DIR := ..
 
-.PHONY: default clean $(SUBDIRS)
+include $(DIR)/Makefile.common
+
+SUBDIRS := bin2elf dependot
 
 default: $(SUBDIRS)
 
+.PHONY: $(SUBDIRS)
 $(SUBDIRS):
 	$(MAKE) -C $@
 
-clean:
+clean::
 	@for d in $(SUBDIRS); do make -C $$d $@; done
