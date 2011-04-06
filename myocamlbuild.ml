@@ -38,7 +38,7 @@ open Ocamlbuild_plugin
 (** [ln_s] behaves as the previously defined [ln_s] except that a 'touch' to the destination file is done in the case it already exists. *)
 let ln_s src dest = 
   if Sys.file_exists dest then
-    Cmd (S [ A "touch" ; A "-h" ; P dest ])
+    Cmd (S [ A "touch" ; P dest ])
   else
     ln_s src dest
 
