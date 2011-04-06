@@ -1,17 +1,20 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-TARGETS := arm6 sh4
+DIR := .
 
-SUBDIRS := simgen $(TARGETS)
-
-.PHONY: default clean simgen $(TARGETS)
+include $(DIR)/Makefile.common
 
 default: simgen
 
-$(TARGETS) simgen:
+TARGETS := arm6 sh4
+
+.PHONY: simgen $(TARGETS)
+simgen $(TARGETS):
 	$(MAKE) -C $@
 
-clean:
+SUBDIRS := simgen $(TARGETS) coq tools
+
+clean::
 	ocamlbuild -clean
 	@for d in $(SUBDIRS); do make -C $$d $@; done
