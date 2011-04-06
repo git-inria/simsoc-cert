@@ -13,8 +13,11 @@ FILES := arm6inst.txt arm6inst.arm arm6inst.v \
 default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
 	arm6mldec.ml extraction #arm6exn.vo
 
-clean:
+SUBDIRS := parsing simlight simlight2 test coq elf2coq
+
+clean::
 	rm -rf extraction *.glob *.vo *.orig $(FILES) arm6.txt arm6syntax.txt
+	@for d in $(SUBDIRS); do make -C $$d $@; done
 
 .PRECIOUS: arm6.txt $(FILES)
 
