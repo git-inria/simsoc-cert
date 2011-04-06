@@ -5,13 +5,12 @@ DIR := ../..
 
 include $(DIR)/Makefile.common
 
-.PHONY: default clean check
-
 default: dependot
 
 dependot:
 	$(BUILD) tools/dependot/dependot
 
+.PHONY: check
 check: dependot exemple.dot
 	cmp exemple.dot exemple-ref.dot
 
@@ -21,5 +20,5 @@ check: dependot exemple.dot
 %.ps: %.dep
 	cat $< | ./dependot | dot -Tps > $@
 
-clean:
+clean::
 	rm -f dependot exemple.dot exemple.ps
