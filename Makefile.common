@@ -46,3 +46,6 @@ DEPENDOT := $(DIR)/tools/dependot/dependot
 build-dependot:
 	$(MAKE) -C $(DIR)/tools/dependot
 
+.PHONY: build-coq
+build-coq:
+	$(MAKE) -C $(DIR)/coq
