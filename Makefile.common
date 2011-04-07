@@ -62,6 +62,10 @@ clean::
 
 COQC := coqc -q $(COQ_INCLUDES) -noglob -dont-load-proofs
 
+%.vo: %.v:
+	$(SHOW) coqc $<
+	$(HIDE) $(COQC) $<
+
 ######################################################################
 # tools
 
