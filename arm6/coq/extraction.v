@@ -1,16 +1,14 @@
-(**
-SimSoC-Cert, a toolkit for generating certified processor simulators.
-
-See the COPYRIGHTS and LICENSE files.
-
-Formalization of the ARM architecture version 6 following the:
-
-ARM Architecture Reference Manual, Issue I, July 2005.
-
-Page numbers refer to ARMv6.pdf.
-
-Extraction of the arm6 simulator.
-*)
+(* *********************************************************************)
+(*                                                                     *)
+(*              The Compcert verified compiler                         *)
+(*                                                                     *)
+(*          Xavier Leroy, INRIA Paris-Rocquencourt                     *)
+(*                                                                     *)
+(*  Copyright Institut National de Recherche en Informatique et en     *)
+(*  Automatique.  All rights reserved.  This file is distributed       *)
+(*  under the terms of the INRIA Non-Commercial License Agreement.     *)
+(*                                                                     *)
+(* *********************************************************************)
 
 Require Iteration.
 Require Floats.
@@ -106,30 +104,40 @@ Extraction Blacklist List String Int.
 (* Go! *)
 Cd "extraction".
 
-Require arm6dec.
-Require Semantics.
-Extraction NoInline Arm_Functions.Semantics.if_CurrentModeHasSPSR.
+(**
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
+See the COPYRIGHTS and LICENSE files.
+
+Formalization of the ARM architecture version 6 following the:
+
+ARM Architecture Reference Manual, Issue I, July 2005.
+
+Page numbers refer to ARMv6.pdf.
+
+Extraction of the arm6 simulator.
+*)
+
+Require Arm6_Simul.
+
+Extraction NoInline Arm6_Functions.Semantics.if_CurrentModeHasSPSR.
 
 (*Print Extraction Inline.*)
-
-Require arm6.
 
 Extraction Library Bitvec.
 Extraction Library Util.
 Extraction Library Semantics.
 Extraction Library Simul.
 
-(* *)
+Extraction Library Arm6.
+Extraction Library Arm6_Config.
+Extraction Library Arm6_Proc.
+Extraction Library Arm6_SCC.
+Extraction Library Arm6_State.
+Extraction Library Arm6_Exception.
+Extraction Library Arm6_Functions.
+Extraction Library Arm6_Message.
+Extraction Library Arm6_Simul.
 
-Extraction Library Arm.
-Extraction Library Arm_Config.
-Extraction Library Arm_Proc.
-Extraction Library Arm_SCC.
-Extraction Library Arm_State.
-Extraction Library Arm_Exception.
-Extraction Library Arm_Functions.
-Extraction Library Arm_Message.
-
-Extraction Library arm6.
-Extraction Library arm6dec.
-Extraction Library arm6inst.
+Extraction Library Arm6_Dec.
+Extraction Library Arm6_Inst.
