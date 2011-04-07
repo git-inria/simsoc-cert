@@ -2,6 +2,9 @@
 # See the COPYRIGHTS and LICENSE files.
 
 # WARNING: requires DIR (relative path to root directory) to be defined
+# WARNING: default target is 'default'
+
+include $(DIR)/compcert/Makefile.config
 
 ifeq ($(VERBOSE),1)
   SHOW := @true
@@ -32,6 +35,30 @@ $(DIR)/compcert/Makefile.config:
 # C compiler
 
 CC := gcc
+
+######################################################################
+# extraction
+
+COMPCERT := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
+
+INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%) -I $(DIR)/coq
+
+COQTOP := coqtop -q -batch -load-vernac-source $(INCLUDES)
+
+.PHONY: extraction
+
+extraction: extraction.v
+	mkdir -p extraction
+	$(SHOW) coqtop $<
+	$(HIDE) $(COQTOP) $<
+
+clean::
+	rm -rf extraction
+
+######################################################################
+# Coq compiler
+
+COQC := coqc -q -noglob -dont-load-proofs $(INCLUDES)
 
 ######################################################################
 # tools
