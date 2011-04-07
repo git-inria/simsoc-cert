@@ -10,12 +10,12 @@ OCAMLBUILD := ocamlbuild -j 2 -no-hygiene -no-links
 ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode \
 		keepsyntax parsesyntax
 
+SH4_PARSING := instr
+
 TARGETS := simgen/main tools/dependot/dependot arm6/test/debug \
-	$(ARM6_PARSING:%=arm6/parsing/%)
+	$(ARM6_PARSING:%=arm6/parsing/%) $(SH4_PARSING:%=sh4/parsing/%)
 
-.PHONY: $(TARGETS)
-
-$(TARGETS):
+$(TARGETS): FORCE
 	$(SHOW) ocamlbuild $@
 	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native \
 		&& ln -f -s $(shell pwd)/_build/$@.native $@
