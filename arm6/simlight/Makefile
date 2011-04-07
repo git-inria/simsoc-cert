@@ -33,10 +33,10 @@ slv6_iss.c: slv6_iss.h
 ../arm6inst.arm ../arm6dec.dat: FORCE
 	$(MAKE) -C .. $(shell basename $@)
 
+simlight.opt: FORCE
+	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
+
 clean::
 	rm -f $(OBJECTS) slv6_iss.c slv6_iss.h \
               simlight simlight.opt *.gcda *.gcno
 	rm -rf simlight.opt.dSYM
-
-simlight.opt: FORCE
-	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
