@@ -10,7 +10,7 @@ OCAMLBUILD := ocamlbuild -j 2 -no-hygiene -no-links
 ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode \
 		keepsyntax parsesyntax
 
-TARGETS := simgen/main tools/dependot/dependot \
+TARGETS := simgen/main tools/dependot/dependot arm6/test/debug \
 	$(ARM6_PARSING:%=arm6/parsing/%)
 
 .PHONY: $(TARGETS)
