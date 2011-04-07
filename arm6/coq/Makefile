@@ -1,8 +1,6 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-DIR := ../..
-
 GENFILES := Arm6_Inst.v Arm6_Dec.v
 
 .PHONY: first
@@ -10,7 +8,18 @@ GENFILES := Arm6_Inst.v Arm6_Dec.v
 first: $(GENFILES) build-coq default
 
 ######################################################################
-# generate Arm6_Inst.v and Arm6_Dec.v
+# compile Coq files
+
+FILES := Message Config Functions SCC Exception Proc State Simul
+
+VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
+
+DIR := ../..
+
+include $(DIR)/Makefile.coq
+
+######################################################################
+# generate Coq files
 
 .DELETE_ON_ERROR: $(GENFILES)
 
@@ -25,15 +34,6 @@ Arm6_Dec.v: ../arm6dec.dat build-simgen
 
 clean::
 	rm -f $(GENFILES)
-
-######################################################################
-# compile all coq files
-
-FILES := Message Config Functions SCC Exception Proc State Simul
-
-VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
-
-include $(DIR)/Makefile.coq
 
 ######################################################################
 # extraction
