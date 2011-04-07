@@ -10,8 +10,10 @@ FILES := arm6inst.txt arm6inst.arm arm6inst.v \
 	arm6dec.txt arm6dec.dat arm6syntax.dat \
 	arm6dec.v arm6mldec.ml arm6test.elf
 
-default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
-	arm6mldec.ml extraction #arm6exn.vo
+#default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
+#	arm6mldec.ml extraction #arm6exn.vo
+
+default:
 
 SUBDIRS := parsing simlight simlight2 test coq elf2coq
 
@@ -31,6 +33,7 @@ arm6.txt: arm6.txt.gz
 # creation of arm6.txt.gz
 
 .PHONY: pdftotext
+
 pdftotext: arm6.pdf
 	pdftotext -layout $< arm6.txt && gunzip arm6.txt
 
@@ -39,9 +42,6 @@ pdftotext: arm6.pdf
 
 arm6inst.txt: arm6.txt arm6inst.patch
 	cp -a $< $@ && patch $@ < arm6inst.patch
-
-#arm6exn.txt: arm6.txt arm6exn.patch
-#	cp -a $< $@ && patch $@ < arm6exn.patch
 
 arm6dec.txt: arm6.txt arm6dec.patch
 	cp -a $< $@ && patch $@ < arm6dec.patch
@@ -64,43 +64,44 @@ patch-dec: arm6.txt arm6dec.txt
 patch-syntax: arm6.txt arm6syntax.txt
 	-diff -u $+ > arm6syntax.patch
 
-#.PHONY: patch-exn
-#patch-exn: arm6.txt arm6exn.txt
-#	-diff -u $+ > arm6exn.patch
-
 ###########################################################################
 # parsing
+
+.DELETE_ON_ERROR: arm6inst.arm
 
 arm6inst.arm: arm6inst.txt parsing/keepoper parsing/oneline_expr \
 		parsing/preproc_pseudo.sh parsing/indentation
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepoper | parsing/oneline_expr \
-		| parsing/preproc_pseudo.sh | parsing/indentation > $@ \
-		|| (rm -f $@; exit 1)
+		| parsing/preproc_pseudo.sh | parsing/indentation > $@
+
+.DELETE_ON_ERROR: arm6exn.arm
 
 arm6exn.arm: arm6exn.txt parsing/preproc_pseudo.sh
 	$(SHOW) generate $@ from $<
-	$(HIDE) cat $< | parsing/preproc_pseudo.sh > $@ \
-		|| (rm -f $@; exit 1)
+	$(HIDE) cat $< | parsing/preproc_pseudo.sh > $@
+
+.DELETE_ON_ERROR: arm6dec.dat
 
 arm6dec.dat: arm6dec.txt parsing/keepbincode parsing/parsebincode
 	$(SHOW) generate $@ from $<
-	$(HIDE) cat $< | parsing/keepbincode | parsing/parsebincode > $@ \
-		|| (rm -f $@; exit 1)
+	$(HIDE) cat $< | parsing/keepbincode | parsing/parsebincode > $@
+
+.DELETE_ON_ERROR: arm6syntax.dat
 
 arm6syntax.dat: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
 		parsing/blanks_syntax.sh
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepsyntax | parsing/blanks_syntax.sh \
-		| parsing/parsesyntax > $@ \
-		|| (rm -f $@; exit 1)
+		| parsing/parsesyntax > $@
 
 parsing/keepoper parsing/oneline_expr parsing/keepsyntax parsing/parsesyntax \
 	parsing/keepbincode parsing/parsebincode parsing/indentation:
 	$(MAKE) -C parsing `basename $@`
 
 .PHONY: testparsing
-testparsing: arm6inst.arm arm6dec.dat arm6syntax.dat arm6syntax.txt
+testparsing: arm6inst.arm arm6dec.dat arm6syntax.dat \
+		arm6inst.arm.ref arm6dec.dat.ref arm6syntax.dat.ref
 	md5sum arm6inst.arm.ref arm6inst.arm arm6dec.dat.ref arm6dec.dat \
 		arm6syntax.dat.ref arm6syntax.dat
 	diff arm6inst.arm.ref arm6inst.arm
@@ -110,45 +111,27 @@ testparsing: arm6inst.arm arm6dec.dat arm6syntax.dat arm6syntax.txt
 ###########################################################################
 # file generation using simgen
 
-.DELETE_ON_ERROR: arm6inst.v
-arm6inst.v: arm6inst.arm build-simgen
-	$(SIMGEN) -ipc $< -ocoq-inst > $@
-
-.DELETE_ON_ERROR: arm6exn.v
-arm6exn.v: arm6exn.arm build-simgen
-	$(SIMGEN) -ipc $< -ocoq-inst > $@
-
-.DELETE_ON_ERROR: arm6dec.v
-arm6dec.v: arm6dec.dat build-simgen
-	$(SIMGEN) -idec $< -ocoq-dec > $@
-
 .DELETE_ON_ERROR: arm6mldec.ml
+
 arm6mldec.ml: arm6dec.dat build-simgen
 	$(SIMGEN) -idec $< -oml-dec > $@
 
 .DELETE_ON_ERROR: arm6test.bin
+
 arm6test.bin: arm6dec.dat build-simgen
 	$(SIMGEN) -idec $< -otest > $@
 
-%.vo: %.v libcoq
-	$(SHOW) coqc $<
-	$(HIDE) coqc -q -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq $<
+#.DELETE_ON_ERROR: arm6inst.cpp
+#arm6inst.cpp: arm6inst.arm build-simgen
+#	$(SIMGEN) -ipc $< -ocpp > $@
 
-.PHONY: libcoq
-libcoq: build-coq
-	$(MAKE) -C $(DIR)/arm6/coq
+#.DELETE_ON_ERROR: arm6exn.cpp
+#arm6exn.cpp: arm6exn.arm build-simgen
+#	$(SIMGEN) -ipc $< -ocpp > $@
 
-.DELETE_ON_ERROR: arm6inst.cpp
-arm6inst.cpp: arm6inst.arm build-simgen
-	$(SIMGEN) -ipc $< -ocpp > $@
-
-.DELETE_ON_ERROR: arm6exn.cpp
-arm6exn.cpp: arm6exn.arm build-simgen
-	$(SIMGEN) -ipc $< -ocpp > $@
-
-.DELETE_ON_ERROR: arm6dec.cpp
-arm6dec.cpp: arm6dec.dat build-simgen
-	$(SIMGEN) -idec $< -ocpp > $@
+#.DELETE_ON_ERROR: arm6dec.cpp
+#arm6dec.cpp: arm6dec.dat build-simgen
+#	$(SIMGEN) -idec $< -ocpp > $@
 
 ###########################################################################
 # extraction
@@ -156,6 +139,7 @@ arm6dec.cpp: arm6dec.dat build-simgen
 include $(DIR)/compcert/Makefile.config
 
 DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
+
 INCLUDES := $(patsubst %,-I $(DIR)/compcert/%, $(DIRS))
 
 extraction: extraction.v
