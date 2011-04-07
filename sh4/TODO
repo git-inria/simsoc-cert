@@ -1,0 +1,8 @@
+
+- explain patch
+
+- Makefile: do patching like in ../arm6
+   (sh4inst.txt should be named sh4.txt.orig)
+
+- add a README file explaining what are the files sh4inst.txt and
+   sh4.dat and how they are generated
