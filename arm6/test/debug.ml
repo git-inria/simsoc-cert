@@ -34,21 +34,21 @@ sig
   val main : unit -> (string (* function name *) * float (* exectution time *)) list * float (* max execution time *) * float (* total time *)
 end
 
-module type ARM6DEC = module type of Arm6dec
+module type ARM6DEC = module type of Arm6_Dec
 
-module Arm_Test (Arm6dec : ARM6DEC) : TEST =
+module Arm_Test (Arm6_Dec : ARM6DEC) : TEST =
 struct
-  type state = Arm_State.state
+  type state = Arm6_State.state
 
 let simul lbs = 
-  let n = Camlcoq.camlint_of_nat (Arm6.Simu.nb_next lbs) in
-  Arm6.Simu.catch Arm6.S.simul (fun m lbs ->
-    let num = Arm6.Simu.nb_next lbs in
+  let n = Camlcoq.camlint_of_nat (Arm6_Simul.Simu.nb_next lbs) in
+  Arm6_Simul.Simu.catch Arm6_Simul.S.simul (fun m lbs ->
+    let num = Arm6_Simul.Simu.nb_next lbs in
     let step = string_of_int (n - Camlcoq.camlint_of_nat num) in
     failwith ("SimKo: " ^ str_of_msg m ^ " at step " ^ step)) lbs;;
 
 let next = 
-  Arm6.Simu.bind (fun lbs -> Arm6.Simu.SimOk ((), { lbs with Arm6.Simu.nb_next = n1 }))
+  Arm6_Simul.Simu.bind (fun lbs -> Arm6_Simul.Simu.SimOk ((), { lbs with Arm6_Simul.Simu.nb_next = n1 }))
     (fun () -> simul);;
 
 let (+) = Int32.add
@@ -67,7 +67,7 @@ let rec read_words s a n =
 
 (* current instruction *)
 let instr s =
-  Arm6dec.decode (Arm_State.read s (Arm_State.address_of_current_instruction s) Word);;
+  Arm6_Dec.decode (Arm_State.read s (Arm_State.address_of_current_instruction s) Word);;
 
 (* display the stack *)
 let stack s =
@@ -76,16 +76,16 @@ let stack s =
     if (sp>stack_top) then Pervasives.raise (Failure "stack pointer above stack")
     else read_words s sp ((stack_top-sp)/4_l);;
 
-let return a lbs = Arm6.Simu.SimOk (a, lbs)
+let return a lbs = Arm6_Simul.Simu.SimOk (a, lbs)
 
 let mk_st state steps = 
-  { Arm6.Simu.semst = { Arm_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
+  { Arm6_Simul.Simu.semst = { Arm_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
 
-let get_st f x = f x.Arm6.Simu.semst.Arm_Functions.Semantics.S.st x
+let get_st f x = f x.Arm6_Simul.Simu.semst.Arm_Functions.Semantics.S.st x
 
 let check state steps expected name =
   try
-    ignore (Arm6.Simu.bind simul (fun () -> get_st (fun s -> 
+    ignore (Arm6_Simul.Simu.bind simul (fun () -> get_st (fun s -> 
       return (if reg s 0_l = expected then print_endline (name^" OK.")
         else (
           print_string ("Error in "^name^", r0 = ");
@@ -105,13 +105,13 @@ type hexa = Ox of int32;;
 let print_hexa f = function Ox n -> Format.fprintf f "0x%lx" n;;
 (*#install_printer print_hexa;;*)
 
-let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Simu.simul_semfun =
-  let rec aux : (int32 * hexa) list -> (int32 * hexa) list Arm6.Simu.simul_semfun = function
+let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6_Simul.Simu.simul_semfun =
+  let rec aux : (int32 * hexa) list -> (int32 * hexa) list Arm6_Simul.Simu.simul_semfun = function
     | (step, Ox pc) :: l' as l ->
       if Some step = max then return l
       else
-        Arm6.Simu.bind Arm6.Simu.conjure_up_true (fun () -> 
-        Arm6.Simu.bind next (fun () -> 
+        Arm6_Simul.Simu.bind Arm6_Simul.Simu.conjure_up_true (fun () -> 
+        Arm6_Simul.Simu.bind next (fun () -> 
         get_st (fun s' -> 
         let pc' = (reg s' 15_l) - 8_l in
         (if pc' = pc then return
@@ -122,7 +122,7 @@ let run_opt (max : int32 option) : (BinInt.coq_Z * (int32 * hexa) list) Arm6.Sim
     | _ -> Pervasives.raise (Failure "inside run function")
   in 
 
-  Arm6.Simu.bind (get_st (fun s0 -> aux [ (0_l, Ox ((reg s0 15_l) - 8_l))
+  Arm6_Simul.Simu.bind (get_st (fun s0 -> aux [ (0_l, Ox ((reg s0 15_l) - 8_l))
                                            ; (0_l, Ox ((reg s0 15_l) - 8_l))]))
     (fun l -> 
       get_st (fun sn -> return (regz sn 0_l, l)));;
@@ -195,7 +195,7 @@ let green = sprintf "\x1B\x5B32m%s\x1B\x5B39m"
 let _ = 
   let l = 
     [ "arm6mldec", (module Arm6mldec : ARM6DEC)
-    ; "arm6dec", (module Arm6dec : ARM6DEC) ] in
+    ; "arm6dec", (module Arm6_Dec : ARM6DEC) ] in
 
   let [ n1, l1, t_max1
       ; n2, l2, t_max2 ] = 
