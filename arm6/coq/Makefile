@@ -10,7 +10,7 @@ GENFILES := arm6inst.v arm6dec.v
 
 .PHONY: first
 
-first: $(GENFILES) default
+first: $(GENFILES) build-coq default
 
 .DELETE_ON_ERROR: $(GENFILES)
 
