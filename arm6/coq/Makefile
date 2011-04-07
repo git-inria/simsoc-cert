@@ -3,14 +3,14 @@
 
 DIR := ../..
 
-######################################################################
-# first generate Arm6_Inst.v and Arm6_Dec.v
-
 GENFILES := Arm6_Inst.v Arm6_Dec.v
 
 .PHONY: first
 
 first: $(GENFILES) build-coq default
+
+######################################################################
+# generate Arm6_Inst.v and Arm6_Dec.v
 
 .DELETE_ON_ERROR: $(GENFILES)
 
@@ -27,7 +27,7 @@ clean::
 	rm -f $(GENFILES)
 
 ######################################################################
-# then, compile all coq files
+# compile all coq files
 
 FILES := Message Config Functions SCC Exception Proc State Simul
 
@@ -36,3 +36,8 @@ VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
 INCLUDES := -I $(DIR)/compcert/lib -I $(DIR)/coq
 
 include $(DIR)/Makefile.coq
+
+######################################################################
+# extraction
+
+extraction.v: Arm6_Simul.vo
