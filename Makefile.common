@@ -3,8 +3,10 @@
 
 # requires various variables to be defined:
 # - DIR: relative path to root directory
+# - COQ_INCLUDES: processor-specific directories
 # defines various variables: BUILD, CC, COQC
-# provides various targets: default, extraction, build-simgen, build-coq, otags
+# provides various targets: default, extraction, build-simgen, build-coq,
+#   otags and clean (with :: dependencies)
 
 include $(DIR)/compcert/Makefile.config
 
@@ -43,9 +45,9 @@ CC := gcc
 
 COMPCERT := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
-COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%) -I $(DIR)/coq
+DEFAULT_COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%) -I $(DIR)/coq
 
-COQTOP := coqtop -q $(COQ_INCLUDES) -batch -load-vernac-source
+COQTOP := coqtop -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -batch -load-vernac-source
 
 .PHONY: extraction
 
@@ -60,9 +62,9 @@ clean::
 ######################################################################
 # Coq compiler
 
-COQC := coqc -q $(COQ_INCLUDES) -noglob -dont-load-proofs
+COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -noglob -dont-load-proofs
 
-%.vo: %.v:
+%.vo: %.v
 	$(SHOW) coqc $<
 	$(HIDE) $(COQC) $<
 
