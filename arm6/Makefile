@@ -5,23 +5,17 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-FILES := arm6inst.txt arm6inst.arm arm6inst.v \
-	arm6exn.arm arm6exn.v \
-	arm6dec.txt arm6dec.dat arm6syntax.dat \
-	arm6dec.v arm6mldec.ml arm6test.elf
-
-#default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
-#	arm6mldec.ml extraction
-
 default:
+	@echo "do make in a subdirectory"
 
-SUBDIRS := parsing simlight simlight2 test coq elf2coq
+SUBDIRS := parsing simlight simlight2 coq elf2coq test
 
 clean::
-	rm -rf extraction *.glob *.vo *.orig $(FILES) arm6.txt arm6syntax.txt
+	rm -f *.dat *.orig *.arm \
+		arm6.txt arm6inst.txt arm6dec.txt arm6syntax.txt
 	@for d in $(SUBDIRS); do make -C $$d $@; done
 
-.PRECIOUS: arm6.txt $(FILES)
+.PRECIOUS: arm6.txt
 
 ###########################################################################
 # file decompression
@@ -98,37 +92,3 @@ arm6syntax.dat: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
 parsing/keepoper parsing/oneline_expr parsing/keepsyntax parsing/parsesyntax \
 	parsing/keepbincode parsing/parsebincode parsing/indentation:
 	$(MAKE) -C parsing `basename $@`
-
-.PHONY: testparsing
-testparsing: arm6inst.arm arm6dec.dat arm6syntax.dat \
-		arm6inst.arm.ref arm6dec.dat.ref arm6syntax.dat.ref
-	md5sum arm6inst.arm.ref arm6inst.arm arm6dec.dat.ref arm6dec.dat \
-		arm6syntax.dat.ref arm6syntax.dat
-	diff arm6inst.arm.ref arm6inst.arm
-	diff arm6dec.dat.ref arm6dec.dat
-	diff arm6syntax.dat.ref arm6syntax.dat
-
-###########################################################################
-# file generation using simgen
-
-.DELETE_ON_ERROR: arm6mldec.ml
-
-arm6mldec.ml: arm6dec.dat build-simgen
-	$(SIMGEN) -idec $< -oml-dec > $@
-
-.DELETE_ON_ERROR: arm6test.bin
-
-arm6test.bin: arm6dec.dat build-simgen
-	$(SIMGEN) -idec $< -otest > $@
-
-#.DELETE_ON_ERROR: arm6inst.cpp
-#arm6inst.cpp: arm6inst.arm build-simgen
-#	$(SIMGEN) -ipc $< -ocpp > $@
-
-#.DELETE_ON_ERROR: arm6exn.cpp
-#arm6exn.cpp: arm6exn.arm build-simgen
-#	$(SIMGEN) -ipc $< -ocpp > $@
-
-#.DELETE_ON_ERROR: arm6dec.cpp
-#arm6dec.cpp: arm6dec.dat build-simgen
-#	$(SIMGEN) -idec $< -ocpp > $@
