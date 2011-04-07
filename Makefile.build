@@ -1,11 +1,14 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-include Makefile.common
+DIR := .
+
+include $(DIR)/Makefile.common
 
 OCAMLBUILD := ocamlbuild -j 2 -no-hygiene -no-links
 
-ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode
+ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode \
+		keepsyntax parsesyntax
 
 TARGETS := simgen/main tools/dependot/dependot \
 	$(ARM6_PARSING:%=arm6/parsing/%)
