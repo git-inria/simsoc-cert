@@ -5,12 +5,8 @@ DIR := ../..
 
 include $(DIR)/Makefile.common
 
-.PHONY: default clean
+default:
+	$(BUILD) sh4/parsing/instr
 
-default: instr
-
-instr:
-	$(BUILD) sh4/parsing/$@
-
-clean:
+clean::
 	rm -f instr
