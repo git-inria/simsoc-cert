@@ -21,9 +21,11 @@ default: Makefile.coq
 # Makefile.coq: Makefile for compiling Coq files
 
 .PHONY: config
+
 .DELETE_ON_ERROR: Makefile.coq
+
 config Makefile.coq:
-	$(SHOW) coq_makefile
+	$(SHOW) generate Makefile.coq ...
 	$(HIDE) coq_makefile $(INCLUDES) $(VFILES) > Makefile.coq
 
 #############################################################################
@@ -37,6 +39,7 @@ clean::
 # coq tags
 
 .PHONY: tags
+
 tags:
 	coqtags $(VFILES)
 
@@ -44,6 +47,7 @@ tags:
 # html documentation
 
 .PHONY: html
+
 html:
 	mkdir -p html
 	coqdoc --html -toc -g -d html $(VFILES)
@@ -54,6 +58,7 @@ html:
 # dependency graph
 
 .PHONY: graphdep
+
 graphdep: graph.ps
 
 %.ps: %.dep build-dependot
@@ -64,9 +69,3 @@ graph.dep: $(VFILES)
 
 clean::
 	rm -f graph.ps graph.dep
-
-#############################################################################
-# other targets are passed to Makefile.coq
-
-%:
-	$(MAKECOQ) $@
