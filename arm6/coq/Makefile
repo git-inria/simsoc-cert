@@ -33,8 +33,6 @@ FILES := Message Config Functions SCC Exception Proc State Simul
 
 VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
 
-INCLUDES := -I $(DIR)/compcert/lib -I $(DIR)/coq
-
 include $(DIR)/Makefile.coq
 
 ######################################################################
