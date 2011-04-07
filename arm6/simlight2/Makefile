@@ -37,8 +37,6 @@ GENFILES_MO := slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
 
 GENFILES := $(GENFILES_MO) slv6_iss.c
 
-.PHONY: default clean
-
 default: simlight2
 
 simlight2: $(OBJECTS)
@@ -47,21 +45,16 @@ simlight2: $(OBJECTS)
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-$(GENFILES): $(SIMGEN) ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
+$(GENFILES): build-simgen ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
 	$(SIMGEN) -v -oc4dt slv6_iss -ipc ../arm6inst.arm \
 		-isyntax ../arm6syntax.dat -idec ../arm6dec.dat \
 		-iw weights.1
 
 $(GENFILES_MO): slv6_iss.c
 
-$(SIMGEN): FORCE
-	$(MAKE) -C $(DIR)/simgen
-
 ../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
 	$(MAKE) -C .. $(shell basename $@)
 
-clean:
+clean::
 	rm -f $(OBJECTS) $(GENFILES) simlight simlight.opt *.gcda *.gcno
 	rm -rf simlight.opt.dSYM
-
-FORCE:
