@@ -1,17 +1,13 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-# WARNING: requires DIR, VFILES and INCLUDES to be defined
+# requires Makefile.common prerequisites
 # requires various variables to be defined:
-# - DIR: relative path to root directory
 # - VFILES: list of Coq files to be compiled
-# provides various targets: default, config, clean, coqtags, graphdep
+# provides additional Coq-specific targets to Makefile.common:
+#   default, config, coqtags, graphdep
 
 include $(DIR)/Makefile.common
-
-.SUFFIXES:
-
-#LIBNAME := SimSoCCert
 
 MAKECOQ := $(MAKE) -f Makefile.coq -r -j OTHERFLAGS='-dont-load-proofs'
 
@@ -29,8 +25,8 @@ default: Makefile.coq
 .DELETE_ON_ERROR: Makefile.coq
 
 config Makefile.coq:
-	$(SHOW) generate Makefile.coq ...
-	$(HIDE) coq_makefile $(VFILES) > Makefile.coq
+	$(SHOW) generate Makefile.coq
+	$(HIDE) $(COQ_MAKEFILE) $(VFILES) > Makefile.coq
 
 #############################################################################
 # cleaning
