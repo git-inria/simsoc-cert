@@ -16,11 +16,11 @@ COQC := coqc -q -noglob -dont-load-proofs $(INCLUDES)
 # command for extracting OCaml files from Coq files
 COQTOP := coqtop -q $(INCLUDES) -batch -load-vernac-source
 
-.PHONY: default clean tags bintest
+default: extraction/RawCoq_Csyntax.ml main
 
-default: main
+.PHONY: main
 
-main: extraction/RawCoq_Csyntax.ml
+main:
 	$(BUILD) simgen/main
 
 extraction/RawCoq_Csyntax.ml: extraction extraction.v
@@ -34,11 +34,15 @@ extraction:
 
 extraction.v: RawCoq_Csyntax.vo
 
-clean:
-	rm -rf extraction *.vo
+clean::
+	rm -rf extraction RawCoq_Csyntax.vo main
+
+.PHONY: tags
 
 tags:
 	otags -sr '.mli' -r .
+
+.PHONY: bintest
 
 bintest:
 	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -obin-test > test.bin
