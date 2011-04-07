@@ -14,7 +14,7 @@ Processor state.
 
 Set Implicit Arguments.
 
-Require Import Arm Bitvec List Util.
+Require Import Arm6 Bitvec List Util.
 
 (*WARNING: invariant to preserve:
 

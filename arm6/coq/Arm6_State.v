@@ -15,13 +15,13 @@ shared memory. We do not handle virtual memory either. *)
 
 Set Implicit Arguments.
 
-Require Import Arm_Proc Arm Arm_SCC Bitvec List.
+Require Import Arm6_Proc Arm6 Arm6_SCC Bitvec List.
 
 Record state : Type := mk_state {
   (* Processor *)
-  proc : Arm_Proc.state;
+  proc : Arm6_Proc.state;
   (* System control coprocessor *)
-  scc : Arm_SCC.state
+  scc : Arm6_SCC.state
 }.
 
 (****************************************************************************)

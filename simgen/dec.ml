@@ -99,8 +99,8 @@ struct
   let word_size = string_of_int twenty_height
   let specific_uncond_inst _ = true
 
-  let prefix_proc = "Arm_"
-  let prefix_inst = "arm6inst"
+  let prefix_proc = "Arm6_"
+  let prefix_inst = "Arm6_Inst"
   let display_cond = true  
   let decode_body =
     [ "(w : word) : decoder_result inst :="

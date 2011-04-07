@@ -13,7 +13,8 @@ Page numbers refer to ARMv6.pdf.
 
 Set Implicit Arguments.
 
-Require Import Coqlib Util Bitvec Arm Integers Arm_Message Arm_State Semantics.
+Require Import Coqlib Util Bitvec Arm6 Integers Arm6_Message Arm6_State
+  Semantics.
 
 (****************************************************************************)
 (** Functions used in the pseudocode, in alphabetical order. *)
