@@ -21,42 +21,35 @@ ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
 THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags \
 	$(C_FILES)
 
-###
+FILES := $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
+	$(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
 
 default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
-	$(SHOW) OCAMLBUILD arm6/test/debug
-	$(HIDE) cd $(DIR) && \
-	ocamlbuild -j 2 -no-hygiene -no-links \
-		arm6/test/debug.native \
-		arm6/test/debug_finalize
+	$(BUILD) arm6/test/debug
 
+.PHONY: elf
 
 elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 
-.PRECIOUS: $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
-	   $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
+.PRECIOUS: $(FILES)
 
-%.vo: %.v
-	$(SHOW) COQC $<
-	$(HIDE) $(COQC) $<
-	$(SHOW) COQTOP $<
-	$(HIDE) mkdir -p ../extraction && (f=`basename $< .v` ; echo "Cd \"../extraction\". Require Extraction $$f. Extraction Library $$f." | $(COQTOP)) 2>&1 > /dev/null
+#%.vo: %.v
+#	$(SHOW) COQC $<
+#	$(HIDE) $(COQC) $<
+#	$(SHOW) COQTOP $<
+#	$(HIDE) mkdir -p ../extraction && (f=`basename $< .v` ; echo "Cd \"../extraction\". Require Extraction $$f. Extraction Library $$f." | $(COQTOP)) 2>&1 > /dev/null
 
-%.v: %.elf $(DIR)/arm6/elf2coq/arm2coq
-	$(SHOW) ARM2COQ $< > $@
-	$(HIDE) $(DIR)/arm6/elf2coq/arm2coq $< $@
+%.v: %.elf ../elf2coq/elf2coq
+	../elf2coq/elf2coq $< $@
 
 %_a.elf: %.c common.h
-	$(SHOW) ARM-ELF-GCC $< > $@
-	$(HIDE) arm-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
+	arm-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
 
 %_t.elf: %.c common.h
-	$(SHOW) ARM-ELF-GCC $< > $@
-	$(HIDE) arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
+	arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
-$(DIR)/arm6/elf2coq/arm2coq: FORCE
-	$(MAKE) -C $(DIR)/arm6/elf2coq
+../elf2coq/elf2coq: FORCE
+	$(MAKE) -C ../elf2coq
 
 clean::
-	rm -f $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
-	      $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
+	rm -f $(FILES)
