@@ -11,17 +11,18 @@ default:
 SUBDIRS := parsing simlight simlight2 coq elf2coq test
 
 clean::
-	rm -f *.dat *.orig *.arm \
-		arm6.txt arm6inst.txt arm6dec.txt arm6syntax.txt
 	@for d in $(SUBDIRS); do make -C $$d $@; done
-
-.PRECIOUS: arm6.txt
 
 ###########################################################################
 # file decompression
 
+.PRECIOUS: arm6.txt
+
 arm6.txt: arm6.txt.gz
 	gunzip -c $< > $@
+
+clean::
+	rm -f arm6.txt
 
 ###########################################################################
 # creation of arm6.txt.gz
@@ -43,18 +44,25 @@ arm6dec.txt: arm6.txt arm6dec.patch
 arm6syntax.txt: arm6.txt arm6syntax.patch
 	cp -a $< $@ && patch $@ < arm6syntax.patch
 
+clean::
+	rm -f arm6inst.txt arm6dec.txt arm6syntax.txt \
+		arm6inst.txt.orig arm6dec.txt.orig arm6syntax.txt.orig
+
 ###########################################################################
 # update patches
 
 .PHONY: patch-inst
+
 patch-inst: arm6.txt arm6inst.txt
 	-diff -u $+ > arm6inst.patch
 
 .PHONY: patch-dec
+
 patch-dec: arm6.txt arm6dec.txt
 	-diff -u $+ > arm6dec.patch
 
 .PHONY: patch-syntax
+
 patch-syntax: arm6.txt arm6syntax.txt
 	-diff -u $+ > arm6syntax.patch
 
@@ -68,12 +76,6 @@ arm6inst.arm: arm6inst.txt parsing/keepoper parsing/oneline_expr \
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepoper | parsing/oneline_expr \
 		| parsing/preproc_pseudo.sh | parsing/indentation > $@
-
-.DELETE_ON_ERROR: arm6exn.arm
-
-arm6exn.arm: arm6exn.txt parsing/preproc_pseudo.sh
-	$(SHOW) generate $@ from $<
-	$(HIDE) cat $< | parsing/preproc_pseudo.sh > $@
 
 .DELETE_ON_ERROR: arm6dec.dat
 
@@ -89,6 +91,13 @@ arm6syntax.dat: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
 	$(HIDE) cat $< | parsing/keepsyntax | parsing/blanks_syntax.sh \
 		| parsing/parsesyntax > $@
 
-parsing/keepoper parsing/oneline_expr parsing/keepsyntax parsing/parsesyntax \
-	parsing/keepbincode parsing/parsebincode parsing/indentation:
-	$(MAKE) -C parsing `basename $@`
+FILES := keepoper oneline_expr keepsyntax parsesyntax keepbincode \
+	parsebincode indentation
+
+PARSING := $(FILES:%=parsing/%)
+
+$(PARSING): FORCE
+	$(MAKE) -C parsing $(shell basename $@)
+
+clean::
+	rm -f arm6inst.arm arm6dec.dat arm6syntax.dat
