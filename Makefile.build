@@ -14,4 +14,5 @@ TARGETS := simgen/main tools/dependot/dependot \
 
 $(TARGETS):
 	$(SHOW) ocamlbuild $@
-	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native $@_finalize
+	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native \
+		&& ln -f -s $(shell pwd)/_build/$@.native $@
