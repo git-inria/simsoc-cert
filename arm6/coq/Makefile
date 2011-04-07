@@ -4,9 +4,9 @@
 DIR := ../..
 
 ######################################################################
-# first generate arm6inst.v and arm6dec.v
+# first generate Arm6_Inst.v and Arm6_Dec.v
 
-GENFILES := arm6inst.v arm6dec.v
+GENFILES := Arm6_Inst.v Arm6_Dec.v
 
 .PHONY: first
 
@@ -14,10 +14,10 @@ first: $(GENFILES) build-coq default
 
 .DELETE_ON_ERROR: $(GENFILES)
 
-arm6inst.v: ../arm6inst.arm build-simgen
+Arm6_Inst.v: ../arm6inst.arm build-simgen
 	$(SIMGEN) -ipc $< -ocoq-inst > $@
 
-arm6dec.v: ../arm6dec.dat build-simgen
+Arm6_Dec.v: ../arm6dec.dat build-simgen
 	$(SIMGEN) -idec $< -ocoq-dec > $@
 
 ../arm6inst.arm ../arm6dec.dat: FORCE
@@ -29,9 +29,9 @@ clean::
 ######################################################################
 # then, compile all coq files
 
-FILES := Message Config Functions SCC Exception Proc State
+FILES := Message Config Functions SCC Exception Proc State Simul
 
-VFILES := Arm.v $(FILES:%=Arm_%.v) $(GENFILES) Arm6_Simul.v
+VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
 
 INCLUDES := -I $(DIR)/compcert/lib -I $(DIR)/coq
 
