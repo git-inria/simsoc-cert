@@ -2,6 +2,10 @@
 # See the COPYRIGHTS and LICENSE files.
 
 # WARNING: requires DIR, VFILES and INCLUDES to be defined
+# requires various variables to be defined:
+# - DIR: relative path to root directory
+# - VFILES: list of Coq files to be compiled
+# provides various targets: default, config, clean, coqtags, graphdep
 
 include $(DIR)/Makefile.common
 
@@ -26,7 +30,7 @@ default: Makefile.coq
 
 config Makefile.coq:
 	$(SHOW) generate Makefile.coq ...
-	$(HIDE) coq_makefile $(INCLUDES) $(VFILES) > Makefile.coq
+	$(HIDE) coq_makefile $(VFILES) > Makefile.coq
 
 #############################################################################
 # cleaning
@@ -36,11 +40,11 @@ clean::
 	rm -f Makefile.coq
 
 #############################################################################
-# coq tags
+# coqtags
 
-.PHONY: tags
+.PHONY: coqtags
 
-tags:
+coqtags:
 	coqtags $(VFILES)
 
 #############################################################################
