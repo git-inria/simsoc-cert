@@ -1,8 +1,10 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-# WARNING: requires DIR (relative path to root directory) to be defined
-# WARNING: default target is 'default'
+# requires various variables to be defined:
+# - DIR: relative path to root directory
+# defines various variables: BUILD, CC, COQC
+# provides various targets: default, extraction, build-simgen, build-coq, otags
 
 include $(DIR)/compcert/Makefile.config
 
@@ -41,9 +43,9 @@ CC := gcc
 
 COMPCERT := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
 
-INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%) -I $(DIR)/coq
+COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%) -I $(DIR)/coq
 
-COQTOP := coqtop -q -batch -load-vernac-source $(INCLUDES)
+COQTOP := coqtop -q $(COQ_INCLUDES) -batch -load-vernac-source
 
 .PHONY: extraction
 
@@ -58,7 +60,7 @@ clean::
 ######################################################################
 # Coq compiler
 
-COQC := coqc -q -noglob -dont-load-proofs $(INCLUDES)
+COQC := coqc -q $(COQ_INCLUDES) -noglob -dont-load-proofs
 
 ######################################################################
 # tools
@@ -81,3 +83,11 @@ build-dependot:
 
 build-coq:
 	$(MAKE) -C $(DIR)/coq
+
+######################################################################
+# otags
+
+.PHONY: otags
+
+otags:
+	otags -sr '.mli' -r .
