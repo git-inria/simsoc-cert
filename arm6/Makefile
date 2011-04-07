@@ -11,7 +11,7 @@ FILES := arm6inst.txt arm6inst.arm arm6inst.v \
 	arm6dec.v arm6mldec.ml arm6test.elf
 
 #default: arm6inst.vo arm6syntax.dat arm6dec.vo arm6.vo \
-#	arm6mldec.ml extraction #arm6exn.vo
+#	arm6mldec.ml extraction
 
 default:
 
@@ -132,19 +132,3 @@ arm6test.bin: arm6dec.dat build-simgen
 #.DELETE_ON_ERROR: arm6dec.cpp
 #arm6dec.cpp: arm6dec.dat build-simgen
 #	$(SIMGEN) -idec $< -ocpp > $@
-
-###########################################################################
-# extraction
-
-include $(DIR)/compcert/Makefile.config
-
-DIRS := lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver
-
-INCLUDES := $(patsubst %,-I $(DIR)/compcert/%, $(DIRS))
-
-extraction: extraction.v
-	mkdir -p extraction
-	$(SHOW) coqtop extraction.v
-	$(HIDE) coqtop -q $(INCLUDES) -I $(DIR)/coq -I $(DIR)/arm6/coq -batch -load-vernac-source extraction.v
-
-extraction.v: arm6.vo
