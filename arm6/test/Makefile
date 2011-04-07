@@ -1,3 +1,12 @@
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+DIR := ../..
+
+COQ_INCLUDES := -I ../coq
+
+include $(DIR)/Makefile.common
+
 C_FILES := sum_iterative sum_recursive sum_direct endian multiply simsoc_new1 \
            test_mem sorting
 
@@ -9,15 +18,8 @@ ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
              arm_v6_SXTB arm_v6_UMAAL arm_v6_UH arm_v6_UQSUB arm_v6_USAD  \
              arm_v6_USAT arm_v6_UXTA arm_v6_UXTB $(C_FILES)
 
-THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags $(C_FILES)
-
-###
-
-DIR := ../..
-include $(DIR)/Makefile.common
-
-COQC=coqc -q -noglob -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq
-COQEXEC=coqtop -q -I $(DIR)/compcert/lib -I $(DIR)/coq -I $(DIR)/arm6/coq
+THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags \
+	$(C_FILES)
 
 ###
 
@@ -38,7 +40,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 	$(SHOW) COQC $<
 	$(HIDE) $(COQC) $<
 	$(SHOW) COQTOP $<
-	$(HIDE) mkdir -p ../extraction && (f=`basename $< .v` ; echo "Cd \"../extraction\". Require Extraction $$f. Extraction Library $$f." | $(COQEXEC)) 2>&1 > /dev/null
+	$(HIDE) mkdir -p ../extraction && (f=`basename $< .v` ; echo "Cd \"../extraction\". Require Extraction $$f. Extraction Library $$f." | $(COQTOP)) 2>&1 > /dev/null
 
 %.v: %.elf $(DIR)/arm6/elf2coq/arm2coq
 	$(SHOW) ARM2COQ $< > $@
@@ -55,8 +57,6 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 $(DIR)/arm6/elf2coq/arm2coq: FORCE
 	$(MAKE) -C $(DIR)/arm6/elf2coq
 
-FORCE:
-
-clean:
+clean::
 	rm -f $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
 	      $(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
