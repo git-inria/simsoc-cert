@@ -3,22 +3,22 @@
 
 DIR := ../..
 
-DIRELF := $(DIR)/tools/bin2elf
+include $(DIR)/Makefile.common
 
-CPPFLAGS := -I$(DIRELF) # for elf.h and elf_loader.hpp
+BIN2ELF := $(DIR)/tools/bin2elf
+
+CPPFLAGS := -I$(BIN2ELF) # for elf.h and elf_loader.hpp
 CXXFLAGS := -Wall -Wextra
 
-default: arm2coq
+default: elf2coq
 
-arm2coq: main.o $(DIRELF)/elf_loader.o
-	$(CXX) $^ $(LDFLAGS) -o $@
+elf2coq: main.o $(BIN2ELF)/elf_loader.o
+	$(CXX) $^ -o $@
 
-main.o: main.cpp $(DIRELF)/elf_loader.hpp
+main.o: main.cpp $(BIN2ELF)/elf_loader.hpp
 
-$(DIRELF)/elf_loader.hpp $(DIRELF)/elf_loader.o: FORCE
-	$(MAKE) -C $(DIRELF) $@
+$(BIN2ELF)/elf_loader.o: FORCE
+	$(MAKE) -C $(BIN2ELF) $@
 
-clean:
-	rm -f arm2coq *.o
-
-FORCE:
+clean::
+	rm -f elf2coq *.o
