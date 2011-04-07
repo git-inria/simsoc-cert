@@ -7,6 +7,4 @@ FILES := Bitvec Util Semantics Simul Extraction
 
 VFILES := $(FILES:%=%.v)
 
-INCLUDES := -I $(DIR)/compcert/lib
-
 include $(DIR)/Makefile.coq
