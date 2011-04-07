@@ -14,12 +14,3 @@ extraction.v: RawCoq_Csyntax.vo
 
 clean::
 	rm -f RawCoq_Csyntax.vo main
-
-
-.PHONY: bintest
-
-bintest:
-	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -obin-test > test.bin
-	./main -ipc ../arm6/arm6inst.arm -isyntax ../arm6/arm6syntax.dat -idec ../arm6/arm6dec.dat -s 1 -oasm-test test
-	../elf/bin2elf test.bin test.elf 
-	../simlight2/simlight -Adec ../simgen/test.elf | perl -p -e "s/[^\t]*\t//" | perl -p -e "s/CPY/MOV/" >tst.asm
