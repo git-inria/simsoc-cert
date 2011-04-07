@@ -1,13 +1,11 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
-- update arm6/test/Makefile
+- fixed Makefile
 
 - mv debug.ml in another more appropriate directory?
 
-- put all generated files (elf, v, vo) in arm6/extraction subdirectory?
-
-- suppress the output of coqtop during extraction
+- put all generated files (elf, v, vo) in a subdirectory?
 
 --------------------------------------------------------------------
 Test of the new ARMv6 instructions
