@@ -37,9 +37,9 @@ GENFILES_MO := slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
 
 GENFILES := $(GENFILES_MO) slv6_iss.c
 
-default: simlight2
+default: simlight
 
-simlight2: $(OBJECTS)
+simlight: $(OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o $@ $(LIBRARIES)
 
 %.o: %.c $(HEADERS)
@@ -54,6 +54,9 @@ $(GENFILES_MO): slv6_iss.c
 
 ../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
 	$(MAKE) -C .. $(shell basename $@)
+
+simlight.opt: FORCE
+	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
 
 clean::
 	rm -f $(OBJECTS) $(GENFILES) simlight simlight.opt *.gcda *.gcno
