@@ -30,8 +30,5 @@ patch-extraction: extraction
 
 extraction.v: RawCoq_Csyntax.vo
 
-zo:
-	$(COQDEP) extraction.v > extraction.v.d
-
 clean::
 	rm -f $(TARGETS) RawCoq_Csyntax.vo
