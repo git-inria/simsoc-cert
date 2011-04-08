@@ -5,7 +5,7 @@ GENFILES := Sh4_Inst.v Sh4_Dec.v
 
 .PHONY: first
 
-first: $(GENFILES) build-coq default
+first: $(GENFILES) libcoq default
 
 ######################################################################
 # compile Coq files

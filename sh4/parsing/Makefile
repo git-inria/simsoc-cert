@@ -5,8 +5,13 @@ DIR := ../..
 
 include $(DIR)/Makefile.common
 
-default:
-	$(BUILD) sh4/parsing/instr
+TARGETS := instr
+
+default: $(TARGETS)
+
+$(TARGETS): FORCE
+	$(SHOW) ocamlbuild sh4/parsing/$@
+	$(HIDE) $(OCAMLBUILD) sh4/parsing/$@.d.byte sh4/parsing/$@.native
 
 clean::
-	rm -f instr
+	rm -f $(TARGETS)

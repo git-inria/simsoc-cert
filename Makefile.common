@@ -27,11 +27,6 @@ start: default
 FORCE:
 
 ######################################################################
-# ocamlbuild
-
-BUILD := $(MAKE) -C $(DIR) -f Makefile.build
-
-######################################################################
 # configure
 
 $(DIR)/compcert/Makefile.config:
@@ -72,27 +67,39 @@ COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -noglob -dont-load-proof
 	$(SHOW) coqc $<
 	$(HIDE) $(COQC) $<
 
+.PHONY: libcoq
+
+libcoq:
+	$(MAKE) -C $(DIR)/coq
+
 ######################################################################
-# tools
+# ocamlbuild
+
+OCAMLBUILD := cd $(DIR) && ocamlbuild -j 2 -no-hygiene -no-links
+
+######################################################################
+# executables
 
 SIMGEN := $(DIR)/simgen/main
 
-.PHONY: build-simgen
-
-build-simgen:
+build-simgen: FORCE
 	$(MAKE) -C $(DIR)/simgen
 
 DEPENDOT := $(DIR)/tools/dependot/dependot
 
-.PHONY: build-dependot
-
-build-dependot:
+build-dependot: FORCE
 	$(MAKE) -C $(DIR)/tools/dependot
 
-.PHONY: build-coq
+ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode \
+		keepsyntax parsesyntax
 
-build-coq:
-	$(MAKE) -C $(DIR)/coq
+$(ARM6_PARSING:%=build-%): FORCE
+	$(MAKE) -C $(DIR)/arm6/parsing $(@:build-%=%)
+
+SH4_PARSING := instr
+
+$(SH4_PARSING:%=build-%): FORCE
+	$(MAKE) -C $(DIR)/sh4/parsing $(@:build-%=%)
 
 ######################################################################
 # otags

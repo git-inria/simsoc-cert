@@ -5,13 +5,13 @@ DIR := ../..
 
 include $(DIR)/Makefile.common
 
-default: dependot
-
-dependot:
-	$(BUILD) tools/dependot/dependot
+default:
+	$(SHOW) ocamlbuild tools/dependot/dependot
+	$(HIDE) $(OCAMLBUILD) tools/dependot/dependot.d.byte tools/dependot/dependot.native
 
 .PHONY: check
-check: dependot exemple.dot
+
+check: default exemple.dot
 	cmp exemple.dot exemple-ref.dot
 
 %.dot: %.dep

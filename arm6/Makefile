@@ -71,33 +71,25 @@ patch-syntax: arm6.txt arm6syntax.txt
 
 .DELETE_ON_ERROR: arm6inst.arm
 
-arm6inst.arm: arm6inst.txt parsing/keepoper parsing/oneline_expr \
-		parsing/preproc_pseudo.sh parsing/indentation
+arm6inst.arm: arm6inst.txt build-keepoper build-oneline_expr \
+		parsing/preproc_pseudo.sh build-indentation
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepoper | parsing/oneline_expr \
 		| parsing/preproc_pseudo.sh | parsing/indentation > $@
 
 .DELETE_ON_ERROR: arm6dec.dat
 
-arm6dec.dat: arm6dec.txt parsing/keepbincode parsing/parsebincode
+arm6dec.dat: arm6dec.txt build-keepbincode build-parsebincode
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepbincode | parsing/parsebincode > $@
 
 .DELETE_ON_ERROR: arm6syntax.dat
 
-arm6syntax.dat: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
+arm6syntax.dat: arm6syntax.txt build-keepsyntax build-parsesyntax \
 		parsing/blanks_syntax.sh
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepsyntax | parsing/blanks_syntax.sh \
 		| parsing/parsesyntax > $@
-
-FILES := keepoper oneline_expr keepsyntax parsesyntax keepbincode \
-	parsebincode indentation
-
-PARSING := $(FILES:%=parsing/%)
-
-$(PARSING): FORCE
-	$(MAKE) -C parsing $(shell basename $@)
 
 clean::
 	rm -f arm6inst.arm arm6dec.dat arm6syntax.dat

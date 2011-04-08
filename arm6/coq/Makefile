@@ -5,7 +5,7 @@ GENFILES := Arm6_Inst.v Arm6_Dec.v
 
 .PHONY: first
 
-first: $(GENFILES) build-coq default
+first: $(GENFILES) libcoq default
 
 ######################################################################
 # compile Coq files

@@ -11,7 +11,8 @@ TARGETS := keepoper indentation oneline_expr keepbincode parsebincode \
 default: $(TARGETS)
 
 $(TARGETS): FORCE
-	$(BUILD) arm6/parsing/$@
+	$(SHOW) ocamlbuild arm6/parsing/$@
+	$(HIDE) $(OCAMLBUILD) arm6/parsing/$@.d.byte arm6/parsing/$@.native
 
 clean::
 	rm -f $(TARGETS)

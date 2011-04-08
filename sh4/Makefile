@@ -49,8 +49,5 @@ patch-inst: sh4.txt sh4inst.txt
 ###########################################################################
 # parsing
 
-sh4.dat: sh4inst.txt parsing/instr
+sh4.dat: sh4inst.txt build-instr
 	cat sh4inst.txt | parsing/instr > $@
-
-parsing/instr: FORCE
-	$(MAKE) -C parsing
