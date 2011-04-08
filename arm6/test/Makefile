@@ -1,12 +1,6 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-DIR := ../..
-
-COQ_INCLUDES := -I $(DIR)/coq -I $(DIR)/arm6/coq
-
-include $(DIR)/Makefile.common
-
 C_FILES := sum_iterative sum_recursive sum_direct endian multiply simsoc_new1 \
            test_mem sorting
 
@@ -21,23 +15,10 @@ ARM_FILES := arm_blx2 arm_cflag arm_dpi arm_edsp arm_ldrd_strd arm_ldmstm \
 THUMB_FILES := thumb_test thumb_v6 thumb_v6_SXUX thumb_v6_REV thumb_flags \
 	$(C_FILES)
 
-FILES := $(ARM_FILES:%=%_a.v) $(ARM_FILES:%=%_a.vo) $(ARM_FILES:%=%_a.elf) \
-	$(THUMB_FILES:%=%_t.v) $(THUMB_FILES:%=%_t.vo) $(THUMB_FILES:%=%_t.elf)
+default: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 
-default: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo) extraction.v extraction
-	$(BUILD) arm6/test/debug
-
-.PHONY: elf
-
-elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
-
-.PRECIOUS: $(FILES)
-
-extraction.v: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
-	(echo 'Cd "extraction".'; for i in $(ARM_FILES:%=%_a) $(THUMB_FILES:%=%_t); do echo "Require Extraction $$i. Extraction Library $$i."; done) > $@
-
-%.v: %.elf ../elf2coq/elf2coq
-	../elf2coq/elf2coq $< $@
+######################################################################
+# generation of elf files
 
 %_a.elf: %.c common.h
 	arm-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
@@ -45,8 +26,34 @@ extraction.v: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
 %_t.elf: %.c common.h
 	arm-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
+clean::
+	rm -f $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
+
+######################################################################
+# checking Coq simulator
+
+DIR := ../..
+
+COQ_INCLUDES := -I $(DIR)/coq -I $(DIR)/arm6/coq
+
+include $(DIR)/Makefile.common
+
+.PHONY: check-coq
+
+check-coq: default extraction
+	$(OCAMLBUILD) arm6/test/debug
+
+extraction.v: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
+	$(SHOW) generate $@
+	$(HIDE) (echo 'Cd "extraction".'; for i in $(ARM_FILES:%=%_a) $(THUMB_FILES:%=%_t); do echo "Require Extraction $$i. Extraction Library $$i."; done) > $@
+
+%.v: %.elf ../elf2coq/elf2coq
+	../elf2coq/elf2coq $< $@
+
 ../elf2coq/elf2coq: FORCE
 	$(MAKE) -C ../elf2coq
 
 clean::
-	rm -f $(FILES)
+	rm -f extraction.v \
+		$(ARM_FILES:%=%_a.v) $(THUMB_FILES:%=%_t.v) \
+		$(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
