@@ -2,3 +2,5 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
 - check TODO files in subdirectories
+
+- Makefile clean: do it in papers subdir too
