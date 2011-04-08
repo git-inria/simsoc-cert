@@ -3,6 +3,8 @@
 
 DIR := ..
 
+COQ_INCLUDES := -I $(DIR)/coq
+
 include $(DIR)/Makefile.common
 
 TARGETS := main
