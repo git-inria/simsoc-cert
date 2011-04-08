@@ -1,6 +1,8 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
+- move run_test.sh in a more approriate place
+
 - (re)move target bintest in Makefile
 
 - keep only the really used code in CompCert_Driver.ml . Then we can :
