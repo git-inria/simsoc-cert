@@ -41,7 +41,8 @@ include $(DIR)/Makefile.common
 .PHONY: check-coq
 
 check-coq: default extraction
-	$(OCAMLBUILD) arm6/test/debug
+	$(SHOW) ocamlbuild arm6/test/debug
+	$(HIDE) $(OCAMLBUILD) arm6/test/debug.native
 
 extraction.v: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
 	$(SHOW) generate $@
