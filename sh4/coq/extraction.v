@@ -6,7 +6,7 @@ See the COPYRIGHTS and LICENSE files.
 Extraction of the Sh4 simulator.
 *)
 
-Require extraction Sh4_Simul.
+Require Extraction Sh4_Simul.
 
 Extraction Library Sh4.
 Extraction Library Sh4_Config.

@@ -6,7 +6,7 @@ See the COPYRIGHTS and LICENSE files.
 Extraction of the Arm6 simulator.
 *)
 
-Require extraction Arm6_Simul.
+Require Extraction Arm6_Simul.
 
 Extraction NoInline Arm6_Functions.Semantics.if_CurrentModeHasSPSR.
 
