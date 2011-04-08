@@ -50,6 +50,10 @@ Read arm6/simlight/README and arm6/simlight2/README for more details.
 simlight2 is the optimized version of simlight used in SimSoC
 (http://formes.asia/cms/software/simsoc).
 
+Run the scripts arm6/test/check-sl and arm6/test/check-sl2 for testing
+simlight and simlight2 respectively. This requires an arm-elf-gcc
+cross-compiler. See arm6/test/README for more details.
+
 Coq simulators:
       cd arm6/coq; make
       cd sh4/coq; make
