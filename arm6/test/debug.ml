@@ -9,7 +9,7 @@ open Bitvec
 open Datatypes
 
 let str_of_msg = 
-  let open Arm_Message in
+  let open Arm6_Message in
   function
   | EmptyMessage -> "EmptyMessage"
   | ImpreciseDataAbort -> "ImpreciseDataAbort"
@@ -55,10 +55,10 @@ let (+) = Int32.add
 let (-) = Int32.sub
 let (/) = Int32.div
 
-let regz s n = Arm_Proc.reg (Arm_State.proc s) (Arm.R (Camlcoq.z_of_camlint n));;
+let regz s n = Arm6_Proc.reg (Arm6_State.proc s) (Arm6.R (Camlcoq.z_of_camlint n));;
 let reg s n = Camlcoq.camlint_of_coqint (regz s n);;
 
-let read_z s a = Arm_State.read s (Camlcoq.z_of_camlint a) Bitvec.Word;;
+let read_z s a = Arm6_State.read s (Camlcoq.z_of_camlint a) Bitvec.Word;;
 let read_word s a = Camlcoq.camlint_of_z (read_z s a);;
 
 let rec read_words s a n =
@@ -67,7 +67,7 @@ let rec read_words s a n =
 
 (* current instruction *)
 let instr s =
-  Arm6_Dec.decode (Arm_State.read s (Arm_State.address_of_current_instruction s) Word);;
+  Arm6_Dec.decode (Arm6_State.read s (Arm6_State.address_of_current_instruction s) Word);;
 
 (* display the stack *)
 let stack s =
@@ -79,9 +79,9 @@ let stack s =
 let return a lbs = Arm6_Simul.Simu.SimOk (a, lbs)
 
 let mk_st state steps = 
-  { Arm6_Simul.Simu.semst = { Arm_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
+  { Arm6_Simul.Simu.semst = { Arm6_Functions.Semantics.S.loc = [] ; bo = true ; st = state } ; nb_next = Camlcoq.nat_of_camlint steps }
 
-let get_st f x = f x.Arm6_Simul.Simu.semst.Arm_Functions.Semantics.S.st x
+let get_st f x = f x.Arm6_Simul.Simu.semst.Arm6_Functions.Semantics.S.st x
 
 let check state steps expected name =
   try
@@ -194,8 +194,8 @@ let green = sprintf "\x1B\x5B32m%s\x1B\x5B39m"
 
 let _ = 
   let l = 
-    [ "arm6mldec", (module Arm6mldec : ARM6DEC)
-    ; "arm6dec", (module Arm6_Dec : ARM6DEC) ] in
+    [ (*"arm6mldec", (module Arm6mldec : ARM6DEC)
+    ; *)"arm6dec", (module Arm6_Dec : ARM6DEC) ] in
 
   let [ n1, l1, t_max1
       ; n2, l2, t_max2 ] = 

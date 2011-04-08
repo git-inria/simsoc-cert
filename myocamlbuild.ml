@@ -3,6 +3,9 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
 Driver for ocamlbuild.
+This file is the main program of ocamlbuild. After the invocation of 'ocamlbuild', this file is executed. It contains the dependencies of the directory, as these dependencies are not calculated by ocamlbuild by default.
+Note that every '_tags' files can be deleted and put in this file, by using directly a call to the API of ocamlbuild.
+Finally, we can modify the behaviour of ocamlbuild, by writing an OCaml Turing-complete program here, as it is done for performing a symbolic link for example.
 *)
 
 module Ocamlbuild_plugin = 
@@ -35,31 +38,66 @@ end
 
 open Ocamlbuild_plugin
 
-(** [ln_s] behaves as the previously defined [ln_s] except that a 'touch' to the destination file is done in the case it already exists. *)
-let ln_s src dest = 
-  if Sys.file_exists dest then
-    Cmd (S [ A "touch" ; P dest ])
-  else
-    ln_s src dest
 
-(** [rule_finalize _ f o_file] provides a value of type [action] which can be use with [rule]. 
-  It creates a link to the binary if it does not exist yet. 
-  If [o_file] = [Some filename], the name of the link is [filename], otherwise it is same as the binary.
-  The modification time of the link is always older than the binary. 
-  [f] is an extra action which can be performed after the creation of the link. *)
-let rule_finalize nc f_cmd o_file env _ =
-  let fic = env ("%." ^ nc) in
-  let open Pathname in
-    Seq (ln_s (Printf.sprintf "%s_build" 
-                 ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
-                   (** return the number of occurence of '/' in [fic] *)
-                   let rec aux pos l = 
-                     match try Some (String.rindex_from fic pos '/') with _ -> None with
-                       | None -> l
-                       | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
-                   aux (pred (String.length fic)) "")
-               / fic) (concat parent_dir_name (match o_file with None -> remove_extensions fic | Some file -> file))
-          (* FIXME find a more generical way to create this symbolic link *) :: f_cmd fic)
+module Symbolic_link = 
+struct
+  (** The task of this module is to save the modification time of the binary we are constructing (in _build) and do a link to it before exiting the program. *)
+
+  type time = 
+      { access : float
+      ; modification : float
+      ; status_change : float }
+
+  let time_of_file fic = 
+    if Sys.file_exists fic then
+      let open Unix.LargeFile in
+      let tm = lstat fic in
+      Some { access = tm.st_atime
+           ; modification = tm.st_mtime
+           ; status_change = tm.st_ctime }
+    else
+      None
+
+  let mod_time = ref None
+
+  let file_name = Sys.argv.(pred (Array.length Sys.argv))
+
+  (** We store at the beginning of the execution of ocamlbuild the date of modification of the file [_build/%s.native] where '%s' is the name of the rule given.
+      Note that by default, we take the 'native' version. *)
+  let begin_fun () = 
+    mod_time := time_of_file ("_build" / file_name)
+
+  (** At the end of the execution, it will perform a link to the binary in question. *)
+  let end_fun () = 
+    let src, dest = "_build" / file_name, Pathname.remove_extensions file_name in
+    let ln_s dest = 
+      let fic = file_name in
+      ln_s 
+        (Printf.sprintf "%s_build" 
+           ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
+               (** return the number of occurence of '/' in [fic] *)
+             let rec aux pos l = 
+               match try Some (String.rindex_from fic pos '/') with _ -> None with
+                 | None -> l
+                 | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
+             aux (pred (String.length fic)) "")
+         / fic) dest in
+
+    match !mod_time, time_of_file src with
+      | Some t1, Some t2 ->
+        Command.execute 
+          (match time_of_file dest with
+            | Some t_ln ->
+              if t1.modification = t2.modification && t2.modification <= t_ln.modification then
+                Nop
+              else
+                Seq [ rm_f dest ; ln_s dest ]
+            | _ -> ln_s dest)
+      | _ -> ()
+
+end
+
+
 
 (** --------------------------------------------- *)
 (** The first declaration in 'compcert/Makefile' assign all the folders used by the compcert project to the variable 'DIRS'. 
@@ -94,7 +132,7 @@ let define_context dir l =
   Pathname.define_context dir (l @ [dir])
 
 let _ = dispatch & function
-  | After_rules ->
+  | After_rules -> 
     begin
       (** ----------------------------------- *)
       (** definition of context for : *)
@@ -106,13 +144,13 @@ let _ = dispatch & function
       List.iter (fun (n, l) -> define_context n l)
         [ "arm6", l_compcert @ [ "arm6/extraction" ]
         ; "arm6/parsing", [ "simgen" ]
-        ; "arm6/extraction", [ "compcert/extraction" ; "simgen/extraction" ] 
-        ; "arm6/test", l_compcert @ [ "arm6" ; "compcert/extraction" ; "simgen/extraction" ; "arm6/extraction" ]
+        ; "arm6/coq/extraction", [ "compcert/extraction" ; "simgen/extraction" ] 
+        ; "arm6/test", l_compcert @ [ "arm6/coq" ; "compcert/extraction" ; "simgen/extraction" ; "arm6/coq/extraction" ]
         ; "simgen", l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]
         ; "simgen/extraction", [ "compcert/extraction" ]
         ; "sh4/parsing", [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ]
-        ; "sh4/extraction", [ "compcert/extraction" ; "simgen/extraction" ] 
-        ; "sh4/test", [ "sh4/extraction" ] ];
+        ; "sh4/coq/extraction", [ "compcert/extraction" ; "simgen/extraction" ] 
+        ; "sh4/test", [ "sh4/coq/extraction" ] ];
 
       (** ----------------------------------- *)
       (** activation of specific options for : *)
@@ -132,17 +170,8 @@ let _ = dispatch & function
                                                          ; A "-inline" ; A "10000" ]);
 
       (** ----------------------------------- *)
-      (** declaration of extra rules *)
-      rule "[simgen/%_finalize] perform a ln -s to the binary and strip it" 
-        ~prod: "simgen/%_finalize" ~deps: [ "simgen/%.native" ]
-        (fun env -> rule_finalize "native" (fun fic -> [ Cmd (S [ A "strip" ; P fic ]) ]) (None (*Some "simgen/simgen"*)) (fun s -> "simgen" / (env s)));
-
-      rule "[%_finalize] perform a ln -s to the binary" 
-        ~prod: "%_finalize" ~deps: [ "%.native" ] (* FIXME rename finalize into finalize_nc *)
-        (rule_finalize "native" (fun _ -> []) None);
-
-      rule "[%_finalize_bc] perform a ln -s to the binary" 
-        ~prod: "%_finalize_bc" ~deps: [ "%.byte" ]
-        (rule_finalize "byte" (fun _ -> []) None);
+      Symbolic_link.begin_fun ();
     end
   | _ -> ()
+
+let _ = at_exit Symbolic_link.end_fun

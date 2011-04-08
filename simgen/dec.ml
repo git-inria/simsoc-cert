@@ -137,7 +137,7 @@ struct
     | LH _ -> true
 
   let prefix_proc = "Sh4_"
-  let prefix_inst = "sh4inst"
+  let prefix_inst = "Sh4_Inst"
   let display_cond = false
   let decode_body = [ ":= decode_unconditional." ]
   let sort_inst x = x

@@ -1,16 +1,14 @@
-(**
-SimSoC-Cert, a toolkit for generating certified processor simulators.
-
-See the COPYRIGHTS and LICENSE files.
-
-Formalization of the SH4 architecture following the:
-
-SH-4, Software Manual, Renesas 32-Bit RISC, Rev.6.00 2006.09
-
-Page numbers refer to Renesas_SH4_2006.pdf.
-
-Extraction of the sh4 simulator.
-*)
+(* *********************************************************************)
+(*                                                                     *)
+(*              The Compcert verified compiler                         *)
+(*                                                                     *)
+(*          Xavier Leroy, INRIA Paris-Rocquencourt                     *)
+(*                                                                     *)
+(*  Copyright Institut National de Recherche en Informatique et en     *)
+(*  Automatique.  All rights reserved.  This file is distributed       *)
+(*  under the terms of the INRIA Non-Commercial License Agreement.     *)
+(*                                                                     *)
+(* *********************************************************************)
 
 Require Iteration.
 Require Floats.
@@ -106,6 +104,20 @@ Extraction Blacklist List String Int.
 (* Go! *)
 Cd "extraction".
 
+(**
+SimSoC-Cert, a toolkit for generating certified processor simulators.
+
+See the COPYRIGHTS and LICENSE files.
+
+Formalization of the SH4 architecture following the:
+
+SH-4, Software Manual, Renesas 32-Bit RISC, Rev.6.00 2006.09
+
+Page numbers refer to Renesas_SH4_2006.pdf.
+
+Extraction of the sh4 simulator.
+*)
+
 Require Semantics.
 Require Simul.
 
@@ -116,8 +128,8 @@ Extraction Library Util.
 Extraction Library Semantics.
 Extraction Library Simul.
 
-Require sh4dec.
-Require sh4.
+Require Sh4_Dec.
+Require Sh4_Simul.
 
 Extraction Library Sh4.
 Extraction Library Sh4_Config.
@@ -128,6 +140,6 @@ Extraction Library Sh4_State.
 Extraction Library Sh4_Functions.
 Extraction Library Sh4_Message.
 
-Extraction Library sh4.
-Extraction Library sh4dec.
-Extraction Library sh4inst.
+Extraction Library Sh4_Simul.
+Extraction Library Sh4_Dec.
+Extraction Library Sh4_Inst.

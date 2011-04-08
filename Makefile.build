@@ -17,5 +17,5 @@ TARGETS := simgen/main tools/dependot/dependot arm6/test/debug \
 
 $(TARGETS): FORCE
 	$(SHOW) ocamlbuild $@
-	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native \
-		&& ln -f -s $(shell pwd)/_build/$@.native $@
+	$(HIDE) $(OCAMLBUILD) $@.d.byte $@.native
+

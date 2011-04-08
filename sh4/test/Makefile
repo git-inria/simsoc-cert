@@ -13,7 +13,7 @@ default: main
 main:
 	$(SHOW) ocamlbuild $@
 	$(HIDE) cd $(DIR) && \
-		$(OCAMLBUILD) sh4/test/$@.d.byte sh4/test/$@_finalize_bc # assembler error with native compilation
+		$(OCAMLBUILD) sh4/test/$@.d.byte # assembler error with native compilation
 
-clean:
+clean::
 	rm -f main

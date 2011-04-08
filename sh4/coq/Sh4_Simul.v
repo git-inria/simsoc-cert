@@ -29,7 +29,7 @@ End C.
 (** Simulator *)
 (****************************************************************************)
 
-Require sh4inst sh4dec.
+Require Sh4_Inst Sh4_Dec.
 
 Module _Semantics <: SEMANTICS _Sh4 _Sh4_State _Sh4_Message.
   Definition semstate := semstate.
@@ -53,10 +53,10 @@ End _Functions.
 Module Import Simu := Simul.Make _Sh4 _Sh4_State _Sh4_Message _Semantics _Functions. (* COQFIX "The kernel does not recognize yet that a parameter can be instantiated by an inductive type." *)
 (* COQFIX The line "Module Import Simul" would import the file Simul.v (in the absence of the scope SimSoCCert) instead of the dynamically being created one. *)
 Module I <: INST.
-  Definition inst : Type := sh4inst.inst.
-  Module S := sh4inst.InstSem C.
+  Definition inst : Type := Sh4_Inst.inst.
+  Module S := Sh4_Inst.InstSem C.
   Definition step : inst -> semfun unit := S.step.
-  Definition decode : word -> decoder_result inst := sh4dec.decode.
+  Definition decode : word -> decoder_result inst := Sh4_Dec.decode.
   Definition handle_exception := Ok tt.
 End I.
 
