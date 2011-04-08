@@ -8,3 +8,5 @@ FILES := Bitvec Util Semantics Simul Extraction
 VFILES := $(FILES:%=%.v)
 
 include $(DIR)/Makefile.coq
+
+extraction: FORCE
