@@ -46,8 +46,6 @@ DEFAULT_COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%)
 
 COQTOP := coqtop -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -batch -load-vernac-source
 
-.PHONY: extraction
-
 extraction: extraction.v
 	mkdir -p extraction
 	$(SHOW) coqtop $<
@@ -60,6 +58,8 @@ clean::
 # Coq compiler
 
 COQ_MAKEFILE := coq_makefile $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES)
+
+COQDEP := coqdep $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -I .
 
 COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -noglob -dont-load-proofs
 
