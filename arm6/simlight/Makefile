@@ -17,10 +17,8 @@ HEADERS := $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
-default: simlight
-
-simlight: $(OBJECTS)
-	$(CC) $^ -o $@
+default: $(OBJECTS)
+	$(CC) $^ -o simlight
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@

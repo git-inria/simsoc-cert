@@ -37,10 +37,8 @@ GENFILES_MO := slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
 
 GENFILES := $(GENFILES_MO) slv6_iss.c
 
-default: simlight
-
-simlight: $(OBJECTS)
-	$(CC) $(LDFLAGS) $^ -o $@ $(LIBRARIES)
+default: $(OBJECTS)
+	$(CC) $(LDFLAGS) $^ -o simlight $(LIBRARIES)
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
