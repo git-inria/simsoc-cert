@@ -40,4 +40,4 @@ clean::
 ######################################################################
 # extraction
 
-extraction: FORCE
+extraction: first FORCE
