@@ -8,6 +8,8 @@ SIMLIGHT="../simlight2/simlight -d -i"
 set -e # exit on error
 set -x # verbose
 
+make # generate elf files
+
 $SIMLIGHT sum_iterative_a.elf -r0=903
 $SIMLIGHT sum_recursive_a.elf -r0=903
 $SIMLIGHT sum_direct_a.elf -r0=903
