@@ -40,4 +40,4 @@ clean::
 ######################################################################
 # extraction
 
-extraction.v: Arm6_Simul.vo
+extraction: FORCE

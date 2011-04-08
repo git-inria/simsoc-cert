@@ -40,4 +40,4 @@ clean::
 ######################################################################
 # extraction
 
-extraction.v: Sh4_Simul.vo
+extraction: FORCE
