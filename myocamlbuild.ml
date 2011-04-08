@@ -69,31 +69,31 @@ struct
 
   (** At the end of the execution, it will perform a link to the binary in question. *)
   let end_fun () = 
-    let src, dest = "_build" / file_name, Pathname.remove_extensions file_name in
-    let ln_s dest = 
-      let fic = file_name in
-      ln_s 
-        (Printf.sprintf "%s_build" 
-           ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
-               (** return the number of occurence of '/' in [fic] *)
-             let rec aux pos l = 
-               match try Some (String.rindex_from fic pos '/') with _ -> None with
-                 | None -> l
-                 | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
-             aux (pred (String.length fic)) "")
-         / fic) dest in
-
-    match !mod_time, time_of_file src with
-      | Some t1, Some t2 ->
+    match time_of_file ("_build" / file_name) with
+      | Some t2 ->
+        let dest = Pathname.remove_extensions file_name in
+        let ln_s dest = 
+          let fic = file_name in
+          ln_s 
+            (Printf.sprintf "%s_build" 
+               ((* FIXME use [ Str.split (Str.regexp_string "/") fic ] *)
+                (** return the number of occurence of '/' in [fic] *)
+                let rec aux pos l = 
+                  match try Some (String.rindex_from fic pos '/') with _ -> None with
+                    | None -> l
+                    | Some pos -> aux (pred pos) (Printf.sprintf "%s../" l) in
+                aux (pred (String.length fic)) "")
+             / fic) dest in
+        
         Command.execute 
           (match time_of_file dest with
             | Some t_ln ->
-              if t1.modification = t2.modification && t2.modification <= t_ln.modification then
+              if (match !mod_time with Some t1 -> t1.modification = t2.modification | None -> true) && t2.modification <= t_ln.modification then
                 Nop
               else
                 Seq [ rm_f dest ; ln_s dest ]
             | _ -> ln_s dest)
-      | _ -> ()
+      | None -> ()
 
 end
 
