@@ -33,25 +33,32 @@ Compilation of Simgen:
 
 2) Compile Simgen:
 
-      make
+      cd simgen; make
 
-   This creates a program 'main' in the 'simgen' directory. Do 'main
-   -h' to get the list of options. Read 'README.simgen' for more
-   details.
+   This creates a program 'simgen/main'. Do 'simgen/main -h' to get
+   the list of options. Read 'README.simgen' for more details.
 
 --------------------------------------------------------------------
-Generation and compilation of the C simulators for ARMv6:
+Generation and compilation of simulators using Simgen:
 
-      make -C arm6/simlight
-      make -C arm6/simlight2
+C simulators:
+      cd arm6/simlight; make
+      cd arm6/simlight2; make
 
 Read arm6/simlight/README and arm6/simlight2/README for more details.
 
-simlight2 is the optimized version of simlight used in SimSoC (see
-http://formes.asia/cms/software/simsoc).
+simlight2 is the optimized version of simlight used in SimSoC
+(http://formes.asia/cms/software/simsoc).
+
+Coq simulators:
+      cd arm6/coq; make
+      cd sh4/coq; make
+
+OCaml simulators can be extracted from the Coq simulators:
+      cd arm6/coq; make extraction
+      cd sh4/coq; make extraction
 
 --------------------------------------------------------------------
 Interactive reading of Coq files in Emacs with ProofGeneral:
 
-      add ./coqrc to your ~/.coqrc file
-
+      add the content of ./coqrc to your ~/.coqrc file
