@@ -8,6 +8,8 @@ Extraction of the Sh4 simulator.
 
 Require Extraction Sh4_Simul.
 
+Cd "extraction".
+
 Extraction Library Sh4.
 Extraction Library Sh4_Config.
 Extraction Library Sh4_Proc.

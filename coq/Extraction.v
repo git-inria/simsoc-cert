@@ -100,6 +100,3 @@ Load extractionMachdep.
 
 (* Avoid name clashes *)
 Extraction Blacklist List String Int.
-
-(* Go! *)
-Cd "extraction".

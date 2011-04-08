@@ -8,6 +8,8 @@ Extraction of the Arm6 simulator.
 
 Require Extraction Simul.
 
+Cd "extraction".
+
 Extraction Library Bitvec.
 Extraction Library Util.
 Extraction Library Semantics.

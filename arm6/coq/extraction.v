@@ -10,6 +10,8 @@ Require Extraction Arm6_Simul.
 
 Extraction NoInline Arm6_Functions.Semantics.if_CurrentModeHasSPSR.
 
+Cd "extraction".
+
 Extraction Library Arm6.
 Extraction Library Arm6_Config.
 Extraction Library Arm6_Proc.
