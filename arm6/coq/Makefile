@@ -10,11 +10,13 @@ first: $(GENFILES) build-coq default
 ######################################################################
 # compile Coq files
 
+DIR := ../..
+
 FILES := Message Config Functions SCC Exception Proc State Simul
 
 VFILES := Arm6.v $(FILES:%=Arm6_%.v) $(GENFILES)
 
-DIR := ../..
+COQ_INCLUDES := -I $(DIR)/coq
 
 include $(DIR)/Makefile.coq
 

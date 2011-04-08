@@ -10,11 +10,13 @@ first: $(GENFILES) build-coq default
 ######################################################################
 # compile Coq files
 
+DIR := ../..
+
 FILES := Message Config Functions Proc State Simul
 
 VFILES := Sh4.v $(FILES:%=Sh4_%.v) $(GENFILES)
 
-DIR := ../..
+COQ_INCLUDES := -I $(DIR)/coq
 
 include $(DIR)/Makefile.coq
 

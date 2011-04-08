@@ -3,7 +3,7 @@
 
 DIR := ../..
 
-COQ_INCLUDES := -I ../coq
+COQ_INCLUDES := -I $(DIR)/coq -I $(DIR)/arm6//coq
 
 include $(DIR)/Makefile.common
 
