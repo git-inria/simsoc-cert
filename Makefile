@@ -5,15 +5,10 @@ DIR := .
 
 include $(DIR)/Makefile.common
 
-default: simgen
+default:
+	$(MAKE) -C simgen
 
-TARGETS := arm6 sh4
-
-.PHONY: simgen $(TARGETS)
-simgen $(TARGETS):
-	$(MAKE) -C $@
-
-SUBDIRS := simgen $(TARGETS) coq tools
+SUBDIRS := tools simgen coq arm6 sh4
 
 clean::
 	ocamlbuild -clean
