@@ -49,7 +49,7 @@ COQTOP := coqtop -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -batch -load-vernac-
 extraction: extraction.v
 	mkdir -p extraction
 	$(SHOW) coqtop $<
-	$(HIDE) $(COQTOP) $<
+	$(HIDE) $(COQTOP) ./$<
 
 clean::
 	rm -rf extraction
