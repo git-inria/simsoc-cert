@@ -23,11 +23,13 @@ In most of the test programs, the status is organized as a bit vector:
 each atomic test set one bit. Thus, looking at the binary
 representation of the result tells you which atomic test failed.
 
-The shell script "check" executes all the tests with simlight, and
-compare the result (last r0 value) with the expected value.
+The shell script "check-sl" (resp. "check-sl2") executes all the tests
+with simlight (resp. simlight2), and compare the result (last r0
+value) with the expected value.
 
-To estimate the number of instructions executed, it is possible to use
-SimSoC as follows:
+Remark: to estimate the number of instructions executed, it is
+possible to use SimSoC as follows:
+
 > $path_to_simsoc_build/examples/Demo/demo -v -DT=1 sum_iterative.elf
 ... and look at the last line.
 
