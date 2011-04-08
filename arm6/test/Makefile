@@ -34,7 +34,7 @@ elf: $(ARM_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 .PRECIOUS: $(FILES)
 
 extraction.v: $(ARM_FILES:%=%_a.vo) $(THUMB_FILES:%=%_t.vo)
-	(echo 'Cd "extraction".' ; for i in $(ARM_FILES:%=%_a) $(THUMB_FILES:%=%_t) ; do echo "Require Extraction $$i. Extraction Library $$i." ; done) > $@
+	(echo 'Cd "extraction".'; for i in $(ARM_FILES:%=%_a) $(THUMB_FILES:%=%_t); do echo "Require Extraction $$i. Extraction Library $$i."; done) > $@
 
 %.v: %.elf ../elf2coq/elf2coq
 	../elf2coq/elf2coq $< $@
