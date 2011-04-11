@@ -41,6 +41,6 @@ clean::
 # extraction
 
 extraction: first FORCE
-	$(SHOW) ocamlbuild sh4/coq/extraction/Sh4_Simul
-	$(HIDE) $(OCAMLBUILD) sh4/coq/extraction/Sh4_Simul.d.byte \
+#	$(SHOW) ocamlbuild sh4/coq/extraction/Sh4_Simul
+#	$(HIDE) $(OCAMLBUILD) sh4/coq/extraction/Sh4_Simul.d.byte \
 		sh4/coq/extraction/Sh4_Simul.native

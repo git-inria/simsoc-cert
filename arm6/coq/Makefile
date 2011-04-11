@@ -41,6 +41,6 @@ clean::
 # extraction
 
 extraction: first FORCE
-	$(SHOW) ocamlbuild arm6/coq/extraction/Arm6_Simul
-	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/Arm6_Simul.d.byte \
+#	$(SHOW) ocamlbuild arm6/coq/extraction/Arm6_Simul
+#	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/Arm6_Simul.d.byte \
 		arm6/coq/extraction/Arm6_Simul.native

@@ -197,8 +197,10 @@ let _ =
     [ (*"arm6mldec", (module Arm6mldec : ARM6DEC)
     ; *)"arm6dec", (module Arm6_Dec : ARM6DEC) ] in
 
-  let [ n1, l1, t_max1
-      ; n2, l2, t_max2 ] = 
+  let (*[ n1, l1, t_max1
+      ; n2, l2, t_max2 ] *)
+      l_tot
+      = 
     List.map (fun (name, m) -> 
       let () = printf "(* test of module %s *)\n%!" name in 
       let l, t_max, t_all = 
@@ -207,9 +209,9 @@ let _ =
       name, List.rev l, t_max) l in
 
   begin
-    List.iter (printf "%s ") [n1 ; n2];
+    List.iter (fun (n, _, _) -> printf "%s " n) l_tot;
     printf "\n";
-    List.iter2 (
+(*    List.iter2 (
       let f t_max = String.length (sprintf "%.04f" t_max) in
       let t_max1, t_max2 = f t_max1, f t_max2 in
       fun (s, t1) (_, t2) -> 
@@ -217,5 +219,5 @@ let _ =
           let s = sprintf "%.04f" t in
           sprintf "%s%s" (String.make (t_max - (String.length s)) ' ') ((if t1 > t2 = b0 then green else fun x -> x) s) in
         printf "%s %s %s\n" s (i false t1 t_max1) (i true t2 t_max2)
-    ) l1 l2;
+    ) l1 l2;*)
   end

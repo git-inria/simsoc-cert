@@ -10,7 +10,4 @@ Require Extraction RawCoq_Csyntax.
 
 Cd "extraction".
 
-(*MOVE to coq/extraction.v:
-Extraction Library NaryFunctions.
-Extraction Library Bvector.*)
 Extraction Library RawCoq_Csyntax.

@@ -14,3 +14,5 @@ Extraction Library Bitvec.
 Extraction Library Util.
 Extraction Library Semantics.
 Extraction Library Simul.
+Extraction Library NaryFunctions.
+Extraction Library Bvector.
