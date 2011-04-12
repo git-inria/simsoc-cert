@@ -46,13 +46,20 @@ DEFAULT_COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%)
 
 COQTOP := coqtop -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -batch -load-vernac-source
 
-extraction: extraction.v
+extraction: $(DIR)/coq/Extraction.vo extraction.v
 	mkdir -p extraction
-	$(SHOW) coqtop $<
-	$(HIDE) $(COQTOP) ./$<
+	$(SHOW) coqtop extraction.v
+	$(HIDE) $(COQTOP) ./extraction.v
 
 clean::
 	rm -rf extraction
+
+.PHONY: extraction-libcoq
+
+extraction-libcoq:
+	$(MAKE) -C $(DIR)/coq extraction
+
+.PHONY: ocaml
 
 ######################################################################
 # Coq compiler

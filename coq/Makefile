@@ -9,4 +9,4 @@ VFILES := $(FILES:%=%.v)
 
 include $(DIR)/Makefile.coq
 
-extraction: FORCE
+extraction.v: default

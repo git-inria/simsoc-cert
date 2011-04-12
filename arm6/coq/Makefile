@@ -3,9 +3,9 @@
 
 GENFILES := Arm6_Inst.v Arm6_Dec.v
 
-.PHONY: first
+.PHONY: coq
 
-first: $(GENFILES) libcoq default
+coq: libcoq $(GENFILES) default
 
 ######################################################################
 # compile Coq files
@@ -40,7 +40,9 @@ clean::
 ######################################################################
 # extraction
 
-extraction: first FORCE
-#	$(SHOW) ocamlbuild arm6/coq/extraction/Arm6_Simul
-#	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/Arm6_Simul.d.byte \
+ocaml: extraction-libcoq extraction
+	$(SHOW) ocamlbuild arm6/coq/extraction/Arm6_Simul
+	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/Arm6_Simul.d.byte \
 		arm6/coq/extraction/Arm6_Simul.native
+
+extraction.v: coq

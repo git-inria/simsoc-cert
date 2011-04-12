@@ -9,7 +9,7 @@ include $(DIR)/Makefile.common
 
 TARGETS := main
 
-default: patch-extraction $(TARGETS)
+default: patch-extraction extraction-libcoq $(TARGETS)
 
 FILES := util ast flatten norm \
 	dec gencoqdec genmldec \

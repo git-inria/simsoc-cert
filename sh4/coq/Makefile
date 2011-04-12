@@ -3,9 +3,9 @@
 
 GENFILES := Sh4_Inst.v Sh4_Dec.v
 
-.PHONY: first
+.PHONY: coq
 
-first: $(GENFILES) libcoq default
+coq: $(GENFILES) libcoq default
 
 ######################################################################
 # compile Coq files
@@ -40,7 +40,9 @@ clean::
 ######################################################################
 # extraction
 
-extraction: first FORCE
-#	$(SHOW) ocamlbuild sh4/coq/extraction/Sh4_Simul
-#	$(HIDE) $(OCAMLBUILD) sh4/coq/extraction/Sh4_Simul.d.byte \
+ocaml: extraction-libcoq extraction
+	$(SHOW) ocamlbuild sh4/coq/extraction/Sh4_Simul
+	$(HIDE) $(OCAMLBUILD) sh4/coq/extraction/Sh4_Simul.d.byte \
 		sh4/coq/extraction/Sh4_Simul.native
+
+extraction.v: coq
