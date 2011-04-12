@@ -37,13 +37,15 @@ GENFILES_MO := slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
 
 GENFILES := $(GENFILES_MO) slv6_iss.c
 
-default: $(OBJECTS)
+default: simlight
+
+simlight: $(OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o simlight $(LIBRARIES)
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-$(GENFILES): build-simgen ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
+$(GENFILES): $(SIMGEN) ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
 	$(SIMGEN) -v -oc4dt slv6_iss -ipc ../arm6inst.arm \
 		-isyntax ../arm6syntax.dat -idec ../arm6dec.dat \
 		-iw weights.1
@@ -51,7 +53,7 @@ $(GENFILES): build-simgen ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
 $(GENFILES_MO): slv6_iss.c
 
 ../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
-	$(MAKE) -C .. $(shell basename $@)
+	$(MAKE) -C .. $(@:../%=%)
 
 simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@

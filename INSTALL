@@ -59,8 +59,8 @@ Coq simulators:
       cd sh4/coq; make
 
 OCaml simulators can be extracted from the Coq simulators:
-      cd arm6/coq; make extraction
-      cd sh4/coq; make extraction
+      cd arm6/coq; make ocaml
+      cd sh4/coq; make ocaml
 
 --------------------------------------------------------------------
 Interactive reading of Coq files in Emacs with ProofGeneral:

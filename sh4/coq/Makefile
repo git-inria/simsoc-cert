@@ -25,10 +25,10 @@ include $(DIR)/Makefile.coq
 
 .DELETE_ON_ERROR: $(GENFILES)
 
-Sh4_Inst.v: ../sh4.dat build-simgen
+Sh4_Inst.v: ../sh4.dat $(SIMGEN)
 	$(SIMGEN) -sh4 -ipc $< -ocoq-inst > $@
 
-Sh4_Dec.v: ../sh4.dat build-simgen
+Sh4_Dec.v: ../sh4.dat $(SIMGEN)
 	$(SIMGEN) -sh4 -idec $< -ocoq-dec > $@
 
 ../sh4.dat: FORCE

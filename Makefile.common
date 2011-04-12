@@ -4,8 +4,8 @@
 # requires various variables to be defined:
 # - DIR: relative path to root directory
 # - COQ_INCLUDES: include directories other than CompCert ones
-# defines the variables: BUILD, CC, COQC
-# provides the targets: extraction, build-simgen, build-coq, otags
+# defines the variables: CC, COQC, COQTOP
+# provides the targets: extraction, libcoq, otags
 # in addition:
 # - default is the default target
 # - clean is set to have :: dependencies
@@ -89,24 +89,13 @@ OCAMLBUILD := cd $(DIR) && ocamlbuild -j 2 -no-hygiene -no-links
 
 SIMGEN := $(DIR)/simgen/main
 
-build-simgen: FORCE
+$(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
 DEPENDOT := $(DIR)/tools/dependot/dependot
 
-build-dependot: FORCE
+$(DEPENDOT): FORCE
 	$(MAKE) -C $(DIR)/tools/dependot
-
-ARM6_PARSING := indentation keepbincode keepoper oneline_expr parsebincode \
-		keepsyntax parsesyntax
-
-$(ARM6_PARSING:%=build-%): FORCE
-	$(MAKE) -C $(DIR)/arm6/parsing $(@:build-%=%)
-
-SH4_PARSING := instr
-
-$(SH4_PARSING:%=build-%): FORCE
-	$(MAKE) -C $(DIR)/sh4/parsing $(@:build-%=%)
 
 ######################################################################
 # otags

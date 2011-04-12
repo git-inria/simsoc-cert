@@ -17,19 +17,21 @@ HEADERS := $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
-default: $(OBJECTS)
+default: simlight
+
+simlight: $(OBJECTS)
 	$(CC) $^ -o simlight
 
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-slv6_iss.h slv6_iss.c: build-simgen ../arm6inst.arm ../arm6dec.dat
+slv6_iss.h slv6_iss.c: $(SIMGEN) ../arm6inst.arm ../arm6dec.dat
 	$(SIMGEN) -ocxx slv6_iss -ipc ../arm6inst.arm -idec ../arm6dec.dat
 
 slv6_iss.c: slv6_iss.h
 
 ../arm6inst.arm ../arm6dec.dat: FORCE
-	$(MAKE) -C .. $(shell basename $@)
+	$(MAKE) -C .. $(@:../%=%)
 
 simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
