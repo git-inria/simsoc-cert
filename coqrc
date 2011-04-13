@@ -1,4 +1,6 @@
+Add LoadPath "/path/to/simsoc-cert/compcert/common".
 Add LoadPath "/path/to/simsoc-cert/compcert/lib".
+Add LoadPath "/path/to/simsoc-cert/compcert/cfrontend".
 Add LoadPath "/path/to/simsoc-cert/coq".
 Add LoadPath "/path/to/simsoc-cert/arm6/coq".
 Add LoadPath "/path/to/simsoc-cert/sh4/coq".
