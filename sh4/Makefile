@@ -38,6 +38,9 @@ pdftotext: sh4.pdf
 sh4inst.txt: sh4.txt sh4.patch
 	patch $+ -o $@
 
+clean::
+	rm sh4inst.txt
+
 ###########################################################################
 # patch update
 
@@ -54,3 +57,6 @@ sh4.dat: sh4inst.txt parsing/instr
 
 parsing/instr: FORCE
 	$(MAKE) -C parsing instr
+
+clean::
+	rm -f sh4.dat
