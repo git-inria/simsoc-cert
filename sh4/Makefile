@@ -39,7 +39,7 @@ sh4inst.txt: sh4.txt sh4.patch
 	patch $+ -o $@
 
 clean::
-	rm sh4inst.txt
+	rm -f sh4inst.txt
 
 ###########################################################################
 # patch update
