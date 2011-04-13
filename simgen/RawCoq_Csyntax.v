@@ -28,6 +28,8 @@ Module Vector.
   (* Convert a [vector] into a [list] with an extra property on its length. *)
   Definition to_list : forall A n,
     vector A n -> { l : list A | n = List.length l }.
+
+  Proof.
     induction n ; intros.
     exists List.nil.
     trivial.
@@ -39,6 +41,8 @@ Module Vector.
   Defined.
 
   Definition init : forall {A} n, (nat -> A) -> vector A n.
+
+  Proof.
     intros.   
     induction n.
     apply Vnil.
@@ -48,6 +52,8 @@ Module Vector.
   Defined.
 
   Definition map : forall {A B} (f : A -> B) n (v : vector A n), vector B n.
+
+  Proof.
     induction n.
     intros. apply Vnil.
     intros. inversion v.
@@ -87,148 +93,152 @@ function [_ty_]).
 
 Module Rec.
 
-Definition _option {A B C} (a : _ -> C) f :=
-  @option_rect A (fun _ => B) (fun x => f (a x)).
+  Definition _option {A B C} (a : _ -> C) f :=
+    @option_rect A (fun _ => B) (fun x => f (a x)).
 
-Definition _positive {A} f f0 :=
-  @positive_rect (fun _ => A) (fun _ x => f x) (fun _ x => f0 x).
+  Definition _positive {A} f f0 :=
+    @positive_rect (fun _ => A) (fun _ x => f x) (fun _ x => f0 x).
 
-Definition _Z {A POSITIVE}
-  (_positive : _ -> POSITIVE)
-  f_zero f_pos f_neg
-  := 
-  Z_rect (fun _ => A)
-  f_zero
-  (fun x => f_pos (_positive x))
-  (fun x => f_neg (_positive x)).
-
-Definition _init_data {A B C D E} 
-  (_int : _ -> B) (_float : _ -> C) (_Z : _ -> D) (_ident : _ -> E) 
-  f_i8 f_i16 f_i32 f_f32 f_f64 f_space f_addrof
-  := 
-  init_data_rect (fun _ => A)
-  (fun x => f_i8 (_int x))
-  (fun x => f_i16 (_int x))
-  (fun x => f_i32 (_int x))
-  (fun x => f_f32 (_float x))
-  (fun x => f_f64 (_float x))
-  (fun x => f_space (_Z x))
-  (fun i i2 => f_addrof (_ident i) (_int i2)).
-
-Module _AST.
-
-  Definition _globvar {A B C E INIT_DATA V : Type}
-    (_list : forall A, (A -> _) -> list A -> _)
-    _bool
-    f_v
-    (_init_data : _ -> INIT_DATA)
-    (f_mk : A -> B -> C -> C -> E) 
-    (x : _ V)
+  Definition _Z {A POSITIVE}
+    (_positive : _ -> POSITIVE)
+    f_zero f_pos f_neg
     :=
-    f_mk
+    Z_rect (fun _ => A)
+    f_zero
+    (fun x => f_pos (_positive x))
+    (fun x => f_neg (_positive x)).
+
+  Definition _init_data {A B C D E} 
+    (_int : _ -> B) (_float : _ -> C) (_Z : _ -> D) (_ident : _ -> E) 
+    f_i8 f_i16 f_i32 f_f32 f_f64 f_space f_addrof
+    :=
+    init_data_rect (fun _ => A)
+    (fun x => f_i8 (_int x))
+    (fun x => f_i16 (_int x))
+    (fun x => f_i32 (_int x))
+    (fun x => f_f32 (_float x))
+    (fun x => f_f64 (_float x))
+    (fun x => f_space (_Z x))
+    (fun i i2 => f_addrof (_ident i) (_int i2)).
+
+  Module _AST.
+
+    Definition _globvar {A B C E INIT_DATA V : Type}
+      (_list : forall A, (A -> _) -> list A -> _)
+      _bool
+      f_v
+      (_init_data : _ -> INIT_DATA)
+      (f_mk : A -> B -> C -> C -> E) 
+      (x : _ V)
+      :=
+      f_mk
       (f_v (gvar_info x))
       (_list _ _init_data (gvar_init x))
       (_bool (gvar_readonly x))
       (_bool (gvar_volatile x)).
 
-  Definition _program {A B C D E INIT_DATA GLOBVAR F V : Type}
-    (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
-    (_list : forall A, (A -> _) -> list A -> _)
-    f_f (f_v : V -> E) 
-    _ident (_init_data : init_data -> INIT_DATA) (_globvar : _ -> _ -> GLOBVAR)
-    (f_mk : A -> B -> A -> D) 
-    (x : _ F V)
-    :=
-    f_mk
+    Definition _program {A B C D E INIT_DATA GLOBVAR F V : Type}
+      (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
+      (_list : forall A, (A -> _) -> list A -> _)
+      f_f (f_v : V -> E) 
+      _ident (_init_data : init_data -> INIT_DATA)
+      (_globvar : _ -> _ -> GLOBVAR)
+      (f_mk : A -> B -> A -> D) 
+      (x : _ F V)
+      :=
+      f_mk
       (_list _ (_prod _ _ _ident f_f) (prog_funct x)) 
       (_ident (prog_main x)) 
       (_list _ (_prod _ _ _ident (_globvar f_v)) (prog_vars x)).
 
-  Definition _program2 {A B C D E INIT_DATA GLOBVAR F V : Type}
-    (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
-    (_list : forall A, (A -> _) -> list A -> _)
-    (_list2 : forall A, (A -> _) -> list A -> _)
-    f_f (f_v : V -> E) 
-    _ident (_init_data : init_data -> INIT_DATA) (_globvar : _ -> _ -> GLOBVAR)
-    (f_mk : A -> B -> A -> D) 
-    (x : _ F V)
-    :=
-    f_mk
+    Definition _program2 {A B C D E INIT_DATA GLOBVAR F V : Type}
+      (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
+      (_list : forall A, (A -> _) -> list A -> _)
+      (_list2 : forall A, (A -> _) -> list A -> _)
+      f_f (f_v : V -> E) 
+      _ident (_init_data : init_data -> INIT_DATA)
+      (_globvar : _ -> _ -> GLOBVAR)
+      (f_mk : A -> B -> A -> D) 
+      (x : _ F V)
+      :=
+      f_mk
       (_list _ (_prod _ _ _ident f_f) (prog_funct x)) 
       (_ident (prog_main x)) 
       (_list2 _ (_prod _ _ _ident (_globvar f_v)) (prog_vars x)).
 
-  Definition _typ {A} := typ_rect (fun _ => A).
+    Definition _typ {A} := typ_rect (fun _ => A).
 
-  Definition _signature {A B C TYP}
-    (_list : forall A, (A -> _) -> list A -> _)
-    (_option : forall A, (A -> _) -> option A -> _)
-    (_typ : _ -> TYP)
-    (f_mk : A -> B -> C)
-    x
-    :=
-    f_mk
+    Definition _signature {A B C TYP}
+      (_list : forall A, (A -> _) -> list A -> _)
+      (_option : forall A, (A -> _) -> option A -> _)
+      (_typ : _ -> TYP)
+      (f_mk : A -> B -> C)
+      x
+      :=
+      f_mk
       (_list _ _typ (sig_args x))
       (_option _ _typ (sig_res x)).
 
-  Definition _external_function {A IDENT SIGNATURE BOOL}
-    (_ident : _ -> IDENT) (_signature : _ -> SIGNATURE) (_bool : _ -> BOOL)
-    (f_mk : _ -> _ -> _ -> A)
-    x
-    := 
-    f_mk 
+    Definition _external_function {A IDENT SIGNATURE BOOL}
+      (_ident : _ -> IDENT) (_signature : _ -> SIGNATURE) (_bool : _ -> BOOL)
+      (f_mk : _ -> _ -> _ -> A)
+      x
+      := 
+      f_mk 
       (_ident (ef_id x))
       (_signature (ef_sig x))
       (_bool (ef_inline x)).
   
-End _AST.
+  End _AST.
 
-Module _Values.
+  Module _Values.
 
-  Definition _val {A INT FLOAT BLOCK} 
-    (_int : _ -> INT) (_float : _ -> FLOAT) (_block : _ -> BLOCK)
-    f_undef f_int f_float f_ptr
-    :=
-    val_rect (fun _ => A)
+    Definition _val {A INT FLOAT BLOCK} 
+      (_int : _ -> INT) (_float : _ -> FLOAT) (_block : _ -> BLOCK)
+      f_undef f_int f_float f_ptr
+      :=
+      val_rect (fun _ => A)
       f_undef
       (fun i => f_int (_int i))
       (fun f => f_float (_float f))
       (fun p i => f_ptr (_block p) (_int i)).
 
-End _Values.
+  End _Values.
 
-Definition _signedness {A} := signedness_rect (fun _ => A).
-Definition _intsize {A} := intsize_rect (fun _ => A).
-Definition _floatsize {A} := floatsize_rect (fun _ => A).
+  Definition _signedness {A} := signedness_rect (fun _ => A).
+  Definition _intsize {A} := intsize_rect (fun _ => A).
+  Definition _floatsize {A} := floatsize_rect (fun _ => A).
 
-Scheme _type_rect := Induction for type Sort Type
-with _typelist_rect := Induction for typelist Sort Type
-with _fieldlist_rect := Induction for fieldlist Sort Type.
+  Scheme _type_rect := Induction for type Sort Type
+  with _typelist_rect := Induction for typelist Sort Type
+  with _fieldlist_rect := Induction for fieldlist Sort Type.
 
-Definition _ty_ AA P P0 P1 
-  (f_ty : forall (P : type -> Type) (P0 : typelist -> Type)
-         (P1 : fieldlist -> Type),
-       P Tvoid ->
-       (forall (i : intsize) (s : signedness), P (Tint i s)) ->
-       (forall f1 : floatsize, P (Tfloat f1)) ->
-       (forall t : type, P t -> P (Tpointer t)) ->
-       (forall t : type, P t -> forall z : Z, P (Tarray t z)) ->
-       (forall t : typelist,
+  Definition _ty_ AA P P0 P1 
+    (f_ty : forall (P : type -> Type) (P0 : typelist -> Type)
+      (P1 : fieldlist -> Type),
+      P Tvoid ->
+      (forall (i : intsize) (s : signedness), P (Tint i s)) ->
+      (forall f1 : floatsize, P (Tfloat f1)) ->
+      (forall t : type, P t -> P (Tpointer t)) ->
+      (forall t : type, P t -> forall z : Z, P (Tarray t z)) ->
+      (forall t : typelist,
         P0 t -> forall t0 : type, P t0 -> P (Tfunction t t0)) ->
-       (forall (i : ident) (f5 : fieldlist), P1 f5 -> P (Tstruct i f5)) ->
-       (forall (i : ident) (f6 : fieldlist), P1 f6 -> P (Tunion i f6)) ->
-       (forall i : ident, P (Tcomp_ptr i)) ->
-       P0 Tnil ->
-       (forall t : type,
+      (forall (i : ident) (f5 : fieldlist), P1 f5 -> P (Tstruct i f5)) ->
+      (forall (i : ident) (f6 : fieldlist), P1 f6 -> P (Tunion i f6)) ->
+      (forall i : ident, P (Tcomp_ptr i)) ->
+      P0 Tnil ->
+      (forall t : type,
         P t -> forall t0 : typelist, P0 t0 -> P0 (Tcons t t0)) ->
-       P1 Fnil ->
-       (forall (i : ident) (t : type),
+      P1 Fnil ->
+      (forall (i : ident) (t : type),
         P t -> forall f11 : fieldlist, P1 f11 -> P1 (Fcons i t f11)) ->
-       AA P P0 P1)
-  {A B C D E}
-  (_intsize : _ -> A) (_signedness : _ -> B) (_floatsize : _ -> C) (_Z : _ -> D) (_ident : _ -> E)
-  f_void f_int f_float f_pointer f_array f_function f_struct f_union f_comp_ptr   f_tnil f_tcons   f_fnil f_fcons
-  := f_ty (fun _ => P) (fun _ => P0) (fun _ => P1)
+      AA P P0 P1)
+    {A B C D E}
+    (_intsize : _ -> A) (_signedness : _ -> B) (_floatsize : _ -> C)
+    (_Z : _ -> D) (_ident : _ -> E)
+    f_void f_int f_float f_pointer f_array f_function f_struct f_union
+    f_comp_ptr f_tnil f_tcons f_fnil f_fcons
+    := f_ty (fun _ => P) (fun _ => P0) (fun _ => P1)
     f_void
     (fun i s => f_int (_intsize i) (_signedness s))
     (fun f => f_float (_floatsize f))
@@ -238,74 +248,75 @@ Definition _ty_ AA P P0 P1
     (fun i _ aux => f_struct (_ident i) aux)
     (fun i _ aux => f_union (_ident i) aux)
     (fun i => f_comp_ptr (_ident i))
-
     f_tnil
     (fun _ aux1 _ aux2 => f_tcons aux1 aux2)
-
     f_fnil
-    (fun i _ aux1 _ aux2 => f_fcons (_ident i) aux1 aux2)
-.
+    (fun i _ aux1 _ aux2 => f_fcons (_ident i) aux1 aux2).
 
-Definition _type {P P0 P1} := @_ty_ _ P P0 P1 _type_rect.
-Definition _typelist {P P0 P1} := @_ty_ _ P P0 P1 _typelist_rect.
-Definition _fieldlist {P P0 P1} := @_ty_ _ P P0 P1 _fieldlist_rect.
+  Definition _type {P P0 P1} := @_ty_ _ P P0 P1 _type_rect.
+  Definition _typelist {P P0 P1} := @_ty_ _ P P0 P1 _typelist_rect.
+  Definition _fieldlist {P P0 P1} := @_ty_ _ P P0 P1 _fieldlist_rect.
 
-Definition _unary_operation {A} := unary_operation_rect (fun _ => A).
-Definition _binary_operation {A} := binary_operation_rect (fun _ => A).
-Definition _incr_or_decr {A} := incr_or_decr_rect (fun _ => A).
+  Definition _unary_operation {A} := unary_operation_rect (fun _ => A).
+  Definition _binary_operation {A} := binary_operation_rect (fun _ => A).
+  Definition _incr_or_decr {A} := incr_or_decr_rect (fun _ => A).
 
-Scheme _expr_rect := Induction for expr Sort Type
-with _exprlist_rect := Induction for exprlist Sort Type.
+  Scheme _expr_rect := Induction for expr Sort Type
+  with _exprlist_rect := Induction for exprlist Sort Type.
 
-Definition _expr_ A P P0
+  Definition _expr_ A P P0
     (_expr_ : forall (P : expr -> Type) (P0 : exprlist -> Type),
-       (forall (v : Values.val) (ty : type), P (Eval v ty)) ->
-       (forall (x : ident) (ty : type), P (Evar x ty)) ->
-       (forall l : expr,
+      (forall (v : Values.val) (ty : type), P (Eval v ty)) ->
+      (forall (x : ident) (ty : type), P (Evar x ty)) ->
+      (forall l : expr,
         P l -> forall (f1 : ident) (ty : type), P (Efield l f1 ty)) ->
-       (forall l : expr, P l -> forall ty : type, P (Evalof l ty)) ->
-       (forall r : expr, P r -> forall ty : type, P (Ederef r ty)) ->
-       (forall l : expr, P l -> forall ty : type, P (Eaddrof l ty)) ->
-       (forall (op : unary_operation) (r : expr),
+      (forall l : expr, P l -> forall ty : type, P (Evalof l ty)) ->
+      (forall r : expr, P r -> forall ty : type, P (Ederef r ty)) ->
+      (forall l : expr, P l -> forall ty : type, P (Eaddrof l ty)) ->
+      (forall (op : unary_operation) (r : expr),
         P r -> forall ty : type, P (Eunop op r ty)) ->
-       (forall (op : binary_operation) (r1 : expr),
+      (forall (op : binary_operation) (r1 : expr),
         P r1 ->
         forall r2 : expr, P r2 -> forall ty : type, P (Ebinop op r1 r2 ty)) ->
-       (forall r : expr, P r -> forall ty : type, P (Ecast r ty)) ->
-       (forall r1 : expr,
+      (forall r : expr, P r -> forall ty : type, P (Ecast r ty)) ->
+      (forall r1 : expr,
         P r1 ->
         forall r2 : expr,
-        P r2 ->
-        forall r3 : expr,
-        P r3 -> forall ty : type, P (Econdition r1 r2 r3 ty)) ->
-       (forall ty' ty : type, P (Esizeof ty' ty)) ->
-       (forall l : expr,
+          P r2 ->
+          forall r3 : expr,
+            P r3 -> forall ty : type, P (Econdition r1 r2 r3 ty)) ->
+      (forall ty' ty : type, P (Esizeof ty' ty)) ->
+      (forall l : expr,
         P l -> forall r : expr, P r -> forall ty : type, P (Eassign l r ty)) ->
-       (forall (op : binary_operation) (l : expr),
+      (forall (op : binary_operation) (l : expr),
         P l ->
         forall r : expr,
-        P r -> forall tyres ty : type, P (Eassignop op l r tyres ty)) ->
-       (forall (id : incr_or_decr) (l : expr),
+          P r -> forall tyres ty : type, P (Eassignop op l r tyres ty)) ->
+      (forall (id : incr_or_decr) (l : expr),
         P l -> forall ty : type, P (Epostincr id l ty)) ->
-       (forall r1 : expr,
+      (forall r1 : expr,
         P r1 ->
         forall r2 : expr, P r2 -> forall ty : type, P (Ecomma r1 r2 ty)) ->
-       (forall r1 : expr,
+      (forall r1 : expr,
         P r1 ->
         forall rargs : exprlist,
-        P0 rargs -> forall ty : type, P (Ecall r1 rargs ty)) ->
-       (forall (b : Values.block) (ofs : int) (ty : type), P (Eloc b ofs ty)) ->
-       (forall r : expr, P r -> forall ty : type, P (Eparen r ty)) ->
-       P0 Enil ->
-       (forall r1 : expr,
+          P0 rargs -> forall ty : type, P (Ecall r1 rargs ty)) ->
+      (forall (b : Values.block) (ofs : int) (ty : type), P (Eloc b ofs ty)) ->
+      (forall r : expr, P r -> forall ty : type, P (Eparen r ty)) ->
+      P0 Enil ->
+      (forall r1 : expr,
         P r1 -> forall rl : exprlist, P0 rl -> P0 (Econs r1 rl)) ->
-       A P P0)
-  {VAL INT TYPE IDENT UNARY_OPERATION BINARY_OPERATION BLOCK INCR_OR_DECR}
-  (_val : _ -> VAL) (_int : _ -> INT) (_type : _ -> TYPE) (_ident : _ -> IDENT) (_unary_operation : _ -> UNARY_OPERATION) (_binary_operation : _ -> BINARY_OPERATION) (_block : _ -> BLOCK) (_incr_or_decr : _ -> INCR_OR_DECR)
-  f_val f_var f_field f_valof f_deref f_addrof f_unop f_binop f_cast f_condition f_sizeof f_assign f_assignop f_postincr f_comma f_call f_loc f_paren f_nil f_cons 
-  := 
-  _expr_ (fun _ => P) (fun _ => P0) 
-
+      A P P0)
+    {VAL INT TYPE IDENT UNARY_OPERATION BINARY_OPERATION BLOCK INCR_OR_DECR}
+    (_val : _ -> VAL) (_int : _ -> INT) (_type : _ -> TYPE)
+    (_ident : _ -> IDENT) (_unary_operation : _ -> UNARY_OPERATION)
+    (_binary_operation : _ -> BINARY_OPERATION) (_block : _ -> BLOCK)
+    (_incr_or_decr : _ -> INCR_OR_DECR)
+    f_val f_var f_field f_valof f_deref f_addrof f_unop f_binop f_cast
+    f_condition f_sizeof f_assign f_assignop f_postincr f_comma f_call
+    f_loc f_paren f_nil f_cons 
+    := 
+    _expr_ (fun _ => P) (fun _ => P0)
     (fun v ty => f_val (_val v) (_type ty))
     (fun i ty => f_var (_ident i) (_type ty))
     (fun _ aux i ty => f_field aux (_ident i) (_type ty))
@@ -313,58 +324,60 @@ Definition _expr_ A P P0
     (fun _ aux ty => f_deref aux (_type ty))
     (fun _ aux ty => f_addrof aux (_type ty))
     (fun u _ aux ty => f_unop (_unary_operation u) aux (_type ty))
-    (fun b _ aux1 _ aux2 ty => f_binop (_binary_operation b) aux1 aux2 (_type ty))
+    (fun b _ aux1 _ aux2 ty =>
+      f_binop (_binary_operation b) aux1 aux2 (_type ty))
     (fun _ aux ty => f_cast aux (_type ty))
     (fun _ aux1 _ aux2 _ aux3 ty => f_condition aux1 aux2 aux3 (_type ty))
     (fun t ty => f_sizeof (_type t) (_type ty))
     (fun _ aux1 _ aux2 ty => f_assign aux1 aux2 (_type ty))
-    (fun b _ aux2 _ aux3 ty1 ty2 => f_assignop (_binary_operation b) aux2 aux3 (_type ty1) (_type ty2))
+    (fun b _ aux2 _ aux3 ty1 ty2 =>
+      f_assignop (_binary_operation b) aux2 aux3 (_type ty1) (_type ty2))
     (fun i _ aux1 ty => f_postincr (_incr_or_decr i) aux1 (_type ty))
     (fun _ aux1 _ aux2 ty => f_comma aux1 aux2 (_type ty))
     (fun _ aux1 _ aux2 ty => f_call aux1 aux2 (_type ty))
     (fun b i ty => f_loc (_block b) (_int i) (_type ty))
     (fun _ aux1 ty => f_paren aux1 (_type ty))
-
     f_nil
-    (fun _ aux1 _ aux2 => f_cons aux1 aux2)
-.
+    (fun _ aux1 _ aux2 => f_cons aux1 aux2).
 
-Definition _expr {P P0} := @_expr_ _ P P0 _expr_rect.
-Definition _exprlist {P P0} := @_expr_ _ P P0 _exprlist_rect.
+  Definition _expr {P P0} := @_expr_ _ P P0 _expr_rect.
+  Definition _exprlist {P P0} := @_expr_ _ P P0 _exprlist_rect.
 
-Scheme _statement_rect := Induction for statement Sort Type
-with _labeled_statements_rect := Induction for labeled_statements Sort Type.
+  Scheme _statement_rect := Induction for statement Sort Type
+  with _labeled_statements_rect := Induction for labeled_statements Sort Type.
 
-Definition _statement_ A P P0 
-    (_statement_ : forall (P : statement -> Type) (P0 : labeled_statements -> Type),
-       P Sskip ->
-       (forall e : expr, P (Sdo e)) ->
-       (forall s : statement,
+  Definition _statement_ A P P0 
+    (_statement_ : forall (P : statement -> Type)
+      (P0 : labeled_statements -> Type),
+      P Sskip ->
+      (forall e : expr, P (Sdo e)) ->
+      (forall s : statement,
         P s -> forall s0 : statement, P s0 -> P (Ssequence s s0)) ->
-       (forall (e : expr) (s : statement),
+      (forall (e : expr) (s : statement),
         P s -> forall s0 : statement, P s0 -> P (Sifthenelse e s s0)) ->
-       (forall (e : expr) (s : statement), P s -> P (Swhile e s)) ->
-       (forall (e : expr) (s : statement), P s -> P (Sdowhile e s)) ->
-       (forall s : statement,
+      (forall (e : expr) (s : statement), P s -> P (Swhile e s)) ->
+      (forall (e : expr) (s : statement), P s -> P (Sdowhile e s)) ->
+      (forall s : statement,
         P s ->
         forall (e : expr) (s0 : statement),
-        P s0 -> forall s1 : statement, P s1 -> P (Sfor s e s0 s1)) ->
-       P Sbreak ->
-       P Scontinue ->
-       (forall o : option expr, P (Sreturn o)) ->
-       (forall (e : expr) (l : labeled_statements), P0 l -> P (Sswitch e l)) ->
-       (forall (l : label) (s : statement), P s -> P (Slabel l s)) ->
-       (forall l : label, P (Sgoto l)) ->
-       (forall s : statement, P s -> P0 (LSdefault s)) ->
-       (forall (i : int) (s : statement),
+          P s0 -> forall s1 : statement, P s1 -> P (Sfor s e s0 s1)) ->
+      P Sbreak ->
+      P Scontinue ->
+      (forall o : option expr, P (Sreturn o)) ->
+      (forall (e : expr) (l : labeled_statements), P0 l -> P (Sswitch e l)) ->
+      (forall (l : label) (s : statement), P s -> P (Slabel l s)) ->
+      (forall l : label, P (Sgoto l)) ->
+      (forall s : statement, P s -> P0 (LSdefault s)) ->
+      (forall (i : int) (s : statement),
         P s -> forall l : labeled_statements, P0 l -> P0 (LScase i s l)) ->
-    A P P0)
-  { EXPR LABEL INT OPTION }
-  (_option : forall A, (A -> _) -> option A -> OPTION)
-  (_expr : _ -> EXPR) (_label : _ -> LABEL) (_int : _ -> INT)
-  f_skip f_do f_sequence f_ifthenelse f_while f_dowhile f_for f_break f_continue f_return f_switch f_label f_goto f_default f_case
-  :=
-  _statement_ (fun _ => P) (fun _ => P0) 
+      A P P0)
+    { EXPR LABEL INT OPTION }
+    (_option : forall A, (A -> _) -> option A -> OPTION)
+    (_expr : _ -> EXPR) (_label : _ -> LABEL) (_int : _ -> INT)
+    f_skip f_do f_sequence f_ifthenelse f_while f_dowhile f_for f_break
+    f_continue f_return f_switch f_label f_goto f_default f_case
+    :=
+    _statement_ (fun _ => P) (fun _ => P0) 
     f_skip
     (fun e => f_do (_expr e))
     (fun _ aux1 _ aux2 => f_sequence aux1 aux2)
@@ -378,33 +391,34 @@ Definition _statement_ A P P0
     (fun e _ aux => f_switch (_expr e) aux)
     (fun l _ aux => f_label (_label l) aux)
     (fun l => f_goto (_label l))
-
     (fun _ aux => f_default aux)
-    (fun i _ aux1 _ aux2 => f_case (_int i) aux1 aux2)
-.
+    (fun i _ aux1 _ aux2 => f_case (_int i) aux1 aux2).
 
-Definition _statement {P P0} := @_statement_ _ P P0 _statement_rect.
-Definition _labeled_statements {P P0} := @_statement_ _ P P0 _labeled_statements_rect.
+  Definition _statement {P P0} := @_statement_ _ P P0 _statement_rect.
+  Definition _labeled_statements {P P0} :=
+    @_statement_ _ P P0 _labeled_statements_rect.
 
-Definition _function { PROD LIST IDENT TYPE STATEMENT FUNCTION}
-  (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> PROD)
-  (_list : forall A, (A -> _) -> list A -> LIST) (_ident : _ -> IDENT) (_type : _ -> TYPE) (_statement : _ -> STATEMENT)
-  (f_mk : _ -> _ -> _ -> _ -> FUNCTION) 
-  x
- :=
-  f_mk 
+  Definition _function { PROD LIST IDENT TYPE STATEMENT FUNCTION}
+    (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> PROD)
+    (_list : forall A, (A -> _) -> list A -> LIST) (_ident : _ -> IDENT)
+    (_type : _ -> TYPE) (_statement : _ -> STATEMENT)
+    (f_mk : _ -> _ -> _ -> _ -> FUNCTION) 
+    x
+    :=
+    f_mk 
     (_type (fn_return x)) 
     (_list _ (_prod _ _ _ident _type) (fn_params x)) 
     (_list _ (_prod _ _ _ident _type) (fn_vars x))
     (_statement (fn_body x)).
 
-Definition _fundef {A  FUNCTION IDENT TYPELIST TYPE}
-  (_function : _ -> FUNCTION) (_ident : _ -> IDENT) (_typelist : _ -> TYPELIST) (_type : _ -> TYPE)
-  f_internal f_external
- :=
-  fundef_rect (fun _ => A)
-  (fun x => f_internal (_function x))
-  (fun i tl t => f_external (_ident i) (_typelist tl) (_type t)).
+  Definition _fundef {A  FUNCTION IDENT TYPELIST TYPE}
+    (_function : _ -> FUNCTION) (_ident : _ -> IDENT)
+    (_typelist : _ -> TYPELIST) (_type : _ -> TYPE)
+    f_internal f_external
+    :=
+    fundef_rect (fun _ => A)
+    (fun x => f_internal (_function x))
+    (fun i tl t => f_external (_ident i) (_typelist tl) (_type t)).
 
 End Rec.
 
@@ -413,193 +427,195 @@ End Rec.
 type to a lower one : each polymorphic type is explicitly instanciated
 with a single polymorphic one.  This polymorphic information can be
 thought as an accumulator staying alive during the whole execution, it
-can be used for example with a monadic construction.  After this
+can be used for example with a monadic construction. After this
 change, we generalize each function construction "_ -> _ -> _ -> _ ->
 _" to a more general one "_ ^^ _ --> _" by using the NaryFunctions
-library.  This is useful for later because we will not want to
-abstract manually the "fun _ => _" during the application time.  Note
-that we have to give explicitely the arity of each constructor in each
+library. This is useful for later because we do not want to abstract
+manually the "fun _ => _" during the application time. Note that we
+have to give explicitely the arity of each constructor in each
 type. *)
 
 Module Rec_weak.
 
-Import Rec.
+  Import Rec.
 
-Notation "A ** n" := (A ^^ n --> A) (at level 29) : type_scope.
+  Notation "A ** n" := (A ^^ n --> A) (at level 29) : type_scope.
 
-Definition _positive {A} :
-  A ** 1 ->
-  A ** 1 ->
-  A ** 0 ->
-  _ := @_positive _ .
-
-Definition _Z {A} : _ ->
-  A ** 0 ->
-  A ** 1 ->
-  A ** 1 ->
-  _ := @_Z A A.
-
-Definition _init_data {A} : _ -> _ -> _ -> _ -> 
-  A ** 1 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 2 ->
-  _ := @_init_data _ _ _ _ _.
-
-Module _AST.
-
-  Definition _globvar {A B} : _ -> _ -> _ -> _ ->
-    A ** 4 ->
-    _ := @_AST._globvar _ _ _ _ A B.
-
-  Definition _program {A B C} : _ -> _ -> _ -> _ -> _ -> _ -> _ ->
-    A ** 3 ->
-    _ := @_AST._program _ _ A _ A A A B C.
-
-  Definition _typ {A} : 
+  Definition _positive {A} :
+    A ** 1 ->
+    A ** 1 ->
     A ** 0 ->
+    _ := @_positive _ .
+
+  Definition _Z {A} : _ ->
     A ** 0 ->
-    _ := @_AST._typ A.
+    A ** 1 ->
+    A ** 1 ->
+    _ := @_Z A A.
 
-  Definition _signature {A} : _ -> _ -> _ -> 
-    A ** 2 -> 
-    _ := @_AST._signature _ _ _ A.
-
-  Definition _external_function {A} : _ -> _ -> _ ->
-    A ** 3 ->
-    _ := @_AST._external_function _ _ _ _.
-
-End _AST.
-
-Module _Values.
-
-  Definition _val {A} : _ -> _ -> _ ->
-    A ** 0 ->
+  Definition _init_data {A} : _ -> _ -> _ -> _ -> 
+    A ** 1 ->
+    A ** 1 ->
+    A ** 1 ->
+    A ** 1 ->
     A ** 1 ->
     A ** 1 ->
     A ** 2 ->
-    _ := @_Values._val _ _ _ _.
+    _ := @_init_data _ _ _ _ _.
 
-End _Values.
+  Module _AST.
 
-Definition _signedness {A} :
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_signedness _.
+    Definition _globvar {A B} : _ -> _ -> _ -> _ ->
+      A ** 4 ->
+      _ := @_AST._globvar _ _ _ _ A B.
 
-Definition _intsize {A} :
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_intsize _.
+    Definition _program {A B C} : _ -> _ -> _ -> _ -> _ -> _ -> _ ->
+      A ** 3 ->
+      _ := @_AST._program _ _ A _ A A A B C.
 
-Definition _floatsize {A} :
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_floatsize _.
+    Definition _typ {A} : 
+      A ** 0 ->
+      A ** 0 ->
+      _ := @_AST._typ A.
 
-Definition _type_ A B (f : _ -> Type) := f (
-  A ** 0 ->
-  A ** 2 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 2 ->
-  A ** 2 ->
-  A ** 2 ->
-  A ** 2 ->
-  A ** 1 ->
-  A ** 0 ->
-  A ** 2 ->
-  A ** 0 ->
-  A ** 3 ->
-  B).
+    Definition _signature {A} : _ -> _ -> _ -> 
+      A ** 2 -> 
+      _ := @_AST._signature _ _ _ A.
 
-Definition _type {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty) := @_type _ _ _ _ _ _ _ _.
+    Definition _external_function {A} : _ -> _ -> _ ->
+      A ** 3 ->
+      _ := @_AST._external_function _ _ _ _.
 
-Definition _typelist {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty) := @_typelist _ _ _ _ _ _ _ _.
+  End _AST.
 
-Definition _unary_operation {A} : 
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_unary_operation _.
+  Module _Values.
 
-Definition _binary_operation {A} :
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_binary_operation _.
+    Definition _val {A} : _ -> _ -> _ ->
+      A ** 0 ->
+      A ** 1 ->
+      A ** 1 ->
+      A ** 2 ->
+      _ := @_Values._val _ _ _ _.
 
-Definition _expr {A} : _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
-  A ** 2 -> 
-  A ** 2 -> 
-  A ** 3 -> 
-  A ** 2 -> 
-  A ** 2 -> 
-  A ** 2 -> 
-  A ** 3 -> 
-  A ** 4 -> 
-  A ** 2 -> 
-  A ** 4 -> 
-  A ** 2 -> 
-  A ** 3 -> 
-  A ** 5 -> 
-  A ** 3 -> 
-  A ** 3 -> 
-  A ** 3 -> 
-  A ** 3 -> 
-  A ** 2 -> 
-  A ** 0 -> 
-  A ** 2 -> 
-  _ := @_expr _ _ _ _ _ _ _ _ _ _.
+  End _Values.
 
-Definition _incr_or_decr {A} : 
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_incr_or_decr _.
+  Definition _signedness {A} :
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_signedness _.
 
-Definition _statement {A} : _ -> _ -> _ -> _ -> 
-  A ** 0 -> 
-  A ** 1 -> 
-  A ** 2 -> 
-  A ** 3 -> 
-  A ** 2 -> 
-  A ** 2 -> 
-  A ** 4 -> 
-  A ** 0 -> 
-  A ** 0 -> 
-  A ** 1 -> 
-  A ** 2 -> 
-  A ** 2 -> 
-  A ** 1 -> 
-  A ** 1 -> 
-  A ** 3 -> 
-  _ := @_statement _ _ _ _ _ _.
+  Definition _intsize {A} :
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_intsize _.
 
-Definition _function {A} : _ -> _ -> _ -> _ -> _ -> 
-  A ** 4 ->
-  _ := @_function A _ A _ _ _.
+  Definition _floatsize {A} :
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_floatsize _.
 
-Definition _fundef {A} : _ -> _ -> _ -> _ -> 
-  A ** 1 ->
-  A ** 3 ->
-  _ := @_fundef _ _ _ _ _.
+  Definition _type_ A B (f : _ -> Type) := f (
+    A ** 0 ->
+    A ** 2 ->
+    A ** 1 ->
+    A ** 1 ->
+    A ** 2 ->
+    A ** 2 ->
+    A ** 2 ->
+    A ** 2 ->
+    A ** 1 ->
+    A ** 0 ->
+    A ** 2 ->
+    A ** 0 ->
+    A ** 3 ->
+    B).
+
+  Definition _type {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty)
+    := @_type _ _ _ _ _ _ _ _.
+
+  Definition _typelist {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty)
+    := @_typelist _ _ _ _ _ _ _ _.
+
+  Definition _unary_operation {A} : 
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_unary_operation _.
+
+  Definition _binary_operation {A} :
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_binary_operation _.
+
+  Definition _expr {A} : _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
+    A ** 2 -> 
+    A ** 2 -> 
+    A ** 3 -> 
+    A ** 2 -> 
+    A ** 2 -> 
+    A ** 2 -> 
+    A ** 3 -> 
+    A ** 4 -> 
+    A ** 2 -> 
+    A ** 4 -> 
+    A ** 2 -> 
+    A ** 3 -> 
+    A ** 5 -> 
+    A ** 3 -> 
+    A ** 3 -> 
+    A ** 3 -> 
+    A ** 3 -> 
+    A ** 2 -> 
+    A ** 0 -> 
+    A ** 2 -> 
+    _ := @_expr _ _ _ _ _ _ _ _ _ _.
+
+  Definition _incr_or_decr {A} : 
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_incr_or_decr _.
+
+  Definition _statement {A} : _ -> _ -> _ -> _ -> 
+    A ** 0 -> 
+    A ** 1 -> 
+    A ** 2 -> 
+    A ** 3 -> 
+    A ** 2 -> 
+    A ** 2 -> 
+    A ** 4 -> 
+    A ** 0 -> 
+    A ** 0 -> 
+    A ** 1 -> 
+    A ** 2 -> 
+    A ** 2 -> 
+    A ** 1 -> 
+    A ** 1 -> 
+    A ** 3 -> 
+    _ := @_statement _ _ _ _ _ _.
+
+  Definition _function {A} : _ -> _ -> _ -> _ -> _ -> 
+    A ** 4 ->
+    _ := @_function A _ A _ _ _.
+
+  Definition _fundef {A} : _ -> _ -> _ -> _ -> 
+    A ** 1 ->
+    A ** 3 ->
+    _ := @_fundef _ _ _ _ _.
 
 End Rec_weak.
 
@@ -763,170 +779,187 @@ explicitly write the name of the corresponding constructor inside a
 Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
   (C : CONSTRUCTOR S M P). 
 
-Import Rec Rec_weak M P C.
+  Import Rec Rec_weak M P C.
 
-Open Scope string_scope.
+  Open Scope string_scope.
 
-Notation "[| a ; .. ; b |]" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
-Notation "'\n'" := indent.
-Coercion S.of_string : String.string >-> S.t.
-Notation "a ++ b" := (S.append a b).
+  Notation "[| a ; .. ; b |]" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+  Notation "'\n'" := indent.
 
-Definition ret_u s := ret_u false (print s).
+  Coercion S.of_string : String.string >-> S.t.
 
-Section pr. (* Additional constructors (same as [_U]) are defined here *)
+  Notation "a ++ b" := (S.append a b).
 
-Definition ret {A} := ret A.
+  Definition ret_u s := ret_u false (print s).
 
-Definition eq_zero n :=
-  match n with 
-    | 0%nat => true
-    | _ => false
-  end.
+  Section pr. (* Additional constructors (same as [_U]) are defined here *)
+
+    Definition ret {A} := ret A.
+
+    Definition eq_zero n :=
+      match n with 
+        | 0%nat => true
+        | _ => false
+      end.
   
-Definition not_b (b : bool) := if b then false else true.
+    Definition not_b (b : bool) := if b then false else true.
 
-Definition surr_empty n := Vector.init n (fun _ => (true, (ret tt, ret tt))).
+    Definition surr_empty n :=
+      Vector.init n (fun _ => (true, (ret tt, ret tt))).
 
-Definition _U_constr : S.t (* name of the constructor *) ->
-  forall n, t u ^^ n --> t u.
-  intros s n.
-  case_eq n ; intros.
-  apply ncurry.
-  intros. exact (ret_u s). 
+    Definition _U_constr : S.t (* name of the constructor *) ->
+      forall n, t u ^^ n --> t u.
 
-  clear n H ; rename n0 into n.
-  apply (_U true (print (s ++ " ")) (ret tt)).
-  induction n.
-  exact (Vnil _).
-  apply Vcons. exact (print " "). trivial.
-  apply surr_empty.
-Defined.
+    Proof.
+      intros s n.
+      case_eq n ; intros.
+      apply ncurry.
+      intros. exact (ret_u s).
+      clear n H ; rename n0 into n.
+      apply (_U true (print (s ++ " ")) (ret tt)).
+      induction n.
+      exact (Vnil _).
+      apply Vcons. exact (print " "). trivial.
+      apply surr_empty.
+    Defined.
 
-Definition _U_infix2 : t v -> t u ^^ 2 --> t u.
-  intros s ; refine (_U true (ret tt) (ret tt) _ [| s |] _).
-  apply surr_empty.
-Defined.
+    Definition _U_infix2 : t v -> t u ^^ 2 --> t u.
 
-Definition _U_infix2_rass : t v -> t u ^^ 2 --> t u.
-  intros s ; refine (_U true (ret tt) (ret tt) _ [| s |]
-    [| (true, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
-Defined.
+    Proof.
+      intros s ; refine (_U true (ret tt) (ret tt) _ [| s |] _).
+      apply surr_empty.
+    Defined.
 
-Definition _U_infix3 : t v -> t v -> t u ^^ 3 --> t u.
-  intros s1 s2 ; refine (_U true (ret tt) (ret tt) _ [| s1 ; s2 |] _).
-  apply surr_empty.
-Defined.
+    Definition _U_infix2_rass : t v -> t u ^^ 2 --> t u.
 
-Definition _R : forall n, vector S.t n -> t u ^^ n --> t u.
-  intros n l.
-  case_eq n ; intros.
-  apply ncurry.
-  intros. exact (ret_u "{||}").
+    Proof.
+      intros s ; refine (_U true (ret tt) (ret tt) _ [| s |]
+        [| (true, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
+    Defined.
 
-  apply (_U false (perform [ save_pos ; print "{| "] )
-    (perform [ print " |}" ; delete_pos ]) ).
-  apply Vector.init. exact (fun _ => perform [ \n ; print " ; " ]).
-  subst n.
-  refine (Vector.map _ _ l) ; clear.
-  intros x.
-  exact (false, (print (x ++ " := "), ret tt)).
-Defined.
+    Definition _U_infix3 : t v -> t v -> t u ^^ 3 --> t u.
 
-Definition _U2 : S.t -> forall n, vector bool (S n) -> t u ^^ (S n) --> t u.
-  intros s n l.
-  apply (_U (not_b (eq_zero n)) (print (s ++ " ")) (ret tt) _
-    (Vector.init _ (fun _ => print " "))).
-  refine (Vector.map _ _ l) ; intros.
-  refine (H, _).  
-  case_eq H ; intros.
-  exact (ret tt, ret tt).
-  exact (save_pos, delete_pos).
-Defined.
+    Proof.
+      intros s1 s2 ; refine (_U true (ret tt) (ret tt) _ [| s1 ; s2 |] _).
+      apply surr_empty.
+    Defined.
 
-End pr.
+    Definition _R : forall n, vector S.t n -> t u ^^ n --> t u.
 
-Notation "{{ a ; .. ; b }}" :=
-  (_R _ (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)).
-Notation "'!' x" := (_U_constr x _) (at level 9).
-Notation "| x · y" := (_U2 x _ y) (at level 9).
+    Proof.
+      intros n l.
+      case_eq n ; intros.
+      apply ncurry.
+      intros. exact (ret_u "{||}").
+      apply (_U false (perform [ save_pos ; print "{| "] )
+        (perform [ print " |}" ; delete_pos ]) ).
+      apply Vector.init. exact (fun _ => perform [ \n ; print " ; " ]).
+      subst n.
+      refine (Vector.map _ _ l) ; clear.
+      intros x.
+      exact (false, (print (x ++ " := "), ret tt)).
+    Defined.
 
-Definition _init_data := _init_data _int _float _Z _ident
-  ! "Init_int8"
-  ! "Init_int16"
-  ! "Init_int32"
-  ! "Init_float32"
-  ! "Init_float64"
-  ! "Init_space"
-  ! "Init_addrof".
+    Definition _U2 : S.t -> forall n, vector bool (S n) -> t u ^^ (S n) --> t u.
 
-Module _AST.
+    Proof.
+      intros s n l.
+      apply (_U (not_b (eq_zero n)) (print (s ++ " ")) (ret tt) _
+        (Vector.init _ (fun _ => print " "))).
+      refine (Vector.map _ _ l) ; intros.
+      refine (H, _).  
+      case_eq H ; intros.
+      exact (ret tt, ret tt).
+      exact (save_pos, delete_pos).
+    Defined.
 
-  Definition _globvar {B} f_b := @_AST._globvar _ B _list _bool f_b _init_data
-    {{ "gvar_info" ; "gvar_init" ; "gvar_readonly" ; "gvar_volatile" }}.
+  End pr.
 
-(* Definition _program {B C} f_b f_c := @_AST._program _ B C _prod _list f_b f_c _ident _init_data _globvar
-    {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.*)
+  Notation "{{ a ; .. ; b }}" := (_R _
+    (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)).
+  Notation "'!' x" := (_U_constr x _) (at level 9).
+  Notation "| x · y" := (_U2 x _ y) (at level 9).
 
-  Definition _program_ : forall B C : Type,
-    (B -> t u) -> (C -> t u) -> AST.program B C -> t u.
+  Definition _init_data := _init_data _int _float _Z _ident
+    ! "Init_int8"
+    ! "Init_int16"
+    ! "Init_int32"
+    ! "Init_float32"
+    ! "Init_float64"
+    ! "Init_space"
+    ! "Init_addrof".
 
-  Proof.
-  intros. eapply _AST._program2. eexact _prod. eexact _list.
-  cut (forall A : Type, (A -> S.t -> t u) -> list A -> t u).
-  intros. apply (X2 A). intros. refine (P.ret_u true (perform [_ ; indent ; _])). exact (print X6). apply P.eval. exact (true, (ret tt, ret tt), X3 X5).
-  exact X4.
-  intros. generalize (map_stringTable _ X3); intros.
-  apply (_list _ (fun (a_b : _ * _) => let (a, b) := a_b in X2 a b)).
-  refine (List.map _ X4).
-  intros (a, o). case_eq o ; intros. exact (a, "(*" ++ t0 ++ "*)"). exact (a, S.of_string "").
-  eexact X. eexact X0. exact _ident. eexact _init_data. exact _globvar. exact {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
-  trivial.
-  Defined.
+  Module _AST.
 
-  Definition _program {B C} := _program_ B C.
+    Definition _globvar {B} f_b := @_AST._globvar _ B _list _bool f_b _init_data
+      {{ "gvar_info" ; "gvar_init" ; "gvar_readonly" ; "gvar_volatile" }}.
 
-  Definition _typ := _AST._typ
-    ! "AST.Tint"
-    ! "AST.Tfloat".
+    (* Definition _program {B C} f_b f_c := @_AST._program _ B C _prod _list f_b f_c _ident _init_data _globvar
+       {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.*)
 
-  Definition _signature := _AST._signature _list _option _typ
-    {{ "sig_args" ; "sig_res" }}.
+    Definition _program_ : forall B C : Type,
+      (B -> t u) -> (C -> t u) -> AST.program B C -> t u.
 
-  Definition _external_function :=
-    @_AST._external_function _ _ident _signature _bool
-    {{ "ef_id" ; "ef_sig" ; "ef_inline" }}.
+    Proof.
+      intros. eapply _AST._program2. eexact _prod. eexact _list.
+      cut (forall A : Type, (A -> S.t -> t u) -> list A -> t u).
+      intros. apply (X2 A). intros.
+      refine (P.ret_u true (perform [_ ; indent ; _])).
+      exact (print X6). apply P.eval. exact (true, (ret tt, ret tt), X3 X5).
+      exact X4.
+      intros. generalize (map_stringTable _ X3); intros.
+      apply (_list _ (fun (a_b : _ * _) => let (a, b) := a_b in X2 a b)).
+      refine (List.map _ X4).
+      intros (a, o). case_eq o ; intros. exact (a, "(*" ++ t0 ++ "*)").
+      exact (a, S.of_string "").
+      eexact X. eexact X0. exact _ident. eexact _init_data. exact _globvar.
+      exact {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
+      trivial.
+    Defined.
 
-End _AST.
+    Definition _program {B C} := _program_ B C.
 
-Module _Values.
-  Definition _block := _Z.
-  Definition _val := @_Values._val _ _int _float _block
-  ! "Vundef"
-  ! "Vint"
-  ! "Vfloat"
-  ! "Vptr".
-End _Values.
+    Definition _typ := _AST._typ
+      ! "AST.Tint"
+      ! "AST.Tfloat".
 
-Definition _signedness := _signedness 
-  ! (*"Signed"*) "++" 
-  ! (*"Unsigned"*) "--".
-Definition _intsize := _intsize 
-  ! (*"I8"*) "_8"
-  ! (*"I16"*) "_16" 
-  ! (*"I32"*) "_32" .
-Definition _floatsize := _floatsize 
-  ! (*"F32"*) "_32_" 
-  ! (*"F64"*) "_64_" .
-Definition _type_ T (ty : forall A : Type,
-       _type_ A (T -> A) 
-         (fun ty : Type =>
-          (intsize -> A) ->
-          (signedness -> A) ->
-          (floatsize -> A) -> (Z -> A) -> (ident -> A) -> ty) ) :=
-ty _ _intsize _signedness _floatsize _Z _ident
+    Definition _signature := _AST._signature _list _option _typ
+      {{ "sig_args" ; "sig_res" }}.
+
+    Definition _external_function :=
+      @_AST._external_function _ _ident _signature _bool
+      {{ "ef_id" ; "ef_sig" ; "ef_inline" }}.
+
+  End _AST.
+
+  Module _Values.
+    Definition _block := _Z.
+    Definition _val := @_Values._val _ _int _float _block
+      ! "Vundef"
+      ! "Vint"
+      ! "Vfloat"
+      ! "Vptr".
+  End _Values.
+
+  Definition _signedness := _signedness 
+    ! (*"Signed"*) "++" 
+    ! (*"Unsigned"*) "--".
+  Definition _intsize := _intsize 
+    ! (*"I8"*) "_8"
+    ! (*"I16"*) "_16" 
+    ! (*"I32"*) "_32" .
+  Definition _floatsize := _floatsize 
+    ! (*"F32"*) "_32_" 
+    ! (*"F64"*) "_64_" .
+  Definition _type_ T (ty : forall A : Type,
+    _type_ A (T -> A) 
+    (fun ty : Type =>
+      (intsize -> A) ->
+      (signedness -> A) ->
+      (floatsize -> A) -> (Z -> A) -> (ident -> A) -> ty) ) :=
+  ty _ _intsize _signedness _floatsize _Z _ident
   ! (*"Tvoid"*) "_void"
   ! (*"Tint"*) "Tint"
   ! (*"Tfloat"*) "Tfloat"
@@ -941,100 +974,102 @@ ty _ _intsize _signedness _floatsize _Z _ident
   ! (*"Fnil"*) "/** */"
   (*! "Fcons"*) (_U true (print "/* ") (ret tt) _ [| print " */ " ; perform [ print " ;" ; indent ] |] [| (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
 
-Definition _type := _type_ _ (@_type).
+  Definition _type := _type_ _ (@_type).
 
-Definition _typelist := _type_ _ (@_typelist).
+  Definition _typelist := _type_ _ (@_typelist).
 
-Module Make (Import CE : CONSTRUCTOR_EXP S M P).
+  Module Make (Import CE : CONSTRUCTOR_EXP S M P).
 
-  Definition _unary_operation := _unary_operation 
-    ! "Onotbool"
-    ! "Onotint"
-    ! "Oneg".
+    Definition _unary_operation := _unary_operation 
+      ! "Onotbool"
+      ! "Onotint"
+      ! "Oneg".
 
-  Definition _binary_operation := _binary_operation
-    ! "Oadd"
-    ! "Osub"
-    ! "Omul"
-    ! "Odiv"
-    ! "Omod"
-    ! "Oand"
-    ! "Oor"
-    ! "Oxor"
-    ! "Oshl"
-    ! "Oshr"
-    ! "Oeq"
-    ! "One"
-    ! "Olt"
-    ! "Ogt"
-    ! "Ole"
-    ! "Oge".
+    Definition _binary_operation := _binary_operation
+      ! "Oadd"
+      ! "Osub"
+      ! "Omul"
+      ! "Odiv"
+      ! "Omod"
+      ! "Oand"
+      ! "Oor"
+      ! "Oxor"
+      ! "Oshl"
+      ! "Oshr"
+      ! "Oeq"
+      ! "One"
+      ! "Olt"
+      ! "Ogt"
+      ! "Ole"
+      ! "Oge".
 
-  Definition _incr_or_decr := _incr_or_decr
-    ! "Incr"
-    ! "Decr".
+    Definition _incr_or_decr := _incr_or_decr
+      ! "Incr"
+      ! "Decr".
 
-  Definition _expr := _expr _Values._val _int _type _ident _unary_operation _binary_operation _Values._block _incr_or_decr
-    ! "Eval"
-    ! "Evar"
-    ! "Efield"
-    ! "Evalof"
-    ! "Ederef"
-    ! "Eaddrof"
-    ! "Eunop"
-    ! "Ebinop"
-    ! "Ecast"
-    ! "Econdition"
-    ! "Esizeof"
-    ! "Eassign"
-    ! "Eassignop"
-    ! "Epostincr"
-    ! "Ecomma"
-    ! "Ecall"
-    ! "Eloc"
-    ! "Eparen"
-    ! "Enil"
-    ! "Econs".
+    Definition _expr := _expr _Values._val _int _type _ident _unary_operation _binary_operation _Values._block _incr_or_decr
+      ! "Eval"
+      ! "Evar"
+      ! "Efield"
+      ! "Evalof"
+      ! "Ederef"
+      ! "Eaddrof"
+      ! "Eunop"
+      ! "Ebinop"
+      ! "Ecast"
+      ! "Econdition"
+      ! "Esizeof"
+      ! "Eassign"
+      ! "Eassignop"
+      ! "Epostincr"
+      ! "Ecomma"
+      ! "Ecall"
+      ! "Eloc"
+      ! "Eparen"
+      ! "Enil"
+      ! "Econs".
 
-  Definition _label := _ident.
+    Definition _label := _ident.
 
-  Definition _statement := _statement _option _expr _label _int
-    ! "Sskip"
-    ! "Sdo"
-  (*! "Ssequence"*) (_U_infix2 (perform [ indent_depth ; print ">> " ]))
-  (*! "Sifthenelse"*) (_U true (perform [ save_pos ; print "If " ]) delete_pos _ [| perform [ print " then" ; \n ; print "  " ] ; perform [ \n ; print "else" ; \n ; print "  " ] |] (surr_empty _))
-    ! "Swhile"
-    ! "Sdowhile"
-    ! "Sfor"
-    ! "Sbreak"
-    ! "Scontinue"
-    ! "Sreturn"
-    ! "Sswitch"
-    ! "Slabel"
-    ! "Sgoto"
-    ! "LSdefault"
-    ! "LScase".
+    Definition _statement := _statement _option _expr _label _int
+      ! "Sskip"
+      ! "Sdo"
+    (*! "Ssequence"*) (_U_infix2 (perform [ indent_depth ; print ">> " ]))
+    (*! "Sifthenelse"*) (_U true (perform [ save_pos ; print "If " ]) delete_pos _ [| perform [ print " then" ; \n ; print "  " ] ; perform [ \n ; print "else" ; \n ; print "  " ] |] (surr_empty _))
+      ! "Swhile"
+      ! "Sdowhile"
+      ! "Sfor"
+      ! "Sbreak"
+      ! "Scontinue"
+      ! "Sreturn"
+      ! "Sswitch"
+      ! "Slabel"
+      ! "Sgoto"
+      ! "LSdefault"
+      ! "LScase".
 
-  Definition _function := _function _prod _list _ident _type _statement
-    {{ "fn_return" ; "fn_params" ; "fn_vars" ; "fn_body" }}.
+    Definition _function := _function _prod _list _ident _type _statement
+      {{ "fn_return" ; "fn_params" ; "fn_vars" ; "fn_body" }}.
 
-  Definition _fundef :=
-    _fundef _function _AST._external_function _typelist _type
-    ! "Internal"
-    | (*! "External"*) "External" · [| true ; false ; true |].
+    Definition _fundef :=
+      _fundef _function _AST._external_function _typelist _type
+      ! "Internal"
+      | (*! "External"*) "External" · [| true ; false ; true |].
 
-  Definition _program := _AST._program _fundef _type.
+    Definition _program := _AST._program _fundef _type.
 
-End Make.
+  End Make.
 
 End Constructor.
 
-(* *** *)
+(****************************************************************************)
 
 Module Lazy (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
   Open Scope string_scope.
+
   Coercion S.of_string : String.string >-> S.t.
+
   Implicit Arguments bind [A B]. 
   Implicit Arguments ret [A].
 
@@ -1059,10 +1094,14 @@ Module Lazy (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
 End Lazy.
 
+(****************************************************************************)
+
 Module Strict (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
   Open Scope string_scope.
+
   Coercion S.of_string : String.string >-> S.t.
+
   Implicit Arguments bind [A B]. 
   Implicit Arguments ret [A].
 
@@ -1087,7 +1126,7 @@ Module Strict (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
 End Strict.
 
-(* *** *)
+(****************************************************************************)
 
 Module Monad_simple (F : FRESH) (K_type : KEY with Definition t := type)
   (K_typelist : KEY with Definition t := typelist) (S : STRING)
