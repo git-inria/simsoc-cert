@@ -38,3 +38,6 @@ clean::
 html: RawCoq_Csyntax.v
 	mkdir -p html
 	$(COQDOC) RawCoq_Csyntax.v
+
+clean::
+	rm -f html
