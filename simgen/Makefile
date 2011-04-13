@@ -34,3 +34,7 @@ extraction.v: RawCoq_Csyntax.vo
 
 clean::
 	rm -f $(TARGETS) RawCoq_Csyntax.vo
+
+html: RawCoq_Csyntax.v
+	mkdir -p html
+	$(COQDOC) RawCoq_Csyntax.v
