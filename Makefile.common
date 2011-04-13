@@ -68,7 +68,7 @@ COQ_MAKEFILE := coq_makefile $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES)
 
 COQDEP := coqdep $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -I .
 
-COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -noglob -dont-load-proofs
+COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -dont-load-proofs
 
 %.vo: %.v
 	$(SHOW) coqc $<
@@ -78,6 +78,8 @@ COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -noglob -dont-load-proof
 
 libcoq:
 	$(MAKE) -C $(DIR)/coq
+
+COQDOC := coqdoc --html -toc -g -d html
 
 ######################################################################
 # ocamlbuild
