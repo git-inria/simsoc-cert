@@ -24,8 +24,10 @@ Require Import
 (****************************************************************************)
 
 Module Vector.
+
   (* Convert a [vector] into a [list] with an extra property on its length. *)
-  Definition to_list : forall A n, vector A n -> { l : list A | n = List.length l }.
+  Definition to_list : forall A n,
+    vector A n -> { l : list A | n = List.length l }.
     induction n ; intros.
     exists List.nil.
     trivial.
@@ -53,23 +55,43 @@ Module Vector.
     trivial.
     tauto.
   Defined.
+
 End Vector.
 
 (****************************************************************************)
-(** Generic creation of a recursor *)
+(** Generic creation of a recursor
+
+This module gives a destructor for each local type used to build the
+main type [Csyntax.program]. For each type [t], Coq furnishes us
+automatically a function named [t_rect]. We use it to write a function
+[_t] which behaviour is almost similar to [t_rect] except that :
+
+- if [t] is a mutually declared type, assume that [t] belongs to [t1
+  ... ti ... tn], then we use the 'Scheme' command to obtain a
+  recursor [_ti_rect] which folds inside [t1 ... tn] (not like
+  [ti_rect]).
+
+As the constructors of [_t1 ... _tn] are the same, we just do only one
+general construction named [_t_] which will take one of [_t1 ... _tn]
+as an extra parameter. The type of this parameter has to be manually
+written by hand because of the used of higher order type (see the
+function [_ty_]).
+
+- if [t] is a recursive type, the parameter used before the recursive
+  call parameter is thrown, we do not use it.
+
+- an extra function of conversion is provided in the case we are
+  converting a polymorphic function (see [_option] or [_list] for
+  example). *)
 (****************************************************************************)
 
 Module Rec.
-(** This module gives a destructor for each local type used to build the main type [Csyntax.program].
-For each type [t], Coq furnishes us automatically a function named [t_rect]. We use it to write a function [_t] which behaviour is almost similar to [t_rect] except that :
-- if [t] is a mutually declared type, assume that [t] belongs to [t1 ... ti ... tn], then we use the 'Scheme' command to obtain a recursor [_ti_rect] which folds inside [t1 ... tn] (not like [ti_rect]). 
-As the constructors of [_t1 ... _tn] are the same, we just do only one general construction named [_t_] which will take one of [_t1 ... _tn] as an extra parameter. The type of this parameter has to be manually written by hand because of the used of higher order type (see the function [_ty_]).
-- if [t] is a recursive type, the parameter used before the recursive call parameter is thrown, we do not use it. 
-- an extra function of conversion is provided in the case we are converting a polymorphic function (see [_option] or [_list] for example). *)
 
-Definition _option {A B C} (a : _ -> C) f := @option_rect A (fun _ => B) (fun x => f (a x)).
+Definition _option {A B C} (a : _ -> C) f :=
+  @option_rect A (fun _ => B) (fun x => f (a x)).
 
-Definition _positive {A} f f0 := @positive_rect (fun _ => A) (fun _ x => f x) (fun _ x => f0 x).
+Definition _positive {A} f f0 :=
+  @positive_rect (fun _ => A) (fun _ x => f x) (fun _ x => f0 x).
 
 Definition _Z {A POSITIVE}
   (_positive : _ -> POSITIVE)
@@ -94,6 +116,7 @@ Definition _init_data {A B C D E}
   (fun i i2 => f_addrof (_ident i) (_int i2)).
 
 Module _AST.
+
   Definition _globvar {A B C E INIT_DATA V : Type}
     (_list : forall A, (A -> _) -> list A -> _)
     _bool
@@ -107,6 +130,7 @@ Module _AST.
       (_list _ _init_data (gvar_init x))
       (_bool (gvar_readonly x))
       (_bool (gvar_volatile x)).
+
   Definition _program {A B C D E INIT_DATA GLOBVAR F V : Type}
     (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
     (_list : forall A, (A -> _) -> list A -> _)
@@ -119,6 +143,7 @@ Module _AST.
       (_list _ (_prod _ _ _ident f_f) (prog_funct x)) 
       (_ident (prog_main x)) 
       (_list _ (_prod _ _ _ident (_globvar f_v)) (prog_vars x)).
+
   Definition _program2 {A B C D E INIT_DATA GLOBVAR F V : Type}
     (_prod : forall A B, (A -> _) -> (B -> _) -> prod A B -> C)
     (_list : forall A, (A -> _) -> list A -> _)
@@ -159,6 +184,7 @@ Module _AST.
 End _AST.
 
 Module _Values.
+
   Definition _val {A INT FLOAT BLOCK} 
     (_int : _ -> INT) (_float : _ -> FLOAT) (_block : _ -> BLOCK)
     f_undef f_int f_float f_ptr
@@ -168,6 +194,7 @@ Module _Values.
       (fun i => f_int (_int i))
       (fun f => f_float (_float f))
       (fun p i => f_ptr (_block p) (_int i)).
+
 End _Values.
 
 Definition _signedness {A} := signedness_rect (fun _ => A).
@@ -378,16 +405,26 @@ Definition _fundef {A  FUNCTION IDENT TYPELIST TYPE}
   fundef_rect (fun _ => A)
   (fun x => f_internal (_function x))
   (fun i tl t => f_external (_ident i) (_typelist tl) (_type t)).
+
 End Rec.
 
+(****************************************************************************)
+(** For each general function inside the module [Rec], we cast its
+type to a lower one : each polymorphic type is explicitly instanciated
+with a single polymorphic one.  This polymorphic information can be
+thought as an accumulator staying alive during the whole execution, it
+can be used for example with a monadic construction.  After this
+change, we generalize each function construction "_ -> _ -> _ -> _ ->
+_" to a more general one "_ ^^ _ --> _" by using the NaryFunctions
+library.  This is useful for later because we will not want to
+abstract manually the "fun _ => _" during the application time.  Note
+that we have to give explicitely the arity of each constructor in each
+type. *)
 
-Module Rec_weak. 
-(** For each general function inside the module [Rec], we cast its type to a lower one : each polymorphic type is explicitly instanciated with a single polymorphic one. 
-This polymorphic information can be thought as an accumulator staying alive during the whole execution, it can be used for example with a monadic construction.
-After this change, we generalize each function construction "_ -> _ -> _ -> _ -> _" to a more general one "_ ^^ _ --> _" by using the NaryFunctions library.
-This is useful for later because we will not want to abstract manually the "fun _ => _" during the application time. 
-Note that we have to give explicitely the arity of each constructor in each type. *)
+Module Rec_weak.
+
 Import Rec.
+
 Notation "A ** n" := (A ^^ n --> A) (at level 29) : type_scope.
 
 Definition _positive {A} :
@@ -395,11 +432,13 @@ Definition _positive {A} :
   A ** 1 ->
   A ** 0 ->
   _ := @_positive _ .
+
 Definition _Z {A} : _ ->
   A ** 0 ->
   A ** 1 ->
   A ** 1 ->
   _ := @_Z A A.
+
 Definition _init_data {A} : _ -> _ -> _ -> _ -> 
   A ** 1 ->
   A ** 1 ->
@@ -409,45 +448,59 @@ Definition _init_data {A} : _ -> _ -> _ -> _ ->
   A ** 1 ->
   A ** 2 ->
   _ := @_init_data _ _ _ _ _.
+
 Module _AST.
-Definition _globvar {A B} : _ -> _ -> _ -> _ ->
-  A ** 4 ->
-  _ := @_AST._globvar _ _ _ _ A B.
-Definition _program {A B C} : _ -> _ -> _ -> _ -> _ -> _ -> _ ->
-  A ** 3 ->
-  _ := @_AST._program _ _ A _ A A A B C.
-Definition _typ {A} : 
-  A ** 0 ->
-  A ** 0 ->
-  _ := @_AST._typ A.
-Definition _signature {A} : _ -> _ -> _ -> 
-  A ** 2 -> 
-  _ := @_AST._signature _ _ _ A.
-Definition _external_function {A} : _ -> _ -> _ ->
-  A ** 3 ->
-  _ := @_AST._external_function _ _ _ _.
+
+  Definition _globvar {A B} : _ -> _ -> _ -> _ ->
+    A ** 4 ->
+    _ := @_AST._globvar _ _ _ _ A B.
+
+  Definition _program {A B C} : _ -> _ -> _ -> _ -> _ -> _ -> _ ->
+    A ** 3 ->
+    _ := @_AST._program _ _ A _ A A A B C.
+
+  Definition _typ {A} : 
+    A ** 0 ->
+    A ** 0 ->
+    _ := @_AST._typ A.
+
+  Definition _signature {A} : _ -> _ -> _ -> 
+    A ** 2 -> 
+    _ := @_AST._signature _ _ _ A.
+
+  Definition _external_function {A} : _ -> _ -> _ ->
+    A ** 3 ->
+    _ := @_AST._external_function _ _ _ _.
+
 End _AST.
+
 Module _Values.
-Definition _val {A} : _ -> _ -> _ ->
-  A ** 0 ->
-  A ** 1 ->
-  A ** 1 ->
-  A ** 2 ->
-  _ := @_Values._val _ _ _ _.
+
+  Definition _val {A} : _ -> _ -> _ ->
+    A ** 0 ->
+    A ** 1 ->
+    A ** 1 ->
+    A ** 2 ->
+    _ := @_Values._val _ _ _ _.
+
 End _Values.
+
 Definition _signedness {A} :
   A ** 0 ->
   A ** 0 ->
   _ := @_signedness _.
+
 Definition _intsize {A} :
   A ** 0 ->
   A ** 0 ->
   A ** 0 ->
   _ := @_intsize _.
+
 Definition _floatsize {A} :
   A ** 0 ->
   A ** 0 ->
   _ := @_floatsize _.
+
 Definition _type_ A B (f : _ -> Type) := f (
   A ** 0 ->
   A ** 2 ->
@@ -463,13 +516,17 @@ Definition _type_ A B (f : _ -> Type) := f (
   A ** 0 ->
   A ** 3 ->
   B).
+
 Definition _type {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty) := @_type _ _ _ _ _ _ _ _.
+
 Definition _typelist {A} : _type_ A _ (fun ty => _ -> _ -> _ -> _ -> _ -> ty) := @_typelist _ _ _ _ _ _ _ _.
+
 Definition _unary_operation {A} : 
   A ** 0 ->
   A ** 0 ->
   A ** 0 ->
   _ := @_unary_operation _.
+
 Definition _binary_operation {A} :
   A ** 0 ->
   A ** 0 ->
@@ -488,6 +545,7 @@ Definition _binary_operation {A} :
   A ** 0 ->
   A ** 0 ->
   _ := @_binary_operation _.
+
 Definition _expr {A} : _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
   A ** 2 -> 
   A ** 2 -> 
@@ -510,10 +568,12 @@ Definition _expr {A} : _ -> _ -> _ -> _ -> _ -> _ -> _ -> _ ->
   A ** 0 -> 
   A ** 2 -> 
   _ := @_expr _ _ _ _ _ _ _ _ _ _.
+
 Definition _incr_or_decr {A} : 
   A ** 0 ->
   A ** 0 ->
   _ := @_incr_or_decr _.
+
 Definition _statement {A} : _ -> _ -> _ -> _ -> 
   A ** 0 -> 
   A ** 1 -> 
@@ -531,9 +591,11 @@ Definition _statement {A} : _ -> _ -> _ -> _ ->
   A ** 1 -> 
   A ** 3 -> 
   _ := @_statement _ _ _ _ _ _.
+
 Definition _function {A} : _ -> _ -> _ -> _ -> _ -> 
   A ** 4 ->
   _ := @_function A _ A _ _ _.
+
 Definition _fundef {A} : _ -> _ -> _ -> _ -> 
   A ** 1 ->
   A ** 3 ->
@@ -541,43 +603,44 @@ Definition _fundef {A} : _ -> _ -> _ -> _ ->
 
 End Rec_weak.
 
-
-
 (****************************************************************************)
-(* For the following module type, the implementation is done at OCaml side *)
+(** For the following module type, the implementation is done at OCaml side *)
 (****************************************************************************)
 
 Module Type STRING.
   Parameter t : Type.
-
   Parameter of_string : String.string -> t.
-
   Parameter make : nat -> Ascii.ascii -> t.
   Parameter append : t -> t -> t.
 End STRING.
 
 Module Type UTIL (S : STRING).
+  (* we can also implement these [string_of_...] functions in Coq, but
+  in the case of not tail recursive function, we may have a
+  ([Stack_overflow], in byte code) or a (Segmentation_fault, in native
+  code). *)
   Parameter string_of_nat : nat -> S.t.
   Parameter string_of_positive : positive -> S.t.
   Parameter string_of_Z : Z -> S.t.
-  (* WARNING we can also implement these [string_of_...] functions in Coq, but in the case of not tail recursive function, we may have a ([Stack_overflow], in byte code) or a (Segmentation_fault, in native code). *)
 
+  (* look at the hashtbl [string_of_atom] inside 'Camlcoq.ml' and
+  return the name of the corresponding positive if found.  If found,
+  it returns the pair composed of the string name escaped and the
+  original name ([None] in the case the original name do not conflict
+  with a Coq keyword) *)
   Parameter name : positive -> option (S.t * option S.t).
-  (** look at the hashtbl [string_of_atom] inside 'Camlcoq.ml' and return the name of the corresponding positive if found. 
-  If found, it returns the pair composed of the string name escaped and the original name ([None] in the case the original name do not conflict with a Coq keyword) *)
+
   Parameter map_stringTable : forall A, list A -> list (A * option S.t).
 End UTIL.
 
 Module Type FRESH.
   Parameter t : Type.
-
   Parameter zero : t.
   Parameter succ : t -> t.
 End FRESH.
 
 Module Type BUFFER (S : STRING) (F : FRESH).
   Parameter t : Type.
-  
   Parameter empty : forall A, A -> t.
   Parameter print : S.t -> t -> t.
   Parameter print_newline : t -> t.
@@ -592,7 +655,6 @@ End KEY.
 
 Module Type MAP (K : KEY). (** using OCaml structural equality *)
   Parameter t : Type -> Type.
-
   Parameter add : forall A, K.t -> A -> t A -> t A.
   Parameter find : forall A, K.t -> t A -> option A.
   Parameter empty : forall A, t A.
@@ -600,11 +662,10 @@ Module Type MAP (K : KEY). (** using OCaml structural equality *)
 End MAP.
 
 (****************************************************************************)
-(* Organization of the whole program of pretty printing *)
+(** Organization of the whole program of pretty printing *)
 (****************************************************************************)
 
 Module Type MONAD_SIMPLE (S : STRING).
-  (** Describe the monadic form used for printing *)
 
   Parameter t : Type -> Type.
   Parameter v : Type. (* contains a buffer *)
@@ -630,35 +691,50 @@ Module Type MONAD_SIMPLE (S : STRING).
   Parameter tt : v.
 End MONAD_SIMPLE.
 
+(** This module type permits the choice between explicit parenthesis
+and parenthesis by need *)
+
 Module Type PARENTHESIS (S : STRING) (M : MONAD_SIMPLE S).
-  (** This module type permits the choice between explicit parenthesis and parenthesis by need *)
   Import M.
 
-  Parameter u : Type.
-    (** depending on the parenthesis mode, [u] is equal to [v] or contains a not evaluated [t v] *)
+  Parameter u : Type. (* depending on the parenthesis mode, [u] is
+  equal to [v] or contains a not evaluated [t v] *)
 
-  Parameter ret_u : bool (* hint signaling that the expression [t v] need to have parenthesis *) -> t v -> t u.
-  Parameter eval : (bool (* false : disable the parenthesis of [t u] *) * (t v (* prefix *) * t v (* suffix *))) * t u -> t v.
+  Parameter ret_u : bool (* hint signaling that the expression [t v]
+  need to have parenthesis *) -> t v -> t u.
 
-  Parameter exec : t u -> t v. 
-    (* it is used once at the main point of the whole program to retrieve the monadic computation [t v] *)
+  Parameter eval : (bool (* false : disable the parenthesis of [t u]
+  *) * (t v (* prefix *) * t v (* suffix *))) * t u -> t v.
+
+  Parameter exec : t u -> t v. (* it is used once at the main point of
+  the whole program to retrieve the monadic computation [t v] *)
+
 End PARENTHESIS.
+
+(****************************************************************************)
+(** Generic description of a printing of an uplet constructor *)
 
 Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
   Import M P.
 
-  Parameter _U : 
-    bool (* true : the whole need to be protected by a parenthesis. Note that this information is a simple hint, the constructor which call [_U] can decide not to do so. *) -> 
+  (* Note that some parameters can be merged (like separator and
+    surrounding) but this writting style expansion is rather general *)
+  Parameter _U :
+    bool (* true : the whole need to be protected by a
+    parenthesis. Note that this information is a simple hint, the
+    constructor which call [_U] can decide not to do so. *) ->
     t v (* prefix *) -> 
     t v (* suffix *) -> 
     forall n, 
     vector (t v) n -> (* separator *)
-    vector (bool (* true : follow the same choice as the parenthesis hint (indicated by the element we are folding), false : explicit disable the parenthesis (do not consider the hint) *) * (t v (* prefix *) * t v (* suffix *))) (S n) -> (* surrounding *)
+    vector (bool (* true : follow the same choice as the parenthesis
+    hint (indicated by the element we are folding), false : explicit
+    disable the parenthesis (do not consider the hint) *) * (t v (*
+    prefix *) * t v (* suffix *))) (S n) -> (* surrounding *)
     t u ^^ (S n) --> t u.
-    (** Generic description of a printing of an uplet constructor *)
-    (** Note that some parameters can be merged (like separator and surrounding) but this writting style expansion is rather general *)
 
-  (* These specials constructors need to have a special implementation (not using [_U] for example). *)
+  (* These specials constructors need to have a special implementation
+  (not using [_U] for example). *)
   Parameter _positive : positive -> t u.
   Parameter _Z : Z -> t u.
   Parameter _ident : positive -> t u.
@@ -672,18 +748,21 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
   Parameter map_stringTable : forall A, list A -> list (A * option S.t).
 End CONSTRUCTOR.
 
-Module Type CONSTRUCTOR_EXP (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
+Module Type CONSTRUCTOR_EXP (S : STRING) (M : MONAD_SIMPLE S)
+  (P : PARENTHESIS S M).
   Import M P.
   Parameter _type : type -> t u.
   Parameter _typelist : typelist -> t u.
 End CONSTRUCTOR_EXP.
 
 (****************************************************************************)
-(* Implementation and activation of the main program *)
-(****************************************************************************)
+(** The pretty-printing is done inside this module : for each type, we
+explicitly write the name of the corresponding constructor inside a
+"string". *)
 
-Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M) (C : CONSTRUCTOR S M P). 
-(** The pretty-printing is done inside this module : for each type, we explicitly write the name of the corresponding constructor inside a "string". *)
+Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
+  (C : CONSTRUCTOR S M P). 
+
 Import Rec Rec_weak M P C.
 
 Open Scope string_scope.
@@ -697,7 +776,7 @@ Notation "a ++ b" := (S.append a b).
 
 Definition ret_u s := ret_u false (print s).
 
-Section pr. (** Additional constructors (same as [_U]) is defined here *)
+Section pr. (* Additional constructors (same as [_U]) are defined here *)
 
 Definition ret {A} := ret A.
 
@@ -711,7 +790,8 @@ Definition not_b (b : bool) := if b then false else true.
 
 Definition surr_empty n := Vector.init n (fun _ => (true, (ret tt, ret tt))).
 
-Definition _U_constr : S.t (* name of the constructor *) -> forall n, t u ^^ n --> t u.
+Definition _U_constr : S.t (* name of the constructor *) ->
+  forall n, t u ^^ n --> t u.
   intros s n.
   case_eq n ; intros.
   apply ncurry.
@@ -731,7 +811,8 @@ Definition _U_infix2 : t v -> t u ^^ 2 --> t u.
 Defined.
 
 Definition _U_infix2_rass : t v -> t u ^^ 2 --> t u.
-  intros s ; refine (_U true (ret tt) (ret tt) _ [| s |] [| (true, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
+  intros s ; refine (_U true (ret tt) (ret tt) _ [| s |]
+    [| (true, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
 Defined.
 
 Definition _U_infix3 : t v -> t v -> t u ^^ 3 --> t u.
@@ -745,7 +826,8 @@ Definition _R : forall n, vector S.t n -> t u ^^ n --> t u.
   apply ncurry.
   intros. exact (ret_u "{||}").
 
-  apply (_U false (perform [ save_pos ; print "{| "] ) (perform [ print " |}" ; delete_pos ]) ).
+  apply (_U false (perform [ save_pos ; print "{| "] )
+    (perform [ print " |}" ; delete_pos ]) ).
   apply Vector.init. exact (fun _ => perform [ \n ; print " ; " ]).
   subst n.
   refine (Vector.map _ _ l) ; clear.
@@ -755,7 +837,8 @@ Defined.
 
 Definition _U2 : S.t -> forall n, vector bool (S n) -> t u ^^ (S n) --> t u.
   intros s n l.
-  apply (_U (not_b (eq_zero n)) (print (s ++ " ")) (ret tt) _ (Vector.init _ (fun _ => print " "))).
+  apply (_U (not_b (eq_zero n)) (print (s ++ " ")) (ret tt) _
+    (Vector.init _ (fun _ => print " "))).
   refine (Vector.map _ _ l) ; intros.
   refine (H, _).  
   case_eq H ; intros.
@@ -765,7 +848,8 @@ Defined.
 
 End pr.
 
-Notation "{{ a ; .. ; b }}" := (_R _ (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)).
+Notation "{{ a ; .. ; b }}" :=
+  (_R _ (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)).
 Notation "'!' x" := (_U_constr x _) (at level 9).
 Notation "| x · y" := (_U2 x _ y) (at level 9).
 
@@ -779,13 +863,17 @@ Definition _init_data := _init_data _int _float _Z _ident
   ! "Init_addrof".
 
 Module _AST.
+
   Definition _globvar {B} f_b := @_AST._globvar _ B _list _bool f_b _init_data
     {{ "gvar_info" ; "gvar_init" ; "gvar_readonly" ; "gvar_volatile" }}.
-(*
-  Definition _program {B C} f_b f_c := @_AST._program _ B C _prod _list f_b f_c _ident _init_data _globvar
-    {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
-*)
-  Definition _program_ : forall B C : Type, (B -> t u) -> (C -> t u) -> AST.program B C -> t u.
+
+(* Definition _program {B C} f_b f_c := @_AST._program _ B C _prod _list f_b f_c _ident _init_data _globvar
+    {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.*)
+
+  Definition _program_ : forall B C : Type,
+    (B -> t u) -> (C -> t u) -> AST.program B C -> t u.
+
+  Proof.
   intros. eapply _AST._program2. eexact _prod. eexact _list.
   cut (forall A : Type, (A -> S.t -> t u) -> list A -> t u).
   intros. apply (X2 A). intros. refine (P.ret_u true (perform [_ ; indent ; _])). exact (print X6). apply P.eval. exact (true, (ret tt, ret tt), X3 X5).
@@ -797,15 +885,20 @@ Module _AST.
   eexact X. eexact X0. exact _ident. eexact _init_data. exact _globvar. exact {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
   trivial.
   Defined.
+
   Definition _program {B C} := _program_ B C.
 
   Definition _typ := _AST._typ
     ! "AST.Tint"
     ! "AST.Tfloat".
+
   Definition _signature := _AST._signature _list _option _typ
     {{ "sig_args" ; "sig_res" }}.
-  Definition _external_function := @_AST._external_function _ _ident _signature _bool
+
+  Definition _external_function :=
+    @_AST._external_function _ _ident _signature _bool
     {{ "ef_id" ; "ef_sig" ; "ef_inline" }}.
+
 End _AST.
 
 Module _Values.
@@ -832,7 +925,8 @@ Definition _type_ T (ty : forall A : Type,
          (fun ty : Type =>
           (intsize -> A) ->
           (signedness -> A) ->
-          (floatsize -> A) -> (Z -> A) -> (ident -> A) -> ty) ) := ty _ _intsize _signedness _floatsize _Z _ident
+          (floatsize -> A) -> (Z -> A) -> (ident -> A) -> ty) ) :=
+ty _ _intsize _signedness _floatsize _Z _ident
   ! (*"Tvoid"*) "_void"
   ! (*"Tint"*) "Tint"
   ! (*"Tfloat"*) "Tfloat"
@@ -846,267 +940,293 @@ Definition _type_ T (ty : forall A : Type,
   (*! "Tcons"*) (_U_infix2_rass (print " ~> "))
   ! (*"Fnil"*) "/** */"
   (*! "Fcons"*) (_U true (print "/* ") (ret tt) _ [| print " */ " ; perform [ print " ;" ; indent ] |] [| (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
+
 Definition _type := _type_ _ (@_type).
+
 Definition _typelist := _type_ _ (@_typelist).
 
 Module Make (Import CE : CONSTRUCTOR_EXP S M P).
-Definition _unary_operation := _unary_operation 
-  ! "Onotbool"
-  ! "Onotint"
-  ! "Oneg".
-Definition _binary_operation := _binary_operation
-  ! "Oadd"
-  ! "Osub"
-  ! "Omul"
-  ! "Odiv"
-  ! "Omod"
-  ! "Oand"
-  ! "Oor"
-  ! "Oxor"
-  ! "Oshl"
-  ! "Oshr"
-  ! "Oeq"
-  ! "One"
-  ! "Olt"
-  ! "Ogt"
-  ! "Ole"
-  ! "Oge".
-Definition _incr_or_decr := _incr_or_decr
-  ! "Incr"
-  ! "Decr".
-Definition _expr := _expr _Values._val _int _type _ident _unary_operation _binary_operation _Values._block _incr_or_decr
-  ! "Eval"
-  ! "Evar"
-  ! "Efield"
-  ! "Evalof"
-  ! "Ederef"
-  ! "Eaddrof"
-  ! "Eunop"
-  ! "Ebinop"
-  ! "Ecast"
-  ! "Econdition"
-  ! "Esizeof"
-  ! "Eassign"
-  ! "Eassignop"
-  ! "Epostincr"
-  ! "Ecomma"
-  ! "Ecall"
-  ! "Eloc"
-  ! "Eparen"
-  ! "Enil"
-  ! "Econs".
-Definition _label := _ident.
-Definition _statement := _statement _option _expr _label _int
-  ! "Sskip"
-  ! "Sdo"
+
+  Definition _unary_operation := _unary_operation 
+    ! "Onotbool"
+    ! "Onotint"
+    ! "Oneg".
+
+  Definition _binary_operation := _binary_operation
+    ! "Oadd"
+    ! "Osub"
+    ! "Omul"
+    ! "Odiv"
+    ! "Omod"
+    ! "Oand"
+    ! "Oor"
+    ! "Oxor"
+    ! "Oshl"
+    ! "Oshr"
+    ! "Oeq"
+    ! "One"
+    ! "Olt"
+    ! "Ogt"
+    ! "Ole"
+    ! "Oge".
+
+  Definition _incr_or_decr := _incr_or_decr
+    ! "Incr"
+    ! "Decr".
+
+  Definition _expr := _expr _Values._val _int _type _ident _unary_operation _binary_operation _Values._block _incr_or_decr
+    ! "Eval"
+    ! "Evar"
+    ! "Efield"
+    ! "Evalof"
+    ! "Ederef"
+    ! "Eaddrof"
+    ! "Eunop"
+    ! "Ebinop"
+    ! "Ecast"
+    ! "Econdition"
+    ! "Esizeof"
+    ! "Eassign"
+    ! "Eassignop"
+    ! "Epostincr"
+    ! "Ecomma"
+    ! "Ecall"
+    ! "Eloc"
+    ! "Eparen"
+    ! "Enil"
+    ! "Econs".
+
+  Definition _label := _ident.
+
+  Definition _statement := _statement _option _expr _label _int
+    ! "Sskip"
+    ! "Sdo"
   (*! "Ssequence"*) (_U_infix2 (perform [ indent_depth ; print ">> " ]))
   (*! "Sifthenelse"*) (_U true (perform [ save_pos ; print "If " ]) delete_pos _ [| perform [ print " then" ; \n ; print "  " ] ; perform [ \n ; print "else" ; \n ; print "  " ] |] (surr_empty _))
-  ! "Swhile"
-  ! "Sdowhile"
-  ! "Sfor"
-  ! "Sbreak"
-  ! "Scontinue"
-  ! "Sreturn"
-  ! "Sswitch"
-  ! "Slabel"
-  ! "Sgoto"
-  ! "LSdefault"
-  ! "LScase".
-Definition _function := _function _prod _list _ident _type _statement
-  {{ "fn_return" ; "fn_params" ; "fn_vars" ; "fn_body" }}.
-Definition _fundef := _fundef _function _AST._external_function _typelist _type
-  ! "Internal"
-  | (*! "External"*) "External" · [| true ; false ; true |].
-Definition _program := _AST._program _fundef _type.
+    ! "Swhile"
+    ! "Sdowhile"
+    ! "Sfor"
+    ! "Sbreak"
+    ! "Scontinue"
+    ! "Sreturn"
+    ! "Sswitch"
+    ! "Slabel"
+    ! "Sgoto"
+    ! "LSdefault"
+    ! "LScase".
+
+  Definition _function := _function _prod _list _ident _type _statement
+    {{ "fn_return" ; "fn_params" ; "fn_vars" ; "fn_body" }}.
+
+  Definition _fundef :=
+    _fundef _function _AST._external_function _typelist _type
+    ! "Internal"
+    | (*! "External"*) "External" · [| true ; false ; true |].
+
+  Definition _program := _AST._program _fundef _type.
+
 End Make.
+
 End Constructor.
 
 (* *** *)
 
 Module Lazy (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
-Open Scope string_scope.
-Coercion S.of_string : String.string >-> S.t.
-Implicit Arguments bind [A B]. 
-Implicit Arguments ret [A].
+  Open Scope string_scope.
+  Coercion S.of_string : String.string >-> S.t.
+  Implicit Arguments bind [A B]. 
+  Implicit Arguments ret [A].
 
-Definition u := (bool * t v) % type.
+  Definition u := (bool * t v) % type.
 
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
-Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
-  let (a, m) := a in
-  let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
-  perform 
-  [ m1
-  ; bind m (fun b_m => let (b, m) := b_m in if andb bb b then perform [ print "(" ; m ; print ")" ] else m)
-  ; m2 ].
+  Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
+    let (a, m) := a in
+      let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
+        perform 
+        [ m1
+          ; bind m (fun b_m => let (b, m) := b_m in
+            if andb bb b then perform [ print "(" ; m ; print ")" ] else m)
+          ; m2 ].
 
-Definition ret_u : bool -> t v -> t u := fun b m => ret (b, m).
+  Definition ret_u : bool -> t v -> t u := fun b m => ret (b, m).
 
-Definition exec (m : t u) : t v := 
-  bind m (fun b_m => let (_, m) := b_m in m).
+  Definition exec (m : t u) : t v :=
+    bind m (fun b_m => let (_, m) := b_m in m).
+
 End Lazy.
-
-
 
 Module Strict (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
-Open Scope string_scope.
-Coercion S.of_string : String.string >-> S.t.
-Implicit Arguments bind [A B]. 
-Implicit Arguments ret [A].
+  Open Scope string_scope.
+  Coercion S.of_string : String.string >-> S.t.
+  Implicit Arguments bind [A B]. 
+  Implicit Arguments ret [A].
 
-Definition u := v.
+  Definition u := v.
 
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
-Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
-  let (a, m) := a in
-  let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
-  perform 
-  [ m1
-  ; print "("
-  ; m
-  ; print ")"
-  ; m2 ].
+  Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
+    let (a, m) := a in
+      let (bb, m1_m2) := a in let (m1, m2) := m1_m2 in
+        perform 
+        [ m1
+          ; print "("
+          ; m
+          ; print ")"
+          ; m2 ].
 
-Definition ret_u : bool -> t v -> t u := fun b m => m.
-Definition exec (m : t u) : t v := m.
+  Definition ret_u : bool -> t v -> t u := fun b m => m.
+
+  Definition exec (m : t u) : t v := m.
+
 End Strict.
 
 (* *** *)
 
-Module Monad_simple (F : FRESH) (K_type : KEY with Definition t := type) (K_typelist : KEY with Definition t := typelist) (S : STRING) (B : BUFFER S F) (Map_type : MAP K_type) (Map_typelist : MAP K_typelist) <: MONAD_SIMPLE S.
-Require Import Ascii.
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+Module Monad_simple (F : FRESH) (K_type : KEY with Definition t := type)
+  (K_typelist : KEY with Definition t := typelist) (S : STRING)
+  (B : BUFFER S F) (Map_type : MAP K_type) (Map_typelist : MAP K_typelist)
+  <: MONAD_SIMPLE S.
 
-Implicit Arguments Map_type.add [A].
-Implicit Arguments Map_type.find [A].
-Implicit Arguments Map_typelist.add [A].
-Implicit Arguments Map_typelist.find [A].
+  Require Import Ascii.
 
-Module PositiveMap := FMapAVL.Make OrderedPositive.
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
-Record st := mk_st
-  { buf : B.t
-  ; pos : list nat
-  ; depth : nat
-  ; used_var : PositiveMap.t (S.t * option S.t)
-  ; ident : F.t
-  ; map_t : Map_type.t F.t
-  ; map_tlist : Map_typelist.t F.t }.
- 
-Inductive state {A} :=
-  L (_ : A) (_ : st).
+  Implicit Arguments Map_type.add [A].
+  Implicit Arguments Map_type.find [A].
+  Implicit Arguments Map_typelist.add [A].
+  Implicit Arguments Map_typelist.find [A].
 
-Definition t A := st -> @state A.
-Definition v := unit.
-Definition ret {A} (a : A) := L a.
+  Module PositiveMap := FMapAVL.Make OrderedPositive.
 
-Definition bind {A B} (m : t A) (f : A -> t B) : t B :=
-  fun lbs0 => 
-  match m lbs0 with 
-    | L a lbs1 => f a lbs1
-  end.
+  Record st := mk_st
+    { buf : B.t
+      ; pos : list nat
+      ; depth : nat
+      ; used_var : PositiveMap.t (S.t * option S.t)
+      ; ident : F.t
+      ; map_t : Map_type.t F.t
+      ; map_tlist : Map_typelist.t F.t }.
 
-Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
-  bind f1 (fun _ =>  f2).
+  Inductive state {A} := L (_ : A) (_ : st).
 
-Definition perform l := 
-  List.fold_left (fun acc m => next acc m) l (ret tt).
+  Definition t A := st -> @state A.
+  Definition v := unit.
+  Definition ret {A} (a : A) := L a.
 
-Definition get_st f : t unit := fun st =>
-  ret tt (f mk_st st).
+  Definition bind {A B} (m : t A) (f : A -> t B) : t B :=
+    fun lbs0 => 
+      match m lbs0 with 
+        | L a lbs1 => f a lbs1
+      end.
 
-Definition print_newline : t unit := get_st (fun f st =>
-  f (B.print_newline (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+  Definition next {A B} (f1 : t A) (f2 : t B) : t B :=
+    bind f1 (fun _ =>  f2).
 
-Definition print s : t unit := get_st (fun f st =>
-  f (B.print s (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+  Definition perform l := 
+    List.fold_left (fun acc m => next acc m) l (ret tt).
 
-Definition print_type t := get_st (fun f st =>
-  match
-    match Map_type.find t (map_t st) with
-    | None => let i := F.succ (ident st) in
-      (i, i, Map_type.add t i)
-    | Some i => (ident st, i, fun x => x) 
-    end
-  with
-    (id, i, ff) =>
-    f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (ff (map_t st)) (map_tlist st)
-  end).
+  Definition get_st f : t unit := fun st =>
+    ret tt (f mk_st st).
 
-Definition print_typelist t := get_st (fun f st =>
-  match
-    match Map_typelist.find t (map_tlist st) with
-    | None => let i := F.succ (ident st) in
-      (i, i, Map_typelist.add t i)
-    | Some i => (ident st, i, fun x => x) 
-    end
-  with
-    (id, i, ff) =>
-    f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (map_t st) (ff (map_tlist st))
-  end).
+  Definition print_newline : t unit := get_st (fun f st =>
+    f (B.print_newline (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
-Definition add_depth : t unit := get_st (fun f st => 
-  f (buf st) (pos st) (S (depth st)) (used_var st) (ident st) (map_t st) (map_tlist st)).
+  Definition print s : t unit := get_st (fun f st =>
+    f (B.print s (buf st)) (pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
-Definition remove_depth : t unit := get_st (fun f st =>
-  f (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat) (used_var st) (ident st) (map_t st) (map_tlist st)). 
+  Definition print_type t := get_st (fun f st =>
+    match
+      match Map_type.find t (map_t st) with
+        | None => let i := F.succ (ident st) in
+          (i, i, Map_type.add t i)
+        | Some i => (ident st, i, fun x => x) 
+      end
+      with
+        (id, i, ff) =>
+        f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (ff (map_t st)) (map_tlist st)
+    end).
 
-Definition save_pos : t unit := get_st (fun f st =>
-  let buf_st := buf st in
-  f buf_st (B.pos buf_st :: pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+  Definition print_typelist t := get_st (fun f st =>
+    match
+      match Map_typelist.find t (map_tlist st) with
+        | None => let i := F.succ (ident st) in
+          (i, i, Map_typelist.add t i)
+        | Some i => (ident st, i, fun x => x) 
+      end
+      with
+        (id, i, ff) =>
+        f (B.print_ident i (buf st)) (pos st) (depth st) (used_var st) id (map_t st) (ff (map_tlist st))
+    end).
 
-Definition add_used_var p s : t unit := get_st (fun f st =>
-  f (buf st) (pos st) (depth st) (PositiveMap.add p s (used_var st)) (ident st) (map_t st) (map_tlist st)).
+  Definition add_depth : t unit := get_st (fun f st => 
+    f (buf st) (pos st) (S (depth st)) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
-Definition indent_ f : t unit :=
-  fun st =>
-  perform
-    [ print_newline
-    ; print (S.make (f st match pos st with
-      | [] => 0
-      | x :: _ => x
-      end % nat) " " % char) ] st.
+  Definition remove_depth : t unit := get_st (fun f st =>
+    f (buf st) (pos st) (match depth st with 0 => 0 | S n => n end % nat) (used_var st) (ident st) (map_t st) (map_tlist st)). 
 
-Definition indent : t unit := indent_ (fun _ x => x).
-Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
+  Definition save_pos : t unit := get_st (fun f st =>
+    let buf_st := buf st in
+      f buf_st (B.pos buf_st :: pos st) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
 
-Definition delete_pos : t unit := fun st =>
-  ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+  Definition add_used_var p s : t unit := get_st (fun f st =>
+    f (buf st) (pos st) (depth st) (PositiveMap.add p s (used_var st)) (ident st) (map_t st) (map_tlist st)).
 
-Definition tt := tt.
+  Definition indent_ f : t unit :=
+    fun st =>
+      perform
+      [ print_newline
+        ; print (S.make (f st match pos st with
+                                | [] => 0
+                                | x :: _ => x
+                              end % nat) " " % char) ] st.
+
+  Definition indent : t unit := indent_ (fun _ x => x).
+
+  Definition indent_depth : t unit := indent_ (fun st => plus (2 * depth st)).
+
+  Definition delete_pos : t unit := fun st =>
+    ret tt (mk_st (buf st) (List.tail (pos st)) (depth st) (used_var st) (ident st) (map_t st) (map_tlist st)).
+
+  Definition tt := tt.
 
 End Monad_simple.
 
-(* *** *)
+(****************************************************************************)
 
-Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S) (Import L : PARENTHESIS S M) <: CONSTRUCTOR S M L.
+Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
+  (Import L : PARENTHESIS S M) <: CONSTRUCTOR S M L.
 
-Open Scope string_scope.
-Coercion S.of_string : String.string >-> S.t.
-Notation "a ++ b" := (S.append a b).
+  Open Scope string_scope.
 
-Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
-Implicit Arguments ret [A].
+  Coercion S.of_string : String.string >-> S.t.
 
-Definition _U_aux : forall
-  (b : bool)
-  (pref : t v)
-  (suff : t v)
-  (n : nat)
-  (sep : vector (t v) n)
-  (surr : vector (bool * (t v * t v)) (S n))
-  (l : list (t u))
-  (_ : l <> nil),
-  t u.
+  Notation "a ++ b" := (S.append a b).
+  Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+
+  Implicit Arguments ret [A].
+
+  Definition _U_aux : forall
+    (b : bool)
+    (pref : t v)
+    (suff : t v)
+    (n : nat)
+    (sep : vector (t v) n)
+    (surr : vector (bool * (t v * t v)) (S n))
+    (l : list (t u))
+    (_ : l <> nil),
+    t u.
+
+  Proof.
   intros.
   case_eq l. tauto.
   intros x xs _.
@@ -1120,16 +1240,18 @@ Definition _U_aux : forall
   refine (List.fold_left _ (List.combine (v_to_list _ sep) (List.combine (v_to_list _ surr) xs) )) ; clear sep surr xs.
   intros acc (sep, a).
   exact (perform [ acc ; sep ; eval a ]).
-Defined.
+  Defined.
 
-Definition _U : 
+  Definition _U : 
     bool -> 
     t v -> 
     t v -> 
     forall n, 
     vector (t v) n -> 
     vector (bool * (t v * t v)) (S n) -> 
-    t u ^^ (S n) --> t u. 
+    t u ^^ (S n) --> t u.
+
+  Proof.
   intros b pref suff n sep surr.
   apply ncurry.
   intro cpl.
@@ -1137,31 +1259,36 @@ Definition _U :
   destruct cpl.
   simpl.
   auto with *.
-Defined.
+  Defined.
 
-Definition _positive p := ret_u false (print ("`" ++ U.string_of_positive p)).
-Definition _Z z := ret_u false (print (U.string_of_Z z)).
+  Definition _positive p := ret_u false (print ("`" ++ U.string_of_positive p)).
 
-Definition _ident i := 
-  match U.name i with
-    | Some s => ret_u false (perform [ add_used_var i s ; print (fst s) ])
-    | None => _positive i
-  end.
+  Definition _Z z := ret_u false (print (U.string_of_Z z)).
 
-Definition number f_conv (m : t u) := 
-  ret_u false (eval (false, (print f_conv, ret tt), m)).
+  Definition _ident i := 
+    match U.name i with
+      | Some s => ret_u false (perform [ add_used_var i s ; print (fst s) ])
+      | None => _positive i
+    end.
 
-Definition _int i := number "``" (_Z (Int.intval i)).
-Definition _int64 i := number "```" (_Z (Int64.intval i)).
-Definition _float f := number "·" (_int64 (Float.bits_of_double f)).
+  Definition number f_conv (m : t u) := 
+    ret_u false (eval (false, (print f_conv, ret tt), m)).
 
-Definition _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
+  Definition _int i := number "``" (_Z (Int.intval i)).
+  Definition _int64 i := number "```" (_Z (Int64.intval i)).
+  Definition _float f := number "·" (_int64 (Float.bits_of_double f)).
+
+  Definition _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
+
+  Proof.
   intros A B fa fb (a, b).
   eapply (_U_aux false (print "(") (print ")") _ {{ print ", " }} (Vector.init _ (fun _ => (false, (ret tt, ret tt)))) [ fa a ; fb b ]).
   auto with *.
-Defined.
+  Defined.
 
-Definition _list : forall A, (A -> t u) -> list A -> t u.
+  Definition _list : forall A, (A -> t u) -> list A -> t u.
+
+  Proof.
   intros A f l.
   case_eq l ; intros.
   exact (ret_u false (print "[]")).
@@ -1169,59 +1296,67 @@ Definition _list : forall A, (A -> t u) -> list A -> t u.
     (Vector.init _ (fun _ => (false, (ret tt, ret tt)))) (List.map f l)).
   rewrite H. simpl.
   auto with *.
-Defined.
+  Defined.
 
-Definition _bool (b : bool) := 
-  ret_u false (print (if b then "true" else "false")).
+  Definition _bool (b : bool) := 
+    ret_u false (print (if b then "true" else "false")).
 
-Definition _option : forall A, (A -> t u) -> option A -> t u.
+  Definition _option : forall A, (A -> t u) -> option A -> t u.
+
+  Proof.
   intros A f l.
   case_eq l ; intros.
   apply (_U_aux true (print "Some ") (ret tt) 1 (Vector.init _ (fun _ => ret tt)) 
     (Vector.init _ (fun _ => (true, (ret tt, ret tt)))) [ f a ]).
   auto with *.
   exact (ret_u false (print "None")).
-Defined.
+  Defined.
 
-Definition map_stringTable := U.map_stringTable.
+  Definition map_stringTable := U.map_stringTable.
 
 End Monad_list.
 
-(** Main function *)
+(****************************************************************************)
+(** Main function: Given all the OCaml modules, this module produces a
+function doing the whole printing of the considered AST *)
 
-Module Main (K_t : KEY with Definition t := type) (K_tl : KEY with Definition t := typelist) (Map_t : MAP K_t) (Map_tl : MAP K_tl) (S : STRING) (U : UTIL S) (F : FRESH) (Map_f : MAP F) (B : BUFFER S F).
-(** Given all the OCaml module, this module produces a function doing the whole printing of the considered AST *)
+Module Main (K_t : KEY with Definition t := type)
+  (K_tl : KEY with Definition t := typelist) (Map_t : MAP K_t)
+  (Map_tl : MAP K_tl) (S : STRING) (U : UTIL S) (F : FRESH)
+  (Map_f : MAP F) (B : BUFFER S F).
 
-Module M := Monad_simple F K_t K_tl S B Map_t Map_tl.
-Module L := Lazy S M.
-Module C := Monad_list S U M L.
-Module Constructor_list := Constructor S M L C.
+  Module M := Monad_simple F K_t K_tl S B Map_t Map_tl.
+  Module L := Lazy S M.
+  Module C := Monad_list S U M L.
+  Module Constructor_list := Constructor S M L C.
 
-Module M_simpl.
-  Definition _type t := L.ret_u false (M.print_type t).
-  Definition _typelist t := L.ret_u false (M.print_typelist t).
-End M_simpl.
-Module C_list := Constructor_list.Make M_simpl.
+  Module M_simpl.
+    Definition _type t := L.ret_u false (M.print_type t).
+    Definition _typelist t := L.ret_u false (M.print_typelist t).
+  End M_simpl.
 
-Import M.
+  Module C_list := Constructor_list.Make M_simpl.
 
-Open Scope string_scope.
-Coercion S.of_string : String.string >-> S.t.
+  Import M.
 
-Implicit Arguments B.empty [A].
-Implicit Arguments PositiveMap.empty [elt].
-Implicit Arguments Map_t.empty [A].
-Implicit Arguments Map_tl.empty [A].
-Implicit Arguments Map_t.fold [A B].
-Implicit Arguments Map_tl.fold [A B].
-Implicit Arguments Map_f.add [A].
-Implicit Arguments Map_f.fold [A B].
+  Open Scope string_scope.
 
-Notation "[ ]" := nil.
-Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
-Notation "a ++ b" := (S.append a b).
+  Coercion S.of_string : String.string >-> S.t.
 
-Definition coq_output_1 := List.map S.of_string
+  Implicit Arguments B.empty [A].
+  Implicit Arguments PositiveMap.empty [elt].
+  Implicit Arguments Map_t.empty [A].
+  Implicit Arguments Map_tl.empty [A].
+  Implicit Arguments Map_t.fold [A B].
+  Implicit Arguments Map_tl.fold [A B].
+  Implicit Arguments Map_f.add [A].
+  Implicit Arguments Map_f.fold [A B].
+
+  Notation "[ ]" := nil.
+  Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
+  Notation "a ++ b" := (S.append a b).
+
+  Definition coq_output_1 := List.map S.of_string
       [ "(**"
       ; "SimSoC-Cert, a toolkit for generating certified processor simulators"
       ; "See the COPYRIGHTS and LICENSE files."
@@ -1239,7 +1374,8 @@ Definition coq_output_1 := List.map S.of_string
       ; "  Csyntax"
       ; "  ."
       ; "" ].
-Definition coq_output_2 := List.map S.of_string
+
+  Definition coq_output_2 := List.map S.of_string
       [ ""
       ; "Notation ""` x"" := (x % positive) (at level 9)."
       ; "Notation ""`` x"" := (Int.repr x) (at level 9)."
@@ -1266,27 +1402,30 @@ Definition coq_output_2 := List.map S.of_string
       ; "Notation ""{< a := b >}"" := (Tunion a b) (at level 9)."
       ; "Notation ""[| a := b |]"" := (Tstruct a b) (at level 9)."
       ; "" ].
-Definition coq_output_3 := List.map S.of_string
+
+  Definition coq_output_3 := List.map S.of_string
       [ "Definition program_fundef_type :=" ].
-Definition coq_output_4 := List.map S.of_string
+
+  Definition coq_output_4 := List.map S.of_string
       [ ""
       ; "." 
       ; "Check program_fundef_type : AST.program fundef type." ].
 
-Definition b_perform buf l :=
-  List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.
+  Definition b_perform buf l :=
+    List.fold_left (fun buf f => B.print_newline (B.print f buf)) l buf.
 
-Definition buf_of_ {A} f (t : A) :=
-  match L.exec (f t) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
-    L _ st => buf st
-  end.
+  Definition buf_of_ {A} f (t : A) :=
+    match L.exec (f t) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
+      L _ st => buf st
+    end.
 
-Definition buf_of_type := buf_of_ Constructor_list._type.
-Definition buf_of_typelist := buf_of_ Constructor_list._typelist.
+  Definition buf_of_type := buf_of_ Constructor_list._type.
 
-Definition program_fundef_type ast := 
-  let f buf_ty i :=
-    List.fold_left (fun buf f => f buf)
+  Definition buf_of_typelist := buf_of_ Constructor_list._typelist.
+
+  Definition program_fundef_type ast := 
+    let f buf_ty i :=
+      List.fold_left (fun buf f => f buf)
       [ B.print "Notation """
       ; B.print_ident i
       ; B.print """ := "
@@ -1296,7 +1435,6 @@ Definition program_fundef_type ast :=
       ; B.print ")."
       ; B.print_newline 
       ; B.print_newline ] in
-
   match L.exec (C_list._program ast) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
     L _ st => 
       let map := Map_t.fold (fun t i => Map_f.add i (Constructor_list._type t)) (map_t st) (Map_f.empty _) in
