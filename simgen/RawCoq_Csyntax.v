@@ -729,6 +729,7 @@ End PARENTHESIS.
 (** Generic description of a printing of an uplet constructor *)
 
 Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
+
   Import M P.
 
   (* Note that some parameters can be merged (like separator and
@@ -760,6 +761,7 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
   Parameter _list : forall A, (A -> t u) -> list A -> t u.
   Parameter _option : forall A, (A -> t u) -> option A -> t u.
   Parameter map_stringTable : forall A, list A -> list (A * option S.t).
+
 End CONSTRUCTOR.
 
 Module Type CONSTRUCTOR_EXP (S : STRING) (M : MONAD_SIMPLE S)
@@ -944,13 +946,16 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
   Definition _signedness := _signedness 
     ! (*"Signed"*) "++" 
     ! (*"Unsigned"*) "--".
+
   Definition _intsize := _intsize 
     ! (*"I8"*) "_8"
     ! (*"I16"*) "_16" 
     ! (*"I32"*) "_32" .
+
   Definition _floatsize := _floatsize 
     ! (*"F32"*) "_32_" 
     ! (*"F64"*) "_64_" .
+
   Definition _type_ T (ty : forall A : Type,
     _type_ A (T -> A) 
     (fun ty : Type =>
@@ -1269,7 +1274,7 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
   intros x xs _.
   refine (ret_u b _) ; clear b.
   (* (* put this below to display the depth as a Coq comment *)  
-    fun st => print ("(*" ++ (String (ascii_of_nat (depth st + 48)) EmptyString) ++ "*)") st ;     *)
+    fun st => print ("(*" ++ (String (ascii_of_nat (depth st + 48)) EmptyString) ++ "*)") st ; *)
   refine (perform [ add_depth ; pref ; _ ; suff ; remove_depth ]) ; clear pref suff.
   inversion surr ; clear surr ; rename X into surr.
   refine (_ (eval (a, x))) ; clear a x n0 H1.
