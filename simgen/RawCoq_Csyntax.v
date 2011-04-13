@@ -21,7 +21,6 @@ Require Import
 
 (****************************************************************************)
 (** Utilitaries *)
-(****************************************************************************)
 
 Module Vector.
 
@@ -89,7 +88,6 @@ function [_ty_]).
 - an extra function of conversion is provided in the case we are
   converting a polymorphic function (see [_option] or [_list] for
   example). *)
-(****************************************************************************)
 
 Module Rec.
 
@@ -621,7 +619,6 @@ End Rec_weak.
 
 (****************************************************************************)
 (** For the following module type, the implementation is done at OCaml side *)
-(****************************************************************************)
 
 Module Type STRING.
   Parameter t : Type.
@@ -679,7 +676,6 @@ End MAP.
 
 (****************************************************************************)
 (** Organization of the whole program of pretty printing *)
-(****************************************************************************)
 
 Module Type MONAD_SIMPLE (S : STRING).
 
@@ -705,8 +701,10 @@ Module Type MONAD_SIMPLE (S : STRING).
   Parameter add_used_var : positive -> S.t * option S.t -> t v. (* update the monadic map with the information describing the association of (position, name) *)
 
   Parameter tt : v.
+
 End MONAD_SIMPLE.
 
+(****************************************************************************)
 (** This module type permits the choice between explicit parenthesis
 and parenthesis by need *)
 
