@@ -22,21 +22,22 @@ Prerequisites:
   SimSoC project (http://formes.asia/cms/software/simsoc).
 
 --------------------------------------------------------------------
-Compilation of Simgen:
+Configuration of SimSoC-Cert:
 
-1) Configure the system:
+      ./configure path/to/compcert
 
-      ./configure -compcert-dir <path>
+This creates in the top directory of SimSoC-Cert a symbolic link to
+path/to/compcert named 'compcert' and creates a file coqrc to add in
+your ~/.coqrc file for interactive reading of Coq files in
+Emacs/ProofGeneral or CoqIDE.
 
-   where <path> is the directory where the sources of CompCert are.
-   This creates a symbolic link named 'compcert' in the top directory.
-
-2) Compile Simgen:
+--------------------------------------------------------------------
+Compilation of the main SimSoC-Cert tool:
 
       cd simgen; make
 
-   This creates a program 'simgen/main'. Do 'simgen/main -h' to get
-   the list of options. Read 'README.simgen' for more details.
+This creates a program 'simgen/main'. Do 'simgen/main -h' to get the
+list of options. Read 'README.simgen' for more details.
 
 --------------------------------------------------------------------
 Generation and compilation of simulators using Simgen:
@@ -61,8 +62,3 @@ Coq simulators:
 OCaml simulators can be extracted from the Coq simulators:
       cd arm6/coq; make ocaml
       cd sh4/coq; make ocaml
-
---------------------------------------------------------------------
-Interactive reading of Coq files in Emacs with ProofGeneral:
-
-      add the content of ./coqrc to your ~/.coqrc file

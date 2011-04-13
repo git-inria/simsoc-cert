@@ -1,119 +1,14 @@
-#!/usr/bin/env ocaml
-(**
-SimSoC-Cert, a toolkit for generating certified processor simulators.
-See the COPYRIGHTS and LICENSE files.
+#!/bin/sh
 
-First script for initialization.
-*)
+if test $# -ne 1
+then
+  echo "usage: `basename $0` <compcert_dir>"
+  exit 1
+fi
 
-#load "unix.cma"
-#load "str.cma"
+echo create link to $1
+ln -f -s $1 compcert
 
-open Printf
-
-let _ = 
-  let dz = 12 in
-  match Str.split (Str.regexp_string ".") Sys.ocaml_version with
-    | "3" :: nb :: _ when int_of_string nb >= dz -> ()
-    | _ -> failwith (sprintf "'%s' has been tested with OCaml 3.%d" Sys.argv.(0) dz)
-
-(** [abs_file file] returns the absolute path of the file [file] *)
-let abs_file s =
-  let pwd = Unix.getcwd () in
-  let () = Unix.chdir s in
-  let s = Unix.getcwd () in
-  let () = Unix.chdir pwd in
-  s
-
-module type ARG = 
-sig
-  val parse : unit -> string
-end
-
-module Arg : ARG = 
-struct
-  open Arg
-
-  module Util =
-  struct
-    let error s = eprintf "error: %s\n" s; exit 1
-  end
-
-  open Util
-
-  let usage_msg = "usage: " ^ Sys.argv.(0) ^ " option ...\n"
-
-  let error s = error (sprintf "%s\n%s" s usage_msg)
-  let l_dir = ref []
-  let rec options () = 
-    List.sort 
-      (fun (x, _, _) (y, _, _) -> compare x y) 
-      (Arg.align
-         [ "-h", Unit print_help,
-           " Display this list of options"
-         ; "-compcert-dir", String (fun s -> l_dir := s :: !l_dir),
-           " Directory of CompCert" ])
-
-  and print_options oc =
-    List.iter (fun (k, _, d) -> fprintf oc "%s: %s\n" k d) (options ())
-
-  and print_help () = 
-    begin
-      print_endline usage_msg;
-      print_options stdout;
-      exit 0;
-    end
-
-  let parse () = 
-    let () = Arg.parse (options ()) (fun _ -> error "invalid option") usage_msg in
-    match !l_dir with
-      | dir :: _ -> abs_file dir
-      | _ -> exit 1
-end
-
-
-let compcert_ln_name = "compcert"
-
-let _ = 
-  let compcert_dir = Arg.parse () in
-
-  let () = List.iter 
-    (fun s -> 
-      if Sys.is_directory s then
-        () 
-      else
-        begin
-          Printf.eprintf "%s is not a directory" s;
-          exit 1;
-        end)
-    [ compcert_dir ] in
-  
-  List.iter (fun (s, f_after) -> 
-    let dest = sprintf "%s" compcert_ln_name in
-    if 
-      if Sys.file_exists dest then
-        match try Some (Unix.readlink dest) with _ -> None with
-          | None -> 
-            let () = Printf.eprintf "warning : \"%s\" \"%s\" is not a link, it will be skipped\n" s dest in
-            false
-          | Some dir ->
-            let () = 
-              if abs_file compcert_dir = abs_file dir then
-                ()
-              else
-                begin
-                  Printf.eprintf "press [Enter] to delete the symbolic link '%s' which points to '%s' or [Ctrl+C] to exit %!" dest dir;
-                  ignore (read_line ());
-                  Unix.unlink dest;
-                  Unix.symlink compcert_dir dest;
-                end in
-            true
-      else
-        let () = Unix.symlink compcert_dir dest in 
-        true
-    then
-      f_after s
-    else
-      ()
-  ) [ compcert_ln_name, (fun _ -> ()) ]
+echo create coqrc
+sed -e "s|/path/to/simsoc-cert|`pwd`|" coqrc.in > coqrc
 
