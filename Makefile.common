@@ -30,7 +30,7 @@ FORCE:
 # configure
 
 $(DIR)/compcert/Makefile.config:
-	@echo "do \'./configure -compcert-dir <dir>\' first"; exit 1
+	@echo "do './configure /path/to/compcert' first"; exit 1
 
 ######################################################################
 # C compiler
