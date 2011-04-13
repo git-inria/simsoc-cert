@@ -46,11 +46,9 @@ coqtags:
 #############################################################################
 # html documentation
 
-.PHONY: html
-
-html:
+html: $(VFILES) $(DIR)/tools/coqdoc/createIndex
 	mkdir -p html
-	coqdoc --html -toc -g -d html $(VFILES)
+	$(COQDOC) $(VFILES)
 	$(DIR)/tools/coqdoc/createIndex > html/main.html
 	cp $(DIR)/tools/coqdoc/coqdoc.css html
 
