@@ -281,9 +281,32 @@ let types b _p = bprintf b "\n(* types *)\n\n";;
 (*****************************************************************************)
 (** expr *)
 
-let unary_operation = todo;;
+let string_of_unary_operation = function
+  | Onotbool -> "Onotbool"
+  | Onotint -> "Onotint"
+  | Oneg -> "Oneg";;
 
-let binary_operation = todo;;
+let unary_operation = using string_of_unary_operation;;
+
+let string_of_binary_operation = function
+  | Oadd -> "Oadd"
+  | Osub -> "Osub"
+  | Omul -> "Omul"
+  | Odiv -> "Odiv"
+  | Omod -> "Omod"
+  | Oand -> "Oand"
+  | Oor -> "Oor"
+  | Oxor -> "Oxor"
+  | Oshl -> "Oshl"
+  | Oshr -> "Oshr"
+  | Oeq -> "Oeq"
+  | One -> "One"
+  | Olt -> "Olt"
+  | Ogt -> "Ogt"
+  | Ole -> "Ole"
+  | Oge -> "Oge";;
+
+let binary_operation = using string_of_binary_operation;;
 
 let block = coq_Z;;
 
