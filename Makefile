@@ -11,5 +11,5 @@ default:
 SUBDIRS := tools simgen coq arm6 sh4
 
 clean::
-	ocamlbuild -clean
+	ocamlbuild -no-links -clean
 	@for d in $(SUBDIRS); do make -C $$d $@; done
