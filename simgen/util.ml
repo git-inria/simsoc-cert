@@ -97,7 +97,6 @@ struct
   end
 end
 
-
 module StrSet = Set.Make (StrOrd);;
 module StrMap = Map.Make (StrOrd);;
 
@@ -107,7 +106,6 @@ let set_of_list =
 let list_of_map m =
   List.sort (fun (s1,_) (s2,_) -> Pervasives.compare s1 s2)
     (StrMap.fold (fun s t l -> (s,t)::l) m []);;
-
 
 (*****************************************************************************)
 (** functions on options *)
