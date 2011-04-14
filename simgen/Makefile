@@ -40,4 +40,4 @@ html: RawCoq_Csyntax.v
 	$(COQDOC) RawCoq_Csyntax.v
 
 clean::
-	rm -f html
+	rm -rf html
