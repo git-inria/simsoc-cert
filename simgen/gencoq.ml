@@ -254,12 +254,16 @@ let use_loc loc =
   let condition_var s = List.exists (fun (s', _, _) -> s' = s) loc in 
   let condition_var_l l = List.exists (function Var s -> condition_var s | _ -> false) l in
 
+  let under_for, under_for2 = ref false, ref false in
+  (* We use the same algorithm as [use_st] to determine if we need to explicitely preceed each [For] constructor by an eta-exp with "loc". *)
+
   inst_exists 
-    (function
+    (fun e -> not !under_for2 && match e with
       | Proc (_, l) -> condition_var_l l
       | Affect (_, Var s) -> condition_var s
-      | _ -> false)
-    (function
+      | For _ | If (_, _, None) -> if !under_for then under_for2 := true else (); under_for := true ; false
+      | _ -> if !under_for then under_for2 := true else (); false)
+    (fun e -> not !under_for2 && match e with
       | BinOp (Var s, _, _)
       | BinOp (_, _, Var s) 
       | Memory (Var s, _)

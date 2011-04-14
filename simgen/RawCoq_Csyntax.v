@@ -948,13 +948,13 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
     ! (*"Unsigned"*) "--".
 
   Definition _intsize := _intsize 
-    ! (*"I8"*) "_8"
-    ! (*"I16"*) "_16" 
-    ! (*"I32"*) "_32" .
+    ! "I8"
+    ! "I16" 
+    ! "I32".
 
   Definition _floatsize := _floatsize 
-    ! (*"F32"*) "_32_" 
-    ! (*"F64"*) "_64_" .
+    ! "F32"
+    ! "F64".
 
   Definition _type_ T (ty : forall A : Type,
     _type_ A (T -> A) 
@@ -963,19 +963,19 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
       (signedness -> A) ->
       (floatsize -> A) -> (Z -> A) -> (ident -> A) -> ty) ) :=
   ty _ _intsize _signedness _floatsize _Z _ident
-  ! (*"Tvoid"*) "_void"
-  ! (*"Tint"*) "Tint"
-  ! (*"Tfloat"*) "Tfloat"
+  ! "Tvoid"
+  ! "Tint"
+  ! "Tfloat"
   ! (*"Tpointer"*) "`*`"
   ! "Tarray"
-  | (*! "Tfunction"*) "Λ" · [| false ; true |]
-   (*! "Tstruct"*) (_U false (perform [ save_pos ; print ("[|" ++ " ") ]) (perform [ print " |]" ; delete_pos ]) _ [| print " := " |] [| (true, (ret tt, ret tt)) ; (false, (indent, ret tt)) |])
-   (*! "Tunion"*) (_U false (perform [ save_pos ; print ("{<" ++ " ") ]) (perform [ print " >}" ; delete_pos ]) _ [| print " := " |] [| (true, (ret tt, ret tt)) ; (false, (indent, ret tt)) |])
+  ! "Tfunction"
+  ! "Tstruct"
+  ! "Tunion"
   ! "Tcomp_ptr"
-  ! (*"Tnil"*)  "··"
-  (*! "Tcons"*) (_U_infix2_rass (print " ~> "))
-  ! (*"Fnil"*) "/** */"
-  (*! "Fcons"*) (_U true (print "/* ") (ret tt) _ [| print " */ " ; perform [ print " ;" ; indent ] |] [| (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) ; (false, (ret tt, ret tt)) |]).
+  ! "Tnil"
+  (*! "Tcons"*) (_U_infix2_rass (print " :T: "))
+  ! "Fnil"
+  ! "Fcons".
 
   Definition _type := _type_ _ (@_type).
 
@@ -1314,11 +1314,11 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
     end.
 
   Definition number f_conv (m : t u) := 
-    ret_u false (eval (false, (print f_conv, ret tt), m)).
+    ret_u false (eval (false, (print ("(" ++ f_conv), print ")"), m)).
 
-  Definition _int i := number "``" (_Z (Int.intval i)).
-  Definition _int64 i := number "```" (_Z (Int64.intval i)).
-  Definition _float f := number "·" (_int64 (Float.bits_of_double f)).
+  Definition _int i := ret_u false (eval (false, (print "`", ret tt), _Z (Int.intval i))).
+  Definition _int64 i := number "Int64.repr " (_Z (Int64.intval i)).
+  Definition _float f := number "Float.double_of_bits " (_int64 (Float.bits_of_double f)).
 
   Definition _prod : forall A B, (A -> t u) -> (B -> t u) -> prod A B -> t u.
 
@@ -1415,40 +1415,24 @@ Module Main (K_t : KEY with Definition t := type)
       ; "  Values"
       ; "  Csyntax"
       ; "  ."
+      ; "Open Scope positive_scope."
+      ; ""
+      ; "Notation ""` x"" := (Int.repr x) (at level 9)."
+      ; "Notation ""[ ]"" := nil."
+      ; "Notation ""[ a ; .. ; b ]"" := (a :: .. (b :: []) ..)."
+      ; "Notation ""a :T: b"" := (Tcons a b) (at level 9, right associativity)."
+      ; "Notation ""`*`"" := Tpointer."
+      ; "Notation ""a >> b"" := (Ssequence a b) (at level 9)."
+      ; "Notation ""++"" := Signed."
+      ; "Notation ""--"" := Unsigned."
+      ; "Notation ""'If' a 'then' b 'else' c"" := (Sifthenelse a b c) (at level 9)."
       ; "" ].
 
   Definition coq_output_2 := List.map S.of_string
       [ ""
-      ; "Notation ""` x"" := (x % positive) (at level 9)."
-      ; "Notation ""`` x"" := (Int.repr x) (at level 9)."
-      ; "Notation ""``` x"" := (Int64.repr x) (at level 9)."
-      ; "Notation ""· x"" := (Float.double_of_bits x) (at level 9)."
-      ; "Notation ""[ ]"" := nil."
-      ; "Notation ""[ a ; .. ; b ]"" := (a :: .. (b :: []) ..)."
-      ; "Notation ""a ~> b"" := (Tcons a b) (at level 9, right associativity)."
-      ; "Notation ""··"" := Tnil."
-      ; "Notation ""/** */"" := Fnil."
-      ; "Notation ""`*`"" := Tpointer."
-      ; "Notation ""/* a */ b ; c"" := (Fcons a b c) (at level 9, right associativity)."
-      ; "Notation ""a >> b"" := (Ssequence a b) (at level 9)."
-      ; "Notation ""++"" := Signed."
-      ; "Notation ""--"" := Unsigned."
-      ; "Notation _8 := I8."
-      ; "Notation _16 := I16."
-      ; "Notation _32 := I32."
-      ; "Notation _32_ := F32."
-      ; "Notation _64_ := F64."
-      ; "Notation _void := Tvoid."
-      ; "Notation ""'Λ'"" := Tfunction."
-      ; "Notation ""'If' a 'then' b 'else' c"" := (Sifthenelse a b c) (at level 9)."
-      ; "Notation ""{< a := b >}"" := (Tunion a b) (at level 9)."
-      ; "Notation ""[| a := b |]"" := (Tstruct a b) (at level 9)."
-      ; "" ].
+      ; "Definition program_fundef_type :=" ].
 
   Definition coq_output_3 := List.map S.of_string
-      [ "Definition program_fundef_type :=" ].
-
-  Definition coq_output_4 := List.map S.of_string
       [ ""
       ; "." 
       ; "Check program_fundef_type : AST.program fundef type." ].
@@ -1468,14 +1452,11 @@ Module Main (K_t : KEY with Definition t := type)
   Definition program_fundef_type ast := 
     let f buf_ty i :=
       List.fold_left (fun buf f => f buf)
-      [ B.print "Notation """
+      [ B.print "Definition "
       ; B.print_ident i
-      ; B.print """ := "
-      ; B.print_newline
-      ; B.print "("
+      ; B.print " := "
       ; fun b => B.add_buffer b buf_ty
-      ; B.print ")."
-      ; B.print_newline 
+      ; B.print "."
       ; B.print_newline ] in
   match L.exec (C_list._program ast) (mk_st (B.empty tt) [] 0 PositiveMap.empty F.zero Map_t.empty Map_tl.empty) with
     L _ st => 
@@ -1491,12 +1472,11 @@ Module Main (K_t : KEY with Definition t := type)
       b_perform (B.add_buffer (b_perform (B.add_buffer (List.fold_left b_perform 
       [ coq_output_1 
       ; List.map (fun p_s : (_ * (_ * _)) => let (p, s_o) := p_s in let (s, o) := s_o in
-          "Definition " ++ s ++ " := " ++ U.string_of_positive p ++ " % positive." ++ match o with Some s => " (* " ++ s ++ " *)" | None => "" end
-        ) (PositiveMap.elements u)
-      ; coq_output_2 ] (B.empty tt) ) b
-      ) coq_output_3) 
+          "Definition " ++ s ++ " := " ++ U.string_of_positive p ++ "." ++ match o with Some s => " (* " ++ s ++ " *)" | None => "" end
+        ) (PositiveMap.elements u) ] (B.empty tt) ) b
+      ) coq_output_2) 
       (buf st)
-      ) coq_output_4
+      ) coq_output_3
   end.
 
 End Main.

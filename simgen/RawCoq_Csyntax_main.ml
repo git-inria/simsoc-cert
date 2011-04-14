@@ -54,7 +54,7 @@ struct
         function
           | "end" -> Coq_pair ("_end", Some "end")
           | s -> let s2 = Str.global_replace reg "_" s in
-	      Coq_pair (s2, if s2 = s then None else Some s)
+              Coq_pair (s2, if s2 = s then None else Some s)
 
   let name p = 
     match try Some (Hashtbl.find Camlcoq.string_of_atom p)
@@ -89,7 +89,7 @@ struct
     let () = bprintf t.buf "\n" in
     { t with n = 0 }
 
-  let print_ident i = print (sprintf "<%d>" i)
+  let print_ident i = print (sprintf "T%d" i)
 
   let pos t = Camlcoq.nat_of_camlint (Int32.of_int t.n)
 
@@ -127,3 +127,4 @@ module R =
   RawCoq_Csyntax.Main (Kt) (Ktl) (Map_t) (Map_tl) (S) (U) (F) (Map_f) (B)
 
 let to_buffer csyntax = (R.program_fundef_type csyntax).B.buf
+
