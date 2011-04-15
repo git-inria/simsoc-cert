@@ -3,7 +3,7 @@
 
 DIR := ..
 
-FILES := Bitvec Util Semantics Simul Extraction
+FILES := Bitvec Util Semantics Simul Extraction Cnotations
 
 VFILES := $(FILES:%=%.v)
 
