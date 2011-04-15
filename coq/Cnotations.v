@@ -97,6 +97,7 @@ Notation "e1 ? e2 `| e3 `: t" := (Econdition e1 e2 e3 t) (at level 20).
 Notation "e -- `: t" := (Epostincr Decr e t) (at level 20).
 Notation "e ++ `: t" := (Epostincr Incr e t) (at level 20).
 Notation "e1 `= e2 `: t" := (Eassign e1 e2 t) (at level 20).
+Notation "e # id `: t" := (Efield e id t) (at level 20).
 
 Notation "a ;; b" := (Ssequence a b) (at level 9, right associativity).
 Notation "'If' a 'then' b 'else' c" := (Sifthenelse a b c) (at level 9).
