@@ -95,18 +95,20 @@ let rec options() =
   "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
   " Output instructions in CompCert C ast (raw Coq syntax) (implies -norm, requires -ipc)";
   "-ocompcertc-c", Rest (fun _ -> if is_set_coqcl_argv () then () else
-      set_coqcl_argv (let rec aux n = (** find the name of the option in [Sys.argv], return his index *)
-                        if n < 0 then
-                          assert false
-                        else if Sys.argv.(n) = "-ocompcertc-c" then
-                          n
-                        else
-                          aux (pred n) in 
-                      let lg = pred (Array.length Sys.argv) in
-                      let p = aux lg in
-                      Array.append (Array.sub Sys.argv 0 p) (Array.sub Sys.argv (succ p) (lg - p))
-                        (** delete the index found *)
-      ) ; set_output_type RawCoq_Csyntax),
+      begin 
+        set_coqcl_argv (let rec aux n = (** find the name of the option in [Sys.argv], return his index *)
+                          if n < 0 then
+                            assert false
+                          else if Sys.argv.(n) = "-ocompcertc-c" then
+                            n
+                          else
+                            aux (pred n) in 
+                        let lg = pred (Array.length Sys.argv) in
+                        let p = aux lg in
+                        Array.append (Array.sub Sys.argv 0 p) (Array.sub Sys.argv (succ p) (lg - p))
+                        (** delete the index found *)); 
+        set_output_type RawCoq_Csyntax;
+      end),
   " Output C program in CompCert C ast (raw Coq syntax) (requires the same options as CompCert)";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   " Output Coq decoder (requires -idec)";
