@@ -115,12 +115,16 @@ Notation float64 := (Tfloat F64).\n\
 Notation \"`*\" := Tpointer.\n\
 \n\
 Notation \"a :T: b\" := (Tcons a b) (at level 70, right associativity).\n\
+Notation \"T[ ]\" := Tnil.\n\
 Notation \"T[ a ; .. ; b ]\" := (a :T: .. (b :T: Tnil) ..).\n\
 \n\
 Notation \"` x\" := (Int.repr x) (at level 9).\n\
 \n\
+Notation \"$ x\" := (Init_int8 (` x)) (at level 70).\n\
+\n\
 Definition fcons a := Fcons (fst a) (snd a).\n\
 Notation \"a :F: b\" := (fcons a b) (at level 70, right associativity).\n\
+Notation \"F[ ]\" := Fnil.\n\
 Notation \"F[ a ; .. ; b ]\" := (a :F: .. (b :F: Fnil) ..).\n\
 \n\
 Notation \"a `: b\" := (pair a b) (at level 60).\n\
@@ -136,7 +140,7 @@ let bool b = bprintf b "%b";;
 
 let option elt b = function
   | None -> bprintf b "None"
-  | Some x -> bprintf b "(Some %a)" elt x;;
+  | Some x -> bprintf b "Some %a" elt x;;
 
 let coq_list elt b = function
   | [] -> bprintf b "[]"
@@ -148,23 +152,51 @@ let coq_Z b x = int32 b (camlint_of_z x);;
 
 let int b x = int32 b (camlint_of_coqint x);;
 
+let positive b x = int32 b (camlint_of_positive x);;
+
 let float = todo;;
+
+let float32 = todo;;
+
+let float64 = todo;;
 
 (*****************************************************************************)
 (** ident *)
 
-let string_of_ident p =
-  try Hashtbl.find string_of_atom p
-  with Not_found -> assert false;;
+let valid_coq_ident s =
+  match s with
+    | "end" as s -> "_" ^ s
+    | _ ->
+	for i = 0 to String.length s - 1 do
+	  if s.[i] = '$' || s.[i] = ' ' then s.[i] <- '_'
+	done;
+	s;;
+
+let identTable = Hashtbl.create 57;;
+
+let add_ident id s = Hashtbl.add identTable id (valid_coq_ident s);;
+
+let init_identTable () = Hashtbl.iter add_ident string_of_atom;;
+
+let string_of_ident id =
+  try Hashtbl.find identTable id
+  with Not_found ->
+    Printf.sprintf "unknown_atom_%ld" (camlint_of_positive id);;
 
 let ident = using string_of_ident;;
+
+let identifiers b =
+  bprintf b "\n(* identifiers *)\n\n";
+  Hashtbl.iter
+    (fun id s -> bprintf b "Definition %s := %a.\n" s positive id)
+    identTable;;
 
 (*****************************************************************************)
 (** signature *)
 
 let string_of_typ = function
-  | AST.Tint -> "Tint"
-  | AST.Tfloat -> "Tfloat";;
+  | AST.Tint -> "AST.Tint"
+  | AST.Tfloat -> "AST.Tfloat";;
 
 let typ = using string_of_typ;;
 
@@ -212,12 +244,24 @@ let rec coq_type b = function
   | Tint (I32, Unsigned) -> string b "uint32"
   | Tfloat F32 -> string b "float32"
   | Tfloat F64 -> string b "float64"
-  | Tpointer t -> papp1 b "`*" coq_type t
-  | Tarray (t, n) -> papp2 b "Tarray" coq_type t coq_Z n
-  | Tfunction (tl, t) -> papp2 b "Tfunction" typelist tl coq_type t
-  | Tstruct (id, fl) -> papp2 b "Tstruct" ident id fieldlist fl
-  | Tunion (id, fl) -> papp2 b "Tunion" ident id fieldlist fl
-  | Tcomp_ptr id -> papp1 b "Tcomp_ptr" ident id
+  | Tpointer t -> app1 b "`*" pcoq_type t
+  | Tarray (t, n) -> app2 b "Tarray" pcoq_type t coq_Z n
+  | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl coq_type t
+  | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist fl
+  | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist fl
+  | Tcomp_ptr id -> app1 b "Tcomp_ptr" ident id
+
+and pcoq_type b t =
+  match t with
+  | Tvoid
+  | Tint _
+  | Tfloat _ -> coq_type b t
+  | Tpointer _
+  | Tarray _
+  | Tfunction _
+  | Tstruct _
+  | Tunion _
+  | Tcomp_ptr _ -> par coq_type b t
 
 and typelist b tl = bprintf b "T%a" (coq_list coq_type) (types_of_typelist tl)
 
@@ -249,22 +293,17 @@ let add_type k id fl =
 	typTable := TypMap.add t s !typTable;
 	s;;
  
-let rec coq_type_ref b = function
-  | Tvoid -> string b "void"
-  | Tint (I8, Signed) -> string b "int8"
-  | Tint (I8, Unsigned) -> string b "uint8"
-  | Tint (I16, Signed) -> string b "int16"
-  | Tint (I16, Unsigned) -> string b "uint16"
-  | Tint (I32, Signed) -> string b "int32"
-  | Tint (I32, Unsigned) -> string b "uint32"
-  | Tfloat F32 -> string b "float32"
-  | Tfloat F64 -> string b "float64"
-  | Tpointer t -> app1 b "`*" coq_type_ref t
-  | Tarray (t, n) -> app2 b "Tarray" coq_type_ref t coq_Z n
-  | Tfunction (tl, t) -> app2 b "Tfunction" typelist_ref tl coq_type_ref t
-  | Tcomp_ptr id -> app1 b "Tcomp_ptr" ident id
-  | Tstruct (id, fl) -> string b (add_type Struct id fl)
-  | Tunion (id, fl) -> string b (add_type Union id fl)
+let rec coq_type_ref b t =
+  match t with
+    | Tvoid
+    | Tint _
+    | Tfloat _
+    | Tpointer _
+    | Tarray _
+    | Tfunction _
+    | Tcomp_ptr _ -> coq_type b t
+    | Tstruct (id, fl) -> string b (add_type Struct id fl)
+    | Tunion (id, fl) -> string b (add_type Union id fl)
 
 and typelist_ref b tl =
   bprintf b "T%a" (coq_list coq_type_ref) (types_of_typelist tl)
@@ -331,7 +370,7 @@ let rec expr b = function
   | Evar (id, t) -> papp2 b "Evar" ident id coq_type_ref t
   | Efield (e, id, t) -> papp3 b "Efield" expr e ident id coq_type_ref t
   | Evalof (e, t) -> papp2 b "Evalof" expr e coq_type_ref t
-  | Ederef (e, t) -> papp2 b "Edered" expr e coq_type_ref t
+  | Ederef (e, t) -> papp2 b "Ederef" expr e coq_type_ref t
   | Eaddrof (e, t) -> papp2 b "Eaddrof" expr e coq_type_ref t
   | Eunop (op, e, t) ->
       papp3 b "Eunop" unary_operation op expr e coq_type_ref t
@@ -375,7 +414,7 @@ let rec statement b = function
       papp4 b "Sfor" statement s1 expr e statement s2 statement s3
   | Sbreak -> string b "Sbreak"
   | Scontinue -> string b "Scontinue"
-  | Sreturn oe -> papp1 b "Sreturn" (option expr) oe
+  | Sreturn oe -> papp1 b "Sreturn" (par (option expr)) oe
   | Sswitch (e, ls) -> papp2 b "Sswitch" expr e labeled_statements ls
   | Slabel (l, s) -> papp2 b "Slabel" label l statement s
   | Sgoto l -> papp1 b "Sgoto" label l
@@ -390,13 +429,28 @@ and label_stat b = function
 (*****************************************************************************)
 (** global variables *)
 
-let prog_var_ref b (Coq_pair (id, _)) = bprintf b "var_%a" ident id;;
+let prog_var_ref b (Coq_pair (id, _)) = bprintf b "gv_%a" ident id;;
 
-let prog_var_def b (Coq_pair (id, _gv)) =
-  bprintf b "Definition var_%a := .\n" ident id;;
+let init_data b = function
+  | Init_int8 x -> bprintf b "$%a" int x
+  | Init_int16 x -> app1 b "Init_int16" int x
+  | Init_int32 x -> app1 b "Init_int32" int x
+  | Init_float32 x -> app1 b "Init_float32" float32 x
+  | Init_float64 x -> app1 b "Init_float64" float64 x
+  | Init_space x -> app1 b "Init_space" coq_Z x
+  | Init_addrof (id, x) -> app2 b "Init_addrof" ident id int x;;
 
-let variables b p =
-  bprintf b "\n(* variables *)\n\n%a\n\nDefinition variables := %a.\n"
+let gvar_init = coq_list init_data;;
+
+let prog_var_def b (Coq_pair (id, v)) =
+  bprintf b "Definition gv_%a :=\n  {| gvar_info := %a;\n     \
+    gvar_init := %a;\n     gvar_readonly := %a;\n     \
+    gvar_volatile := %a |}.\n\n" ident id coq_type v.gvar_info
+    gvar_init v.gvar_init bool v.gvar_readonly bool v.gvar_volatile;;
+
+let global_variables b p =
+  bprintf b "\n(* global variables *)\n\n%a\n\n\
+    Definition global_variables := %a.\n"
     (list_iter prog_var_def) p.prog_vars
     (coq_list prog_var_ref) p.prog_vars;;
 
@@ -406,19 +460,19 @@ let variables b p =
 let prog_funct_ref b (Coq_pair (id, _)) = bprintf b "fun_%a" ident id;;
 
 let coq_function b f =
-  bprintf b "{|\n  fn_return := %a;\n  fn_params := %a;\n  \
-    fn_vars := %a;\n  fn_body := %a |}"
+  bprintf b "{| fn_return := %a;\n     fn_params := %a;\n     \
+    fn_vars := %a;\n     fn_body := %a |}"
     coq_type f.fn_return params f.fn_params
     params f.fn_vars statement f.fn_body;;
 
 let external_function b ef =
-  bprintf b "{| ef_id := %a;\n ef_sig := %a;\n ef_inline := %a |}"
+  bprintf b "{| ef_id := %a;\n     ef_sig := %a;\n     ef_inline := %a |}"
     ident ef.ef_id signature ef.ef_sig bool ef.ef_inline;;
 
 let fundef b = function
-  | Internal f -> bprintf b "(Internal %a)" coq_function f
-  | External (ef, tl, t) -> bprintf b "(External %a %a %a)"
-      external_function ef typelist tl coq_type t;;
+  | Internal f -> bprintf b "Internal\n  %a" coq_function f
+  | External (ef, tl, t) -> bprintf b "External\n  %a\n  %a\n  %a"
+      external_function ef typelist tl pcoq_type t;;
 
 let prog_funct_def b (Coq_pair (id, fd)) =
   bprintf b "Definition fun_%a := (%a, %a).\n\n" ident id ident id fundef fd;;
@@ -435,12 +489,18 @@ let program b p = bprintf b
   "\nDefinition program : AST.program fundef type :=\n  \
     {| prog_funct := functions;\n    \
        prog_main := %a;\n    \
-       prog_vars := variables |}.\n" ident p.prog_main;;
+       prog_vars := global_variables |}.\n" ident p.prog_main;;
 
 (*****************************************************************************)
 (** main printing function for Csyntax.program *)
 
 let to_buffer p =
   let b = Buffer.create 10000 in
-    bprintf b "%s%a%a%a%a" header types p variables p functions p program p;
+    init_identTable ();
+    string b header;
+    identifiers b;
+    types b p;
+    global_variables b p;
+    functions b p;
+    program b p;
     b;;
