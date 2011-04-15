@@ -384,7 +384,7 @@ let rec expr b = function
   | Eval (v, t) -> bprintf b "#%a%a" coq_val v expr_type t
   | Evar (id, t) -> bprintf b "$%a%a" ident id expr_type t
   | Efield (e, id, t) ->
-      bprintf b "%a.(%a)%a" pexpr e ident id expr_type t
+      bprintf b "%a # %a%a" pexpr e ident id expr_type t
   | Evalof (Evar (id, t), _) -> bprintf b "\\%a%a" ident id expr_type t
   | Evalof (e, t) -> papp2 b "Evalof" pexpr e expr_type t
   | Ederef (e, t) -> bprintf b "`*%a%a" pexpr e expr_type t
