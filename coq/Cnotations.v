@@ -33,6 +33,7 @@ Definition null_termin_string s := (s ++ String "000" "")%string.
 (****************************************************************************)
 (** coercions *)
 
+Coercion Int.repr : Z >-> int.
 Coercion Vint : int >-> val.
 Coercion Sdo : expr >-> statement.
 Coercion init_data_of_ascii : ascii >-> init_data.
