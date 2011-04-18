@@ -25,6 +25,7 @@ let error s = error (sprintf "%s\n%s" s usage_msg);;
 let get_norm, set_norm = get_set_bool();;
 let get_check, set_check = get_set_bool();;
 let get_sh4, set_sh4 = get_set_bool ()
+let get_ml, set_ml = get_set_bool();;
 
 let set_debug() =
   ignore(Parsing.set_trace true); set_debug(); set_verbose();;
@@ -84,6 +85,8 @@ let rec options() =
   " Check pseudocode pretty-printer (only with -ipc)";
   "-norm", Unit set_norm,
   " Normalize pseudocode (only with -ipc)";
+  "-ml", Unit set_ml,
+  " Use a pure ML algorithm instead of Coq, if possible";
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
@@ -280,6 +283,12 @@ let parse_input_file() =
 
 let genr_output() =
   verbose "code generation...\n";
+  let print_csyntax c = 
+    Buffer.output_buffer stdout 
+      ((if get_ml () then 
+          Csyntax2coq.to_buffer
+        else
+          RawCoq_Csyntax_main.to_buffer) c) in
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
@@ -304,12 +313,12 @@ let genr_output() =
           let preamble_import = "State Arm6_Functions."
         end : Gencoq.GENCOQ))) (get_pc_input())
     | CompcertCInst -> 
-      Buffer.output_buffer stdout (Ps2cl_ast_trans.print_cc (get_pc_input()))
+      print_csyntax (Ps2cl_ast_trans.prog_trans (get_pc_input()))
     | RawCoq_Csyntax -> 
       let open CompCert_Driver in
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
         | None -> Printf.printf "(* assert false *)\n%!"
-        | Some b -> Buffer.output_buffer stdout b)
+        | Some b -> print_csyntax b)
     | CoqDec -> print (let open Dec in
                        let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then

@@ -73,7 +73,7 @@ let preprocess ifile ofile =
     exit 2
   end
 
-exception SimSoCCert of Buffer.t
+exception SimSoCCert of (Csyntax.fundef, Csyntax.coq_type) AST.program
 
 (* From preprocessed C to asm *)
 
@@ -105,7 +105,7 @@ let compile_c_file sourcename ifile ofile =
     | None -> exit 2
     | Some p -> p in
   flush stderr;
-  ignore (raise (SimSoCCert (RawCoq_Csyntax_main.to_buffer csyntax)));
+  ignore (raise (SimSoCCert csyntax));
   (* Prepare to dump Csyntax, Clight, RTL, etc, if requested *)
   let set_dest dst opt ext =
     dst := if !opt then Some (Filename.chop_suffix sourcename ".c" ^ ext)

@@ -502,5 +502,3 @@ let prog_trans ({ body = ps ; _ } : Ast.program) =
   { AST.prog_funct = List.map fn_index ps;
     AST.prog_main = id "main";
     AST.prog_vars = [Coq_pair (id "gvars",gvars)] };;
-
-let print_cc ps = RawCoq_Csyntax_main.to_buffer (prog_trans ps)
