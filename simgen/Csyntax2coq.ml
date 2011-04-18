@@ -115,6 +115,8 @@ let coq_list_sep sep elt b = function
 
 let coq_pair f g b (Coq_pair (x, y)) = bprintf b "(%a,%a)" f x g y;;
 
+let coq_pair2 f g b (Coq_pair (x,y)) = bprintf b "%a -: %a" f x g y;;
+
 let coq_Z b x = int32 b (camlint_of_z x);;
 
 let int b x = int32 b (camlint_of_coqint x);;
@@ -324,7 +326,7 @@ let coq_type_ref2 b t =
     | Tstruct _
     | Tunion _ -> par coq_type_ref b t;;
 
-let params = coq_list (coq_pair ident coq_type_ref);;
+let params = coq_list (coq_pair2 ident coq_type_ref);;
 
 let structs_and_unions b =
   bprintf b "\n(* structs and unions *)\n\n";
@@ -337,7 +339,7 @@ let structs_and_unions b =
 
 let string_of_unary_operation = function
   | Onotbool -> "!"
-  | Onotint -> "~"
+  | Onotint -> "`~"
   | Oneg -> "-";;
 
 let unary_operation = using string_of_unary_operation;;
@@ -391,46 +393,65 @@ let int_of_exptyp t =
     exptypMap := TypMap.add t !exptyp_id !exptypMap;
     !exptyp_id;;
 
+let exptyp b t = bprintf b "T%d" (int_of_exptyp t);;
+
+let of_exptyp b t = bprintf b "`:%a" exptyp t;;
+
 let expr_types b =
   bprintf b "\n(* expression types *)\n\n";
   TypMap.iter
     (fun t k -> bprintf b "Definition T%d := %a.\n" k coq_type_ref t)
     !exptypMap;;
 
-let expr_type b t = bprintf b "`:T%d" (int_of_exptyp t);;
-
 let rec expr b = function
-  | Eval (v, t) -> bprintf b "#%a%a" coq_val v expr_type t
-  | Evar (id, t) -> bprintf b "$%a%a" ident id expr_type t
-  | Efield (e, id, t) ->
-      bprintf b "%a # %a%a" pexpr e ident id expr_type t
-  | Evalof (Evar (id, t), _) -> bprintf b "\\%a%a" ident id expr_type t
-  | Evalof (e, t) -> papp2 b "Evalof" pexpr e expr_type t
-  | Ederef (e, t) -> bprintf b "`*%a%a" pexpr e expr_type t
-  | Eaddrof (e, t) -> bprintf b "&%a%a" pexpr e expr_type t
+  | Eval (v, t) -> bprintf b "#%a%a" coq_val v of_exptyp t
+  | Evar (id, t) -> bprintf b "$ %a%a" ident id of_exptyp t
+  | Efield (e, id, t) -> bprintf b "%a|%a%a" pexpr e ident id of_exptyp t
+  | Evalof (Evar (id, t), _) -> bprintf b "\\%a%a" ident id of_exptyp t
+  | Evalof (e, t) -> papp2 b "Evalof" pexpr e exptyp t
+  | Ederef (e, t) -> bprintf b "`*%a%a" pexpr e of_exptyp t
+  | Eaddrof (e, t) -> bprintf b "&%a%a" pexpr e of_exptyp t
   | Eunop (op, e, t) ->
-      bprintf b "%a%a%a" unary_operation op pexpr e expr_type t
+      bprintf b "%a%a%a" unary_operation op pexpr e of_exptyp t
   | Ebinop (op, e1, e2, t) ->
-      bprintf b "%a%a%a%a" pexpr e1 binary_operation op pexpr e2 expr_type t
-  | Ecast (e, t) -> papp2 b "Ecast" pexpr e expr_type t
+      bprintf b "%a%a%a%a" pexpr e1 binary_operation op pexpr e2 of_exptyp t
+  | Ecast (e, t) -> papp2 b "Ecast" pexpr e exptyp t
   | Econdition (e1, e2, e3, t) ->
-      bprintf b "%a?%a`|%a%a" pexpr e1 pexpr e2 pexpr e3 expr_type t
-  | Esizeof (t1, t2) -> papp2 b "Esizeof" expr_type t1 expr_type t2
-  | Eassign (e1, e2, t) ->
-      bprintf b "%a `= %a%a" pexpr e1 pexpr e2 expr_type t
+      bprintf b "%a?%a`|%a%a" pexpr e1 pexpr e2 pexpr e3 of_exptyp t
+  | Esizeof (t1, t2) -> papp2 b "Esizeof" exptyp t1 exptyp t2
+  | Eassign (e1, e2, t) -> bprintf b "%a `= %a%a" pexpr e1 pexpr e2 of_exptyp t
   | Eassignop (op, e1, e2, t1, t2) ->
-      papp5 b "Eassignop" binary_operation op pexpr e1 pexpr e2
-	expr_type t1 expr_type t2
+      bprintf b "%a %a= %a%a%a" pexpr e1 binary_operation op pexpr e2
+	of_exptyp t1 of_exptyp t2
   | Epostincr (id, e, t) ->
-      bprintf b "%a%a%a" pexpr e incr_of_decr id expr_type t
-  | Ecomma (e1, e2, t) -> papp3 b "Ecomma" pexpr e1 pexpr e2 expr_type t
-  | Ecall (e, el, t) -> papp3 b "Ecall" pexpr e exprlist el expr_type t
-  | Eloc (x, i, t) -> papp3 b "Eloc" block x int i expr_type t
-  | Eparen (e, t) -> papp2 b "Eparen" pexpr e expr_type t
+      bprintf b "%a%a%a" pexpr e incr_of_decr id of_exptyp t
+  | Ecomma (e1, e2, t) -> papp3 b "Ecomma" pexpr e1 pexpr e2 exptyp t
+  | Ecall (e, el, t) -> papp3 b "Ecall" pexpr e exprlist el exptyp t
+  | Eloc (x, i, t) -> papp3 b "Eloc" block x int i exptyp t
+  | Eparen (e, t) -> papp2 b "Eparen" pexpr e exptyp t
 
-and pexpr b = par expr b
+and pexpr b e =
+  match e with
+    | Eval _
+    | Evar _
+    | Efield _
+    | Evalof _
+    | Ederef _
+    | Eaddrof _
+    | Eunop _
+    | Ebinop _
+    | Ecast _
+    | Econdition _
+    | Esizeof _
+    | Eassign _
+    | Eassignop _
+    | Epostincr _
+    | Ecomma _
+    | Ecall _
+    | Eloc _
+    | Eparen _ -> par expr b e
 
-and exprlist b el = bprintf b "E%a" (coq_list pexpr) (exprs_of_exprlist el);;
+and exprlist b el = bprintf b "E%a" (coq_list expr) (exprs_of_exprlist el);;
 
 (*****************************************************************************)
 (** statement *)
@@ -442,28 +463,29 @@ let rec label_stats_of_labeled_statements = function
   | LScase (i, s, ls) -> (Some i,s) :: label_stats_of_labeled_statements ls;;
 
 let rec statement b = function
-  | Sskip -> string b "Sskip"
-  | Sdo e -> pexpr b e (* thanks to Coercion Sdo : expr >-> statement *)
+  | Sskip -> string b "skip"
+  | Sdo e -> expr b e (* thanks to Coercion Sdo : expr >-> statement *)
   | Ssequence (s1, s2) -> bprintf b "%a;;\n%a" statement s1 statement s2
   | Sifthenelse (e, s1, s2) ->
-      bprintf b "If %a\nthen %a\nelse %a" pexpr e statement s1 statement s2
-  | Swhile (e, s) -> bprintf b "while %a do %a" pexpr e statement s
-  | Sdowhile (e, s) -> bprintf b "do %a while %a" pexpr e statement s
-  | Sfor (s1, e, s2, s3) -> bprintf b "for (%a, %a, %a)\n%a"
+      bprintf b "`if %a\nthen %a\nelse %a" pexpr e statement s1 statement s2
+  | Swhile (e, s) -> bprintf b "while %a `do %a" pexpr e statement s
+  | Sdowhile (e, s) -> bprintf b "`do %a while %a" statement s pexpr e
+  | Sfor (s1, e, s2, s3) -> bprintf b "for (%a, %a, %a) { %a }"
       statement s1 pexpr e statement s2 statement s3
   | Sbreak -> string b "break"
   | Scontinue -> string b "continue"
-  | Sreturn oe -> papp1 b "return" (par (option pexpr)) oe
-  | Sswitch (e, ls) -> papp2 b "Sswitch" pexpr e labeled_statements ls
-  | Slabel (l, s) -> papp2 b "Slabel" label l statement s
-  | Sgoto l -> papp1 b "goto" label l
+  | Sreturn oe -> app1 b "return" (par (option pexpr)) oe
+  | Sswitch (e, ls) ->
+      bprintf b "switch %a { %a }" (par expr) e labeled_statements ls
+  | Slabel (l, s) -> bprintf b "label %a `: %a" label l statement s
+  | Sgoto l -> app1 b "goto" label l
 
 and labeled_statements b ls =
   bprintf b "L%a" (coq_list label_stat) (label_stats_of_labeled_statements ls)
 
 and label_stat b = function
-  | None, s -> app1 b "LSdefault" statement s
-  | Some i, s -> bprintf b "<%a: %a" int i statement s;;
+  | None, s -> bprintf b "default-: %a" statement s
+  | Some i, s -> bprintf b "`%a-: %a" int i statement s;;
 
 (*****************************************************************************)
 (** global variables *)
