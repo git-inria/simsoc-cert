@@ -28,8 +28,6 @@ simlight: $(OBJECTS)
 slv6_iss.h slv6_iss.c: $(SIMGEN) ../arm6inst.arm ../arm6dec.dat
 	$(SIMGEN) -ocxx slv6_iss -ipc ../arm6inst.arm -idec ../arm6dec.dat
 
-slv6_iss.c: slv6_iss.h
-
 ../arm6inst.arm ../arm6dec.dat: FORCE
 	$(MAKE) -C .. $(@:../%=%)
 
