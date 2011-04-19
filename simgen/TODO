@@ -1,6 +1,8 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
+- in Csyntax2ocq, use Format instead of Printf
+
 - move run_test.sh in a more approriate place
 
 - (re)move target bintest in Makefile
