@@ -435,21 +435,22 @@ and pexpr b e =
     | Eval _
     | Evar _
     | Efield _
-    | Evalof _
+    | Evalof (Evar _, _)
     | Ederef _
     | Eaddrof _
     | Eunop _
     | Ebinop _
-    | Ecast _
     | Econdition _
-    | Esizeof _
     | Eassign _
     | Eassignop _
-    | Epostincr _
+    | Epostincr _ -> par expr b e
+    | Evalof _
+    | Ecast _
+    | Esizeof _
     | Ecomma _
     | Ecall _
     | Eloc _
-    | Eparen _ -> par expr b e
+    | Eparen _ -> expr b e
 
 and exprlist b el = bprintf b "E%a" (coq_list expr) (exprs_of_exprlist el);;
 
