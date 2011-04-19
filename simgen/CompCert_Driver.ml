@@ -10,7 +10,7 @@
 (*                                                                     *)
 (* *********************************************************************)
 
-module Configuration = (** This module replaces the module [Configuration] by modifying the preprocessor function called. By default, it is one which outputs on a 64 bits. *)
+(*module Configuration = (** This module replaces the module [Configuration] by modifying the preprocessor function called. By default, it is one which outputs on a 64 bits. *)
 struct
   include Configuration
 
@@ -21,7 +21,7 @@ struct
       | "gcc -m32 -U__GNUC__ -E"
       | "gcc -U__GNUC__ -E" -> "gcc -m64 -U__GNUC__ -E"
       | _ -> assert false
-end
+end*)
 
 open Printf
 open Clflags
