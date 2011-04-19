@@ -100,12 +100,7 @@ let float64 = todo;;
 (*****************************************************************************)
 (** ident *)
 
-let remove_prefix p s =
-  let k = String.length p and n = String.length s in
-    if n >= k && String.sub s 0 k = p then "_" ^ String.sub s k (n-k) else s;;
-
 let valid_coq_ident s =
-(*  let s = remove_prefix "struct " (remove_prefix "union " s) in*)
     match s with
       | "end" as s -> "_" ^ s
       | _ ->
@@ -149,25 +144,6 @@ let signature b s =
 
 (*****************************************************************************)
 (** structs and unions *)
-
-let string_of_signedness = function
-  | Signed -> "Signed"
-  | Unsigned -> "Unsigned";;
-
-let signedness = using string_of_signedness;;
-
-let string_of_intsize = function
-  | I8 -> "I8"
-  | I16 -> "I16"
-  | I32 -> "I32";;
-
-let intsize = using string_of_intsize;;
-
-let string_of_floatsize = function
-  | F32 -> "F32"
-  | F64 -> "F64";;
-
-let floatsize = using string_of_floatsize;;
 
 let rec types_of_typelist = function
   | Tnil -> []
