@@ -474,11 +474,11 @@ let rec statement b = function
   | Sreturn oe -> app1 b "return" (par (option pexpr)) oe
   | Sswitch (e, ls) ->
       bprintf b "switch (%a)\n(%a)" expr e labeled_statements ls
-  | Slabel (l, s) -> bprintf b "label %a `: %a" label l statement s
+  | Slabel (l, s) -> bprintf b "label %a`: %a" label l statement s
   | Sgoto l -> app1 b "goto" label l
 
 and labeled_statements b = function
-  | LSdefault s -> bprintf b "default `: %a" statement s
+  | LSdefault s -> bprintf b "default`: %a" statement s
   | LScase (i, s, ls) -> bprintf b "`case`%a`: %a\n:L: %a"
       int i statement s labeled_statements ls;;
 
