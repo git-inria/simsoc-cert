@@ -351,7 +351,7 @@ let string_of_binary_operation = function
   | Odiv -> "/"
   | Omod -> "%"
   | Oand -> "&"
-  | Oor -> "||"
+  | Oor -> "`|"
   | Oxor -> "^"
   | Oshl -> "<<"
   | Oshr -> ">>"
@@ -408,7 +408,7 @@ let rec expr b = function
   | Evar (id, t) -> bprintf b "$ %a%a" ident id of_exptyp t
   | Efield (e, id, t) -> bprintf b "%a|%a%a" pexpr e ident id of_exptyp t
   | Evalof (Evar (id, t), _) -> bprintf b "\\%a%a" ident id of_exptyp t
-  | Evalof (e, t) -> papp2 b "Evalof" pexpr e exptyp t
+  | Evalof (e, t) -> papp2 b "valof" pexpr e exptyp t
   | Ederef (e, t) -> bprintf b "`*%a%a" pexpr e of_exptyp t
   | Eaddrof (e, t) -> bprintf b "&%a%a" pexpr e of_exptyp t
   | Eunop (op, e, t) ->
@@ -417,8 +417,8 @@ let rec expr b = function
       bprintf b "%a%a%a%a" pexpr e1 binary_operation op pexpr e2 of_exptyp t
   | Ecast (e, t) -> papp2 b "Ecast" pexpr e exptyp t
   | Econdition (e1, e2, e3, t) ->
-      bprintf b "%a?%a`|%a%a" pexpr e1 pexpr e2 pexpr e3 of_exptyp t
-  | Esizeof (t1, t2) -> papp2 b "Esizeof" exptyp t1 exptyp t2
+      bprintf b "%a?%a`:%a%a" pexpr e1 pexpr e2 pexpr e3 of_exptyp t
+  | Esizeof (t1, t2) -> papp2 b "sizeof" exptyp t1 exptyp t2
   | Eassign (e1, e2, t) -> bprintf b "%a `= %a%a" pexpr e1 pexpr e2 of_exptyp t
   | Eassignop (op, e1, e2, t1, t2) ->
       bprintf b "%a %a= %a%a%a" pexpr e1 binary_operation op pexpr e2
@@ -426,7 +426,7 @@ let rec expr b = function
   | Epostincr (id, e, t) ->
       bprintf b "%a%a%a" pexpr e incr_of_decr id of_exptyp t
   | Ecomma (e1, e2, t) -> papp3 b "Ecomma" pexpr e1 pexpr e2 exptyp t
-  | Ecall (e, el, t) -> papp3 b "Ecall" pexpr e exprlist el exptyp t
+  | Ecall (e, el, t) -> papp3 b "call" pexpr e exprlist el exptyp t
   | Eloc (x, i, t) -> papp3 b "Eloc" block x int i exptyp t
   | Eparen (e, t) -> papp2 b "Eparen" pexpr e exptyp t
 

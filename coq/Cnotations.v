@@ -279,27 +279,17 @@ Notation "x * y `: t" := (Ebinop Omul x y t) (at level 20).
 Notation "x / y `: t" := (Ebinop Odiv x y t) (at level 20).
 Notation "x % y `: t" := (Ebinop Omod x y t) (at level 20).
 Notation "x & y `: t" := (Ebinop Oand x y t) (at level 20).
-Notation "x || y `: t" := (Ebinop Oor x y t) (at level 20).
+Notation "x `| y `: t" := (Ebinop Oor x y t) (at level 20).
 Notation "x ^ y `: t" := (Ebinop Oxor x y t) (at level 20).
 Notation "x << y `: t" := (Ebinop Oshl x y t) (at level 20).
 Notation "x >> y `: t" := (Ebinop Oshr x y t) (at level 20).
+
 Notation "x == y `: t" := (Ebinop Oeq x y t) (at level 20).
 Notation "x != y `: t" := (Ebinop One x y t) (at level 20).
 Notation "x < y `: t" := (Ebinop Olt x y t) (at level 20).
 Notation "x > y `: t" := (Ebinop Ogt x y t) (at level 20).
 Notation "x <= y `: t" := (Ebinop Ole x y t) (at level 20).
 Notation "x >= y `: t" := (Ebinop Oge x y t) (at level 20).
-
-Notation "`* e `: t" := (Ederef e t) (at level 20).
-Notation "# v `: t" := (Eval v t) (at level 20).
-Notation "$ id `: t" := (Evar id t) (at level 20).
-Notation "\ id `: t" := (Evalof (Evar id t) t) (at level 20).
-Notation "& e `: t" := (Eaddrof e t) (at level 20).
-Notation "e1 ? e2 `| e3 `: t" := (Econdition e1 e2 e3 t) (at level 20).
-Notation "e -- `: t" := (Epostincr Decr e t) (at level 20).
-Notation "e ++ `: t" := (Epostincr Incr e t) (at level 20).
-Notation "e1 `= e2 `: t" := (Eassign e1 e2 t) (at level 8).
-Notation "e | id `: t" := (Efield e id t) (at level 20).
 
 Notation "x += y `: t1 `: t2" := (Eassignop Oadd x y t1 t2) (at level 8).
 Notation "x -= y `: t1 `: t2" := (Eassignop Osub x y t1 t2) (at level 8).
@@ -309,20 +299,36 @@ Notation "x %= y `: t1 `: t2" := (Eassignop Omod x y t1 t2) (at level 8).
 Notation "x &= y `: t1 `: t2" := (Eassignop Oand x y t1 t2) (at level 8).
 Notation "x |= y `: t1 `: t2" := (Eassignop Oor x y t1 t2) (at level 8).
 Notation "x ^= y `: t1 `: t2" := (Eassignop Oxor x y t1 t2) (at level 8).
+Notation "x <<= y `: t1 `: t2" := (Eassignop Oshl x y t1 t2) (at level 8).
+Notation "x >>= y `: t1 `: t2" := (Eassignop Oshr x y t1 t2) (at level 8).
 
-Notation "`case i `: s :L: ls" := (LScase i s ls) (at level 70).
-Notation "'default' `: s" := (LSdefault s) (at level 3).
+Notation "`* e `: t" := (Ederef e t) (at level 20).
+Notation "# v `: t" := (Eval v t) (at level 20).
+Notation "$ id `: t" := (Evar id t) (at level 20).
+Notation "\ id `: t" := (Evalof (Evar id t) t) (at level 20).
+Notation "& e `: t" := (Eaddrof e t) (at level 20).
+Notation "e1 ? e2 `: e3 `: t" := (Econdition e1 e2 e3 t) (at level 20).
+Notation "e -- `: t" := (Epostincr Decr e t) (at level 20).
+Notation "e ++ `: t" := (Epostincr Incr e t) (at level 20).
+Notation "e1 `= e2 `: t" := (Eassign e1 e2 t) (at level 8).
+Notation "e | id `: t" := (Efield e id t) (at level 20).
+Notation "'call'" := (Ecall).
+Notation "'sizeof'" := (Esizeof).
+Notation "'valof'" := (Evalof).
 
 Notation "a ;; b" := (Ssequence a b) (at level 51, right associativity).
 Notation "`if a 'then' b 'else' c" := (Sifthenelse a b c) (at level 9).
 Notation "'while' a `do b" := (Swhile a b) (at level 19).
 Notation "`do a 'while' b" := (Sdowhile b a) (at level 19).
+Notation "'label' l `: s" := (Slabel l s) (at level 5).
+Notation "'for' ( s1 , e , s2 ) { s3 }" := (Sfor s1 e s2 s3) (at level 19).
+
 Notation "'return'" := (Sreturn).
 Notation "'goto'" := (Sgoto).
-Notation "'label' l `: s" := (Slabel l s) (at level 5).
-Notation "'switch'" := (Sswitch).
-Notation "'default'-: s" := (LSdefault s) (at level 5).
 Notation "'continue'" := (Scontinue).
 Notation "'break'" := (Sbreak).
-Notation "'for' ( s1 , e , s2 ) { s3 }" := (Sfor s1 e s2 s3) (at level 19).
 Notation "'skip'" := (Sskip).
+Notation "'switch'" := (Sswitch).
+
+Notation "`case i `: s :L: ls" := (LScase i s ls) (at level 70).
+Notation "'default' `: s" := (LSdefault s) (at level 3).
