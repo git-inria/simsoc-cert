@@ -16,9 +16,8 @@ FILES := util ast flatten norm \
 	validity gendectest \
 	genpc gencoq gencxx \
 	codetype lightheadertype syntaxtype \
-	Csyntax2coq \
-	ps2cl_ast_trans CompCert_Driver \
-	c2pc \
+	c2pc pc2Csyntax Csyntax2coq \
+	CompCert_Driver \
 	simlight2 sl2_decoder sl2_patch sl2_print sl2_semantics \
 	main
 

@@ -324,7 +324,7 @@ let genr_output() =
           let preamble_import = "State Arm6_Functions."
         end : Gencoq.GENCOQ))) (get_pc_input())
     | CompcertCInst -> 
-      print_csyntax (Ps2cl_ast_trans.prog_trans (get_pc_input()))
+      print_csyntax (Pc2Csyntax.prog_trans (get_pc_input()))
     | RawCoq_Csyntax -> 
       let open CompCert_Driver in
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
