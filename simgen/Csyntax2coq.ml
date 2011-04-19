@@ -432,20 +432,14 @@ and labeled_statements b = function
 let prog_var_ref b (Coq_pair (id, _)) =
   bprintf b "(%a,gv_%a)" ident id ident id;;
 
-let is_int8 = function
-  | Init_int8 _ -> true
-  | Init_int16 _
-  | Init_int32 _
-  | Init_float32 _
-  | Init_float64 _
-  | Init_space _
-  | Init_addrof _ -> false;;
+let is_printable x = (x >= 32 && x <= 126) || x = 10;;
 
 let int8 b x =
-  let x = Int32.to_int (camlint_of_coqint x) in
-    if x = 34 then string b ""
-    else if x >= 32 && x <= 126 then bprintf b "%c" (Char.chr x)
-    else bprintf b "%03d" x;;
+  match Int32.to_int (camlint_of_coqint x) with
+    | 10 -> string b "\n"
+    | 34 -> ()
+    | x when x >= 32 && x <= 126 -> bprintf b "%c" (Char.chr x)
+    | x -> bprintf b "%03d" x;;
 
 let init_data b = function
   | Init_int8 x -> bprintf b "\"%a\"" int8 x
@@ -459,8 +453,7 @@ let init_data b = function
 let char_of_init_data = function
   | Init_int8 x ->
       let x = Int32.to_int (camlint_of_coqint x) in
-	if x >= 32 && x <= 126 then Char.chr x
-	else raise Not_found
+	if is_printable x then Char.chr x else raise Not_found
   | Init_int16 _
   | Init_int32 _
   | Init_float32 _
@@ -477,6 +470,15 @@ let remove_null =
   in function
     | [] -> []
     | x :: l -> aux x l;;
+
+let is_int8 = function
+  | Init_int8 _ -> true
+  | Init_int16 _
+  | Init_int32 _
+  | Init_float32 _
+  | Init_float64 _
+  | Init_space _
+  | Init_addrof _ -> false;;
 
 let gvar_init b l =
   if List.for_all is_int8 l then
