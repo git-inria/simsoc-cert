@@ -25,7 +25,7 @@ let error s = error (sprintf "%s\n%s" s usage_msg);;
 let get_norm, set_norm = get_set_bool();;
 let get_check, set_check = get_set_bool();;
 let get_sh4, set_sh4 = get_set_bool ()
-let get_ml, set_ml = get_set_bool();;
+let get_coq, set_coq = get_set_bool();;
 
 let set_debug() =
   ignore(Parsing.set_trace true); set_debug(); set_verbose();;
@@ -85,8 +85,8 @@ let rec options() =
   " Check pseudocode pretty-printer (only with -ipc)";
   "-norm", Unit set_norm,
   " Normalize pseudocode (only with -ipc)";
-  "-ml", Unit set_ml,
-  " Use a pure ML algorithm instead of Coq, if possible";
+  "-coq", Unit set_coq,
+  " Use a pure Coq algorithm instead of ML when possible";
   "-opc", Unit (fun () -> set_output_type PCout),
   " Output pseudocode";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
@@ -98,7 +98,7 @@ let rec options() =
   "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
   " Output instructions in CompCert C ast (raw Coq syntax) (implies -norm, requires -ipc)";
   "-ocompcertc-c", Rest (fun _ -> if is_set_coqcl_argv () then () else
-      let is_set_ml = ref true in
+      let is_set_coq = ref true in
       begin 
         set_coqcl_argv (List.fold_left
                           (fun argv -> 
@@ -119,8 +119,8 @@ let rec options() =
                                   Array.append (Array.sub argv 0 p) (Array.sub argv (succ p) (lg - p)))
                           Sys.argv
                           [ "-ocompcertc-c", (fun _ -> assert false)
-                          ; "-ml", (fun x -> let () = is_set_ml := false in x) ]);
-        (if !is_set_ml then set_ml () else ());
+                          ; "-coq", (fun x -> let () = is_set_coq := false in x) ]);
+        (if !is_set_coq then set_coq () else ());
         set_output_type RawCoq_Csyntax;
       end),
   " Output C program in CompCert C ast (raw Coq syntax) (requires the same options as CompCert)";
@@ -296,10 +296,10 @@ let genr_output() =
   verbose "code generation...\n";
   let print_csyntax c = 
     Buffer.output_buffer stdout 
-      ((if get_ml () then 
-          Csyntax2coq.to_buffer
+      ((if get_coq () then 
+          RawCoq_Csyntax_main.to_buffer
         else
-          RawCoq_Csyntax_main.to_buffer) c) in
+          Csyntax2coq.to_buffer) c) in
   match get_output_type() with
     | PCout -> print Genpc.lib (get_pc_input())
     | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())

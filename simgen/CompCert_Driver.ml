@@ -10,19 +10,6 @@
 (*                                                                     *)
 (* *********************************************************************)
 
-(*module Configuration = (** This module replaces the module [Configuration] by modifying the preprocessor function called. By default, it is one which outputs on a 64 bits. *)
-struct
-  include Configuration
-
-  let prepro = 
-    match prepro with
-      | "gcc -arch i386 -U__GNUC__ -U__BLOCKS__ -E"
-      | "gcc -arch ppc -U__GNUC__ -U__BLOCKS__ -E" -> failwith "This architecture has to be tested to know if we need to find an equivalent to \"gcc -m64\" or not."
-      | "gcc -m32 -U__GNUC__ -E"
-      | "gcc -U__GNUC__ -E" -> "gcc -m64 -U__GNUC__ -E"
-      | _ -> assert false
-end*)
-
 open Printf
 open Clflags
 
