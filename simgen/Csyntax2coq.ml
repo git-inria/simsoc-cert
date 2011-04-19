@@ -13,21 +13,10 @@ open Printf;;
 open Camlcoq;;
 
 (*****************************************************************************)
-(** basic OCaml data structures *)
-
-type 'a bprint = Buffer.t -> 'a -> unit;;
-type 'a fprint = out_channel -> 'a -> unit;;
-
-let fprint f oc x =
-  let b = Buffer.create 100 in
-    f b x; fprintf oc "%s" (Buffer.contents b);;
-
-let sprint f x =
-  let b = Buffer.create 100 in
-    f b x; sprintf "%s" (Buffer.contents b);;
+(** printing functions on basic OCaml data structures *)
 
 let string b s = bprintf b "%s" s;;
-let int b i = bprintf b "%d" i;;
+
 let int32 b i = bprintf b "%ld" i;;
 
 let pair f sep g b (x, y) = bprintf b "%a%s%a" f x sep g y;;
@@ -40,24 +29,7 @@ let prefix s f b x = bprintf b "%s%a" s f x;;
 let postfix s f b x = bprintf b "%a%s" f x s;;
 let endline f b x = postfix "\n" f b x;;
 
-let list_iter elt b = List.iter (elt b);;
-
-let list sep elt =
-  let rec aux b = function
-    | [] -> ()
-    | [x] -> elt b x
-    | x :: l -> bprintf b "%a%s%a" elt x sep aux l
-  in aux;;
-
-let list_nil nil sep elt =
-  let rec aux b = function
-    | [] -> bprintf b "%s" nil
-    | x :: l -> bprintf b "%a%s%a" elt x sep aux l
-  in aux;;
-
-let plist f b = function
-  | [] -> f b []
-  | l -> par f b l;;
+let list elt b = List.iter (elt b);;
 
 let using string_of_elt b x = string b (string_of_elt x);;
 
@@ -107,11 +79,7 @@ let option elt b = function
 
 let coq_list elt b = function
   | [] -> bprintf b "[]"
-  | x :: l -> bprintf b "[%a%a]" elt x (list "" (prefix "; " elt)) l;;
-
-let coq_list_sep sep elt b = function
-  | [] -> bprintf b "[]"
-  | x :: l -> bprintf b "[%a%a]" elt x (list "" (prefix (";" ^ sep) elt)) l;;
+  | x :: l -> bprintf b "[%a%a]" elt x (list (prefix "; " elt)) l;;
 
 let coq_pair f g b (Coq_pair (x, y)) = bprintf b "(%a,%a)" f x g y;;
 
@@ -266,7 +234,7 @@ and typelist b tl =
   bprintf b "T%a" (coq_list coq_type) (types_of_typelist tl)
 
 and fieldlist b fl =
-  bprintf b "\nF%a" (coq_list_sep "\n  " field) (fields_of_fieldlist fl)
+  bprintf b "\nF%a" (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl)
 
 and field b = pair ident " -: " coq_type b
 
@@ -554,7 +522,7 @@ let prog_var_def b (Coq_pair (id, v)) =
 let global_variables b p =
   bprintf b "\n(* global variables *)\n\n%a\
     Definition global_variables := %a.\n"
-    (list_iter prog_var_def) p.prog_vars
+    (list prog_var_def) p.prog_vars
     (coq_list prog_var_ref) p.prog_vars;;
 
 (*****************************************************************************)
@@ -583,7 +551,7 @@ let prog_funct_def b (Coq_pair (id, fd)) =
 
 let functions b p =
   bprintf b "\n(* functions *)\n\n%aDefinition functions := %a.\n"
-    (list_iter prog_funct_def) p.prog_funct
+    (list prog_funct_def) p.prog_funct
     (coq_list prog_funct_ref) p.prog_funct;;
 
 (*****************************************************************************)
