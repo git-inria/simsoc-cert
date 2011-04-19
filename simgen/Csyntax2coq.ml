@@ -326,7 +326,7 @@ let coq_type_ref2 b t =
     | Tstruct _
     | Tunion _ -> par coq_type_ref b t;;
 
-let params = coq_list (coq_pair2 ident coq_type_ref);;
+let params = coq_list (prefix "\n" (coq_pair2 ident coq_type_ref));;
 
 let structs_and_unions b =
   bprintf b "\n(* structs and unions *)\n\n";
@@ -458,10 +458,6 @@ and exprlist b el = bprintf b "E%a" (coq_list expr) (exprs_of_exprlist el);;
 
 let label = ident;;
 
-let rec label_stats_of_labeled_statements = function
-  | LSdefault s -> [None,s]
-  | LScase (i, s, ls) -> (Some i,s) :: label_stats_of_labeled_statements ls;;
-
 let rec statement b = function
   | Sskip -> string b "skip"
   | Sdo e -> expr b e (* thanks to Coercion Sdo : expr >-> statement *)
@@ -476,21 +472,20 @@ let rec statement b = function
   | Scontinue -> string b "continue"
   | Sreturn oe -> app1 b "return" (par (option pexpr)) oe
   | Sswitch (e, ls) ->
-      bprintf b "switch %a { %a }" (par expr) e labeled_statements ls
+      bprintf b "switch (%a)\n(%a)" expr e labeled_statements ls
   | Slabel (l, s) -> bprintf b "label %a `: %a" label l statement s
   | Sgoto l -> app1 b "goto" label l
 
-and labeled_statements b ls =
-  bprintf b "L%a" (coq_list label_stat) (label_stats_of_labeled_statements ls)
-
-and label_stat b = function
-  | None, s -> bprintf b "default-: %a" statement s
-  | Some i, s -> bprintf b "`%a-: %a" int i statement s;;
+and labeled_statements b = function
+  | LSdefault s -> bprintf b "default `: %a" statement s
+  | LScase (i, s, ls) -> bprintf b "`case`%a`: %a\n:L: %a"
+      int i statement s labeled_statements ls;;
 
 (*****************************************************************************)
 (** global variables *)
 
-let prog_var_ref b (Coq_pair (id, _)) = bprintf b "gv_%a" ident id;;
+let prog_var_ref b (Coq_pair (id, _)) =
+  bprintf b "(%a,gv_%a)" ident id ident id;;
 
 let is_int8 = function
   | Init_int8 _ -> true
@@ -586,7 +581,7 @@ let prog_funct_def b (Coq_pair (id, fd)) =
     ident id ident id fundef fd;;
 
 let functions b p =
-  bprintf b "\n(* functions *)\n\n%a\n\nDefinition functions := %a.\n"
+  bprintf b "\n(* functions *)\n\n%aDefinition functions := %a.\n"
     (list_iter prog_funct_def) p.prog_funct
     (coq_list prog_funct_ref) p.prog_funct;;
 

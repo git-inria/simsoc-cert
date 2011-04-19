@@ -239,6 +239,8 @@ Coercion list_init_data_of_string : string >-> list.
 (****************************************************************************)
 (* notations *)
 
+Notation "a -: b" := (pair a b) (at level 60).
+
 Notation "` x" := (Int.repr x) (at level 9).
 Notation "`` x" := (Init_int8 ` x) (at level 9).
 
@@ -262,8 +264,6 @@ Definition fcons a := Fcons (fst a) (snd a).
 Notation "a :F: b" := (fcons a b) (at level 70, right associativity).
 Notation "F[ ]" := Fnil.
 Notation "F[ a ; .. ; b ]" := (a :F: .. (b :F: Fnil) ..).
-
-Notation "a -: b" := (pair a b) (at level 60).
 
 Notation "a :E: b" := (Econs a b) (at level 70, right associativity).
 Notation "E[ ]" := Enil.
@@ -310,19 +310,17 @@ Notation "x &= y `: t1 `: t2" := (Eassignop Oand x y t1 t2) (at level 8).
 Notation "x |= y `: t1 `: t2" := (Eassignop Oor x y t1 t2) (at level 8).
 Notation "x ^= y `: t1 `: t2" := (Eassignop Oxor x y t1 t2) (at level 8).
 
-Definition lscase a := LScase (fst a) (snd a).
-Notation "a :L: b" := (lscase a b) (at level 70, right associativity).
-Notation "L[ ]" := LSdefault.
-Notation "L[ a ; .. ; b ]" := (a :L: .. (b :L: Fnil) ..).
+Notation "`case i `: s :L: ls" := (LScase i s ls) (at level 70).
+Notation "'default' `: s" := (LSdefault s) (at level 3).
 
 Notation "a ;; b" := (Ssequence a b) (at level 51, right associativity).
 Notation "`if a 'then' b 'else' c" := (Sifthenelse a b c) (at level 9).
-Notation "'while' a '`do' b" := (Swhile a b) (at level 19).
-Notation "'`do' a 'while' b" := (Sdowhile b a) (at level 19).
+Notation "'while' a `do b" := (Swhile a b) (at level 19).
+Notation "`do a 'while' b" := (Sdowhile b a) (at level 19).
 Notation "'return'" := (Sreturn).
 Notation "'goto'" := (Sgoto).
 Notation "'label' l `: s" := (Slabel l s) (at level 5).
-Notation "'switch' e { ls }" := (Sswitch e ls) (at level 7).
+Notation "'switch'" := (Sswitch).
 Notation "'default'-: s" := (LSdefault s) (at level 5).
 Notation "'continue'" := (Scontinue).
 Notation "'break'" := (Sbreak).
