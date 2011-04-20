@@ -1,6 +1,14 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
+- check and complete README.simgen
+
+- check that README.simgen and simgen/main -help are coherent
+
+- add README files in subdirectories
+
+- add more comments in the OCaml files of the simgen directory
+
 - check TODO files in subdirectories
 
 - Makefile clean: do it in papers subdir too
