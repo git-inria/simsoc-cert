@@ -5,7 +5,7 @@ DIR := ../..
 
 include $(DIR)/Makefile.common
 
-CPPFLAGS := -I$(DIR)/tools/bin2elf # for elf.h
+CPPFLAGS := -I$(DIR)/tools/bin2elf
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
 LDFLAGS :=
 LIBRARIES := #-lgcov
@@ -45,14 +45,14 @@ simlight: $(OBJECTS)
 %.o: %.c $(HEADERS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-$(GENFILES): $(SIMGEN) ../arm6inst.arm ../arm6syntax.dat ../arm6dec.dat
-	$(SIMGEN) -v -oc4dt slv6_iss -ipc ../arm6inst.arm \
-		-isyntax ../arm6syntax.dat -idec ../arm6dec.dat \
-		-iw weights.1
+$(GENFILES): $(SIMGEN) ../arm6.pc ../arm6.syntax ../arm6.dec
+	$(SIMGEN) -v -oc4dt slv6_iss -ipc ../arm6.pc \
+		-isyntax ../arm6.syntax -idec ../arm6.dec \
+		-iwgt simsoc.wgt
 
 $(GENFILES_MO): slv6_iss.c
 
-../arm6inst.arm ../arm6dec.dat ../arm6syntax.dat: FORCE
+../arm6.pc ../arm6.dec ../arm6.syntax: FORCE
 	$(MAKE) -C .. $(@:../%=%)
 
 simlight.opt: FORCE

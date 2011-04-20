@@ -108,7 +108,7 @@ let rec options() =
   "file.dec: take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
   "-isyntax", String (fun s -> set_syntax_input_file s),
   "file.syntax: takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
-  "-iw", String (fun s -> set_weight_file s),
+  "-iwgt", String (fun s -> set_weight_file s),
   "file.wgt: takes as input a weight file (in conjonction with -oc4dt only)";
   "-sh4", Unit set_sh4,
   ": generates code for simulating SH4 (default is ARM)";
@@ -135,8 +135,8 @@ let rec options() =
   "-oml-dec", Unit (fun () -> set_output_type MlDec),
   ": output on stdout Ocaml code for decoding instructions (in conjunction with -idec only)";
   "-obin-test", Unit (fun () -> set_norm(); set_output_type DecBinTest),
-  ": output binary code (without elf header) to test instruction decoders (in conjunction with -ipc, -isyntax and -idec only)";
-  "-s", Int (fun i -> set_seed i),
+  ": output binary code (without ELF header) to test instruction decoders (in conjunction with -ipc, -isyntax and -idec only)";
+  "-seed", Int (fun i -> set_seed i),
   "integer: set the seed of the pseudo-random number generator used to generate tests";
   "-oasm-test", String (fun s -> set_norm(); set_output_type DecAsmTest; set_output_file s),
   "file.asm: generate assembly code to test decoders (in conjunction with -ipc, -isyntax and -idec only)";

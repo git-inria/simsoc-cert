@@ -69,23 +69,23 @@ patch-syntax: arm6.txt arm6syntax.txt
 ###########################################################################
 # parsing
 
-.DELETE_ON_ERROR: arm6inst.arm
+.DELETE_ON_ERROR: arm6.pc
 
-arm6inst.arm: arm6inst.txt parsing/keepoper parsing/oneline_expr \
+arm6.pc: arm6inst.txt parsing/keepoper parsing/oneline_expr \
 		parsing/preproc_pseudo.sh parsing/indentation
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepoper | parsing/oneline_expr \
 		| parsing/preproc_pseudo.sh | parsing/indentation > $@
 
-.DELETE_ON_ERROR: arm6dec.dat
+.DELETE_ON_ERROR: arm6.dec
 
-arm6dec.dat: arm6dec.txt parsing/keepbincode parsing/parsebincode
+arm6.dec: arm6dec.txt parsing/keepbincode parsing/parsebincode
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepbincode | parsing/parsebincode > $@
 
-.DELETE_ON_ERROR: arm6syntax.dat
+.DELETE_ON_ERROR: arm6.syntax
 
-arm6syntax.dat: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
+arm6.syntax: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
 		parsing/blanks_syntax.sh
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepsyntax | parsing/blanks_syntax.sh \
@@ -98,4 +98,4 @@ $(ARM6_PARSING:%=parsing/%): FORCE
 	$(MAKE) -C $(DIR)/arm6/parsing $(@:parsing/%=%)
 
 clean::
-	rm -f arm6inst.arm arm6dec.dat arm6syntax.dat
+	rm -f arm6.pc arm6.dec arm6.syntax
