@@ -27,8 +27,7 @@ let get_check, set_check = get_set_bool();;
 let get_sh4, set_sh4 = get_set_bool ()
 let get_coq, set_coq = get_set_bool();;
 
-let set_debug() =
-  ignore(Parsing.set_trace true); set_debug(); set_verbose();;
+let set_debug() = ignore(Parsing.set_trace true); set_debug(); set_verbose();;
 
 let set_check() = set_check(); set_verbose();;
 
@@ -68,35 +67,35 @@ let rec options() =
   List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) (Arg.align
 [
   "-h", Unit print_help,
-  " Display this list of options";
+  ": display this list of options";
   "-d", Unit set_debug,
-  " Debugging mode";
+  ": debugging mode";
   "-ipc", String (fun s -> set_pc_input_file s),
-  " Take pseudocode instructions as input";
+  "file.pc: takes as input a text file with the ARM pseudocode of various instructions";
   "-idec", String (fun s -> set_dec_input_file s),
-  " Take decoding instructions as input";
+  "file.dec: take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
   "-isyntax", String (fun s -> set_syntax_input_file s),
-  " Take syntax instructions as input";
+  "file.syntax: takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
   "-iw", String (fun s -> set_weight_file s),
-  " Take an additional weight file as input (requires -oc4dt)";
+  "file: takes as input a weight file (in conjonction with -oc4dt only)";
   "-sh4", Unit set_sh4,
-  " Assume that we are importing a SH4 data (default is ARM)";
+  ": generates code for simulating SH4 (default is ARM)";
   "-check", Unit set_check,
-  " Check pseudocode pretty-printer (only with -ipc)";
+  ": check the pseudocode pretty-printer (in conjunction with -ipc only)";
   "-norm", Unit set_norm,
-  " Normalize pseudocode (only with -ipc)";
+  ": normalize the pseudocode (in conjunction with -ipc only)";
   "-coq", Unit set_coq,
-  " Use a pure Coq algorithm instead of ML when possible";
+  ": use algorithms extracted from some Coq code whenever possible";
   "-opc", Unit (fun () -> set_output_type PCout),
-  " Output pseudocode";
+  ": output on the stdout pseudocode (in conjunction with -ipc only)";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
-  " Output C (implies -norm, requires -ipc and -idec)";
+  "prefix: generate various C files implementing a simulator (in conjunction with -ipc and -idec) (implies -norm)";
   "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
-  " Output C/C++ for dynamic translation (implies -norm, requires -ipc, -isyntax, and -idec)";
+  "prefix: generate various C/C++ files implementing a simulator with dynamic translation (in conjonction with -ipc, -isyntax and -idec) (implies -norm)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
-  " Output instructions in Coq (implies -norm, requires -ipc)";
+  ": output on stdout Coq code defining the semantics of instructions (in conjunction with -ipc) (implies -norm)";
   "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
-  " Output instructions in CompCert C ast (raw Coq syntax) (implies -norm, requires -ipc)";
+  ": output on stdout Coq code representing some CompCert-C code representing the pseudocode given in input (in conjonction with -ipc only) (implies -norm)";
   "-ocompcertc-c", Rest (fun _ -> if is_set_coqcl_argv () then () else
       let is_set_coq = ref true in
       begin 
@@ -123,23 +122,23 @@ let rec options() =
         (if !is_set_coq then set_coq () else ());
         set_output_type RawCoq_Csyntax;
       end),
-  " Output C program in CompCert C ast (raw Coq syntax) (requires the same options as CompCert)";
+  "file.c: output on stdout Coq code representing the C code given in input using the CompCert library";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
-  " Output Coq decoder (requires -idec)";
+  ": output on stdout Coq code for decoding instructions (in conjunction with -idec only)";
   "-oml-dec", Unit (fun () -> set_output_type MlDec),
-  " Output Ocaml decoder (requires -idec)";
+  ": output on stdout Ocaml code for decoding instructions (in conjunction with -idec only)";
   "-obin-test", Unit (fun () -> set_norm(); set_output_type DecBinTest),
-  " Output test for Coq and Simlight decoders, in binary format (requires -ipc, -isyntax, and -idec)";
+  ": output binary code (without elf header) to test instruction decoders (in conjunction with -ipc, -isyntax and -idec only)";
   "-s", Int (fun i -> set_seed i),
-  " Set the seed to initialize the test generator";
+  "integer: set the seed of the pseudo-random number generator used to generate tests";
   "-oasm-test", String (fun s -> set_norm(); set_output_type DecAsmTest; set_output_file s),
-  " Output test for Coq and Simlight decoders, in assembly format (requires -ipc, -isyntax, and -idec)";
+  "file.asm: generate assembly code to test decoders (in conjunction with -ipc, -isyntax and -idec only)";
   "-v", Unit set_verbose,
-  " Verbose mode"
+  ": verbose mode"
 ])
 
 and print_options oc =
-  List.iter (fun (k, _, d) -> fprintf oc "%s: %s\n" k d) (options())
+  List.iter (fun (k, _, d) -> fprintf oc "%s %s\n" k d) (options())
 
 and print_help() = print_endline usage_msg; print_options stdout; exit 0;;
 
