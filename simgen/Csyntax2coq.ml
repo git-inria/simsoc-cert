@@ -432,7 +432,7 @@ and labeled_statements b = function
 let prog_var_ref b (Coq_pair (id, _)) =
   bprintf b "(%a,gv_%a)" ident id ident id;;
 
-let is_printable x = (x >= 32 && x <= 126) || x = 10;;
+let is_printable x = (x >= 32 && x <= 126) || (x >= 9 && x <= 10);;
 
 let int8 b x =
   match Int32.to_int (camlint_of_coqint x) with
@@ -480,16 +480,20 @@ let is_int8 = function
   | Init_space _
   | Init_addrof _ -> false;;
 
-let gvar_init b l =
-  if List.for_all is_int8 l then
-    try
-      let b' = Buffer.create 100 in
-	List.iter (bprintf b' "%c") (remove_null l);
-	bprintf b "null_termin_string \"%a\"" Buffer.add_buffer b'
-    with Not_found ->
-      bprintf b "list_init_data_of_list_ascii %a%%char"
-	(coq_list init_data) l
-  else coq_list init_data b l;;
+let gvar_init =
+  let b' = Buffer.create 100 in
+    fun b l ->
+      if List.for_all is_int8 l then
+	try
+	  match remove_null l with
+	    | [] -> bprintf b "[Init_int8 0]"
+	    | l -> Buffer.clear b';
+		List.iter (bprintf b' "%c") l;
+		bprintf b "null_termin_string \"%a\"" Buffer.add_buffer b'
+	with Not_found ->
+	  bprintf b "list_init_data_of_list_ascii %a%%char"
+	    (coq_list init_data) l
+      else coq_list init_data b l;;
 
 let prog_var_def b (Coq_pair (id, v)) =
   bprintf b "Definition gv_%a :=\n  {| gvar_info := %a;\n     \
