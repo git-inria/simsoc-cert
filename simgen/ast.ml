@@ -242,20 +242,18 @@ module Make (G : Var) = struct
         vars_cases (StrMap.add s G.case_type gs, ls) 
           (let nis = List.map snd nis in
            match o with None -> nis | Some ni -> nis @ [ni]) in
-      ((* Now, we can just return [gs'], but the functions [G.case_type] and [G.global_type _] 
-          do not necessarily return the same type description. So by default, we choose to restore 
-          the initial value associated to [s] in [gs]. *)
-        if StrMap.mem s gs then
-          StrMap.add s (let v0 = StrMap.find s gs in 
-                        let () = 
-                          if v0 = StrMap.find s gs' then
-                            ()
-                          else 
-                            Printf.eprintf "warning: inside the Case, '%s' has a \
-                            different type than it has outside\n%!" s in 
-                        v0) gs'
-       else
-          gs'), ls
+	(* Now, we can just return [gs'], but the functions [G.case_type] and
+	   [G.global_type _] do not necessarily return the same type
+	   description. So by default, we choose to restore the initial value
+	   associated to [s] in [gs]. *)
+	(if StrMap.mem s gs then StrMap.add s
+	   (let v0 = StrMap.find s gs in 
+            let () =
+	      if v0 = StrMap.find s gs' then ()
+              else Printf.eprintf "warning: inside the Case, '%s' has a \
+                different type than it has outside\n%!" s
+	    in v0) gs'
+	 else gs'), ls
     | _ -> acc
 
   and vars_insts acc is = List.fold_left vars_inst acc is
