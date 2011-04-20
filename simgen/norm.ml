@@ -152,13 +152,12 @@ let locals = set_of_list
    "address"; "start_address"; "index"];;
 
 let is_local = function
-  | Var x (*REMOVE?| Fun (x, [])*) -> StrSet.mem x locals
+  | Var x -> StrSet.mem x locals
   | _ -> false;;
 
 let eq_local e1 e2 =
   match e1, e2 with
-    | Var x1, Var x2 (*REMOVE?| Fun (x1, []), Fun (x2, [])*) ->
-	x1 = x2 && StrSet.mem x1 locals
+    | Var x1, Var x2 -> x1 = x2 && StrSet.mem x1 locals
     | _, _ -> false;;
 
 let rec inst = function
@@ -181,7 +180,7 @@ let rec inst = function
 
   (* simplify conditional instructions with a computable condition *)
   | If (BinOp (Num a, "==", Num b), i1, Some i2) ->
-          if a = b then inst i1 else inst i2
+      if a = b then inst i1 else inst i2
 
   (* simplify conditional instructions wrt nop's *)
   | If (c, i, None) ->
