@@ -52,8 +52,10 @@ patch-inst: sh4.txt sh4inst.txt
 ###########################################################################
 # parsing
 
+.DELETE_ON_ERROR: sh4.dat
+
 sh4.dat: sh4inst.txt parsing/instr
-	cat sh4inst.txt | parsing/instr > $@
+	parsing/instr < $< > $@
 
 parsing/instr: FORCE
 	$(MAKE) -C parsing instr
