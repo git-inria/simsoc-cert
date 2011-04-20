@@ -11,7 +11,7 @@ open Arg;;
 open Lexing;;
 
 (*****************************************************************************)
-(** usage and exit function in case of error *)
+(** usage message and exit function in case of error *)
 (*****************************************************************************)
 
 let usage_msg = "usage: " ^ Sys.argv.(0) ^ " option ...\n";;
@@ -31,18 +31,18 @@ let set_debug() = ignore(Parsing.set_trace true); set_debug(); set_verbose();;
 
 let set_check() = set_check(); set_verbose();;
 
-type output_type = PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec
-                   | DecBinTest | DecAsmTest | DecTest
-                   | RawCoq_Csyntax | CompcertCInst;;
+type output_type =
+  | PCout | Cxx | C4dt | CoqInst | CoqDec | MlDec | DecBinTest | DecAsmTest
+  | DecTest | RawCoq_Csyntax | CompcertCInst;;
 
 let is_set_pc_input_file, get_pc_input_file, set_pc_input_file =
-  is_set_get_set "input file name for pseudocode instructions" "";;
+  is_set_get_set "input file name for -ipc option" "";;
 
 let is_set_dec_input_file, get_dec_input_file, set_dec_input_file =
-  is_set_get_set "input file name for decoding instructions" "";;
+  is_set_get_set "input file name for -idec option" "";;
 
 let is_set_syntax_input_file, get_syntax_input_file, set_syntax_input_file =
-  is_set_get_set "input file name for syntax instructions" "";;
+  is_set_get_set "input file name for -isyntax option" "";;
 
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
@@ -56,47 +56,15 @@ let is_set_weight_file, get_weight_file, set_weight_file =
 let is_set_seed, get_seed, set_seed =
   is_set_get_set "test generator seed" 0;;
 
+(*****************************************************************************)
+(** compcert options *)
+(*****************************************************************************)
+
 let is_set_coqcl_argv, get_coqcl_argv, set_coqcl_argv = 
   is_set_get_set "coq argv" [||]
 
-(*****************************************************************************)
-(** command line parsing *)
-(*****************************************************************************)
-
-let rec options() =
-  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) (Arg.align
-[
-  "-h", Unit print_help,
-  ": display this list of options";
-  "-d", Unit set_debug,
-  ": debugging mode";
-  "-ipc", String (fun s -> set_pc_input_file s),
-  "file.pc: takes as input a text file with the ARM pseudocode of various instructions";
-  "-idec", String (fun s -> set_dec_input_file s),
-  "file.dec: take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
-  "-isyntax", String (fun s -> set_syntax_input_file s),
-  "file.syntax: takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
-  "-iw", String (fun s -> set_weight_file s),
-  "file: takes as input a weight file (in conjonction with -oc4dt only)";
-  "-sh4", Unit set_sh4,
-  ": generates code for simulating SH4 (default is ARM)";
-  "-check", Unit set_check,
-  ": check the pseudocode pretty-printer (in conjunction with -ipc only)";
-  "-norm", Unit set_norm,
-  ": normalize the pseudocode (in conjunction with -ipc only)";
-  "-coq", Unit set_coq,
-  ": use algorithms extracted from some Coq code whenever possible";
-  "-opc", Unit (fun () -> set_output_type PCout),
-  ": output on the stdout pseudocode (in conjunction with -ipc only)";
-  "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
-  "prefix: generate various C files implementing a simulator (in conjunction with -ipc and -idec) (implies -norm)";
-  "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
-  "prefix: generate various C/C++ files implementing a simulator with dynamic translation (in conjonction with -ipc, -isyntax and -idec) (implies -norm)";
-  "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
-  ": output on stdout Coq code defining the semantics of instructions (in conjunction with -ipc) (implies -norm)";
-  "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
-  ": output on stdout Coq code representing some CompCert-C code representing the pseudocode given in input (in conjonction with -ipc only) (implies -norm)";
-  "-ocompcertc-c", Rest (fun _ -> if is_set_coqcl_argv () then () else
+let ocompcert _ =
+  if is_set_coqcl_argv () then () else
       let is_set_coq = ref true in
       begin 
         set_coqcl_argv (List.fold_left
@@ -121,7 +89,46 @@ let rec options() =
                           ; "-coq", (fun x -> let () = is_set_coq := false in x) ]);
         (if !is_set_coq then set_coq () else ());
         set_output_type RawCoq_Csyntax;
-      end),
+      end;;
+
+(*****************************************************************************)
+(** parsing command line options and arguments *)
+(*****************************************************************************)
+
+let rec options() =
+  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) (Arg.align
+[
+  "-h", Unit print_help,
+  ": display this list of options";
+  "-d", Unit set_debug,
+  ": debugging mode";
+  "-ipc", String (fun s -> set_pc_input_file s),
+  "file.pc: takes as input a text file with the ARM pseudocode of various instructions";
+  "-idec", String (fun s -> set_dec_input_file s),
+  "file.dec: take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
+  "-isyntax", String (fun s -> set_syntax_input_file s),
+  "file.syntax: takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
+  "-iw", String (fun s -> set_weight_file s),
+  "file.wgt: takes as input a weight file (in conjonction with -oc4dt only)";
+  "-sh4", Unit set_sh4,
+  ": generates code for simulating SH4 (default is ARM)";
+  "-check", Unit set_check,
+  ": check the pseudocode pretty-printer and normalizer (in conjunction with -ipc or -norm only)";
+  "-norm", Unit set_norm,
+  ": normalize the pseudocode (in conjunction with -ipc only)";
+  "-coq", Unit set_coq,
+  ": use algorithms extracted from some Coq code whenever possible";
+  "-opc", Unit (fun () -> set_output_type PCout),
+  ": output on the stdout pseudocode (in conjunction with -ipc only)";
+  "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
+  "prefix: generate various C files implementing a simulator (in conjunction with -ipc and -idec) (implies -norm)";
+  "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
+  "prefix: generate various C/C++ files implementing a simulator with dynamic translation (in conjonction with -ipc, -isyntax and -idec) (implies -norm)";
+  "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
+  ": output on stdout Coq code defining the semantics of instructions (in conjunction with -ipc) (implies -norm)";
+  "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
+  ": output on stdout Coq code representing some CompCert-C code representing the pseudocode given in input (in conjonction with -ipc only) (implies -norm)";
+  "-ocompcertc-c", Rest ocompcert,
   "file.c: output on stdout Coq code representing the C code given in input using the CompCert library";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   ": output on stdout Coq code for decoding instructions (in conjunction with -idec only)";
@@ -146,52 +153,47 @@ let options = options();;
 
 let anon_fun _ = error "invalid option";;
 
+(* parse command line arguments and verify that the right input files
+   are provided *)
+
 let parse_args() =
   Arg.parse options anon_fun usage_msg;
-  (* Verify that the right input files are provided *)
   match get_output_type() with
     | PCout ->
-        if is_set_dec_input_file() then
-          error "option -opc incompatible with -idec"
-        else ignore(get_pc_input_file());
-    | Cxx -> ignore(get_pc_input_file()); ignore(get_dec_input_file())
+	ignore (get_pc_input_file());
+    | Cxx ->
+	ignore (get_pc_input_file());
+	ignore (get_dec_input_file())
     | C4dt ->
-        ignore(get_pc_input_file());
-        ignore(get_syntax_input_file());
-        ignore(get_dec_input_file())
+        ignore (get_pc_input_file());
+        ignore (get_syntax_input_file());
+        ignore (get_dec_input_file())
     | CoqInst ->
-        if is_set_dec_input_file() then
-          error "option -ocoq-inst incompatible with -idec"
-        else ignore(get_pc_input_file())
+        ignore (get_pc_input_file())
     | CompcertCInst ->
-        if is_set_dec_input_file() then
-          error "option -ocoq-inst incompatible with -idec"
-        else ignore(get_pc_input_file())
-    | RawCoq_Csyntax -> ()
+        ignore (get_pc_input_file())
+    | RawCoq_Csyntax ->
+	()
     | CoqDec ->
-        if is_set_pc_input_file() then
-          error "option -ocoq-dec incompatible with -ipc"
-        else ignore (get_dec_input_file())
+        ignore (get_dec_input_file())
     | MlDec ->
-        if is_set_pc_input_file() then
-          error "option -oml-dec incompatible with -ipc"
-        else ignore (get_dec_input_file())
+        ignore (get_dec_input_file())
     | DecBinTest ->
-        ignore(get_pc_input_file());
-        ignore(get_syntax_input_file());
-        ignore(get_dec_input_file())
+        ignore (get_pc_input_file());
+        ignore (get_syntax_input_file());
+        ignore (get_dec_input_file())
     | DecAsmTest ->
-        ignore(get_pc_input_file());
-        ignore(get_syntax_input_file());
-        ignore(get_dec_input_file())
+        ignore (get_pc_input_file());
+        ignore (get_syntax_input_file());
+        ignore (get_dec_input_file())
     | DecTest ->
-        ignore(get_pc_input_file());
-        ignore(get_syntax_input_file());
-        ignore(get_dec_input_file())
+        ignore (get_pc_input_file());
+        ignore (get_syntax_input_file());
+        ignore (get_dec_input_file())
 ;;
 
 (*****************************************************************************)
-(** parsing functions *)
+(** parsing pseudocode or ocaml values *)
 (*****************************************************************************)
 
 let fprint_loc oc loc =
@@ -218,15 +220,22 @@ let parse_file fn =
   let x = parse_channel ic in
     close_in ic; x;;
 
+let parse_value fn = 
+  let ic = open_in_bin fn in
+  let v = input_value ic in
+    close_in ic; v
+
 (*****************************************************************************)
-(** main procedure *)
+(** functions for setting input data *)
 (*****************************************************************************)
 
 let get_pc_input, set_pc_input = get_set { Ast.header = []; Ast.body = [] };;
 let get_dec_input, set_dec_input = get_set [];;
 let get_syntax_input, set_syntax_input = get_set [];;
-let get_pc_input_cl, set_pc_input_cl = 
-  get_set { Ast.header = []; Ast.body = [] };;
+
+(*****************************************************************************)
+(** check pseudocode pretty-printer (-check option) *)
+(*****************************************************************************)
 
 let check() =
   if get_check() then
@@ -235,7 +244,11 @@ let check() =
       verbose "reparsing... ";
       Genpc.lib b ps;
       let ps' = parse_string (Buffer.contents b) in
-        if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
+        if ps.Ast.body = ps' then verbose "ok\n" else error "check failed";;
+
+(*****************************************************************************)
+(** pseudocode normalization (-norm option) *)
+(*****************************************************************************)
 
 let norm split_msr_code =
   if get_norm() then
@@ -244,7 +257,7 @@ let norm split_msr_code =
       let ps = Norm.prog (split_msr_code ps) in
         if get_check() then
           let ps' = Norm.prog ps in
-            if ps = ps' then verbose "ok\n" else error "failed"
+            if ps = ps' then verbose "ok\n" else error "check failed"
         else verbose "\n";
         set_pc_input ps;
         if is_set_syntax_input_file() then
@@ -253,43 +266,46 @@ let norm split_msr_code =
             set_syntax_input ss';
             check();;
 
-let parse_input_file() =
-  let verbose s = verbose (sprintf (format_of_string s) (if get_sh4 () then "SH4" else "ARM")) in
-  let input_bin fic = 
-    let ic = open_in_bin fic in
-    let v = input_value ic in
-    let () = close_in ic in
-    v in
+(*****************************************************************************)
+(** set input data by parsing input files *)
+(*****************************************************************************)
+
+let parse_input_files() =
+  let verbose s = verbose (sprintf (format_of_string s)
+			     (if get_sh4() then "Sh4" else "Arm6")) in
   if is_set_syntax_input_file() then (
     verbose "read %s syntax data...\n";
-    set_syntax_input (input_bin (get_syntax_input_file()))
+    set_syntax_input (parse_value (get_syntax_input_file()))
   );
   if is_set_pc_input_file() then (
-    verbose "parsing %s pseudo-code...\n";
-
-    let input_file = get_pc_input_file () in
+    verbose "parsing %s pseudocode...\n";
     let split_msr_code, pc =
-      if get_sh4 () then
-        (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x), 
-        C2pc.program_of_manual (let open Manual in (input_bin input_file : raw_c_code manual))
+      if get_sh4() then
+        (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x),
+        C2pc.program_of_manual
+	  (let open Manual in (parse_value (get_pc_input_file()) : raw_c_code manual))
       else
-        Norm.split_msr_code, { Ast.header = [] ; Ast.body = parse_file input_file } in
-
-    set_pc_input pc;
-    check();
-    norm split_msr_code
+        Norm.split_msr_code,
+        { Ast.header = []; Ast.body = parse_file (get_pc_input_file()) }
+    in
+      set_pc_input pc;
+      check();
+      norm split_msr_code
   );
   if is_set_dec_input_file() then (
     verbose "read %s coding tables...\n";
-
-    set_dec_input 
+    set_dec_input
       (let v = (if get_sh4 () then 
-          fun x -> C2pc.maplist_of_manual (input_bin x) 
-        else
-          input_bin) (get_dec_input_file()) in
+		  fun x -> C2pc.maplist_of_manual (parse_value x) 
+		else
+		  parse_value) (get_dec_input_file()) in
        let () = ignore v in
-       v)
+	 v)
   );;
+
+(*****************************************************************************)
+(** generate outputs *)
+(*****************************************************************************)
 
 let genr_output() =
   verbose "code generation...\n";
@@ -300,13 +316,19 @@ let genr_output() =
         else
           Csyntax2coq.to_buffer) c) in
   match get_output_type() with
-    | PCout -> print Genpc.lib (get_pc_input())
-    | Cxx -> Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+
+    | PCout ->
+	print Genpc.lib (get_pc_input())
+
+    | Cxx ->
+	Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+
     | C4dt ->
-        let wf = if is_set_weight_file() then Some (get_weight_file ()) else None in
-          Simlight2.lib (get_output_file()) (get_pc_input())
-            (get_syntax_input()) (get_dec_input()) wf
-    | CoqInst -> print (Gencoq.lib (if get_sh4 () then
+        Simlight2.lib (get_output_file())
+	  (get_pc_input()) (get_syntax_input()) (get_dec_input())
+	  (if is_set_weight_file() then Some (get_weight_file()) else None)
+
+    | CoqInst -> print (Gencoq.lib (if get_sh4() then
         (module struct
           let nb_buff = 0
           let preamble_name = "Sh4_"
@@ -322,34 +344,44 @@ let genr_output() =
           let preamble_proc = "Arm6 Arm6_SCC"
           let preamble_import = "State Arm6_Functions."
         end : Gencoq.GENCOQ))) (get_pc_input())
+
     | CompcertCInst -> 
       print_csyntax (Pc2Csyntax.prog_trans (get_pc_input()))
+
     | RawCoq_Csyntax -> 
       let open CompCert_Driver in
       (match main (module struct let argv = get_coqcl_argv () end : SYS) with
         | None -> Printf.printf "(* assert false *)\n%!"
         | Some b -> print_csyntax b)
-    | CoqDec -> print (let open Dec in
-                       let module D = Gencoqdec.Make ((val (
+
+    | CoqDec ->
+	print (let open Dec in
+               let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then
                            (module Sh4 : DEC) 
                          else
                            (module Arm : DEC)) : DEC)) in
                        D.decode) (get_dec_input())
-    | MlDec -> print Genmldec.decode (get_dec_input())
+
+    | MlDec ->
+	print Genmldec.decode (get_dec_input())
+
     | DecBinTest ->
         Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())
-          (get_dec_input()) (get_seed ())
+          (get_dec_input()) (get_seed())
+
     | DecAsmTest ->
         Gendectest.gen_asm_test (get_output_file()) (get_pc_input()) 
-          (get_syntax_input()) (get_dec_input()) (get_seed ())
-    | DecTest -> Gendectest.gen_test (get_output_file()) (get_pc_input()) 
-          (get_syntax_input()) (get_dec_input()) (get_seed ())
+          (get_syntax_input()) (get_dec_input()) (get_seed())
+
+    | DecTest ->
+	Gendectest.gen_test (get_output_file()) (get_pc_input()) 
+          (get_syntax_input()) (get_dec_input()) (get_seed())
 ;;
 
 let main() =
   parse_args();
-  parse_input_file();
+  parse_input_files();
   genr_output();;
 
 (*****************************************************************************)
