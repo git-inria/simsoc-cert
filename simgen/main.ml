@@ -11,12 +11,10 @@ open Arg;;
 open Lexing;;
 
 (*****************************************************************************)
-(** usage message and exit function in case of error *)
+(** exit function in case of error *)
 (*****************************************************************************)
 
-let usage_msg = "usage: " ^ Sys.argv.(0) ^ " option ...\n";;
-
-let error s = error (sprintf "%s\n%s" s usage_msg);;
+let error s = error (sprintf "%s\n" s);;
 
 (*****************************************************************************)
 (** functions for setting parameters *)
@@ -96,20 +94,20 @@ let ocompcert _ =
 (*****************************************************************************)
 
 let rec options() =
-  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) (Arg.align
+  List.sort (fun (x,_,_) (y,_,_) -> Pervasives.compare x y) ((*Arg.align*)
 [
   "-h", Unit print_help,
   ": display this list of options";
   "-d", Unit set_debug,
   ": debugging mode";
   "-ipc", String (fun s -> set_pc_input_file s),
-  "file.pc: takes as input a text file with the ARM pseudocode of various instructions";
+  "file.pc : takes as input a text file with the ARM pseudocode of various instructions";
   "-idec", String (fun s -> set_dec_input_file s),
-  "file.dec: take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
+  "file.dec : take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
   "-isyntax", String (fun s -> set_syntax_input_file s),
-  "file.syntax: takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
+  "file.syntax : takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
   "-iwgt", String (fun s -> set_weight_file s),
-  "file.wgt: takes as input a weight file (in conjonction with -oc4dt only)";
+  "file.wgt : takes as input a weight file (in conjonction with -oc4dt only)";
   "-sh4", Unit set_sh4,
   ": generates code for simulating SH4 (default is ARM)";
   "-check", Unit set_check,
@@ -121,15 +119,15 @@ let rec options() =
   "-opc", Unit (fun () -> set_output_type PCout),
   ": output on the stdout pseudocode (in conjunction with -ipc only)";
   "-ocxx", String (fun s -> set_norm(); set_output_type Cxx; set_output_file s),
-  "prefix: generate various C files implementing a simulator (in conjunction with -ipc and -idec) (implies -norm)";
+  "prefix : generate various C files implementing a simulator (in conjunction with -ipc and -idec) (implies -norm)";
   "-oc4dt", String (fun s -> set_norm(); set_output_type C4dt; set_output_file s),
-  "prefix: generate various C/C++ files implementing a simulator with dynamic translation (in conjonction with -ipc, -isyntax and -idec) (implies -norm)";
+  "prefix : generate various C/C++ files implementing a simulator with dynamic translation (in conjonction with -ipc, -isyntax and -idec) (implies -norm)";
   "-ocoq-inst", Unit (fun () -> set_norm(); set_output_type CoqInst),
   ": output on stdout Coq code defining the semantics of instructions (in conjunction with -ipc) (implies -norm)";
   "-ocompcertc-inst", Unit (fun () -> set_norm(); set_output_type CompcertCInst),
   ": output on stdout Coq code representing some CompCert-C code representing the pseudocode given in input (in conjonction with -ipc only) (implies -norm)";
   "-ocompcertc-c", Rest ocompcert,
-  "file.c: output on stdout Coq code representing the C code given in input using the CompCert library";
+  "file.c : output on stdout Coq code representing the C code given in input using the CompCert library";
   "-ocoq-dec", Unit (fun () -> set_output_type CoqDec),
   ": output on stdout Coq code for decoding instructions (in conjunction with -idec only)";
   "-oml-dec", Unit (fun () -> set_output_type MlDec),
@@ -137,17 +135,18 @@ let rec options() =
   "-obin-test", Unit (fun () -> set_norm(); set_output_type DecBinTest),
   ": output binary code (without ELF header) to test instruction decoders (in conjunction with -ipc, -isyntax and -idec only)";
   "-seed", Int (fun i -> set_seed i),
-  "integer: set the seed of the pseudo-random number generator used to generate tests";
+  "integer : set the seed of the pseudo-random number generator used to generate tests";
   "-oasm-test", String (fun s -> set_norm(); set_output_type DecAsmTest; set_output_file s),
-  "file.asm: generate assembly code to test decoders (in conjunction with -ipc, -isyntax and -idec only)";
+  "file.asm : generate assembly code to test decoders (in conjunction with -ipc, -isyntax and -idec only)";
   "-v", Unit set_verbose,
   ": verbose mode"
 ])
 
 and print_options oc =
-  List.iter (fun (k, _, d) -> fprintf oc "%s %s\n" k d) (options())
+  fprintf oc "options:\n";
+  List.iter (fun (k, _, d) -> fprintf oc "  %s %s\n" k d) (options())
 
-and print_help() = print_endline usage_msg; print_options stdout; exit 0;;
+and print_help() = print_options stdout; exit 0;;
 
 let options = options();;
 
@@ -157,7 +156,7 @@ let anon_fun _ = error "invalid option";;
    are provided *)
 
 let parse_args() =
-  Arg.parse options anon_fun usage_msg;
+  Arg.parse options anon_fun "options:";
   match get_output_type() with
     | PCout ->
 	ignore (get_pc_input_file());
@@ -295,7 +294,7 @@ let parse_input_files() =
   if is_set_dec_input_file() then (
     verbose "read %s coding tables...\n";
     set_dec_input
-      (let v = (if get_sh4 () then 
+      (let v = (if get_sh4() then 
 		  fun x -> C2pc.maplist_of_manual (parse_value x) 
 		else
 		  parse_value) (get_dec_input_file()) in
