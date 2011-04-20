@@ -94,7 +94,8 @@ let rec exp = function
   | Reg (e, m) -> Reg (exp e, m)
 
   (* non-recursive expressions *)
-  |Num _|Bin _|Hex _|Float_zero|CPSR|SPSR _|Var _|Unaffected|Unpredictable_exp as e -> e
+  |Num _|Bin _|Hex _|Float_zero|CPSR|SPSR _|Var _|Unaffected
+  |Unpredictable_exp as e -> e
 
 (* replace two successive ranges by a single one *)
 and range =
@@ -272,12 +273,11 @@ and affects = function
       end;;
 
 (*****************************************************************************)
-(** normalization of MSR *)
+(** normalization of MSR: The ARM reference manual provides two
+    encodings for the MSR instruction, but only one pseudo-code. The
+    function below splits the pseudo-code to create two real
+    instructions. *)
 (*****************************************************************************)
-
-(* The ARM reference manual provides two encodings for the MSR
-   instruction, but only one pseudo-code. The function below splits the
-   pseudo-code to create two real instructions. *)
 
 let split_msr_code =
   let rec aux = function

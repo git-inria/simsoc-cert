@@ -150,7 +150,7 @@ and print_help() = print_options stdout; exit 0;;
 
 let options = options();;
 
-let anon_fun _ = error "invalid option";;
+let anon_fun _ = error "unknown option";;
 
 (* parse command line arguments and verify that the right input files
    are provided *)
