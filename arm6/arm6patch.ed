@@ -177,113 +177,23 @@ A5.1.1.1   Encoding 32-bit immediate
 10750c
            31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6 5 4 3           0
 .
+10383,10386c
+             operand = Rm
+.
 10380c
          */
 .
 10360a
          /*
 .
+10322d
+10320d
 10309a
-         Obsolete field specification
-                        The CPSR, CPSR_flg, CPSR_ctl, CPSR_all, SPSR, SPSR_flg, SPSR_ctl and SPSR_all forms of PSR
-                        field specification have been superseded by the csxf format shown on page A4-76.
-                        CPSR, SPSR, CPSR_all and SPSR_all produce a field mask of 0b1001.
-                        CPSR_flg and SPSR_flg produce a field mask of 0b1000.
-                        CPSR_ctl and SPSR_ctl produce a field mask of 0b0001.
-
-         The T bit or J bit
-                        The MSR instruction must not be used to alter the T bit or the J bit in the CPSR. If such an
-                        attempt is made, the results are UNPREDICTABLE.
-
-         Addressing modes
-                        The immediate and register forms are specified in precisely the same way as the immediate
-                        and unshifted register forms of Addressing Mode 1 (see Addressing Mode 1 -
-                        Data-processing operands on page A5-2). All other forms of Addressing Mode 1 yield
-                        UNPREDICTABLE results.
-
-
-
-
-ARM DDI 0100I     Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.                      A4-79
-ARM Instructions
-
-
-A4.1.39 MSR_Register_operand
-.
-10308c
-           MSR (Move to Status Register from ARM Register) transfers the value of a general-purpose register or an
-           immediate constant to the CPSR or the SPSR of the current mode.
-
-
-           Syntax
-           MSR{<cond>}      CPSR_<fields>,   #<immediate>
-           MSR{<cond>}      CPSR_<fields>,   <Rm>
-           MSR{<cond>}      SPSR_<fields>,   #<immediate>
-           MSR{<cond>}      SPSR_<fields>,   <Rm>
-
-           where:
-
-           <cond>                     Is the condition under which the instruction is executed. The conditions are defined
-                                      in The condition field on page A3-3. If <cond> is omitted, the AL (always) condition
-                                      is used.
-
-           <fields>                   Is a sequence of one or more of the following:
-                                      c           sets the control field mask bit (bit 16)
-                                      x           sets the extension field mask bit (bit 17)
-                                      s           sets the status field mask bit (bit 18)
-                                      f           sets the flags field mask bit (bit 19).
-
-           <immediate>                Is the immediate value to be transferred to the CPSR or SPSR. Allowed immediate
-                                      values are 8-bit immediates (in the range 0x00 to 0xFF) and values that can be
-                                      obtained by rotating them right by an even amount in the range 0 to 30. These
-                                      immediate values are the same as those allowed in the immediate form as shown in
-                                      Data-processing operands - Immediate on page A5-6.
-
-           <Rm>                       Is the general-purpose register to be transferred to the CPSR or SPSR.
-
-
-           Architecture version
-           All.
-
-
-
-A4-76                    Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.          ARM DDI 0100I
-                                                                                                  ARM Instructions
-
-
-
-         Exceptions
-         None.
-
-
-         Operation
-	 /*
-         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
-         page A2-11 for details.
-
-         The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these
-         masks depend on the architecture version, see Table A4-1.
-
-                                                                               Table A4-1 Bit mask constants
-
-           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
-
-           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
-
-           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
-
-           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
-
-           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
-
            6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
 	   */
 
          if ConditionPassed(cond) then
-             if opcode[25] == 1 then
-                  operand = 8_bit_immediate Rotate_Right (rotate_imm * 2)
-             else
-                  operand = Rm
+             operand = 8_bit_immediate Rotate_Right (rotate_imm * 2)
              if (operand AND UnallocMask) !=0 then
                   UNPREDICTABLE                /* Attempt to set reserved bits */
              byte_mask = (if field_mask[0] == 1 then 0x000000FF else 0x00000000) OR
@@ -372,9 +282,99 @@ A4-78                Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All r
 
          System mode SPSR
                         Accessing the SPSR when in System mode is UNPREDICTABLE.
+
+         Obsolete field specification
+                        The CPSR, CPSR_flg, CPSR_ctl, CPSR_all, SPSR, SPSR_flg, SPSR_ctl and SPSR_all forms of PSR
+                        field specification have been superseded by the csxf format shown on page A4-76.
+                        CPSR, SPSR, CPSR_all and SPSR_all produce a field mask of 0b1001.
+                        CPSR_flg and SPSR_flg produce a field mask of 0b1000.
+                        CPSR_ctl and SPSR_ctl produce a field mask of 0b0001.
+
+         The T bit or J bit
+                        The MSR instruction must not be used to alter the T bit or the J bit in the CPSR. If such an
+                        attempt is made, the results are UNPREDICTABLE.
+
+         Addressing modes
+                        The immediate and register forms are specified in precisely the same way as the immediate
+                        and unshifted register forms of Addressing Mode 1 (see Addressing Mode 1 -
+                        Data-processing operands on page A5-2). All other forms of Addressing Mode 1 yield
+                        UNPREDICTABLE results.
+
+
+
+
+ARM DDI 0100I     Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.                      A4-79
+ARM Instructions
+
+
+A4.1.39 MSRreg
+.
+10308c
+           MSR (Move to Status Register from ARM Register) transfers the value of a general-purpose register or an
+           immediate constant to the CPSR or the SPSR of the current mode.
+
+
+           Syntax
+           MSR{<cond>}      CPSR_<fields>,   #<immediate>
+           MSR{<cond>}      SPSR_<fields>,   #<immediate>
+
+           where:
+
+           <cond>                     Is the condition under which the instruction is executed. The conditions are defined
+                                      in The condition field on page A3-3. If <cond> is omitted, the AL (always) condition
+                                      is used.
+
+           <fields>                   Is a sequence of one or more of the following:
+                                      c           sets the control field mask bit (bit 16)
+                                      x           sets the extension field mask bit (bit 17)
+                                      s           sets the status field mask bit (bit 18)
+                                      f           sets the flags field mask bit (bit 19).
+
+           <immediate>                Is the immediate value to be transferred to the CPSR or SPSR. Allowed immediate
+                                      values are 8-bit immediates (in the range 0x00 to 0xFF) and values that can be
+                                      obtained by rotating them right by an even amount in the range 0 to 30. These
+                                      immediate values are the same as those allowed in the immediate form as shown in
+                                      Data-processing operands - Immediate on page A5-6.
+
+           <Rm>                       Is the general-purpose register to be transferred to the CPSR or SPSR.
+
+
+           Architecture version
+           All.
+
+
+
+A4-76                    Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.          ARM DDI 0100I
+                                                                                                  ARM Instructions
+
+
+
+         Exceptions
+         None.
+
+
+         Operation
+	 /*
+         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
+         page A2-11 for details.
+
+         The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these
+         masks depend on the architecture version, see Table A4-1.
+
+                                                                               Table A4-1 Bit mask constants
+
+           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
+
+           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
+
+           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
+
+           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
+
+           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
 .
 10299,10302c
-A4.1.39 MSR_Immediate_operand
+A4.1.39 MSRimm
 .
 9125d
 8067a
