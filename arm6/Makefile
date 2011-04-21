@@ -5,8 +5,7 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-default:
-	@echo "do make in a subdirectory"
+default: arm6.pc arm6.dec arm6.syntax
 
 SUBDIRS := parsing simlight simlight2 coq elf2coq test
 
@@ -36,17 +35,23 @@ pdftotext: arm6.pdf
 # patch application
 
 arm6inst.txt: arm6.txt arm6inst.patch
-	cp -a $< $@ && patch $@ < arm6inst.patch
+	cp -f $< $@ && patch $@ < arm6inst.patch
 
 arm6dec.txt: arm6.txt arm6dec.patch
-	cp -a $< $@ && patch $@ < arm6dec.patch
+	cp -f $< $@ && patch $@ < arm6dec.patch
 
 arm6syntax.txt: arm6.txt arm6syntax.patch
-	cp -a $< $@ && patch $@ < arm6syntax.patch
+	cp -f $< $@ && patch $@ < arm6syntax.patch
 
 clean::
 	rm -f arm6inst.txt arm6dec.txt arm6syntax.txt \
 		arm6inst.txt.orig arm6dec.txt.orig arm6syntax.txt.orig
+
+arm6patched.txt: arm6.txt arm6patch.ed
+	cp -f $< $@ && ed -s $@ < arm6patch.ed
+
+clean::
+	rm -f arm6patched.txt
 
 ###########################################################################
 # update patches
@@ -66,12 +71,17 @@ patch-dec: arm6.txt arm6dec.txt
 patch-syntax: arm6.txt arm6syntax.txt
 	-diff -u $+ > arm6syntax.patch
 
+.PHONY: patch
+
+patch: arm6.txt arm6patched.txt
+	-diff -e $+ > arm6patch.ed; echo w >> arm6patch.ed
+
 ###########################################################################
 # parsing
 
 .DELETE_ON_ERROR: arm6.pc
 
-arm6.pc: arm6inst.txt parsing/keepoper parsing/oneline_expr \
+arm6.pc: arm6patched.txt parsing/keepoper parsing/oneline_expr \
 		parsing/preproc_pseudo.sh parsing/indentation
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepoper | parsing/oneline_expr \
@@ -79,13 +89,13 @@ arm6.pc: arm6inst.txt parsing/keepoper parsing/oneline_expr \
 
 .DELETE_ON_ERROR: arm6.dec
 
-arm6.dec: arm6dec.txt parsing/keepbincode parsing/parsebincode
+arm6.dec: arm6patched.txt parsing/keepbincode parsing/parsebincode
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepbincode | parsing/parsebincode > $@
 
 .DELETE_ON_ERROR: arm6.syntax
 
-arm6.syntax: arm6syntax.txt parsing/keepsyntax parsing/parsesyntax \
+arm6.syntax: arm6patched.txt parsing/keepsyntax parsing/parsesyntax \
 		parsing/blanks_syntax.sh
 	$(SHOW) generate $@ from $<
 	$(HIDE) cat $< | parsing/keepsyntax | parsing/blanks_syntax.sh \
