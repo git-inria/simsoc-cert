@@ -103,13 +103,13 @@ let rec options() =
   "-ipc", String (fun s -> set_pc_input_file s),
   "file.pc : takes as input a text file with the ARM pseudocode of various instructions";
   "-idec", String (fun s -> set_dec_input_file s),
-  "file.dec : take as input a data file containing an OCaml value of type Codetype.maplist describing the binary decoding tables of various instructions";
+  "file.dec (.dat with -sh4) : take as input a data file containing an OCaml value of type Codetype.maplist (Manual.manual with -sh4) describing the binary decoding tables of various instructions";
   "-isyntax", String (fun s -> set_syntax_input_file s),
   "file.syntax : takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
   "-iwgt", String (fun s -> set_weight_file s),
   "file.wgt : takes as input a weight file (in conjonction with -oc4dt only)";
   "-sh4", Unit set_sh4,
-  ": generates code for simulating SH4 (default is ARM)";
+  ": generates code for simulating SH4 (default is ARMv6)";
   "-check", Unit set_check,
   ": check the pseudocode pretty-printer and normalizer (in conjunction with -ipc or -norm only)";
   "-norm", Unit set_norm,
@@ -243,7 +243,7 @@ let check() =
       verbose "reparsing... ";
       Genpc.lib b ps;
       let ps' = parse_string (Buffer.contents b) in
-        if ps.Ast.body = ps' then verbose "ok\n" else error "check failed";;
+        if ps.Ast.body = ps' then verbose "ok\n" else error "failed";;
 
 (*****************************************************************************)
 (** pseudocode normalization (-norm option) *)
@@ -256,7 +256,7 @@ let norm split_msr_code =
       let ps = Norm.prog (split_msr_code ps) in
         if get_check() then
           let ps' = Norm.prog ps in
-            if ps = ps' then verbose "ok\n" else error "check failed"
+            if ps = ps' then verbose "ok\n" else error "failed"
         else verbose "\n";
         set_pc_input ps;
         if is_set_syntax_input_file() then
@@ -294,12 +294,8 @@ let parse_input_files() =
   if is_set_dec_input_file() then (
     verbose "read %s coding tables...\n";
     set_dec_input
-      (let v = (if get_sh4() then 
-		  fun x -> C2pc.maplist_of_manual (parse_value x) 
-		else
-		  parse_value) (get_dec_input_file()) in
-       let () = ignore v in
-	 v)
+      (let v = parse_value (get_dec_input_file()) in
+	 if get_sh4() then C2pc.maplist_of_manual v else v)
   );;
 
 (*****************************************************************************)
