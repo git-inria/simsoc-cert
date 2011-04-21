@@ -249,21 +249,22 @@ let check() =
 (** pseudocode normalization (-norm option) *)
 (*****************************************************************************)
 
-let norm split_msr_code =
-  if get_norm() then
+let norm _split_msr_code =
+  if get_norm() then begin
+    verbose "normalization... ";
     let ps = get_pc_input() in
-      verbose "normalization... ";
-      let ps = Norm.prog (split_msr_code ps) in
-        if get_check() then
-          let ps' = Norm.prog ps in
-            if ps = ps' then verbose "ok\n" else error "failed"
-        else verbose "\n";
-        set_pc_input ps;
-        if is_set_syntax_input_file() then
-          let ss = get_syntax_input() in
-          let ss' = Norm.split_msr_syntax ss in
-            set_syntax_input ss';
-            check();;
+    let ps = Norm.prog ((*split_msr_code*) ps) in
+      if get_check() then
+        let ps' = Norm.prog ps in
+          if ps = ps' then verbose "ok\n" else error "failed"
+      else verbose "\n";
+      set_pc_input ps(*(*why setting syntax_input?*);
+      if is_set_syntax_input_file() then
+        let ss = get_syntax_input() in
+        let ss' = Norm.split_msr_syntax ss in
+          set_syntax_input ss';
+          check()(*why calling check again here?*)*)
+  end;;
 
 (*****************************************************************************)
 (** set input data by parsing input files *)
