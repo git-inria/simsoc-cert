@@ -1,0 +1,399 @@
+27727a
+
+.
+27638a
+
+.
+27560a
+
+.
+27490a
+
+.
+27406a
+
+.
+27317a
+
+.
+27236a
+
+.
+27120a
+
+.
+27114,27115c
+                 if Shared(address) then /* from ARMv6 */
+                     physical_address = TLB(address)
+.
+27112c
+             if register_list[i] == 1 then
+.
+27000c
+           15     14     13     12     11     10     9      8      7      6      5 4            3         2           0
+.
+26812c
+             15 14 13              12     11 10 9                  8    7      6      5            3   2            0
+.
+26799c
+          31         28 27                 23 22 21 20 19              16 15            12 11            8 7 6        4   3             0
+.
+26756c
+           15 14 13                12       11 10 9                8       7        6           5            3     2                 0
+.
+26701c
+             15 14 13                12       11 10 9                8       7        6   5              3    2                0
+.
+26641,26644c
+           if (CP15_reg1_Ubit == 1) then        /* ARMv6 */
+               if Shared(address) then     /* from ARMv6 */
+                   physical_address = TLB(address)
+                   ClearExclusiveByAddress(physical_address, 4)
+
+.
+26514c
+         assert end_address == address
+.
+25169c
+         address = (PC AND 0xFFFFFFFC) + (immed_8 * 4)
+.
+24909d
+24903a
+         Rn = Rn + (Number_Of_Set_Bits_In(register_list) * 4)
+.
+24651c
+           15    14    13      12    11     10      9      8      7      6      5      4      3      2         1    0
+.
+24147c
+         else if H == 0b01 then
+.
+24143c
+         else if H == 0b11 then
+.
+24140c
+         if H == 0b10 then
+.
+23652c
+             else /* Rm[31] == 1 */
+.
+21751,21752d
+21639c
+No encoding here -- A5.4.6   Load and Store Multiple addressing modes (alternative names)
+.
+21589c
+               cond       1 0 0 1 0 S W L                Rn                             register_list
+.
+21540c
+                cond       1 0 0 0 0 S W L                Rn                             register_list
+.
+21490c
+               cond       1 0 0 1 1 S W L                Rn                             register_list
+.
+21440c
+                cond       1 0 0 0 1 S W L                Rn                             register_list
+.
+21398c
+               cond       1 0 0 P U S W L                 Rn                             register_list
+.
+21393,21395c
+A5.4.1   Encoding The following diagram shows the encoding for this addressing mode:
+.
+20985c
+A5.3.1.2   Encoding Register offset/index
+.
+20974,20978c
+A5.3.1.1   Encoding Immediate offset/index
+.
+20255c
+A5.2.1.3   Encoding Scaled register offset/index
+.
+20248c
+A5.2.1.2   Encoding Register offset/index
+.
+20237,20241c
+A5.2.1.1   Encoding Immediate offset/index
+.
+19550c
+No encoding here --  A5.1.2   The shifter operand
+.
+19511c
+A5.1.1.3 Encoding Register shifts
+.
+19504c
+A5.1.1.2 Encoding Immediate shifts
+.
+19493,19497c
+A5.1.1.1   Encoding 32-bit immediate
+.
+18445c
+                                             or UnsignedDoesSat(Rm[31:16], sat_imm) then
+.
+16304a
+               address = Rn
+.
+16210,16218d
+16200a
+               address = Rn
+.
+14777c
+                                           or SignedDoesSat(Rm[31:16], sat_imm + 1) then
+.
+14593a
+         */
+.
+14592c
+         .      Rn is the banked version of R13 belonging to the mode specified by the instruction, rather than being
+.
+14589c
+         .      Number_Of_Set_Bits_in(register_list) evaluates to 2, rather than depending on bits[15:0] of the
+.
+14585a
+         /*
+.
+12575c
+          1 1 1 1 0 0 0 1 0 0 0 0 0 0 0 1                               SBZ         E !SBZ 0 0 0 0                SBZ
+.
+12573c
+          31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15                     10 9     8    7 6 5 4 3         0
+.
+11920a
+           */
+.
+11917a
+           /*
+.
+11792c
+          31           28   27 26 25 24 23 22 21 20 19            16 15         12 11         8 7 6 5 4   3         0
+.
+11738c
+           31          28   27 26 25 24 23 22 21 20 19            16 15         12 11         8   7 6 5 4 3            0
+.
+11684c
+          31           28   27 26 25 24 23 22 21 20 19            16 15         12 11         8 7 6 5 4   3         0
+.
+10829c
+           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6 5 4 3            0
+.
+10750c
+           31          28 27 26 25 24 23 22 21 20 19            16 15          12 11               7 6 5 4 3           0
+.
+10380c
+         */
+.
+10360a
+         /*
+.
+10309a
+         Obsolete field specification
+                        The CPSR, CPSR_flg, CPSR_ctl, CPSR_all, SPSR, SPSR_flg, SPSR_ctl and SPSR_all forms of PSR
+                        field specification have been superseded by the csxf format shown on page A4-76.
+                        CPSR, SPSR, CPSR_all and SPSR_all produce a field mask of 0b1001.
+                        CPSR_flg and SPSR_flg produce a field mask of 0b1000.
+                        CPSR_ctl and SPSR_ctl produce a field mask of 0b0001.
+
+         The T bit or J bit
+                        The MSR instruction must not be used to alter the T bit or the J bit in the CPSR. If such an
+                        attempt is made, the results are UNPREDICTABLE.
+
+         Addressing modes
+                        The immediate and register forms are specified in precisely the same way as the immediate
+                        and unshifted register forms of Addressing Mode 1 (see Addressing Mode 1 -
+                        Data-processing operands on page A5-2). All other forms of Addressing Mode 1 yield
+                        UNPREDICTABLE results.
+
+
+
+
+ARM DDI 0100I     Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.                      A4-79
+ARM Instructions
+
+
+A4.1.39 MSR_Register_operand
+.
+10308c
+           MSR (Move to Status Register from ARM Register) transfers the value of a general-purpose register or an
+           immediate constant to the CPSR or the SPSR of the current mode.
+
+
+           Syntax
+           MSR{<cond>}      CPSR_<fields>,   #<immediate>
+           MSR{<cond>}      CPSR_<fields>,   <Rm>
+           MSR{<cond>}      SPSR_<fields>,   #<immediate>
+           MSR{<cond>}      SPSR_<fields>,   <Rm>
+
+           where:
+
+           <cond>                     Is the condition under which the instruction is executed. The conditions are defined
+                                      in The condition field on page A3-3. If <cond> is omitted, the AL (always) condition
+                                      is used.
+
+           <fields>                   Is a sequence of one or more of the following:
+                                      c           sets the control field mask bit (bit 16)
+                                      x           sets the extension field mask bit (bit 17)
+                                      s           sets the status field mask bit (bit 18)
+                                      f           sets the flags field mask bit (bit 19).
+
+           <immediate>                Is the immediate value to be transferred to the CPSR or SPSR. Allowed immediate
+                                      values are 8-bit immediates (in the range 0x00 to 0xFF) and values that can be
+                                      obtained by rotating them right by an even amount in the range 0 to 30. These
+                                      immediate values are the same as those allowed in the immediate form as shown in
+                                      Data-processing operands - Immediate on page A5-6.
+
+           <Rm>                       Is the general-purpose register to be transferred to the CPSR or SPSR.
+
+
+           Architecture version
+           All.
+
+
+
+A4-76                    Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.          ARM DDI 0100I
+                                                                                                  ARM Instructions
+
+
+
+         Exceptions
+         None.
+
+
+         Operation
+	 /*
+         There are four categories of PSR bits, according to rules about updating them, see Types of PSR bits on
+         page A2-11 for details.
+
+         The pseudo-code uses four bit mask constants to identify these categories of PSR bits. The values of these
+         masks depend on the architecture version, see Table A4-1.
+
+                                                                               Table A4-1 Bit mask constants
+
+           Architecture versions         UnallocMask          UserMask          PrivMask          StateMask
+
+           4                             0x0FFFFF20          0xF0000000         0x0000000F        0x00000000
+
+           4T, 5T                        0x0FFFFF00          0xF0000000         0x0000000F        0x00000020
+
+           5TE, 5TExP                    0x07FFFF00          0xF8000000         0x0000000F        0x00000020
+
+           5TEJ                          0x06FFFF00          0xF8000000         0x0000000F        0x01000020
+
+           6                             0x06F0FC00          0xF80F0200         0x000001DF        0x01000020
+	   */
+
+         if ConditionPassed(cond) then
+             if opcode[25] == 1 then
+                  operand = 8_bit_immediate Rotate_Right (rotate_imm * 2)
+             else
+                  operand = Rm
+             if (operand AND UnallocMask) !=0 then
+                  UNPREDICTABLE                /* Attempt to set reserved bits */
+             byte_mask = (if field_mask[0] == 1 then 0x000000FF else 0x00000000) OR
+                            (if field_mask[1] == 1 then 0x0000FF00 else 0x00000000) OR
+                            (if field_mask[2] == 1 then 0x00FF0000 else 0x00000000) OR
+                            (if field_mask[3] == 1 then 0xFF000000 else 0x00000000)
+             if R == 0 then
+                  if InAPrivilegedMode() then
+                       if (operand AND StateMask) != 0 then
+                            UNPREDICTABLE      /* Attempt to set non-ARM execution state */
+                       else
+                            mask = byte_mask AND (UserMask OR PrivMask)
+                  else
+                       mask = byte_mask AND UserMask
+                  CPSR = (CPSR AND NOT mask) OR (operand AND mask)
+             else /* R == 1 */
+                  if CurrentModeHasSPSR() then
+                       mask = byte_mask AND (UserMask OR PrivMask OR StateMask)
+                       SPSR = (SPSR AND NOT mask) OR (operand AND mask)
+                  else
+                       UNPREDICTABLE
+
+
+ARM DDI 0100I       Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.                  A4-77
+ARM Instructions
+
+
+
+           Usage
+           Use MSR to update the value of the condition code flags, interrupt enables, or the processor mode.
+
+           You must normally update the value of a PSR by moving the PSR to a general-purpose register (using the
+           MRS instruction), modifying the relevant bits of the general-purpose register, and restoring the updated
+           general-purpose register value back into the PSR (using the MSR instruction). For example, a good way to
+           switch the ARM to Supervisor mode from another privileged mode is:
+
+               MRS    R0,CPSR                        ;   Read CPSR
+               BIC    R0,R0,#0x1F                    ;   Modify by removing current mode
+               ORR    R0,R0,#0x13                    ;   and substituting Supervisor mode
+               MSR    CPSR_c,R0                      ;   Write the result back to CPSR
+
+           For maximum efficiency, MSR instructions should only write to those fields that they can potentially change.
+           For example, the last instruction in the above code can only change the CPSR control field, as all bits in the
+           other fields are unchanged since they were read from the CPSR by the first instruction. So it writes to
+           CPSR_c, not CPSR_fsxc or some other combination of fields.
+
+           However, if the only reason that an MSR instruction cannot change a field is that no bits are currently allocated
+           to the field, then the field must be written, to ensure future compatibility.
+
+           You can use the immediate form of MSR to set any of the fields of a PSR, but you must take care to use the
+           read-modify-write technique described above. The immediate form of the instruction is equivalent to
+           reading the PSR concerned, replacing all the bits in the fields concerned by the corresponding bits of the
+           immediate constant and writing the result back to the PSR. The immediate form must therefore only be used
+           when the intention is to modify all the bits in the specified fields and, in particular, must not be used if the
+           specified fields include any as-yet-unallocated bits. Failure to observe this rule might result in code which
+           has unanticipated side effects on future versions of the ARM architecture.
+
+           As an exception to the above rule, it is legitimate to use the immediate form of the instruction to modify the
+           flags byte, despite the fact that bits[26:25] of the PSRs have no allocated function at present. For example,
+           you can use MSR to set all four flags (and clear the Q flag if the processor implements the Enhanced DSP
+           extension):
+
+               MSR     CPSR_f,#0xF0000000
+
+           Any functionality allocated to bits[26:25] in a future version of the ARM architecture will be designed so
+           that such code does not have unexpected side effects. Several bits must not be changed to reserved values
+           or the results are UNPREDICTABLE. For example, an attempt to write a reserved value to the mode bits (4:0),
+           or changing the J-bit (24).
+
+
+
+
+A4-78                Copyright © 1996-1998, 2000, 2004, 2005 ARM Limited. All rights reserved.             ARM DDI 0100I
+                                                                                                      ARM Instructions
+
+
+
+         Notes
+         The R bit      Bit[22] of the instruction is 0 if the CPSR is to be written and 1 if the SPSR is to be written.
+
+         User mode CPSR
+                        Any writes to privileged or execution state bits are ignored.
+
+         User mode SPSR
+                        Accessing the SPSR when in User mode is UNPREDICTABLE.
+
+         System mode SPSR
+                        Accessing the SPSR when in System mode is UNPREDICTABLE.
+.
+10299,10302c
+A4.1.39 MSR_Immediate_operand
+.
+9125d
+8067a
+	 if ConditionPassed(cond) then
+.
+7907,7908c
+                    else
+                        if ((CV bit of Jazelle OS Control register) == 0) and
+.
+7742c
+           31      28 27 26 25 24 23 22 21 20 19               16 15         12 11          8   7 6 5 4 3               0
+.
+7690c
+           PC = PC + (SignExtend_30(signed_immed_24) << 2) + (H << 1)
+.
+7556c
+           31 30 29 28 27 26 25 24 23 22 21 20 19                                       8   7 6 5 4 3           0
+.
+7201c
+                  cond       0 0 I 0 1 0 0 S                  Rn            Rd                    shifter_operand
+.
+w
