@@ -42,6 +42,9 @@ let is_set_dec_input_file, get_dec_input_file, set_dec_input_file =
 let is_set_syntax_input_file, get_syntax_input_file, set_syntax_input_file =
   is_set_get_set "input file name for -isyntax option" "";;
 
+let is_set_dat_input_file, get_dat_input_file, set_dat_input_file =
+  is_set_get_set "input file name for -idat option" "";;
+
 let is_set_output_type, get_output_type, set_output_type =
   is_set_get_set "output type" PCout;;
 
@@ -106,6 +109,8 @@ let rec options() =
   "file.dec (.dat with -sh4) : take as input a data file containing an OCaml value of type Codetype.maplist (Manual.manual with -sh4) describing the binary decoding tables of various instructions";
   "-isyntax", String (fun s -> set_syntax_input_file s),
   "file.syntax : takes as input a data file containing an OCaml value of type Syntaxtype.syntax describing the assembly syntax of various instructions";
+  "-idat", String (fun s -> set_dat_input_file s),
+  "file.dat : takes as input a data file containing an OCaml value of type Manual.manual describing the pseudocode, decoding tables and assembly syntax of various instructions";
   "-iwgt", String (fun s -> set_weight_file s),
   "file.wgt : takes as input a weight file (in conjonction with -oc4dt only)";
   "-sh4", Unit set_sh4,
@@ -157,6 +162,15 @@ let anon_fun _ = error "unknown option";;
 
 let parse_args() =
   Arg.parse options anon_fun "options:";
+  if is_set_dat_input_file() then
+    if is_set_pc_input_file() || is_set_dec_input_file()
+      || is_set_syntax_input_file() then
+	error "-idat is incompatible with -ipc, -idec or -isyntax"
+    else begin
+      set_pc_input_file (get_dat_input_file());
+      set_dec_input_file (get_dat_input_file());
+      set_syntax_input_file (get_dat_input_file());
+    end;
   match get_output_type() with
     | PCout ->
 	ignore (get_pc_input_file());
@@ -231,6 +245,7 @@ let parse_value fn =
 let get_pc_input, set_pc_input = get_set { Ast.header = []; Ast.body = [] };;
 let get_dec_input, set_dec_input = get_set [];;
 let get_syntax_input, set_syntax_input = get_set [];;
+let get_dat_input, set_dat_input = get_set { Ast.header = []; Ast.body = [] };;
 
 (*****************************************************************************)
 (** check pseudocode pretty-printer (-check option) *)
@@ -264,27 +279,28 @@ let norm() =
 (*****************************************************************************)
 
 let parse_input_files() =
-  let verbose s = verbose (sprintf (format_of_string s)
-			     (if get_sh4() then "Sh4" else "Arm6")) in
-  if is_set_syntax_input_file() then (
-    verbose "read %s syntax data...\n";
-    set_syntax_input (parse_value (get_syntax_input_file()))
-  );
-  if is_set_pc_input_file() then (
-    verbose "parsing %s pseudocode...\n";
-    set_pc_input
-      (if get_sh4() then
-	 C2pc.program_of_manual (parse_value (get_pc_input_file()))
-       else { Ast.header = []; Ast.body = parse_file (get_pc_input_file()) });
-    check();
-    norm()
-  );
-  if is_set_dec_input_file() then (
-    verbose "read %s coding tables...\n";
-    set_dec_input
-      (let v = parse_value (get_dec_input_file()) in
-	 if get_sh4() then C2pc.maplist_of_manual v else v)
-  );;
+  if is_set_dat_input_file() then begin
+    verbose "read .dat file...\n";
+    let v = parse_value (get_dat_input_file()) in
+      set_dat_input v;
+      set_pc_input (C2pc.program_of_manual v); check(); norm();
+      set_dec_input (C2pc.maplist_of_manual v)
+  end else begin
+    if is_set_syntax_input_file() then begin
+      verbose "read .syntax file...\n";
+      set_syntax_input (parse_value (get_syntax_input_file()))
+    end;
+    if is_set_pc_input_file() then begin
+      verbose "parsing .pc file...\n";
+      set_pc_input { Ast.header = [];
+		     Ast.body = parse_file (get_pc_input_file()) };
+      check(); norm()
+    end;
+    if is_set_dec_input_file() then begin
+      verbose "read .dec file...\n";
+      set_dec_input (parse_value (get_dec_input_file()))
+    end
+  end;;
 
 (*****************************************************************************)
 (** generate outputs *)
