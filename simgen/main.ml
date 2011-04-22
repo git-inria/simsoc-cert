@@ -249,21 +249,15 @@ let check() =
 (** pseudocode normalization (-norm option) *)
 (*****************************************************************************)
 
-let norm _split_msr_code =
+let norm() =
   if get_norm() then begin
     verbose "normalization... ";
-    let ps = get_pc_input() in
-    let ps = Norm.prog ((*split_msr_code*) ps) in
+    if get_sh4() then Norm.ref_boolean_not := Norm.bitwise_not; (*FIXME: to be removed*)
+    let ps = Norm.prog (get_pc_input()) in
       if get_check() then
-        let ps' = Norm.prog ps in
-          if ps = ps' then verbose "ok\n" else error "failed"
+          if Norm.prog ps = ps then verbose "ok\n" else error "failed"
       else verbose "\n";
-      set_pc_input ps(*(*why setting syntax_input?*);
-      if is_set_syntax_input_file() then
-        let ss = get_syntax_input() in
-        let ss' = Norm.split_msr_syntax ss in
-          set_syntax_input ss';
-          check()(*why calling check again here?*)*)
+      set_pc_input ps
   end;;
 
 (*****************************************************************************)
@@ -279,18 +273,12 @@ let parse_input_files() =
   );
   if is_set_pc_input_file() then (
     verbose "parsing %s pseudocode...\n";
-    let split_msr_code, pc =
-      if get_sh4() then
-        (fun x -> let () = Norm.ref_boolean_not := Norm.bitwise_not in x),
-        C2pc.program_of_manual
-	  (let open Manual in (parse_value (get_pc_input_file()) : raw_c_code manual))
-      else
-        Norm.split_msr_code,
-        { Ast.header = []; Ast.body = parse_file (get_pc_input_file()) }
-    in
-      set_pc_input pc;
-      check();
-      norm split_msr_code
+    set_pc_input
+      (if get_sh4() then
+	 C2pc.program_of_manual (parse_value (get_pc_input_file()))
+       else { Ast.header = []; Ast.body = parse_file (get_pc_input_file()) });
+    check();
+    norm()
   );
   if is_set_dec_input_file() then (
     verbose "read %s coding tables...\n";

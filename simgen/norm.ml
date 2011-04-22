@@ -271,37 +271,6 @@ and affects = function
       end;;
 
 (*****************************************************************************)
-(** normalization of MSR: The ARM reference manual provides two
-    encodings for the MSR instruction, but only one pseudo-code. The
-    function below splits the pseudo-code to create two real
-    instructions. *)
-(*****************************************************************************)
-
-let split_msr_code =
-  let rec aux = function
-    | [] -> []
-    | p :: ps' ->
-        if p.pident.iname <> "MSR" then p :: aux ps'
-	else
-          let opcode25 = Range (Var "opcode", Index (Num "25")) in
-          let imm = replace_exp opcode25 (Num "1") p.pinst
-          and reg = replace_exp opcode25 (Num "0") p.pinst
-          and imm_id = { p.pident with iname = "MSRimm" }
-          and reg_id = { p.pident with iname = "MSRreg" } in
-            { p with pident = imm_id; pinst = imm } ::
-	      { p with pident = reg_id; pinst = reg } :: ps'
-  in fun p -> { p with body = aux p.body };;
-
-let lh_name = function LH (_, s) -> s;;
-
-let rec split_msr_syntax = function
-  | (lh, vs) as s :: ss' ->
-      if lh_name lh <> "MSR" then s :: split_msr_syntax ss' else
-        (lh, List.filter (List.mem (Param "immediate")) vs) ::
-          (lh, List.filter (List.mem (Param "Rm")) vs) :: ss'
-  | [] -> raise (Failure "split_msr_syntax");;
-
-(*****************************************************************************)
 (** normalization of programs *)
 (*****************************************************************************)
 
