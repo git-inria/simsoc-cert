@@ -252,7 +252,6 @@ let check() =
 let norm() =
   if get_norm() then begin
     verbose "normalization... ";
-    if get_sh4() then Norm.ref_boolean_not := Norm.bitwise_not; (*FIXME: to be removed*)
     let ps = Norm.prog (get_pc_input()) in
       if get_check() then
           if Norm.prog ps = ps then verbose "ok\n" else error "failed"

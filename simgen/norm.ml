@@ -26,8 +26,6 @@ let size = function
   | Var "signed_immed_11" | Var "offset_11" -> "11"
   | _ -> "8";;
 
-let ref_boolean_not, bitwise_not = ref "not", "NOT"
-
 let rec exp = function
 
   (* we only consider ARMv5 and above *)
@@ -55,13 +53,6 @@ let rec exp = function
         | _ -> let es = args e in
             Fun (sprintf "%s32_%s" f (string_of_op op),
 	         List.map exp es))
-
-  (* The reference manual does not distinguish between boolean "not"
-     and bitwise "NOT". Indeed, the operator is always written "NOT".*)
-  | Fun ("NOT", [e]) -> (
-      match e with
-        | Var "mask" | Var "shifter_operand" | Reg _ -> Fun ("NOT", [e])
-        | _ -> Fun (!ref_boolean_not, [exp e]))
 
   (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
      are flattened so that there is at most one Unpredictable_exp in the
