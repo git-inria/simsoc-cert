@@ -58,7 +58,6 @@ let rec exp = function
 
   (* The reference manual does not distinguish between boolean "not"
      and bitwise "NOT". Indeed, the operator is always written "NOT".*)
-
   | Fun ("NOT", [e]) -> (
       match e with
         | Var "mask" | Var "shifter_operand" | Reg _ -> Fun ("NOT", [e])

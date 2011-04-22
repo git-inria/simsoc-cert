@@ -5,29 +5,23 @@ See the COPYRIGHTS and LICENSE files.
 Functions common to the decoder generators.
 *)
 
-
 (*****************************************************************************)
-(** rearrange the name *)
-(*****************************************************************************)
+(** rearrange instruction names:
 
-(* In the input, each lightheader is named with one long string containing
- * special characters
- * First, we split this string in a list of words.
- * Next:
- * - for addressing modes, the function name is built by concatenating the
- *    words seperated by underscores
- * - for instructions, the function name is built by concatenating the words
- *   directly.
- *)
+In the input, each lightheader is named with one long string containing
+special characters. First, we split this string in a list of words. Next:
+- for addressing modes, the function name is built by concatenating the
+  words separated by underscores
+- for instructions, the function name is built by concatenating the words
+  directly. *)
 
-open Codetype;; (* from the directory "refARMparsing" *)
-open Lightheadertype;; (* from the directory "refARMparsing" *)
+open Codetype;;
+open Lightheadertype;;
 
-(*convert the name string to list*)
-let str_to_lst s =
-  Str.split (Str.regexp "[-:<>() \t]+") s;;
+(* convert the name string to list *)
+let str_to_lst s = Str.split (Str.regexp "[-:<>() \t]+") s;;
 
-(*organise the input data with different types*)
+(* organise the input data with different types *)
 type kind =
   | DecMode of int
   | DecInstARMCond
@@ -35,38 +29,29 @@ type kind =
   | DecInstThumb
   | DecEncoding;;
 
-let lightheader_to_string lh =
-  let decimal b n = Printf.bprintf b "%d" n in
-    match lh with
-      | LH (is, s) ->
-          let b = Buffer.create 80 in
-            Printf.bprintf b "A%a %s" (Util.list "." decimal) is s;
-            Buffer.contents b;;
+let lightheader_to_string (LH (is, s)) =
+  let b = Buffer.create 80 in
+    Printf.bprintf b "A%a %s" (Util.list "." Util.int) is s;
+    Buffer.contents b;;
 
-(*catch the number of an instruction or of an addressing mode case*)
-let num (lh, _) =
-  match lh with LH (is, _) -> List.nth is 2;;
+(* number of an instruction or of an addressing mode case *)
+let num (LH (is, _), _) = List.nth is 2;;
 
-(* This function is used by the "params" function *)
-(* rename addressing modes*)
-let name (ps: maplist_element) =
-  (*rename the special cases B,BL and MSR*)
-  let name_lst (lh,_) =
+(* rename addressing modes (function used by [params]) *)
+let name =
+  let name_lst (lh, _) =
     match lh with
-      | LH (_, "B, BL") -> ["B"]
-      | LH (_, "MSR  Immediate operand:") -> ["MSRimm"]
-      | LH (_, "MSR  Register operand:") -> ["MSRreg"]
-      | LH (_, s) ->
-          str_to_lst s
-  in
-  let ss = name_lst ps in
-    match ss with
-      | "Data" :: "processing" :: "operands" :: s -> "M1"::s
-      | "Load" :: "and" :: "Store" :: "Word" :: "or" :: "Unsigned" :: "Byte" :: s -> "M2"::s
-      | "Miscellaneous" :: "Loads" :: "and" :: "Stores" :: s -> "M3"::s
-      | "Load" :: "and" :: "Store" :: "Multiple" :: s -> "M4"::s
-      | "Load" :: "and" :: "Store" :: "Coprocessor" :: s -> "M5"::s
-      | _ -> ss;;
+      | LH (_, "B, BL") -> ["B"] (* rename the special case "B, BL" *)
+      | LH (_, s) -> str_to_lst s
+  in fun ps ->
+    match name_lst ps with
+      | "Data" :: "processing" :: "operands" :: s -> "M1" :: s
+      | "Load" :: "and" :: "Store" :: "Word" :: "or" :: "Unsigned" :: "Byte"
+	:: s -> "M2" :: s
+      | "Miscellaneous" :: "Loads" :: "and" :: "Stores" :: s -> "M3" :: s
+      | "Load" :: "and" :: "Store" :: "Multiple" :: s -> "M4" :: s
+      | "Load" :: "and" :: "Store" :: "Coprocessor" :: s -> "M5" :: s
+      | ss -> ss;;
 
 module type DEC = 
 sig
@@ -79,20 +64,21 @@ sig
   val prefix_inst : string
   val display_cond : bool
   val decode_body : string list
-  val sort_inst : (Lightheadertype.lightheader * 'a) list -> (Lightheadertype.lightheader * 'a) list
+  val sort_inst : (Lightheadertype.lightheader * 'a) list ->
+    (Lightheadertype.lightheader * 'a) list
   val nb_buff : int
 end
 
 module Arm : DEC =
 struct
-  let add_mode (lh: lightheader) =
-    match lh with
-      | LH ((4 :: 1 :: (8|16|45|59|67|90) :: _), _) -> DecInstARMUncond
-      | LH ((4 :: _ :: _ :: _), _) -> DecInstARMCond
-      | LH ((5 :: _ :: 1 :: _), _) -> DecEncoding
-      | LH ([5; n; _], _) -> DecMode n
-      | LH ([7; _; _], _) -> DecInstThumb
-      | LH _ -> raise (Invalid_argument ("add_mode: "^lightheader_to_string lh));;
+  let add_mode = function
+    | LH ((4 :: 1 :: (8|16|45|59|67|90) :: _), _) -> DecInstARMUncond
+    | LH ((4 :: _ :: _ :: _), _) -> DecInstARMCond
+    | LH ((5 :: _ :: 1 :: _), _) -> DecEncoding
+    | LH ([5; n; _], _) -> DecMode n
+    | LH ([7; _; _], _) -> DecInstThumb
+    | LH _ as lh ->
+	raise (Invalid_argument ("add_mode: " ^ lightheader_to_string lh));;
 
   let twenty_height = 28
   let gen_pattern_get_array x = Array.sub x 0 twenty_height
@@ -110,7 +96,7 @@ struct
     ; "  end." ]
 
   (* Numbers in pattern refers to instruction number, i.e.,
-   * the subsection in which the instruction is defined *)
+     the subsection in which the instruction is defined *)
   let order_inst p =
     match num p with
       | 45|8|59|67|16|90 -> -6 (* instruction without condition *)
