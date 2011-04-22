@@ -5,8 +5,7 @@ DIR := ..
 
 include $(DIR)/Makefile.common
 
-default:
-	@echo "do make in a subdirectory"
+default: sh4.dat
 
 SUBDIRS := parsing coq test
 
