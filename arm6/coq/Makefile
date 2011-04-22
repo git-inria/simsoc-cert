@@ -25,13 +25,13 @@ include $(DIR)/Makefile.coq
 
 .DELETE_ON_ERROR: $(GENFILES)
 
-Arm6_Inst.v: ../arm6inst.arm $(SIMGEN)
+Arm6_Inst.v: ../arm6.pc $(SIMGEN)
 	$(SIMGEN) -ipc $< -ocoq-inst > $@
 
-Arm6_Dec.v: ../arm6dec.dat $(SIMGEN)
+Arm6_Dec.v: ../arm6.dec $(SIMGEN)
 	$(SIMGEN) -idec $< -ocoq-dec > $@
 
-../arm6inst.arm ../arm6dec.dat: FORCE
+../arm6.pc ../arm6.dec: FORCE
 	$(MAKE) -C .. $(shell basename $@)
 
 clean::
