@@ -149,7 +149,9 @@ let depend_on_init_state = function
   | _ -> false;;
 
 let depend_on_config = function
-  | "JE_bit_of_Main_Configuration_register" | "SUB_ARCHITECTURE_DEFINED_value"
+  | "JE_bit_of_Main_Configuration_register"
+  | "jpc_SUB_ARCHITECTURE_DEFINED_value"
+  | "invalidhandler_SUB_ARCHITECTURE_DEFINED_value"
   | "CV_bit_of_Jazelle_OS_Control_register"
   | "Jazelle_Extension_accepts_opcode_at" -> true
   | _ -> false;;
@@ -278,7 +280,7 @@ let rec pexp' par (loc: (string*string*int) list) nm sz b = function
   | Var s as e -> 
     (if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") 
      else exp' loc nm sz) b e
-  | Fun (f, []) as e when depend_on_config f -> (exp' loc nm sz) b e 
+  | Fun (f, []) as e when depend_on_config f -> exp' loc nm sz b e 
   | e -> par (exp' loc nm sz) b e
 
 and pexp loc nm b e = pexp' par loc nm "" b e 
@@ -318,7 +320,8 @@ and loc_exp loc nm hl b = function
 and exp loc nm b e = exp' loc nm "" b e
 
 and exp' loc nm sz b = function
-    (* convert numbers into Coq words *)
+
+  (* convert numbers into Coq words *)
   | Bin s -> word bin b s
   | Hex s -> word hex b s
   | Num s -> word num b s
@@ -344,12 +347,13 @@ and exp' loc nm sz b = function
   (* print no parenthesis if there is no argument (functions are
      curryfied in Coq) *)
   | Fun (f, []) -> fun_name b f
+
   (* for saturation functions, add a cast to nat if the second
      argument is not a number *)
-
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
          [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
+
   (* default printing of function calls *)
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
 
@@ -359,7 +363,6 @@ and exp' loc nm sz b = function
   (* optimization avoiding a call to repr *)
   | BinOp (e1, ("==" as f), Num n) ->
       bprintf b "%a %a %a" binop f (pexp loc nm) e1 num n
-
 
   (* default printing of binary operators (like function calls) *)
   | BinOp (e1, f, e2) ->
@@ -381,7 +384,8 @@ and exp' loc nm sz b = function
       end
 
   | If_exp (e1, e2, e3) ->
-      bprintf b "if %a then %a else %a" (exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
+      bprintf b "if %a then %a else %a"
+	(exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
   | CPSR -> string b (if is_cpsr_s0 nm then "cpsr s0" else "cpsr st")
   | Range (e, r) -> 
       begin match e, r with
