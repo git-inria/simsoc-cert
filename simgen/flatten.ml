@@ -15,7 +15,6 @@ open Codetype;;
 open Validity;;
 open Syntaxtype;;
 
-
 (* type for "flat" programs *)
 type fkind = ARM | Thumb;;
 
@@ -29,8 +28,8 @@ type fprog = {
   finst: inst; (* the pseudo-code *)
   fsyntax: variant list; (* the syntax, with the variants *)
   fdec: pos_contents array; (* coding table *)
-  fparams: (string * int * int) list; (* the parameters defined in the original 
-                                       * coding tables *)
+  fparams: (string * int * int) list;
+  (* the parameters defined in the original coding tables *)
   fvcs: vconstraint list};; (* the validity constraints, from validity.ml *)
 
 let is_arm f = f.fkind = ARM;;
@@ -157,7 +156,8 @@ let test_merge_syntax () =
             [Param "AA"; Param "M2"; Const "Y"; Const "X"];
             [Param "BB"; Param "M1"; Const "Y"; Const "X"];
             [Param "BB"; Param "M2"; Const "Y"; Const "X"]]
-  in if merge_syntax si sm = sf then () else raise (Failure "test_merge_syntax");;
+  in if merge_syntax si sm = sf then ()
+    else raise (Failure "test_merge_syntax");;
 
 
 (* Split the list of programs according to their kind *)
@@ -324,8 +324,9 @@ let flatten (ps: prog list) (ss: syntax list) (ds: maplist) : fprog list =
           | _ ->
               let id = str_ident i in
                 [{fid = id; finstr = id; fmode = None; fref = i.pref;
-                  fkind = ARM; fname = str_name i; finst = i.pinst; fsyntax = s;
-                  fdec = d; fparams = parameters_of d; fvcs = get_constraints id}]
+                  fkind = ARM; fname = str_name i; finst = i.pinst;
+		  fsyntax = s; fdec = d; fparams = parameters_of d;
+		  fvcs = get_constraints id}]
       else
         let id = str_ident i in
           [{fid = id; finstr = id; fmode = None; fref = i.pref;
