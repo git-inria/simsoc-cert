@@ -36,32 +36,31 @@ type fprog = {
 let is_arm f = f.fkind = ARM;;
 let is_thumb f = f.fkind = Thumb;;
 
-(* NB: in general, fparams <> parameters_of fdec, because some parameters disappear
- * when we merge the 2 coding tables *)
+(* NB: in general, fparams <> parameters_of fdec, because some
+   parameters disappear when we merge the 2 coding tables.
 
-(* Example: for "ADCS r0, r1, r2", we have:
- * fid = ADC_M1_Reg
- * finstr = ADC
- * fmode = Some M1_Reg
- * fref = A4.1.2--A5.1.4
- * fkind = ARM
- * fname = ADC -- Data processing operands - Register
- * finst =
-    begin
-      shifter_operand = Rm;
-      shifter_carry_out = C Flag;
-      if ConditionPassed(cond) then
-        begin ... end
-    end
- * fsyntax = [[Const "ADC"; OptParam ("", Some "cond"); OptParam ("S", None); 
-               Const "  "; Param "Rd"; Const ", "; Param "Rn"; Const ", "; Param "Rm"]]
- * fdec = pos_contents array of
-    |31..28|27...21|20|19..16|15..12|11.....4|3..0|
-    | cond |0000101|S |  Rn  |  Rd  |00000000| Rm |
- * fparams = [(cond, 31, 28); (I, 25, 25); (S, 20, 20); (Rn, 19, 16);
-              (Rd, 15, 12); (Rm, 3, 0); (shifter_operand, 12, 0)]
- * fvcs = []
- *)
+ Example: for "ADCS r0, r1, r2", we have:
+   fid = ADC_M1_Reg
+   finstr = ADC
+   fmode = Some M1_Reg
+   fref = A4.1.2--A5.1.4
+   fkind = ARM
+   fname = ADC -- Data processing operands - Register
+   finst =
+   begin
+   shifter_operand = Rm;
+   shifter_carry_out = C Flag;
+   if ConditionPassed(cond) then
+   begin ... end
+   end
+   fsyntax = [[Const "ADC"; OptParam ("", Some "cond"); OptParam ("S", None); 
+   Const "  "; Param "Rd"; Const ", "; Param "Rn"; Const ", "; Param "Rm"]]
+   fdec = pos_contents array of
+   |31..28|27...21|20|19..16|15..12|11.....4|3..0|
+   | cond |0000101|S |  Rn  |  Rd  |00000000| Rm |
+   fparams = [(cond, 31, 28); (I, 25, 25); (S, 20, 20); (Rn, 19, 16);
+   (Rd, 15, 12); (Rm, 3, 0); (shifter_operand, 12, 0)]
+   fvcs = [] *)
 
 (* Compute an instruction identifier that can be used in Coq or C code *)
 let str_ident p =
@@ -120,8 +119,8 @@ let print_pos_contents pc =
       print_int a; print_string ", "; print_int b; print_string ")"
   | Shouldbe b -> print_string "Shouldbe "; print_bool b;;
 
-(* return a new codgint table obtained by combining an instruction coding table
- * with a mode coding table *)
+(* return a new codgint table obtained by combining an instruction
+   coding table with a mode coding table *)
 let merge_dec (ipca: pos_contents array) (mpca: pos_contents array) =
   (* merge two bits of two coding tables *)
   let merge_pos_contents pc1 pc2 =
@@ -136,17 +135,17 @@ let merge_dec (ipca: pos_contents array) (mpca: pos_contents array) =
       | _ -> raise (Invalid_argument "merge_pos_contents")
   in array_map2 merge_pos_contents mpca ipca;;
 
-(* merge the syntax definitions. Mode parameters are replaced by the mode syntax.
- * Note that the mode syntax is itself a token list list, so replacing may imply
- * duplication *)
+(* merge the syntax definitions. Mode parameters are replaced by the
+   mode syntax. Note that the mode syntax is itself a token list list,
+   so replacing may imply duplication *)
 let merge_syntax si sm =
   let mode_vars =
     ["shifter_operand"; "addressing_mode"; "post_indexed_addressing_mode"] in
   let aux (t: token) (tll: token list list) : token list list =
     match t with
-    | Param p when List.mem p mode_vars ->
-        List.flatten (List.map (fun tl -> List.map ((@) tl) tll) sm) 
-    | t -> List.map (fun tl -> t :: tl) tll
+      | Param p when List.mem p mode_vars ->
+          List.flatten (List.map (fun tl -> List.map ((@) tl) tll) sm) 
+      | t -> List.map (fun tl -> t :: tl) tll
   in List.flatten (List.map (fun tl -> List.fold_right aux tl [[]]) si);;
 
 let test_merge_syntax () =
@@ -173,12 +172,11 @@ let classify psds =
     | [] -> (!is, ms)
   in aux psds;;
 
-(* Patch the W bit for LDRT, LDRBT, STRT, anfd STRBT *)
-(* Verbatim from page A5-29:
- * LDRBT, LDRT, STRBT, and STRT only support post-indexed addressing modes.
- * They use a minor modification of the above bit pattern, where bit[21]
- * (the W bit) is 1, not 0 as shown.
- *)
+(* Patch the W bit for LDRT, LDRBT, STRT, anfd STRBT.
+  Verbatim from page A5-29:
+   LDRBT, LDRT, STRBT, and STRT only support post-indexed addressing modes.
+   They use a minor modification of the above bit pattern, where bit[21]
+   (the W bit) is 1, not 0 as shown. *)
 let patch_W (m: prog * variant list * pos_contents array)
     : prog * variant list * pos_contents array =
   let i, s, pca = m in
@@ -193,11 +191,10 @@ let patch_SRS_RFE (p: prog) =
   in let i = replace_exp o n p.pinst
   in {p with pinst = i};;
 
-(* SRS does not take "Rn" from its arguments
- * verbatim from page A4-174:
- * The base register, Rn, is the banked version of R13 for the mode specified
- * by <mode>, rather than the current mode.
- *)
+(* SRS does not take "Rn" from its arguments.
+   Verbatim from page A4-174:
+   The base register, Rn, is the banked version of R13 for the mode specified
+   by <mode>, rather than the current mode. *)
 let patch_SRS (p: prog) =
   let o = Reg (Var "n", None)
   and n = Fun ("reg_m", [Num "13"; Var "mode"])
@@ -242,8 +239,8 @@ let rec merge_plist a b =
   in match l with
     | hd :: tl -> hd :: (uniq hd tl) 
     | [] -> [];;
-(* FIXME: there are 2 defintions for the register_list parameter of LDM(3)
- * currently, we keep only the definition from the addressing mode *)
+(* FIXME: there are 2 defintions for the register_list parameter of LDM(3).
+ currently, we keep only the definition from the addressing mode *)
 
 let rec combine_psd ps ss ds = match ps, ss, ds with
   | h1::t1, h2::t2, h3::t3 -> (h1, snd h2, snd h3) :: combine_psd t1 t2 t3
@@ -257,7 +254,7 @@ let flatten (ps: prog list) (ss: syntax list) (ds: maplist) : fprog list =
       List.filter aux ds
   in
   (* IMPORTANT: normalization of ps and ss must be done before calling flatten,
-   * else List.combine ps ss ds' will fail.*)
+     else List.combine ps ss ds' will fail.*)
   let psds = combine_psd ps ss ds' in
   let is, ms = classify psds in
     (* Flatten one instruction *)
@@ -285,12 +282,11 @@ let flatten (ps: prog list) (ss: syntax list) (ds: maplist) : fprog list =
               List.map (merge_progs (i,s,d)) ms.(0)
                 
           (* Verbatim from section A5.2:
-           * All nine of the following options are available for LDR, LDRB,
-           * STR and STRB. For LDRBT, LDRT, STRBT and STRBT, only the
-           * post-indexed options (the last three in the list) are available.
-           * For the PLD instruction described in PLD on page A4-90, only the
-           * offset options (the first three in the list) are available.
-           *)
+             All nine of the following options are available for LDR, LDRB,
+             STR and STRB. For LDRBT, LDRT, STRBT and STRBT, only the
+             post-indexed options (the last three in the list) are available.
+             For the PLD instruction described in PLD on page A4-90, only the
+             offset options (the first three in the list) are available. *)
           | "LDR" | "LDRB" | "STR" | "STRB" ->
               List.map (merge_progs (i,s,d)) ms.(1)
           | "LDRT" | "LDRBT" | "STRT" | "STRBT" ->
