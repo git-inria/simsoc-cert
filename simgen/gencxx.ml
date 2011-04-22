@@ -476,7 +476,6 @@ let parameters_of pca : (string * int * int) list =
     if s.[0] = 'R'
     then String.sub s 1 (String.length s -1)
     else match s with
-      | "8_bit_immediate" -> "immed_8" (* renamed in preproc_pseudo.sh *)
       | "sh" -> "shift" (* work-around for specification erratum *)
       | "ImmedL" -> "immedL" (* work-around for specification erratum *)
       | _ -> s

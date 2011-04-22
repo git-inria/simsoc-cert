@@ -159,7 +159,7 @@ let not_param_inst i =
     | 2 -> ["P_"; "U_"; "W_"; "addr_mode"; "I_"]
     | 3 -> ["I_"; "P_"; "W_"; "U_"; "n"; "addr_mode"]
     | 4 -> ["P_"; "U_"; "W_"; "n"; "mode"]
-    | 5 -> ["8_bit_word_offset"; "CRd"; "P_"; "U_"; "W_"; "N_"; "n"]
+    | 5 -> ["offset_8"; "CRd"; "P_"; "U_"; "W_"; "N_"; "n"]
     | _ -> [];;
 
 let is_not_param_add_mode i =
@@ -233,13 +233,7 @@ let param_m (_, ls) =
             if s.[0] = 'R' then
               res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
             else
-              if s = "ImmedL" then
-                res.(i) <- ("immedL", i, len)
-              else
-                if s = "8_bit_immediate" then
-                  res.(i) <- ("immed_8", i, len)
-                else
-                  res.(i) <- (s, i, len)
+              res.(i) <- (s, i, len)
         | (Nothing | Value _ | Shouldbe _) ->
             res.(i) <- ("", 0, 0)
         | Param1 c ->

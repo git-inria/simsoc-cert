@@ -156,7 +156,7 @@ let not_param_inst i =
     | 2 -> ["p_"; "u_"; "w_"; "addr_mode"; "i_"]
     | 3 -> ["i_"; "p_"; "w_"; "u_"; "n"; "addr_mode"]
     | 4 -> ["p_"; "u_"; "w_"; "n"; "mode"]
-    | 5 -> ["8_bit_word_offset"; "CRd"; "p_"; "u_"; "w_"; "n_"; "n"]
+    | 5 -> ["offset_8"; "CRd"; "p_"; "u_"; "w_"; "n_"; "n"]
     | _ -> [];;
 
 let is_not_param_add_mode i =
@@ -220,8 +220,9 @@ let inst_param ls =
           Printf.sprintf "%s" s
 ;;
 
-(*keep only one of the same elements in a range*)
-(*rerange the data type of instruction parameters with name, position and length*)
+(* keep only one of the same elements in a range *)
+(* rerange the data type of instruction parameters
+  with name, position and length *)
 let param_m (_, ls) =
   let res = Array.create (Array.length ls) ("", 0, 0) in
     for i = 0 to (Array.length ls -1) do
@@ -230,13 +231,7 @@ let param_m (_, ls) =
             if s.[0] = 'R' then
               res.(i) <- ((String.sub s 1 (String.length s -1)), i, len)
             else
-              if s = "ImmedL" then
-                res.(i) <- ("immedL", i, len)
-              else
-                if s = "8_bit_immediate" then
-                  res.(i) <- ("immed_8", i, len)
-                else
-                  res.(i) <- (s, i, len)
+              res.(i) <- (s, i, len)
         | (Nothing | Value _ | Shouldbe _) ->
             res.(i) <- ("", 0, 0)
         | Param1 c ->
@@ -264,7 +259,7 @@ let to_lowercase (str, a, b) =
   else (str, a, b)
 ;;
 
-(*get the final well typed parameters list*)
+(* get the final well typed parameters list *)
 let params f (lh, ls) =
   let dname = name (lh,ls) 
   and md = add_mode lh in
