@@ -13,7 +13,7 @@ open Printf;;
 open Camlcoq;;
 
 (*****************************************************************************)
-(** printing functions on basic OCaml data structures *)
+(** printing functions for basic OCaml data structures *)
 
 let string b s = bprintf b "%s" s;;
 
@@ -69,7 +69,7 @@ Require Import ZArith Cnotations.\n\
 Open Scope Z_scope.\n";;
 
 (*****************************************************************************)
-(** basic Coq data structures *)
+(** printing functions for basic Coq data structures *)
 
 let bool b = bprintf b "%b";;
 
@@ -98,7 +98,16 @@ let float32 = todo;;
 let float64 = todo;;
 
 (*****************************************************************************)
-(** ident *)
+(** printing function for [ident] *)
+
+let identTable = Hashtbl.create 57;;
+
+let string_of_ident id =
+  try Hashtbl.find identTable id
+  with Not_found ->
+    Printf.sprintf "unknown_atom_%ld" (camlint_of_positive id);;
+
+let ident = using string_of_ident;;
 
 let valid_coq_ident s =
     match s with
@@ -109,18 +118,9 @@ let valid_coq_ident s =
 	  done;
 	  s;;
 
-let identTable = Hashtbl.create 57;;
-
 let add_ident id s = Hashtbl.add identTable id (valid_coq_ident s);;
 
 let init_identTable () = Hashtbl.iter add_ident string_of_atom;;
-
-let string_of_ident id =
-  try Hashtbl.find identTable id
-  with Not_found ->
-    Printf.sprintf "unknown_atom_%ld" (camlint_of_positive id);;
-
-let ident = using string_of_ident;;
 
 let identifiers b =
   bprintf b "\n(* identifiers *)\n\nOpen Scope positive_scope.\n";
@@ -130,7 +130,7 @@ let identifiers b =
   bprintf b "Close Scope positive_scope.\n";;
 
 (*****************************************************************************)
-(** signature *)
+(** printing function for [signature] *)
 
 let string_of_typ = function
   | AST.Tint -> "AST.Tint"
@@ -143,15 +143,64 @@ let signature b s =
     (coq_list typ) s.sig_args (option typ) s.sig_res;;
 
 (*****************************************************************************)
-(** structs and unions *)
+(** recursor on types *)
 
-let rec types_of_typelist = function
-  | Tnil -> []
-  | Tcons (t, tl) -> t :: types_of_typelist tl;;
+let rec fold f x = function
+  | Tvoid
+  | Tint _
+  | Tfloat _ -> x
+  | Tpointer t
+  | Tarray (t, _) -> fold f x t
+  | Tfunction (tl, t) -> fold_list f (fold f x t) tl
+  | Tstruct (id, fl)
+  | Tunion (id, fl) -> fold_field f (f id x) fl
+  | Tcomp_ptr id -> f id x
 
-let rec fields_of_fieldlist = function
-  | Fnil -> []
-  | Fcons (id, t, fl) -> (id,t) :: fields_of_fieldlist fl;;
+and fold_list f x = function
+  | Tnil -> x
+  | Tcons (t, tl) -> fold_list f (fold f x t) tl
+
+and fold_field f x = function
+  | Fnil -> x
+  | Fcons (_, t, fl) -> fold_field f (fold f x t) fl;;
+
+(*****************************************************************************)
+(** iterator on types *)
+
+let rec iter f = function
+  | Tvoid
+  | Tint _
+  | Tfloat _ -> ()
+  | Tpointer t
+  | Tarray (t, _) -> iter f t
+  | Tfunction (tl, t) -> iter f t; iter_list f tl
+  | Tstruct (id, fl)
+  | Tunion (id, fl) -> f id; iter_field f fl
+  | Tcomp_ptr id -> f id
+
+and iter_list f = function
+  | Tnil -> ()
+  | Tcons (t, tl) -> iter f t; iter_list f tl
+
+and iter_field f = function
+  | Fnil -> ()
+  | Fcons (_, t, fl) -> iter f t; iter_field f fl;;
+
+(*****************************************************************************)
+(** test whether an [ident] occurs in a type *)
+
+exception Found;;
+
+let occurs_in id t =
+  try iter (fun id' -> if id' = id then raise Found) t; false
+  with Found -> true;;
+
+let occurs_in_field id fl =
+  try iter_field (fun id' -> if id' = id then raise Found) fl; false
+  with Found -> true;;
+
+(*****************************************************************************)
+(** (coq_type,ident) map *)
 
 module TypOrd = struct
   type t = coq_type
@@ -172,10 +221,41 @@ let coq_type_of_kind k id fl =
 let add_type_kind k id fl =
   let t = coq_type_of_kind k id fl in
     try TypMap.find t !typMap
-    with Not_found ->
-      let s = string_of_ident id in
-	typMap := TypMap.add t s !typMap;
-	s;;
+    with Not_found -> typMap := TypMap.add t id !typMap; id;;
+
+(*****************************************************************************)
+(** ordering of type definitions *)
+
+module IdOrd = struct
+  type t = ident;;
+  let compare = Pervasives.compare;;
+end;;
+
+module TC = Util.TransClos (IdOrd);;
+
+let tc = ref TC.empty;;
+
+let init_tc () =
+  tc := TypMap.fold
+    (fun t id g -> fold (fun id' g -> TC.trans_add_edge id id' g) g t)
+    !typMap TC.empty;;
+
+let cmp (_,id1) (_,id2) =
+  match TC.mem id1 id2 !tc, TC.mem id2 id1 !tc with
+    | true, false -> 1
+    | false, true -> -1
+    | _, _ -> 0;;
+
+(*****************************************************************************)
+(** functions for printing Coq definitions for non-cyclic structs and unions *)
+
+let rec types_of_typelist = function
+  | Tnil -> []
+  | Tcons (t, tl) -> t :: types_of_typelist tl;;
+
+let rec fields_of_fieldlist = function
+  | Fnil -> []
+  | Fcons (id, t, fl) -> (id,t) :: fields_of_fieldlist fl;;
 
 let rec coq_type b = function
   | Tvoid -> string b "void"
@@ -188,7 +268,7 @@ let rec coq_type b = function
   | Tfloat F32 -> string b "float32"
   | Tfloat F64 -> string b "float64"
   | Tpointer t -> app1 b "`*`" coq_type_ref t
-  | Tarray (t, n) -> app2 b "Tarray" coq_type_ref t coq_Z n
+  | Tarray (t, n) -> app2 b "Tarray" pcoq_type_ref t coq_Z n
   | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type_ref t
   | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist fl
   | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist fl
@@ -223,8 +303,12 @@ and coq_type_ref b t =
     | Tarray _
     | Tfunction _
     | Tcomp_ptr _ -> coq_type b t
-    | Tstruct (id, fl) -> prefix "typ_" string b (add_type_kind Struct id fl)
-    | Tunion (id, fl) -> prefix "typ_" string b (add_type_kind Union id fl)
+    | Tstruct (id, fl) ->
+	if occurs_in_field id fl then coq_type b t
+	else prefix "typ_" ident b (add_type_kind Struct id fl)
+    | Tunion (id, fl) ->
+	if occurs_in_field id fl then coq_type b t
+	else prefix "typ_" ident b (add_type_kind Union id fl)
 
 and pcoq_type_ref b t =
   match t with
@@ -258,28 +342,17 @@ let pcoq_type_ref b t =
     | Tstruct _
     | Tunion _ -> par coq_type_ref b t;;
 
-let coq_type_ref2 b t =
-  match t with
-    | Tvoid
-    | Tint _
-    | Tfloat _ -> coq_type_ref b t
-    | Tpointer _
-    | Tarray _
-    | Tfunction _
-    | Tcomp_ptr _
-    | Tstruct _
-    | Tunion _ -> par coq_type_ref b t;;
-
 let params = coq_list (prefix "\n" (coq_pair2 ident coq_type_ref));;
 
 let structs_and_unions b =
   bprintf b "\n(* structs and unions *)\n\n";
-  TypMap.iter
-    (fun t s -> bprintf b "Definition typ_%s := %a.\n\n" s coq_type t)
-    !typMap;;
+  init_tc ();
+  List.iter
+    (fun (t,id) -> bprintf b "Definition typ_%a := %a.\n\n" ident id coq_type t)
+    (List.sort cmp (TypMap.bindings !typMap));;
 
 (*****************************************************************************)
-(** expr *)
+(** printing functions for [expr] *)
 
 let string_of_unary_operation = function
   | Onotbool -> "!"
@@ -399,7 +472,7 @@ and pexpr b e =
 and exprlist b el = bprintf b "E%a" (coq_list expr) (exprs_of_exprlist el);;
 
 (*****************************************************************************)
-(** statement *)
+(** printing functions for [statement] *)
 
 let label = ident;;
 
@@ -427,7 +500,7 @@ and labeled_statements b = function
       int i statement s labeled_statements ls;;
 
 (*****************************************************************************)
-(** global variables *)
+(** functions for printing Coq definitions for global variables *)
 
 let prog_var_ref b (Coq_pair (id, _)) =
   bprintf b "(%a,gv_%a)" ident id ident id;;
@@ -508,7 +581,7 @@ let global_variables b p =
     (coq_list prog_var_ref) p.prog_vars;;
 
 (*****************************************************************************)
-(** functions *)
+(** functions for printing Coq definitions for C functions *)
 
 let prog_funct_ref b (Coq_pair (id, _)) = bprintf b "fun_%a" ident id;;
 
@@ -537,16 +610,13 @@ let functions b p =
     (coq_list prog_funct_ref) p.prog_funct;;
 
 (*****************************************************************************)
-(** program *)
+(** printing function for [program] *)
 
 let program b p = bprintf b
   "\n(* program *)\n\nDefinition program : AST.program fundef type :=\n  \
-    {| prog_funct := functions;\n    \
-       prog_main := %a;\n    \
+    {| prog_funct := functions;\n     \
+       prog_main := %a;\n     \
        prog_vars := global_variables |}.\n" ident p.prog_main;;
-
-(*****************************************************************************)
-(** main printing function for Csyntax.program *)
 
 let to_buffer p =
   let b = Buffer.create 10000 and b2 = Buffer.create 10000 in
