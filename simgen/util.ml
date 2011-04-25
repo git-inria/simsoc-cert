@@ -27,8 +27,8 @@ let list_iteri f l =
   in aux 0 f l;;
 
 (* [separate f l] produces a partition of [l], determined by the [f] function.
- * Intuitively, we can easily retrieve [l] from the partition, by applying a
- * [List.flatten] to it (modulo a call to [List.map snd]). *)
+   Intuitively, we can easily retrieve [l] from the partition, by applying a
+   [List.flatten] to it (modulo a call to [List.map snd]). *)
 let separate tag = 
   let cons b1 l = b1, List.rev l in
   function
@@ -50,17 +50,18 @@ let separate tag =
 
 (* Like List.map2, but for arrays *)
 (* Code based on the OCaml implementation of Array.map *)
-let array_map2 f a b =
-  let l = Array.length a in
-    assert (l = Array.length b);
-    if l = 0 then [||] else
-      begin
-        let r = Array.create l (f (Array.unsafe_get a 0) (Array.unsafe_get b 0)) in
-          for i = 1 to l - 1 do
-            Array.unsafe_set r i (f (Array.unsafe_get a i) (Array.unsafe_get b i))
-          done;
-          r
-      end;;
+let array_map2 =
+  let get = Array.unsafe_get in
+    fun f a b ->
+      let l = Array.length a in
+	assert (l = Array.length b);
+	if l = 0 then [||] else begin
+	  let r = Array.create l (f (get a 0) (get b 0)) in
+            for i = 1 to l - 1 do
+              Array.set r i (f (get a i) (get b i))
+            done;
+            r
+	end;;
 
 (*****************************************************************************)
 (** functions on strings *)
@@ -198,3 +199,37 @@ let get_debug, set_debug = get_set_bool();;
 let fverbose fmt f x = if get_verbose() then eprintf fmt f x else ();;
 
 let verbose x = if get_verbose() then eprintf "%s" x else ();;
+
+(*****************************************************************************)
+(** transitive closure of a graph (code taken from CoLoR) *)
+(*****************************************************************************)
+
+module TransClos (X : Set.OrderedType) = struct
+
+  module XSet = Set.Make (X);;
+  module XMap = Map.Make (X);;
+
+  type graph = XSet.t XMap.t;;
+
+  let empty = XMap.empty;;
+
+  let succs x g = try XMap.find x g with Not_found -> XSet.empty;;
+
+  let mem x y g = XSet.mem y (succs x g);;
+
+  let add_edge x y g = XMap.add x (XSet.add y (succs x g)) g;;
+
+  let add_pred x s w sw g =
+      if XSet.mem x sw then XSet.fold (add_edge w) s g else g;;
+
+  let trans_add_edge x y g =
+    (* if (x,y) is already in g, do nothing *)
+    if XSet.mem y (succs x g) then g
+      (* otherwise, for every pair (w,x) in g,
+	 add a pair (w,z) for every z in {y} U (succs y g) *)
+    else let ysy = XSet.add y (succs y g) in
+      XMap.fold (add_pred x ysy) g
+	(* and, for every z in {y} U (succs y g), add a pair (x,z) *)
+	(XSet.fold (add_edge x) ysy g);;
+
+end;;
