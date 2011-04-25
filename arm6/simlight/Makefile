@@ -7,20 +7,26 @@ COQ_INCLUDES := -I $(DIR)/coq
 
 include $(DIR)/Makefile.common
 
+default: simlight
+
+######################################################################
+# compilation of simlight
+
 CPPFLAGS := -I$(DIR)/tools/bin2elf
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 #CC := ccomp
 
-SOURCES := slv6_iss.c common.c slv6_condition.c slv6_math.c \
-  arm_mmu.c slv6_mode.c slv6_processor.c slv6_status_register.c \
-  arm_system_coproc.c elf_loader.c arm_not_implemented.c
-
-HEADERS := $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
-  arm_not_implemented.h
+SOURCES := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
+	slv6_mode.c slv6_status_register.c slv6_processor.c slv6_condition.c \
+	arm_not_implemented.c slv6_iss.c
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
-default: simlight
+HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h arm_mmu.h \
+	arm_system_coproc.h slv6_math.h \
+	slv6_mode.h slv6_status_register.h slv6_processor.h slv6_condition.h \
+	arm_not_implemented.h slv6_iss_c_prelude.h slv6_iss_h_prelude.h \
+	slv6_iss.h
 
 simlight: $(OBJECTS)
 	$(CC) $^ -o simlight
@@ -41,9 +47,12 @@ clean::
 	rm -f $(OBJECTS) slv6_iss.[ch] simlight simlight.opt *.gcda *.gcno
 	rm -rf simlight.opt.dSYM
 
+######################################################################
+# representation of simlight in Coq
+
 .PHONY: proof
 
-proof: libcoq slv6_iss.vo simlight.vo
+proof: libcoq all.vo
 
 .PRECIOUS: $(SOURCES:%.c=%.v) simlight.v
 
@@ -52,3 +61,16 @@ proof: libcoq slv6_iss.vo simlight.vo
 
 clean::
 	rm -f *.v *.glob *.vo
+
+simlight.dep: FORCE
+	grep '#include ' $(HEADERS) $(SOURCES) simlight.c | sed -e 's|#include||' -e 's|["<>]||g' -e 's|\([^/]*\)/||g' > $@
+
+clean::
+	rm -f simlight.dep
+
+.PHONY: depend
+
+depend: simlight.ps
+
+all.c: $(HEADERS) $(SOURCES)
+	cat $(HEADERS) $(SOURCES) | sed -e 's|#include "\(.*\)|//#include "\1|' -e 's|#include <elf.h>|//#include <elf.h>|' > $@
