@@ -34,19 +34,6 @@ pdftotext: arm6.pdf
 ###########################################################################
 # patch application
 
-arm6inst.txt: arm6.txt arm6inst.patch
-	cp -f $< $@ && patch $@ < arm6inst.patch
-
-arm6dec.txt: arm6.txt arm6dec.patch
-	cp -f $< $@ && patch $@ < arm6dec.patch
-
-arm6syntax.txt: arm6.txt arm6syntax.patch
-	cp -f $< $@ && patch $@ < arm6syntax.patch
-
-clean::
-	rm -f arm6inst.txt arm6dec.txt arm6syntax.txt \
-		arm6inst.txt.orig arm6dec.txt.orig arm6syntax.txt.orig
-
 arm6patched.txt: arm6.txt arm6patch.ed
 	cp -f $< $@ && ed -s $@ < arm6patch.ed
 
@@ -54,22 +41,7 @@ clean::
 	rm -f arm6patched.txt
 
 ###########################################################################
-# update patches
-
-.PHONY: patch-inst
-
-patch-inst: arm6.txt arm6inst.txt
-	-diff -u $+ > arm6inst.patch
-
-.PHONY: patch-dec
-
-patch-dec: arm6.txt arm6dec.txt
-	-diff -u $+ > arm6dec.patch
-
-.PHONY: patch-syntax
-
-patch-syntax: arm6.txt arm6syntax.txt
-	-diff -u $+ > arm6syntax.patch
+# update patch
 
 .PHONY: patch
 
