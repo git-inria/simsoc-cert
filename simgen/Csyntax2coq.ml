@@ -72,9 +72,18 @@ let coq_pair2 f g b (Coq_pair (x,y)) = bprintf b "%a -: %a" f x g y;;
 
 let coq_Z b x = int32 b (camlint_of_z x);;
 
-let int b x = int32 b (camlint_of_coqint x);;
+let int b x =
+  let x = camlint_of_coqint x in
+    if x < 0l then par int32 b x else int32 b x;;
 
 let positive b x = int32 b (camlint_of_positive x);;
+
+let int8 b x =
+  match Int32.to_int (camlint_of_coqint x) with
+    | 10 -> string b "\n"
+    | 34 -> ()
+    | x when x >= 32 && x <= 126 -> bprintf b "%c" (Char.chr x)
+    | x -> bprintf b "%03d" x;;
 
 let float = todo;;
 
@@ -491,16 +500,7 @@ and labeled_statements b = function
 
 let prog_var_ref b (Coq_pair (id, _)) =
   bprintf b "(%a,gv_%a)" ident id ident id;;
-
-let is_printable x = (x >= 32 && x <= 126) || (x >= 9 && x <= 10);;
-
-let int8 b x =
-  match Int32.to_int (camlint_of_coqint x) with
-    | 10 -> string b "\n"
-    | 34 -> ()
-    | x when x >= 32 && x <= 126 -> bprintf b "%c" (Char.chr x)
-    | x -> bprintf b "%03d" x;;
-
+ 
 let init_data b = function
   | Init_int8 x -> bprintf b "\"%a\"" int8 x
   | Init_int16 x -> app1 b "Init_int16" int x
@@ -509,6 +509,8 @@ let init_data b = function
   | Init_float64 x -> app1 b "Init_float64" float64 x
   | Init_space x -> app1 b "Init_space" coq_Z x
   | Init_addrof (id, x) -> app2 b "Init_addrof" ident id int x;;
+
+let is_printable x = (x >= 32 && x <= 126) || (x >= 9 && x <= 10);;
 
 let char_of_init_data = function
   | Init_int8 x ->
