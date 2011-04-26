@@ -12,8 +12,8 @@ default: simlight
 ######################################################################
 # compilation of simlight
 
-CPPFLAGS := -I$(DIR)/tools/bin2elf
-CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
+CPPFLAGS := #-I$(DIR)/tools/bin2elf
+#CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 #CC := ccomp
 
 SOURCES := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
@@ -44,8 +44,7 @@ simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
 
 clean::
-	rm -f $(OBJECTS) slv6_iss.[ch] simlight simlight.opt *.gcda *.gcno
-	rm -rf simlight.opt.dSYM
+	rm -f $(OBJECTS) slv6_iss.[ch] simlight simlight.opt
 
 ######################################################################
 # representation of simlight in Coq
@@ -54,13 +53,26 @@ clean::
 
 proof: libcoq all.vo
 
-.PRECIOUS: $(SOURCES:%.c=%.v) simlight.v
+.PRECIOUS: all.v
 
 %.v: %.c $(SIMGEN)
 	$(SIMGEN) -ocompcertc-c $< > $@
 
 clean::
-	rm -f *.v *.glob *.vo
+	rm -f all.v all.glob all.vo
+
+######################################################################
+# extraction
+
+ocaml: extraction-libcoq extraction
+	$(SHOW) ocamlbuild arm6/coq/extraction/all
+	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/all.d.byte \
+		arm6/coq/extraction/all.native
+
+extraction.v: all.vo
+
+######################################################################
+# dependency graph
 
 simlight.dep: FORCE
 	grep '#include ' $(HEADERS) $(SOURCES) simlight.c | sed -e 's|#include||' -e 's|["<>]||g' -e 's|\([^/]*\)/||g' > $@
@@ -71,6 +83,4 @@ clean::
 .PHONY: depend
 
 depend: simlight.ps
-
-all.c: $(HEADERS) $(SOURCES)
-	cat $(HEADERS) $(SOURCES) | sed -e 's|#include "\(.*\)|//#include "\1|' -e 's|#include <elf.h>|//#include <elf.h>|' > $@
+	gv $< &
