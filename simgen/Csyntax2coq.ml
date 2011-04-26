@@ -344,7 +344,7 @@ let structs_and_unions b =
 let string_of_unary_operation = function
   | Onotbool -> "!"
   | Onotint -> "`~"
-  | Oneg -> "-";;
+  | Oneg -> "`-";;
 
 let unary_operation = using string_of_unary_operation;;
 

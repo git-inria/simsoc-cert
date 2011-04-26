@@ -269,9 +269,9 @@ Notation "a :E: b" := (Econs a b) (at level 70, right associativity).
 Notation "E[ ]" := Enil.
 Notation "E[ a ; .. ; b ]" := (a :E: .. (b :E: Enil) ..).
 
-Notation "! x `: t" := (Eunop Onotbool x t) (at level 30).
-Notation "`~ x `: t" := (Eunop Onotint x t) (at level 30).
-Notation "- x `: t" := (Eunop Oneg x t) (at level 30).
+Notation "! x `: t" := (Eunop Onotbool x t) (at level 10).
+Notation "`~ x `: t" := (Eunop Onotint x t) (at level 10).
+Notation "`- x `: t" := (Eunop Oneg x t) (at level 10).
 
 Notation "x + y `: t" := (Ebinop Oadd x y t) (at level 20).
 Notation "x - y `: t" := (Ebinop Osub x y t) (at level 20).
@@ -297,7 +297,7 @@ Notation "x *= y `: t1 `: t2" := (Eassignop Omul x y t1 t2) (at level 8).
 Notation "x /= y `: t1 `: t2" := (Eassignop Odiv x y t1 t2) (at level 8).
 Notation "x %= y `: t1 `: t2" := (Eassignop Omod x y t1 t2) (at level 8).
 Notation "x &= y `: t1 `: t2" := (Eassignop Oand x y t1 t2) (at level 8).
-Notation "x |= y `: t1 `: t2" := (Eassignop Oor x y t1 t2) (at level 8).
+Notation "x `|= y `: t1 `: t2" := (Eassignop Oor x y t1 t2) (at level 8).
 Notation "x ^= y `: t1 `: t2" := (Eassignop Oxor x y t1 t2) (at level 8).
 Notation "x <<= y `: t1 `: t2" := (Eassignop Oshl x y t1 t2) (at level 8).
 Notation "x >>= y `: t1 `: t2" := (Eassignop Oshr x y t1 t2) (at level 8).
@@ -331,4 +331,4 @@ Notation "'skip'" := (Sskip).
 Notation "'switch'" := (Sswitch).
 
 Notation "`case i `: s :L: ls" := (LScase i s ls) (at level 70).
-Notation "'default' `: s" := (LSdefault s) (at level 3).
+Notation "'default' `: s" := (LSdefault s) (at level 80).
