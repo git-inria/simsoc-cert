@@ -11,25 +11,10 @@ open Csyntax;;
 open Datatypes;;
 open Printf;;
 open Camlcoq;;
+open Util;;
 
 (*****************************************************************************)
 (** printing functions for basic OCaml data structures *)
-
-let string b s = bprintf b "%s" s;;
-
-let int32 b i = bprintf b "%ld" i;;
-
-let pair f sep g b (x, y) = bprintf b "%a%s%a" f x sep g y;;
-let first f b (x,_) = f b x;;
-let second f b (_,x) = f b x;;
-
-let par f b x = bprintf b "(%a)" f x;;
-
-let prefix s f b x = bprintf b "%s%a" s f x;;
-let postfix s f b x = bprintf b "%a%s" f x s;;
-let endline f b x = postfix "\n" f b x;;
-
-let list elt b = List.iter (elt b);;
 
 let using string_of_elt b x = string b (string_of_elt x);;
 
@@ -79,7 +64,7 @@ let option elt b = function
 
 let coq_list elt b = function
   | [] -> bprintf b "[]"
-  | x :: l -> bprintf b "[%a%a]" elt x (list (prefix "; " elt)) l;;
+  | x :: l -> bprintf b "[%a%a]" elt x (list_iter (prefix "; " elt)) l;;
 
 let coq_pair f g b (Coq_pair (x, y)) = bprintf b "(%a,%a)" f x g y;;
 
@@ -231,20 +216,21 @@ module IdOrd = struct
   let compare = Pervasives.compare;;
 end;;
 
-module TC = Util.TransClos (IdOrd);;
+module TC = TransClos (IdOrd);;
 
-let tc = ref TC.empty;;
+let lm = ref TC.XMap.empty;;
 
-let init_tc () =
-  tc := TypMap.fold
-    (fun t id g -> fold (fun id' g -> TC.trans_add_edge id id' g) g t)
-    !typMap TC.empty;;
+let compute_typ_order () =
+  lm := TC.level_map
+    (TypMap.fold
+       (fun t id g ->
+	  fold (fun id' g ->
+		  if id = id' then g else TC.trans_add_edge id id' g) g t)
+       !typMap TC.empty);;
 
-let cmp (_,id1) (_,id2) =
-  match TC.mem id1 id2 !tc, TC.mem id2 id1 !tc with
-    | true, false -> 1
-    | false, true -> -1
-    | _, _ -> 0;;
+let level id = try TC.XMap.find id !lm with Not_found -> 0;;
+
+let cmp (_, id1) (_, id2) = Pervasives.compare (level id1) (level id2);;
 
 (*****************************************************************************)
 (** functions for printing Coq definitions for non-cyclic structs and unions *)
@@ -267,11 +253,11 @@ let rec coq_type b = function
   | Tint (I32, Unsigned) -> string b "uint32"
   | Tfloat F32 -> string b "float32"
   | Tfloat F64 -> string b "float64"
-  | Tpointer t -> app1 b "`*`" coq_type_ref t
-  | Tarray (t, n) -> app2 b "Tarray" pcoq_type_ref t coq_Z n
-  | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type_ref t
-  | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist fl
-  | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist fl
+  | Tpointer t -> app1 b "`*`" coq_type t
+  | Tarray (t, n) -> app2 b "Tarray" pcoq_type t coq_Z n
+  | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type t
+  | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist_ref fl
+  | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist_ref fl
   | Tcomp_ptr id -> app1 b "Tcomp_ptr" ident id
 
 and pcoq_type b t =
@@ -289,20 +275,20 @@ and pcoq_type b t =
 and typelist b tl =
   bprintf b "T%a" (coq_list coq_type) (types_of_typelist tl)
 
-and fieldlist b fl =
+(*REMOVE:and fieldlist b fl =
   bprintf b "\nF%a" (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl)
 
-and field b = pair ident " -: " coq_type b
+and field b = pair ident " -: " coq_type_ref b*)
 
 and coq_type_ref b t =
   match t with
     | Tvoid
     | Tint _
     | Tfloat _
-    | Tpointer _
-    | Tarray _
-    | Tfunction _
     | Tcomp_ptr _ -> coq_type b t
+    | Tpointer t -> app1 b "`*`" coq_type_ref t
+    | Tarray (t, n) -> app2 b "Tarray" pcoq_type_ref t coq_Z n
+    | Tfunction (tl, t) -> app2 b "Tfunction" typelist_ref tl pcoq_type_ref t
     | Tstruct (id, fl) ->
 	if occurs_in_field id fl then coq_type b t
 	else prefix "typ_" ident b (add_type_kind Struct id fl)
@@ -326,9 +312,10 @@ and typelist_ref b tl =
   bprintf b "T%a" (coq_list coq_type_ref) (types_of_typelist tl)
 
 and fieldlist_ref b fl =
-  bprintf b "F%a" (coq_list field_ref) (fields_of_fieldlist fl)
+  bprintf b "\nF%a" (coq_list (prefix "\n  " field_ref))
+    (fields_of_fieldlist fl)
 
-and field_ref b = pair ident "`:" coq_type_ref b;;
+and field_ref b = pair ident " -: " coq_type_ref b;;
 
 let pcoq_type_ref b t =
   match t with
@@ -345,8 +332,8 @@ let pcoq_type_ref b t =
 let params = coq_list (prefix "\n" (coq_pair2 ident coq_type_ref));;
 
 let structs_and_unions b =
+  compute_typ_order ();
   bprintf b "\n(* structs and unions *)\n\n";
-  init_tc ();
   List.iter
     (fun (t,id) -> bprintf b "Definition typ_%a := %a.\n\n" ident id coq_type t)
     (List.sort cmp (TypMap.bindings !typMap));;
@@ -415,7 +402,7 @@ let exptyp b t = bprintf b "T%d" (int_of_exptyp t);;
 let of_exptyp b t = bprintf b "`:%a" exptyp t;;
 
 let expr_types b =
-  bprintf b "\n(* expression types *)\n\n";
+  bprintf b "(* expression types *)\n\n";
   TypMap.iter
     (fun t k -> bprintf b "Definition T%d := %a.\n" k coq_type_ref t)
     !exptypMap;;
@@ -577,7 +564,7 @@ let prog_var_def b (Coq_pair (id, v)) =
 let global_variables b p =
   bprintf b "\n(* global variables *)\n\n%a\
     Definition global_variables := %a.\n"
-    (list prog_var_def) p.prog_vars
+    (list_iter prog_var_def) p.prog_vars
     (coq_list prog_var_ref) p.prog_vars;;
 
 (*****************************************************************************)
@@ -606,7 +593,7 @@ let prog_funct_def b (Coq_pair (id, fd)) =
 
 let functions b p =
   bprintf b "\n(* functions *)\n\n%aDefinition functions := %a.\n"
-    (list prog_funct_def) p.prog_funct
+    (list_iter prog_funct_def) p.prog_funct
     (coq_list prog_funct_ref) p.prog_funct;;
 
 (*****************************************************************************)
@@ -619,14 +606,17 @@ let program b p = bprintf b
        prog_vars := global_variables |}.\n" ident p.prog_main;;
 
 let to_buffer p =
-  let b = Buffer.create 10000 and b2 = Buffer.create 10000 in
+  let b = Buffer.create 100000
+  and b_gv_fun = Buffer.create 100000
+  and b_exp_typ = Buffer.create 10000 in
     init_identTable ();
     string b header;
     identifiers b;
-    global_variables b2 p;
-    functions b2 p;
+    global_variables b_gv_fun p;
+    functions b_gv_fun p;
+    expr_types b_exp_typ;
     structs_and_unions b;
-    expr_types b;
-    Buffer.add_buffer b b2;
+    Buffer.add_buffer b b_exp_typ;
+    Buffer.add_buffer b b_gv_fun;
     program b p;
     b;;
