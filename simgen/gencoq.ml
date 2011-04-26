@@ -462,6 +462,9 @@ let simplify_loc_st s = function
   | true, false -> sprintf "<.loc.> %s" s
   | _ -> s
 
+let begins_with b s = 
+  let n = String.length s in Buffer.length b >= n && Buffer.sub b 0 n = s;;
+
 let rec inst loc nm k b i = indent b k; inst_aux loc nm k b i
 
 and decl_loc loc nm f b x = 
