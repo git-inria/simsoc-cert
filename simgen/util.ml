@@ -8,6 +8,46 @@ Functions of general interest about lists, printing, etc.
 open Printf;;
 
 (*****************************************************************************)
+(** warnings or errors *)
+(*****************************************************************************)
+
+let warning s = eprintf "warning: %s\n" s;;
+
+let error s = eprintf "error: %s\n" s; exit 1;;
+
+(*****************************************************************************)
+(** generic functions for handling references *)
+(*****************************************************************************)
+
+let get_set init =
+  let r = ref init in
+    (fun () -> !r),
+    (fun v -> r := v);;
+
+let get_set_bool() =
+  let r = ref false in
+    (fun () -> !r),
+    (fun () -> r := true);;
+
+let is_set_get_set m init =
+  let r = ref init and s = ref false in
+    (fun () -> !s),
+    (fun () -> if !s then !r else error (sprintf "no %s provided" m)),
+    (fun v -> if !s then error (sprintf "%s already provided" m)
+              else (r := v; s := true));;
+
+(*****************************************************************************)
+(** verbose and debug modes *)
+(*****************************************************************************)
+
+let get_verbose, set_verbose = get_set_bool();;
+let get_debug, set_debug = get_set_bool();;
+
+let fverbose fmt f x = if get_verbose() then eprintf fmt f x else ();;
+
+let verbose x = if get_verbose() then eprintf "%s" x else ();;
+
+(*****************************************************************************)
 (** functions on lists *)
 (*****************************************************************************)
 
@@ -125,15 +165,11 @@ let option_exists f = function
 (*****************************************************************************)
 
 let int b n = bprintf b "%d" n;;
-
 let int32 b n = bprintf b "%ld" n;;
-
 let string b s = bprintf b "%s" s;;
 
 let prefix p f b x = bprintf b "%s%a" p f x;;
-
 let postfix p f b x = bprintf b "%a%s" f x p;;
-
 let endline f b x = postfix "\n" f b x;;
 
 let list_iter f b xs = List.iter (f b) xs;;
@@ -149,56 +185,20 @@ let option p f b = function
   | None -> ()
   | Some x -> prefix p f b x;;
 
+let pair f sep g b (x,y) = bprintf b "(%a%s%a)" f x sep g y;;
+let first f b (x,_) = f b x;;
+let second f b (_,x) = f b x;;
+
 let par f b x = bprintf b "(%a)" f x;;
 
 let rec indent b i = if i > 0 then bprintf b " %a" indent (i-1);;
 
+let berr = Buffer.create 10000;;
+
+at_exit (fun () -> Buffer.output_buffer stderr berr);;
+
 let print f x =
   let b = Buffer.create 10000 in f b x; Buffer.output_buffer stdout b;;
-
-let begins_with b s = 
-  let lg = String.length s in
-  Buffer.length b >= lg && Buffer.sub b 0 lg = s
-
-(*****************************************************************************)
-(** warnings or errors *)
-(*****************************************************************************)
-
-let warning s = eprintf "warning: %s\n" s;;
-
-let error s = eprintf "error: %s\n" s; exit 1;;
-
-(*****************************************************************************)
-(** generic functions for handling references *)
-(*****************************************************************************)
-
-let get_set init =
-  let r = ref init in
-    (fun () -> !r),
-    (fun v -> r := v);;
-
-let get_set_bool() =
-  let r = ref false in
-    (fun () -> !r),
-    (fun () -> r := true);;
-
-let is_set_get_set m init =
-  let r = ref init and s = ref false in
-    (fun () -> !s),
-    (fun () -> if !s then !r else error (sprintf "no %s provided" m)),
-    (fun v -> if !s then error (sprintf "%s already provided" m)
-              else (r := v; s := true));;
-
-(*****************************************************************************)
-(** verbose and debug modes *)
-(*****************************************************************************)
-
-let get_verbose, set_verbose = get_set_bool();;
-let get_debug, set_debug = get_set_bool();;
-
-let fverbose fmt f x = if get_verbose() then eprintf fmt f x else ();;
-
-let verbose x = if get_verbose() then eprintf "%s" x else ();;
 
 (*****************************************************************************)
 (** transitive closure of a graph (code taken from CoLoR) *)
@@ -231,5 +231,24 @@ module TransClos (X : Set.OrderedType) = struct
       XMap.fold (add_pred x ysy) g
 	(* and, for every z in {y} U (succs y g), add a pair (x,z) *)
 	(XSet.fold (add_edge x) ysy g);;
+
+  let bindings g =
+    XMap.fold (fun x s l -> XSet.fold (fun y l -> (x,y)::l) s l) g [];;
+
+  let nodes g =
+    XMap.fold (fun x s l -> XSet.fold (fun y l -> y::l) s (x::l)) g [];;
+
+  let rec level x g =
+    let s = succs x g in
+      if s = XSet.empty then 0
+      else 1 + XSet.fold (fun y m -> max (level y g) m) s 0;;
+
+  let level_map g =
+    List.fold_left (fun m x -> XMap.add x (level x g) m) XMap.empty (nodes g);;
+
+  let set elt b = XSet.iter (bprintf b "%a," elt);;
+
+  let graph elt b =
+    XMap.iter (fun x s -> bprintf b "succs(%a)={%a}\n" elt x (set elt) s);;
 
 end;;
