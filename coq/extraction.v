@@ -6,7 +6,7 @@ See the COPYRIGHTS and LICENSE files.
 Extraction of the Arm6 simulator.
 *)
 
-Require Extraction Simul.
+Require Extraction Simul Cnotations TypInfer.
 
 Cd "extraction".
 
@@ -16,3 +16,5 @@ Extraction Library Semantics.
 Extraction Library Simul.
 Extraction Library NaryFunctions.
 Extraction Library Bvector.
+Extraction Library Cnotations.
+Extraction Library TypInfer.
