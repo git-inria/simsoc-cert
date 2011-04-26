@@ -585,7 +585,7 @@ let external_function b ef =
 let fundef b = function
   | Internal f -> bprintf b "Internal\n  %a" coq_function f
   | External (ef, tl, t) -> bprintf b "External\n  %a\n  %a\n  %a"
-      external_function ef typelist tl pcoq_type t;;
+      external_function ef typelist_ref tl pcoq_type_ref t;;
 
 let prog_funct_def b (Coq_pair (id, fd)) =
   bprintf b "Definition fun_%a :=\n  (%a, %a).\n\n"
