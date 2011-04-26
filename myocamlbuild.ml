@@ -120,7 +120,7 @@ let arch, variant = (** we read the file compcert/Makefile.config to get the val
   find "ARCH", find "VARIANT"
 
 let l_compcert = List.map ((/) "compcert")
-  [ "lib" ; "common" ; arch / variant ; arch ; "backend" ; "cfrontend" ; "driver" 
+  [ "lib"; "common"; arch / variant; arch; "backend"; "cfrontend"; "driver" 
   ; "extraction" ]
 
 (** --------------------------------------------- *)
@@ -145,7 +145,7 @@ let _ = dispatch & function
         [ "arm6", l_compcert @ [ "arm6/extraction" ]
         ; "arm6/parsing", [ "simgen" ]
         ; "arm6/coq/extraction", [ "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ] 
-        ; "arm6/simlight/extraction", l_compcert
+        ; "arm6/simlight/extraction", l_compcert @ [ "coq/extraction" ]
         ; "arm6/test", l_compcert @ [ "arm6/coq" ; "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ; "arm6/coq/extraction" ; "arm6/test/extraction" ]
         ; "arm6/test/extraction", l_compcert @ [ "coq/extraction" ; "arm6/coq/extraction" ]
         ; "coq/extraction", l_compcert
