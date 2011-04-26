@@ -65,9 +65,9 @@ clean::
 # extraction
 
 ocaml: extraction-libcoq extraction
-	$(SHOW) ocamlbuild arm6/coq/extraction/all
-	$(HIDE) $(OCAMLBUILD) arm6/coq/extraction/all.d.byte \
-		arm6/coq/extraction/all.native
+	$(SHOW) ocamlbuild arm6/simlight/extraction/all
+	$(HIDE) $(OCAMLBUILD) arm6/simlight/extraction/all.d.byte \
+		arm6/simlight/extraction/all.native
 
 extraction.v: all.vo
 

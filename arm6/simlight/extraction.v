@@ -10,4 +10,5 @@ Require Extraction all.
 
 Cd "extraction".
 
+Extraction Library Cnotations.
 Extraction Library all.
