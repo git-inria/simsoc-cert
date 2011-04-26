@@ -3,7 +3,13 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 
 - norm.ml: moved elsewhere everything that is architecture-specific
 
-- in Csyntax2ocq, use Format instead of Printf
+- in Csyntax2coq, use Format instead of Printf
+
+- be more modular when generating the coq representation of c files:
+   instead of concatening all .c and .h files into a single file all.c
+   to convert it into a coq file all.v with simgen, make simgen
+   generate a coq file file.v for every file.c and put all common
+   definitions into another coq file required by the others.
 
 - move run_test.sh in a more approriate place
 
