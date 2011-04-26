@@ -5,8 +5,8 @@ See the COPYRIGHTS and LICENSE files.
    Main program.
 *)
 
-open Printf;;
 open Util;;
+open Printf;;
 open Arg;;
 open Lexing;;
 
@@ -308,12 +308,12 @@ let parse_input_files() =
 
 let genr_output() =
   verbose "code generation...\n";
+
   let print_csyntax c = 
     Buffer.output_buffer stdout 
-      ((if get_coq () then 
-          RawCoq_Csyntax_main.to_buffer
-        else
-          Csyntax2coq.to_buffer) c) in
+      (if get_coq () then RawCoq_Csyntax_main.to_buffer c
+       else Csyntax2coq.to_buffer c) in
+
   match get_output_type() with
 
     | PCout ->
