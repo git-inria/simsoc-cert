@@ -128,7 +128,7 @@ let signature b s =
     (coq_list typ) s.sig_args (option typ) s.sig_res;;
 
 (*****************************************************************************)
-(** recursor on types *)
+(** recursor on Tstruct or Tunion idents occuring in a [coq_type] *)
 
 let rec fold f x = function
   | Tvoid
@@ -139,7 +139,7 @@ let rec fold f x = function
   | Tfunction (tl, t) -> fold_list f (fold f x t) tl
   | Tstruct (id, fl)
   | Tunion (id, fl) -> fold_field f (f id x) fl
-  | Tcomp_ptr id -> f id x
+  | Tcomp_ptr _id -> x (* references to a struct or union are ignored *)
 
 and fold_list f x = function
   | Tnil -> x
@@ -150,7 +150,7 @@ and fold_field f x = function
   | Fcons (_, t, fl) -> fold_field f (fold f x t) fl;;
 
 (*****************************************************************************)
-(** iterator on types *)
+(** iterator on Tstruct or Tunion idents occuring in a [coq_type] *)
 
 let rec iter f = function
   | Tvoid
@@ -161,7 +161,7 @@ let rec iter f = function
   | Tfunction (tl, t) -> iter f t; iter_list f tl
   | Tstruct (id, fl)
   | Tunion (id, fl) -> f id; iter_field f fl
-  | Tcomp_ptr id -> f id
+  | Tcomp_ptr _id -> () (* references to a struct or union are ignored *)
 
 and iter_list f = function
   | Tnil -> ()
@@ -172,7 +172,7 @@ and iter_field f = function
   | Fcons (_, t, fl) -> iter f t; iter_field f fl;;
 
 (*****************************************************************************)
-(** test whether an [ident] occurs in a type *)
+(** test whether a Tstruct or Tunion ident occurs in a [coq_type] *)
 
 exception Found;;
 
@@ -209,7 +209,7 @@ let add_type_kind k id fl =
     with Not_found -> typMap := TypMap.add t id !typMap; id;;
 
 (*****************************************************************************)
-(** ordering of type definitions *)
+(** ordering of struct and union type definitions *)
 
 module IdOrd = struct
   type t = ident;;
@@ -233,7 +233,7 @@ let level id = try TC.XMap.find id !lm with Not_found -> 0;;
 let cmp (_, id1) (_, id2) = Pervasives.compare (level id1) (level id2);;
 
 (*****************************************************************************)
-(** functions for printing Coq definitions for non-cyclic structs and unions *)
+(** functions for printing Coq definitions for structs and unions *)
 
 let rec types_of_typelist = function
   | Tnil -> []
@@ -315,7 +315,7 @@ and fieldlist_ref b fl =
   bprintf b "\nF%a" (coq_list (prefix "\n  " field_ref))
     (fields_of_fieldlist fl)
 
-and field_ref b = pair ident " -: " coq_type_ref b;;
+and field_ref b (id, t) = bprintf b "%a -: %a" ident id coq_type_ref t;;
 
 let pcoq_type_ref b t =
   match t with
