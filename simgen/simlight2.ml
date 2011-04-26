@@ -68,8 +68,8 @@ See the COPYRIGHTS and LICENSE files.
 *)
 
 open Ast;;
-open Printf;;
 open Util;;
+open Printf;;
 open Dec;;
 open Codetype;;
 open Syntaxtype;;
