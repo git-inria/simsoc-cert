@@ -602,7 +602,7 @@ let functions b p =
 (** printing function for [program] *)
 
 let program b p = bprintf b
-  "\n(* program *)\n\nDefinition program : AST.program fundef type :=\n  \
+  "\n(* program *)\n\nDefinition p :=\n  \
     {| prog_funct := functions;\n     \
        prog_main := %a;\n     \
        prog_vars := global_variables |}.\n" ident p.prog_main;;
