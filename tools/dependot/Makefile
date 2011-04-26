@@ -11,14 +11,8 @@ default:
 
 .PHONY: check
 
-check: default exemple.dot
+check: exemple.dot
 	cmp exemple.dot exemple-ref.dot
 
-%.dot: %.dep
-	cat $< | ./dependot > $@
-
-%.ps: %.dep
-	cat $< | ./dependot | dot -Tps > $@
-
 clean::
-	rm -f dependot exemple.dot exemple.ps
+	rm -f dependot

@@ -87,17 +87,29 @@ COQDOC := coqdoc --html -toc -g -d html
 OCAMLBUILD := cd $(DIR) && ocamlbuild -j 2 -no-hygiene -no-links
 
 ######################################################################
-# executables
+# simgen
 
 SIMGEN := $(DIR)/simgen/main
 
 $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
+######################################################################
+# dependot
+
 DEPENDOT := $(DIR)/tools/dependot/dependot
 
 $(DEPENDOT): FORCE
 	$(MAKE) -C $(DIR)/tools/dependot
+
+%.dot: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< > $@
+
+%.ps: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< | dot -Tps > $@
+
+clean::
+	rm -f *.dot *.ps
 
 ######################################################################
 # otags
