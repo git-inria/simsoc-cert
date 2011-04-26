@@ -53,13 +53,18 @@ clean::
 
 proof: libcoq all.vo
 
+all.vo: $(DIR)/coq/Cnotations.vo
+
 .PRECIOUS: all.v
 
 %.v: %.c $(SIMGEN)
 	$(SIMGEN) -ocompcertc-c $< > $@
 
+all.c: $(HEADERS) $(SOURCES) simlight.c
+	cat $+ | sed -e 's|#include "\(.*\)|//#include "\1|' -e 's|#include <elf.h>|//#include <elf.h>|' > $@
+
 clean::
-	rm -f all.v all.glob all.vo
+	rm -f all.c all.v all.glob all.vo
 
 ######################################################################
 # extraction
