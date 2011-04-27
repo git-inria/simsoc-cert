@@ -84,7 +84,7 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     let vc = Validity.vcs_to_exp p.xprog.fvcs 
     and params = p.xprog.fparams in
       bprintf b "%a"
-        (list "" (Gencxx.dec_param p.xps vc)) params;
+        (list (Gencxx.dec_param p.xps vc)) params;
       (* integrate H1 and H2 (see for example thumb ADD (4)) *)
       if List.exists (fun (n,_,_) -> n = "H1") params then (
         let r = if List.exists (fun (n,_,_) -> n = "d") params then "d" else "n"
@@ -100,14 +100,14 @@ module DecoderGenerator (DC: DecoderConfig) = struct
       (* compute the "computed" parameters *)
       let aux (b: Buffer.t) ((n, t): (string * string)) : unit =
         bprintf b "  const %s %s = %s;\n" t n (compute_param n)
-      in bprintf b "%a" (list "" aux) p.xcs;
+      in bprintf b "%a" (list aux) p.xcs;
       (* execute the instruction *)
       bprintf b "%a" DC.action p;
       bprintf b "  return true;\n}\n"
   in
   let b = Buffer.create 10000 in
     bprintf b "#include \"%s_c_prelude.h\"\n\n" bn;
-    bprintf b "%a\n" (list "\n" instB) is;
+    bprintf b "%a\n" (list_sep "\n" instB) is;
     bprintf b "/* the main function, used by the ISS loop */\n";
     bprintf b "%a {\n" DC.main_prof k;
     bprintf b "  bool found = false;\n";
@@ -123,7 +123,7 @@ module DecoderGenerator (DC: DecoderConfig) = struct
     for i = 0 to class_count - 1 do
       bprintf b "  case %d: /* %s */\n" i (binary k i);
       if i+1=class_count || classes.(i) <> classes.(i+1) then
-        bprintf b "%a    break;\n" (list "" instA) classes.(i)
+        bprintf b "%a    break;\n" (list instA) classes.(i)
       else ()
     done;
     bprintf b "  }\n";
@@ -147,7 +147,7 @@ module DecExecConfig = struct
   let instr_call b id = bprintf b "try_exec_%s(proc,bincode)" id;;
   let action b (x: xprog) =
     let aux b (s,_) = bprintf b ",%s" s in
-      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list "" aux) x.xips;;
+      bprintf b "  slv6_X_%s(proc%a);\n" x.xprog.fid (list aux) x.xips;;
   let return_action = "return found;"
 end;;
 module DecExec = DecoderGenerator(DecExecConfig);;
@@ -177,7 +177,7 @@ module DecStoreConfig = struct
         bprintf b "  else\n  "
       );
       bprintf b "  instr->args.g0.id = SLV6_%s_ID;\n" x.xprog.fid;
-      bprintf b "%a" (list "" store) x.xips;;
+      bprintf b "%a" (list store) x.xips;;
   let return_action = "if (!found) instr->args.g0.id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;

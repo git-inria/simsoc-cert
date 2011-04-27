@@ -80,7 +80,7 @@ let rec exp (p: xprog) b = function
   | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
 
   | Fun (f, es) -> bprintf b "%s(%s%a)"
-      (Gencxx.func f) (implicit_arg f) (list ", " (exp p)) es
+      (Gencxx.func f) (implicit_arg f) (list_sep ", " (exp p)) es
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
   | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
   | SPSR (Some m) ->
@@ -124,32 +124,32 @@ and inst_aux p k b = function
   | Unpredictable -> bprintf b "unpredictable(\"%s\")" p.xprog.fid
   | Coproc (e, s, es) ->
       bprintf b "if (!slv6_%s_%s(proc,%a)) return"
-        p.xprog.finstr s (list "," (exp p)) (e::es)
+        p.xprog.finstr s (list_sep "," (exp p)) (e::es)
   | Affect (Var d, Coproc_exp (e, s, es)) ->
       bprintf b "if (!slv6_%s_%s(proc,&%s,%a)) return"
-        p.xprog.finstr s d (list "," (exp p)) (e::es)
+        p.xprog.finstr s d (list_sep "," (exp p)) (e::es)
   | Affect (Reg (r, None), Coproc_exp (e, s, es)) ->
       bprintf b "if (!slv6_%s_%s(proc,addr_of_reg(proc,%a),%a)) return"
-        p.xprog.finstr s (exp p) r (list "," (exp p)) (e::es)
+        p.xprog.finstr s (exp p) r (list_sep "," (exp p)) (e::es)
   | Affect (dst, src) -> affect p k b dst src
   | Proc ("ClearExclusiveByAddress" as f, es) ->
       bprintf b "%s%d(%s%a)"
-        f (List.length es) (implicit_arg f) (list ", " (exp p)) es
+        f (List.length es) (implicit_arg f) (list_sep ", " (exp p)) es
   | Proc (f, es) ->
-      bprintf b "%s(%s%a)" f (implicit_arg f) (list ", " (exp p)) es
+      bprintf b "%s(%s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
 
   | Block [] -> ()
   | Block (Block _ | For _ | While _ | If _ | Case _ as i :: is) ->
-      bprintf b "%a\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
+      bprintf b "%a\n%a" (inst_aux p k) i (list_sep "\n" (inst p k)) is
   | Block (i :: is) ->
-      bprintf b "%a;\n%a" (inst_aux p k) i (list "\n" (inst p k)) is
+      bprintf b "%a;\n%a" (inst_aux p k) i (list_sep "\n" (inst p k)) is
 
   | Let ((_, n), ns, is, _) ->
       bprintf b "function %s(%a) {\n%a%a\n  }" n   
-	(list ", " (fun b (ty, x) -> 
+	(list_sep ", " (fun b (ty, x) -> 
 	  string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty x) x))) ns
-	indent k   (list "" (inst p (k+2))) is
+	indent k   (list (inst p (k+2))) is
 
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
@@ -159,7 +159,7 @@ and inst_aux p k b = function
 
   | Case (e, s, o) ->
       bprintf b "switch (%a) {\n%a%a  default:\n%a\n  }"
-        (exp p) e (list "" (case_aux p k)) s indent k
+        (exp p) e (list (case_aux p k)) s indent k
 	(fun b -> function
 	  | None -> bprintf b "%aabort();" indent (k+2)
 	  | Some i -> inst p (k+2) b i) o
@@ -255,10 +255,10 @@ let prog_expanded b (p: xprog) =
     bprintf b "%avoid slv6_X_%s(struct SLv6_Processor *proc%a)\n{\n%a%a%a%a\n}\n"
       comment p
       p.xprog.fid
-      (list "" Gencxx.prog_arg) p.xips
+      (list Gencxx.prog_arg) p.xips
       check_cond p 
-      (list "" Gencxx.inreg_load) inregs
-      (list "" Gencxx.local_decl) p.xls
+      (list Gencxx.inreg_load) inregs
+      (list Gencxx.local_decl) p.xls
       (inst p 2) p.xprog.finst;;
 
 (* Version 2: The arguments are passed in a struct *)
@@ -272,17 +272,17 @@ let prog_grouped b (p: xprog) =
       bprintf b "  const %s %s = instr->args.%s.%s;\n" t n (union_id p) n
     in
       bprintf b "%a%a%a%a%a\n}\n"
-        (list "" expand) p.xips
+        (list expand) p.xips
         check_cond p
-        (list "" Gencxx.inreg_load) inregs
-        (list "" Gencxx.local_decl) p.xls
+        (list Gencxx.inreg_load) inregs
+        (list Gencxx.local_decl) p.xls
         (inst p 2) p.xprog.finst;;
 
 (* Declaration of the functions. This may be printed in a header file (.h) *)
 (* Version 1: The list of arguemetns is expanded *)
 let decl_expanded b x =
   bprintf b "%aEXTERN_C void slv6_X_%s(struct SLv6_Processor*%a);\n"
-    comment x x.xprog.fid (list "" Gencxx.prog_arg) x.xips;;
+    comment x x.xprog.fid (list Gencxx.prog_arg) x.xips;;
 
 (* Version 2: The arguments are passed in a struct *)
 let decl_grouped b x =
@@ -316,16 +316,16 @@ let semantics_functions bn (xs: xprog list) (v: string) decl prog =
     bprintf bh "\nBEGIN_SIMSOC_NAMESPACE\n";
     bprintf bh "\nstruct SLv6_Processor;\n";
     bprintf bh "struct SLv6_Instruction;\n";
-    bprintf bh "\n%a" (list "\n" decl) xs;
+    bprintf bh "\n%a" (list_sep "\n" decl) xs;
     bprintf bh "\nEND_SIMSOC_NAMESPACE\n";
     bprintf bh "\n#endif /* SLV6_ISS_%s_H */\n" v;
     (* source files *)
     let hot_xs, cold_xs = List.partition is_hot xs in
       bprintf cold_bc "#include \"%s_c_prelude.h\"\n" bn;
-      bprintf cold_bc "\n%a" (list "\n" prog) cold_xs;
+      bprintf cold_bc "\n%a" (list_sep "\n" prog) cold_xs;
       bprintf cold_bc "\nEND_SIMSOC_NAMESPACE\n";
       bprintf  hot_bc "#include \"%s_c_prelude.h\"\n" bn;
-      bprintf  hot_bc "\n%a" (list "\n" prog) hot_xs;
+      bprintf  hot_bc "\n%a" (list_sep "\n" prog) hot_xs;
       bprintf  hot_bc "\nEND_SIMSOC_NAMESPACE\n";
       let outh = open_out (bn^"_"^v^".h")
       and cold_outc = open_out (bn^"_"^v^".cold.c")

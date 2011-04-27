@@ -41,7 +41,7 @@ let rec exp b = function
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a" exp e1 exp e2 exp e3
   | BinOp (_, f, _) as e -> pexp_level (level f) b e
-  | Fun (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
+  | Fun (f, es) -> bprintf b "%s(%a)" f (list_sep ", " exp) es
   | CPSR -> string b "CPSR"
   | SPSR None -> string b "SPSR"
   | SPSR (Some m) -> bprintf b "SPSR_%a" mode m
@@ -66,7 +66,7 @@ and pexp b e =
 
 and pexp_level k b = function
   | BinOp (_, f, _) as e when level f = k ->
-      let es = args e in list (sprintf " %s " f) (pexp_level (k+1)) b es
+      let es = args e in list_sep (sprintf " %s " f) (pexp_level (k+1)) b es
   | e -> pexp b e
 
 and range b = function
@@ -85,11 +85,11 @@ and inst_sc k b i =
 and inst_aux k b = function
   | Block is ->
       bprintf b "begin\n%a%aend"
-	(list "" (postfix "\n" (inst k))) is indent k
+	(list (postfix "\n" (inst k))) is indent k
   | Let ((_, n), ns, is, _) ->
       bprintf b "let %s %a =\n%abegin\n%a%aend"
-	n   (list " " (fun b (_, x) -> string b x)) ns   indent k
-	(list "" (postfix "\n" (inst k))) is   indent k   
+	n   (list_sep " " (fun b (_, x) -> string b x)) ns   indent k
+	(list (postfix "\n" (inst k))) is   indent k   
   | Unpredictable -> bprintf b "UNPREDICTABLE"
   | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
   | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
@@ -97,7 +97,7 @@ and inst_aux k b = function
   | If (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"
 	exp e (inst (k+4)) i1 indent k (inst_sc k) i2
-  | Proc (f, es) -> bprintf b "%s(%a)" f (list ", " exp) es
+  | Proc (f, es) -> bprintf b "%s(%a)" f (list_sep ", " exp) es
   | While (e, i) -> bprintf b "while %a do\n%a" exp e (inst (k+4)) i
   | Assert e -> bprintf b "assert %a" exp e
   | For (s, n, p, i) ->
@@ -107,7 +107,7 @@ and inst_aux k b = function
   | Coproc (c, s, _) -> bprintf b "%a %s" coproc c s
   | Case (e, nis, oi) ->
       bprintf b "case %a of\n%abegin\n%a%aend%a\n%aendcase"
-        exp e indent (k+4) (list "" (case_aux (k+4))) nis indent (k+4) 
+        exp e indent (k+4) (list (case_aux (k+4))) nis indent (k+4) 
 	(option "\ndefaultcase\n" (inst (k+4))) oi indent k
   | Return e -> 
       bprintf b "return %a" exp e
@@ -120,7 +120,7 @@ let variant b k = bprintf b "(%s)" k;;
 let param b s = bprintf b "<%s>" s;;
 
 let ident b i =
-  bprintf b "%s%a%a" i.iname (list "" param) i.iparams
+  bprintf b "%s%a%a" i.iname (list param) i.iparams
     (option " " variant) i.ivariant;;
 
 let string_of_addr_mode = function
@@ -135,7 +135,8 @@ let addr_mode b m = string b (string_of_addr_mode m);;
 
 let name b p =
   match p.pkind with
-    | InstARM | InstThumb -> bprintf b "%a" (list ", " ident) (p.pident :: p.pidents)
+    | InstARM | InstThumb ->
+	bprintf b "%a" (list_sep ", " ident) (p.pident :: p.pidents)
     | Mode m ->
 	bprintf b "%a - %s" addr_mode m (remove_underscores p.pident.iname);;
 
@@ -147,4 +148,4 @@ let prog b p =
   bprintf b "%s %a\n%a\n" p.pref name p (inst 9) (block p.pinst);;
 
 let lib b ps = 
-  bprintf b "%a\n%a" (list "" (inst 9)) ps.header   (list "" prog) ps.body;;
+  bprintf b "%a\n%a" (list (inst 9)) ps.header (list prog) ps.body;;

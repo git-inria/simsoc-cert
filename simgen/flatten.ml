@@ -85,10 +85,10 @@ let str_ident p =
       match p.pkind with
         | InstARM ->
             bprintf b "%s%a%a" i.iname
-              (option "" string) i.ivariant (list "" string) i.iparams
+              (option "" string) i.ivariant (list string) i.iparams
         | InstThumb ->
             bprintf b "Tb_%s%a%a" i.iname
-              (option "" string) i.ivariant (list "" string) i.iparams
+              (option "" string) i.ivariant (list string) i.iparams
         | Mode m ->
             bprintf b "M%d_%s" m (compact i.iname)
   in

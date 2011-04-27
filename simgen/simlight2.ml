@@ -86,7 +86,7 @@ let group_type b (g: group) =
   let n, ps = g in
   let field b (v, t) = bprintf b "  %s %s;\n" t v
   in bprintf b "/* Instruction Group #%d */\nstruct SLv6_g%d {\n  uint16_t id;\n%a};\n"
-       n n (list "" field) ps;;
+       n n (list field) ps;;
 
 (* Generate a member of the big union type *)
 let union_field b (g: group) =
@@ -97,15 +97,15 @@ let gen_tables b (xs: xprog list) =
   let name b x = bprintf b "\n  \"%s\"" x.xprog.fname in
   let undef_name = "\n  \"Unpredictable or undefined instruction\"" in
   bprintf b "const char *slv6_instruction_names[SLV6_TABLE_SIZE] = {";
-  bprintf b "%a,%s};\n\n" (list "," name) xs undef_name;
+  bprintf b "%a,%s};\n\n" (list_sep "," name) xs undef_name;
   let reference b x = bprintf b "\n  \"%s\"" x.xprog.fref in
   let undef_reference = "\n  \"no ref.\"" in
   bprintf b "const char *slv6_instruction_references[SLV6_TABLE_SIZE] = {";
-  bprintf b "%a,%s};\n\n" (list "," reference) xs undef_reference;
+  bprintf b "%a,%s};\n\n" (list_sep "," reference) xs undef_reference;
   let fct b x = bprintf b "\n  slv6_G_%s" x.xprog.fid in
   let undef_fct = "\n  NULL" in
   bprintf b "SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE] = {";
-  bprintf b "%a,%s};\n" (list "," fct) xs undef_fct;;
+  bprintf b "%a,%s};\n" (list_sep "," fct) xs undef_fct;;
 
 (* generate the numerical instruction identifier *)
 let gen_ids b xs =
@@ -188,11 +188,11 @@ let may_branch_prog b (x: xprog) =
         | _ ->
             let aux b s = bprintf b "instr->args.%s.%s==15" (union_id x) s in
               bprintf b "  case SLV6_%s_ID:\n    return %a;\n"
-                x.xprog.fid (list " || " aux) l;;
+                x.xprog.fid (list_sep " || " aux) l;;
 
 let may_branch b xs =
   bprintf b "bool may_branch(const struct SLv6_Instruction *instr) {\n";
-  bprintf b "  switch (instr->args.g0.id) {\n%a" (list "" may_branch_prog) xs;
+  bprintf b "  switch (instr->args.g0.id) {\n%a" (list may_branch_prog) xs;
   bprintf b "  case SLV6_UNPRED_OR_UNDEF_ID: return true;\n";
   bprintf b "  default: return false;\n  }\n}\n";;
 
@@ -206,7 +206,7 @@ let dump_sizeof bn gs =
     bprintf b "#include \"%s.h\"\n" bn;
     bprintf b "#include <stdio.h>\n\n";
     bprintf b "int main(int argc, char *argv[]) {\n";
-    bprintf b "%a" (list "" aux) gs;
+    bprintf b "%a" (list aux) gs;
     bprintf b
       "  printf(\"%%2ld SLv6_Instruction\\n\", sizeof(struct SLv6_Instruction));\n";
     bprintf b "  return 0;\n}\n";
@@ -239,13 +239,13 @@ let llvm_generator bn xs =
     in
       if size = 1 then bprintf b "    IRB.CreateCall(fct,proc);\n"
       else (
-        bprintf b "%a" (list "" value) args;
+        bprintf b "%a" (list value) args;
         if size<=4 then 
           bprintf b "    IRB.CreateCall%d(fct,proc,%a);\n"
-            size (list "," name) args
+            size (list_sep "," name) args
         else (
           bprintf b "    Value *args[%d] = {proc,%a};\n"
-            size (list "," name) args;
+            size (list_sep "," name) args;
           bprintf b "    IRB.CreateCall<Value**>(fct,args,args+%d);\n" size)
       );
     bprintf b "  } break;\n";
@@ -253,7 +253,7 @@ let llvm_generator bn xs =
     bprintf b "void ARMv6_LLVM_Generator::generate_one_instruction";
     bprintf b "(SLv6_Instruction &instr) {\n";
     bprintf b "  switch (instr.args.g0.id) {\n%a  default: abort();\n  }\n}\n"
-      (list "" case) xs;
+      (list case) xs;
   let out = open_out (bn^"-llvm_generator.hpp") in
     Buffer.output_buffer out b; close_out out;;
 
@@ -304,10 +304,10 @@ let lib (bn: string) ({ body = pcs ; _ } : program) (ss: syntax list)
     bprintf bh "extern SemanticsFunction slv6_instruction_functions[SLV6_TABLE_SIZE];\n";
     bprintf bh "\n%a" gen_ids all_xs;
     (* generate the instruction type *)
-    bprintf bh "\n%a" (list "\n" group_type) groups;
+    bprintf bh "\n%a" (list_sep "\n" group_type) groups;
     bprintf bh "\nstruct SLv6_Instruction {\n";
     bprintf bh "  SemanticsFunction sem_fct;\n";
-    bprintf bh "  union {\n%a" (list "" union_field) groups;
+    bprintf bh "  union {\n%a" (list union_field) groups;
     bprintf bh "    struct ARMv6_InstrBasicBlock basic_block;\n";
     bprintf bh "    struct ARMv6_InstrOptimizedBasicBlock opt_basic_block;\n";
     bprintf bh "    struct ARMv6_SetReg set_reg;\n";

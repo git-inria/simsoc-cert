@@ -64,7 +64,7 @@ let option elt b = function
 
 let coq_list elt b = function
   | [] -> bprintf b "[]"
-  | x :: l -> bprintf b "[%a%a]" elt x (list_iter (prefix "; " elt)) l;;
+  | x :: l -> bprintf b "[%a%a]" elt x (list (prefix "; " elt)) l;;
 
 let coq_pair f g b (Coq_pair (x, y)) = bprintf b "(%a,%a)" f x g y;;
 
@@ -566,7 +566,7 @@ let prog_var_def b (Coq_pair (id, v)) =
 let global_variables b p =
   bprintf b "\n(* global variables *)\n\n%a\
     Definition global_variables := %a.\n"
-    (list_iter prog_var_def) p.prog_vars
+    (list prog_var_def) p.prog_vars
     (coq_list prog_var_ref) p.prog_vars;;
 
 (*****************************************************************************)
@@ -595,7 +595,7 @@ let prog_funct_def b (Coq_pair (id, fd)) =
 
 let functions b p =
   bprintf b "\n(* functions *)\n\n%aDefinition functions := %a.\n"
-    (list_iter prog_funct_def) p.prog_funct
+    (list prog_funct_def) p.prog_funct
     (coq_list prog_funct_ref) p.prog_funct;;
 
 (*****************************************************************************)

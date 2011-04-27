@@ -7,8 +7,8 @@ Generator of the OCaml instruction decoder.
 
 open Ast;;
 open Printf;;
-open Util;;     (* for the "list" function *)
-open Codetype;; (* from the directory "refARMparsing" *)
+open Util;;
+open Codetype;;
 open Dec;;
 open Dec.Arm;;
 open Lightheadertype;;
@@ -20,7 +20,7 @@ open Lightheadertype;;
 let comment b (lh: lightheader) =
   let lightheader b (p: lightheader) =
     match p with LH (is, s)
-        -> bprintf b "%a - %s" (list "." int) is s
+        -> bprintf b "%a - %s" (list_sep "." int) is s
   in
     bprintf b "(*%a*)" lightheader lh;;
 
@@ -119,16 +119,16 @@ let gen_pattern (lh ,ls) =
     match add_mode lh with
       | DecInstARMUncond -> 
           let lst = Array.to_list (Array.sub x 0 28) in
-            (list ", " string) b (dec_lst lst)
+            (list_sep ", " string) b (dec_lst lst)
       | DecInstARMCond -> begin match name (lh ,ls) with
           | "BKPT" :: _ -> let lst = Array.to_list (Array.sub x 0 28) in
-              (list ", " string) b (dec_lst lst)
+              (list_sep ", " string) b (dec_lst lst)
           | _ -> let lst = Array.to_list x in
-              (list ", " string) b (dec_lst lst)
+              (list_sep ", " string) b (dec_lst lst)
         end
       | DecMode _ | DecInstThumb | DecEncoding ->
           let lst = Array.to_list x in
-            (list ", " string) b (dec_lst lst)
+            (list_sep ", " string) b (dec_lst lst)
   in aux;;
 
 (*****************************************************************************)
@@ -274,8 +274,8 @@ let params f (lh, ls) =
                                       Pervasives.compare s1 s2)
                            (Array.to_list (param_m (lh,ls)))))))))
     in
-      if List.length lst > 1 then par (list ", " f) b lst
-      else (list ", " f) b lst
+      if List.length lst > 1 then par (list_sep ", " f) b lst
+      else (list_sep ", " f) b lst
   in aux;;
 
 (*****************************************************************************)
@@ -307,15 +307,15 @@ let shouldbe_test (lh, ls) =
   let aux b =
     (*if ((List.mem (Shouldbe true) lst) && (not (List.mem (Shouldbe false) lst))) then
       bprintf b "if (%a) then\n      DecInst (%s %t)\n      else DecUnpredictable"
-        (list "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
+        (list_sep "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
     else
       if (List.mem (Shouldbe false) lst && (not (List.mem (Shouldbe true) lst))) then
         bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-          (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+          (list_sep "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
       else
         if (List.mem (Shouldbe false) lst && (List.mem (Shouldbe true) lst)) then
           bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-         (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+         (list_sep "&& " string) sbo (list_sep "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
         else*)
           bprintf b "%s %t" (id_inst (lh,ls)) (params string (lh, ls))
   in aux;;
@@ -429,17 +429,17 @@ let decode b ps =
   (*print the decoder of addressing modes 1 - 5*)
   for i = 1 to 5 do
     bprintf b "\n\nlet decode_addr_mode%d w =\n match w28_of_word w with\n" i;
-    (list "" dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
+    (list dec_inst) b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
     bprintf b "    | _ -> DecError NotAnAddressingMode%d\n;;" i
   done;
 
   (*print the instruction decoder*)
   bprintf b "\n\nlet decode_unconditional w =\n  match w28_of_word w with\n";
-  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
+  (list dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_uncond_inst) ps));
   bprintf b "    | _ -> DecUndefined_with_num n0\n;;";
 
   bprintf b "\n\nlet decode_conditional w =\n  match w28_of_word w with\n";
-  (list "" dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
+  (list dec_inst) b (List.sort (fun a b -> order_inst a - order_inst b) (List.filter (is_cond_inst) ps));
   bprintf b "    | _ -> DecUndefined_with_num n0\n;;";
 
   bprintf b "\n\nlet decode w =\n";

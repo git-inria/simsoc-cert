@@ -355,7 +355,7 @@ and exp' loc nm sz b = function
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
 
   (* default printing of function calls *)
-  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
+  | Fun (f, es) -> bprintf b "%a %a" fun_name f (list_sep " " (num_exp loc nm)) es
 
   | BinOp (e1, "<", Num "0") -> bprintf b "lt_0 %a" (pexp loc nm) e1
   | BinOp (e1, ">=", Num "0") -> bprintf b "ge_0 %a" (pexp loc nm) e1
@@ -518,7 +518,7 @@ and inst_aux loc nm k b = function
             (fun x -> x),
             sprintf "\n%s;" (String.make k ' ') in
 
-        let () = list b_ident (fun b_tmp (use_loc, use_st, b_t) -> 
+        let () = list_sep b_ident (fun b_tmp (use_loc, use_st, b_t) -> 
           f_print1 use_loc use_st b_tmp (Buffer.contents b_t)) b_tmp l in
         let cts = Buffer.contents b_tmp in
         (fun f_next -> f_last (fun b -> f_print2 b cts f_next)), f_incr k, not b_let
@@ -583,7 +583,7 @@ and inst_aux loc nm k b = function
   | Case (e, nis, oi) as i ->
       try_todo "Case" (fun b -> bprintf b
         "let index :=\n%amatch unsigned %a with\n%a%a%a\n%aend in"
-        indent (k+2) (exp loc nm) e (list "" (case bin loc nm (k+4))) nis indent (k+4) 
+        indent (k+2) (exp loc nm) e (list (case bin loc nm (k+4))) nis indent (k+4) 
         (fun b -> function 
           | None -> bprintf b "| _ => repr 0"
           | Some i -> case string loc nm (k+4) b ("_", i)) oi indent (k+2)) b i
@@ -595,7 +595,7 @@ and inst_aux loc nm k b = function
      curryfied in Coq) *)
   | Proc (f, []) -> fun_name b f
   (* default printing of function calls *)
-  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list " " (num_exp loc nm)) es
+  | Proc (f, es) -> bprintf b "%a %a" fun_name f (list_sep " " (num_exp loc nm)) es
   | Return e -> bprintf b "return_ (%a)" (exp loc nm) e
 
 and affect' b v loc nm = function
@@ -642,7 +642,7 @@ and range loc nm b = function
 (* program name *)
 
 let ident b i =
-  bprintf b "%s%a%a" i.iname (list "" string) i.iparams
+  bprintf b "%s%a%a" i.iname (list string) i.iparams
     (option "" string) i.ivariant;;
 
 let name b p =
@@ -660,7 +660,7 @@ let mode_var_typ b = function
 let result b p =
   match p.pkind with
     | InstARM | InstThumb -> ()
-    | Mode k -> list "" mode_var_typ b (mode_vars k);;
+    | Mode k -> list mode_var_typ b (mode_vars k);;
 *)
 (* split an instruction block into two blocks:
 - the prefix of the block consisting of the affectations and cases
@@ -726,19 +726,19 @@ let pinst b p =
             bprintf b "  do_then (%a);\n"
               (todo "ComplexSemantics" (Genpc.inst 0)) p.pinst;
             bprintf b "  ret_ {{ %a }}" 
-              (list " ; " (fun b _ -> bprintf b "%s" repr_0)) ls;
+              (list_sep " ; " (fun b _ -> bprintf b "%s" repr_0)) ls;
           end
         else
           match p.pinst with
             | If (e, i, None) -> 
               bprintf b "  if %a then\n%a\n    ret_ {{ %a }}\n  else\n    do_then conjure_up_false;\n    ret (false, {{ %a }})"
                 (exp [] (p.pident.iname)) e (block (p.pident.iname) 4) i
-                (list " ; " string) ls (list " ; " string) ls
+                (list_sep " ; " string) ls (list_sep " ; " string) ls
             | i ->
               begin
                 bprintf b "%a" (block (p.pident.iname) 2) i;
                 bprintf b "  ret_ {{ %a }}" 
-                  (list " ; " string) ls;
+                  (list_sep " ; " string) ls;
               end;;
 
 let arg_typ b (x, t) = bprintf b " (%s : %s)" x t;;
@@ -748,7 +748,7 @@ let semfun b p gs =
     | InstARM | Mode _ ->
         bprintf b
           "(* %s %a *)\nDefinition %a_step%a : semfun _ := <s0>\n%a.\n\n"
-          p.pref Genpc.name p name p (list "" arg_typ) gs pinst p
+          p.pref Genpc.name p name p (list arg_typ) gs pinst p
     | InstThumb -> ();; (* TODO: Thumb mode *)
 
 (*****************************************************************************)
@@ -761,14 +761,14 @@ let constr bcons_inst bcons_mode p gs =
         begin match addr_mode_of_prog p gs with
           | Some k ->
               bprintf b "\n| %a (m_ : mode%d)%a"
-                name p k (list "" arg_typ) (remove_mode_vars gs)
+                name p k (list arg_typ) (remove_mode_vars gs)
                 (* mode variables are not constructor arguments since
                    they are computed from the mode argument *)
-          | None -> bprintf b "\n| %a%a" name p (list "" arg_typ) gs
+          | None -> bprintf b "\n| %a%a" name p (list arg_typ) gs
         end
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcons_mode.(k-1) in
-        bprintf b "\n| %a%a" name p (list "" arg_typ) gs;;
+        bprintf b "\n| %a%a" name p (list arg_typ) gs;;
 
 (*****************************************************************************)
 (** call to the semantics function of some instruction *)
@@ -782,7 +782,7 @@ let string_of_arg =
 
 let arg b (x, _) = bprintf b " %s" (string_of_arg x);;
 
-let args = list "" arg;;
+let args = list arg;;
 
 let call bcall_inst bcall_mode p gs =
   match p.pkind with
@@ -794,7 +794,7 @@ let call bcall_inst bcall_mode p gs =
           | Some k ->
               bprintf b "    | %a m_%a =>" name p args (remove_mode_vars gs);
               bprintf b " mode%d_step m_ (fun %a => %a_step%a)\n"
-                k (list " " string) (mode_vars k) name p args gs
+                k (list_sep " " string) (mode_vars k) name p args gs
         end
     | InstThumb -> () (* TODO: Thumb mode *)
     | Mode k -> let b = bcall_mode.(k-1) in

@@ -196,24 +196,24 @@ module Printer (PC: PrinterConfig) = struct
         bprintf b "void slv6_P_%s(%s) {\n" x.xprog.fid PC.printer_args;
         ( match x.xprog.fsyntax with
             | [] -> raise (Invalid_argument "printer: empty variant list")
-            | [v] -> bprintf b "%a" (list "" token) v
+            | [v] -> bprintf b "%a" (list token) v
             | [c; nc] when List.mem (Param "coproc") c ->
                 bprintf b "if (bincode>>28==0xf) {\n%a} else {\n%a}\n"
-                  (list "" token) nc (list "" token) c
+                  (list token) nc (list token) c
             | [e; ne] when x.xprog.fid = "CPS" ->
                 bprintf b "if (%a<=1) {\n%a} else {\n%a}\n" (param "imod") x
-                  (list "" token) ne (list "" token) e
+                  (list token) ne (list token) e
             | [ll; lr; ar; rr; rx] ->
                 bprintf b "switch (%a) {\n" (param "shift") x;
-                bprintf b "case 0: {\n%a} return;\n" (list "" token) ll;
-                bprintf b "case 1: {\n%a} return;\n" (list "" token) lr;
-                bprintf b "case 2: {\n%a} return;\n" (list "" token) ar;
+                bprintf b "case 0: {\n%a} return;\n" (list token) ll;
+                bprintf b "case 1: {\n%a} return;\n" (list token) lr;
+                bprintf b "case 2: {\n%a} return;\n" (list token) ar;
                 bprintf b "case 3: if (%a) {\n%a} else {\n%a} return;\n"
-                  (param "shift_imm") x (list "" token) rr (list "" token) rx;
+                  (param "shift_imm") x (list token) rr (list token) rx;
                 bprintf b "}\n"
             | [cpsr; spsr] when List.mem x.xprog.fid ["MRS"; "MSRimm"; "MSRreg"] ->
                 bprintf b "if (%a) {\n%a} else {\n%a}\n" (param "R") x
-                  (list "" token) spsr (list "" token) cpsr              
+                  (list token) spsr (list token) cpsr              
             | _ -> raise (Failure ("case not implemented: "^x.xprog.fid)));
         bprintf b "}\n"
       );;
@@ -239,9 +239,9 @@ let c_printers bn xs =
         bprintf bc "#include \"%s_printers.h\"\n" bn;
         bprintf bc "#include \"slv6_math.h\"\n";
         bprintf bc "#include \"slv6_processor.h\"\n\n";
-        bprintf bc "%a\n" (list "\n" CPrinter.printer) xs;
+        bprintf bc "%a\n" (list_sep "\n" CPrinter.printer) xs;
         bprintf bc "PrintFunction slv6_printers[SLV6_TABLE_SIZE] = {%a};\n\n"
-          (list "," aux) xs;
+          (list_sep "," aux) xs;
         bprintf bc "void slv6_print_instr(%s) {\n" printer_args;
         bprintf bc "  assert(instr->args.g0.id<SLV6_TABLE_SIZE);\n";
         bprintf bc "  slv6_printers[instr->args.g0.id](f,instr,bincode);\n}\n";
@@ -273,9 +273,9 @@ let cxx_printers bn xs =
         bprintf bc "extern void slv6_print_mode(std::ostream&, SLv6_Mode);\n";
         bprintf bc "extern void slv6_print_reg(std::ostream&, uint8_t);\n\n";
         bprintf bc "extern void slv6_print_reglist(std::ostream&, uint16_t);\n\n";
-        bprintf bc "%a\n" (list "\n" CxxPrinter.printer) xs;
+        bprintf bc "%a\n" (list_sep "\n" CxxPrinter.printer) xs;
         bprintf bc "PrintFunction slv6_printers[SLV6_TABLE_SIZE] = {%a};\n\n"
-          (list "," aux) xs;
+          (list_sep "," aux) xs;
         bprintf bc "void slv6_print_instr(%s) {\n" printer_args;
         bprintf bc "  assert(instr->args.g0.id<SLV6_TABLE_SIZE);\n";
         bprintf bc "  slv6_printers[instr->args.g0.id](os,instr,bincode);\n}\n\n";

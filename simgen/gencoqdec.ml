@@ -24,7 +24,7 @@ open Dec_proc
 let comment b (lh: lightheader) =
   let lightheader b (p: lightheader) =
     match p with LH (is, s)
-        -> bprintf b "%a - %s" (list "." int) is s
+        -> bprintf b "%a - %s" (list_sep "." int) is s
   in
     bprintf b "(*%a*)" lightheader lh;;
 
@@ -122,16 +122,16 @@ let gen_pattern (lh ,ls) =
     match add_mode lh with
       | DecInstARMUncond -> 
           let lst = Array.to_list (gen_pattern_get_array x) in
-            (list "" dec) b (List.rev lst)
+            (list dec) b (List.rev lst)
       | DecInstARMCond -> begin match name (lh ,ls) with
           | "BKPT" :: _ -> let lst = Array.to_list (Array.sub x 0 28) in
-              (list "" dec) b (List.rev lst)
+              (list dec) b (List.rev lst)
           | _ -> let lst = Array.to_list x in
-              (list "" dec) b (List.rev lst)
+              (list dec) b (List.rev lst)
         end
       | DecMode _ | DecInstThumb | DecEncoding ->
           let lst = Array.to_list x in
-            (list "" dec) b (List.rev lst)
+            (list dec) b (List.rev lst)
   in aux;;
 
 (*****************************************************************************)
@@ -269,7 +269,7 @@ let params f (lh, ls) =
                                 Pervasives.compare s1 s2)
                      (Array.to_list (param_m (lh,ls))))))))
     in
-      (list " " f) b lst
+      (list_sep " " f) b lst
   in aux;;
 
 (*****************************************************************************)
@@ -301,15 +301,15 @@ let shouldbe_test (lh, ls) =
   let aux b =
     (*if ((List.mem (Shouldbe true) lst) && (not (List.mem (Shouldbe false) lst))) then
       bprintf b "if (%a) then\n      DecInst (%s %t)\n      else DecUnpredictable"
-        (list "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
+        (list_sep "&& " string) sbo (id_inst (lh,ls)) (params string (lh, ls))
     else
       if (List.mem (Shouldbe false) lst && (not (List.mem (Shouldbe true) lst))) then
         bprintf b "if (not (%a)) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-          (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+          (list_sep "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
       else
         if (List.mem (Shouldbe false) lst && (List.mem (Shouldbe true) lst)) then
           bprintf b "if ((%a) && (not (%a))) then \n      DecInst (%s %t)\n      else DecUnpredictable"
-         (list "&& " string) sbo (list "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
+         (list_sep "&& " string) sbo (list_sep "&& " string) sbz (id_inst (lh,ls)) (params string (lh, ls))
         else*)
           bprintf b "%s %t" (id_inst (lh,ls)) (params string (lh, ls))
   in aux;;
@@ -409,7 +409,7 @@ let decode b ps =
   (*print the decoder of addressing modes if needed *)
   for i = 1 to nb_buff do
     bprintf b "\n\nDefinition decode_addr_mode%d (w : word) : decoder_result mode%d:=\n match w%s_of_word w with\n" i i word_size;
-    list "" dec_inst b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
+    list dec_inst b (sort_add_mode_cases i (List.filter (is_addr_mode i) ps));
     bprintf b "    | _ => DecError mode%d NotAnAddressingMode%d\n  end." i i
   done;
 
@@ -417,7 +417,7 @@ let decode b ps =
   let print_decode_cond msg cond_or_uncond =
     begin
       bprintf b "\n\nDefinition decode_%sconditional (w : word) : decoder_result inst :=\n  match w%s_of_word w with\n" msg word_size;
-      list "" dec_inst b (sort_inst (List.filter cond_or_uncond ps));
+      list dec_inst b (sort_inst (List.filter cond_or_uncond ps));
       bprintf b "    | _ => DecUndefined_with_num inst 0\n  end.";
     end in
   print_decode_cond "un" is_uncond_inst;

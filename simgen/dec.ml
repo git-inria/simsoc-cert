@@ -31,7 +31,7 @@ type kind =
 
 let lightheader_to_string (LH (is, s)) =
   let b = Buffer.create 80 in
-    Printf.bprintf b "A%a %s" (Util.list "." Util.int) is s;
+    Printf.bprintf b "A%a %s" (Util.list_sep "." Util.int) is s;
     Buffer.contents b;;
 
 (* number of an instruction or of an addressing mode case *)

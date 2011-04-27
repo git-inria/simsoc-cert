@@ -172,14 +172,14 @@ let prefix p f b x = bprintf b "%s%a" p f x;;
 let postfix p f b x = bprintf b "%a%s" f x p;;
 let endline f b x = postfix "\n" f b x;;
 
-let list_iter f b xs = List.iter (f b) xs;;
-
-let list sep f =
+let list_sep sep f =
   let rec aux b = function
     | [] -> ()
     | [x] -> f b x
     | x :: xs -> bprintf b "%a%s%a" f x sep aux xs
   in aux;;
+
+let list f = list_sep "" f;;
 
 let option p f b = function
   | None -> ()

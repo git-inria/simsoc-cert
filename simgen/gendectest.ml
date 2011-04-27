@@ -266,7 +266,7 @@ let value_table ps =
 let print_lst b ps =
   let lst = List.map (fun (_,v) -> v) (value_table ps) in
     bprintf b "\n%s" ps.finstr;
-    (list " " int) b lst;;
+    (list_sep " " int) b lst;;
 
 (*get the vaule from the value table by the name of parameter*)
 
@@ -468,7 +468,7 @@ let reg_list b regs =
       let regi = (get_bits' i i regs) in
 	ar.(i) <- (if regi = 1 then [reg i] else [])
     done;
-    (list ", " string) b (List.flatten (Array.to_list ar));
+    (list_sep ", " string) b (List.flatten (Array.to_list ar));
     bprintf b "}"
 
 let reg_list_and_pc b regs =
@@ -478,7 +478,7 @@ let reg_list_and_pc b regs =
       let regi = (get_bits' i i regs) in
 	ar.(i) <- (if regi = 1 then [reg i] else [])
     done;
-    (list ", " string) b (List.flatten (Array.to_list ar));
+    (list_sep ", " string) b (List.flatten (Array.to_list ar));
     bprintf b ", PC}"
 
 let reg_list_without_pc b regs =
@@ -488,7 +488,7 @@ let reg_list_without_pc b regs =
       let regi = (get_bits' i i regs) in
 	ar.(i) <- (if regi = 1 then [reg i] else [])
     done;
-    (list ", " string) b (List.flatten (Array.to_list ar));
+    (list_sep ", " string) b (List.flatten (Array.to_list ar));
     bprintf b "}"
 
 let endian_sp e =
@@ -662,7 +662,7 @@ let gen_asm_test bn { body = pcs ; _ } ss decs seed =
   let cp_instr = ["LDC";"STC";"MRRC";"MRC";"MCR";"MCRR";"CDP" ] in
   let fs' = List.filter (fun f -> not (List.mem f.finstr cp_instr)) fs in
   let ba = Buffer.create 100000 in
-    (list "" asm_insts(*print_lst*)) ba (List.rev fs');
+    (list asm_insts(*print_lst*)) ba (List.rev fs');
     let outa = open_out (bn^".asm") in
       Buffer.output_buffer outa ba; close_out outa;
 ;;
@@ -674,7 +674,7 @@ let gen_test bn { body = pcs ; _ } ss decs seed =
   let fs' = List.filter (fun f -> not (List.mem f.finstr cp_instr)) fs in
   let ba = Buffer.create 100000 in
   let bb = Buffer.create 100000 in
-    (list "" asm_insts) ba (List.rev fs');
+    (list asm_insts) ba (List.rev fs');
     let outa = open_out (bn^".asm") and outb = open_out (bn^".bin") in
       set_binary_mode_out outb true;
       List.iter (bin_insts outb) (List.rev fs');
