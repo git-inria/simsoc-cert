@@ -116,11 +116,15 @@ let add_ident id s = Hashtbl.add identTable id (valid_coq_ident s);;
 
 let init_identTable () = Hashtbl.iter add_ident string_of_atom;;
 
+let cmp_ident id1 id2 =
+  Pervasives.compare (camlint_of_positive id1) (camlint_of_positive id2);;
+
 let identifiers b =
   bprintf b "\n(* identifiers *)\n\nOpen Scope positive_scope.\n";
-  Hashtbl.iter
-    (fun id s -> bprintf b "Definition %s := %a.\n" s positive id)
-    identTable;
+  List.iter
+    (fun (id,s) -> bprintf b "Definition %s := %a.\n" s positive id)
+    (List.sort (fun (id1,_) (id2,_) -> cmp_ident id1 id2)
+       (Hashtbl.fold (fun id s l -> (id,s)::l) identTable []));
   bprintf b "Close Scope positive_scope.\n";;
 
 (*****************************************************************************)
@@ -139,59 +143,46 @@ let signature b s =
 (*****************************************************************************)
 (** recursor on Tstruct or Tunion idents occuring in a [coq_type] *)
 
-let rec fold f x = function
+let rec fold_type f x = function
   | Tvoid
   | Tint _
-  | Tfloat _ -> x
+  | Tfloat _
+  | Tcomp_ptr _ -> x
   | Tpointer t
-  | Tarray (t, _) -> fold f x t
-  | Tfunction (tl, t) -> fold_list f (fold f x t) tl
+  | Tarray (t, _) -> fold_type f x t
+  | Tfunction (tl, t) -> fold_typelist f (fold_type f x t) tl
   | Tstruct (id, fl)
-  | Tunion (id, fl) -> fold_field f (f id x) fl
-  | Tcomp_ptr _id -> x (* references to a struct or union are ignored *)
+  | Tunion (id, fl) as t -> fold_fieldlist f (f t id x) fl
 
-and fold_list f x = function
+and fold_typelist f x = function
   | Tnil -> x
-  | Tcons (t, tl) -> fold_list f (fold f x t) tl
+  | Tcons (t, tl) -> fold_typelist f (fold_type f x t) tl
 
-and fold_field f x = function
+and fold_fieldlist f x = function
   | Fnil -> x
-  | Fcons (_, t, fl) -> fold_field f (fold f x t) fl;;
+  | Fcons (_, t, fl) -> fold_fieldlist f (fold_type f x t) fl;;
 
 (*****************************************************************************)
 (** iterator on Tstruct or Tunion idents occuring in a [coq_type] *)
 
-let rec iter f = function
+let rec iter_type f = function
   | Tvoid
   | Tint _
-  | Tfloat _ -> ()
+  | Tfloat _
+  | Tcomp_ptr _ -> ()
   | Tpointer t
-  | Tarray (t, _) -> iter f t
-  | Tfunction (tl, t) -> iter f t; iter_list f tl
+  | Tarray (t, _) -> iter_type f t
+  | Tfunction (tl, t) -> iter_type f t; iter_typelist f tl
   | Tstruct (id, fl)
-  | Tunion (id, fl) -> f id; iter_field f fl
-  | Tcomp_ptr _id -> () (* references to a struct or union are ignored *)
+  | Tunion (id, fl) as t -> f t id; iter_fieldlist f fl
 
-and iter_list f = function
+and iter_typelist f = function
   | Tnil -> ()
-  | Tcons (t, tl) -> iter f t; iter_list f tl
+  | Tcons (t, tl) -> iter_type f t; iter_typelist f tl
 
-and iter_field f = function
+and iter_fieldlist f = function
   | Fnil -> ()
-  | Fcons (_, t, fl) -> iter f t; iter_field f fl;;
-
-(*****************************************************************************)
-(** test whether a Tstruct or Tunion ident occurs in a [coq_type] *)
-
-exception Found;;
-
-let occurs_in id t =
-  try iter (fun id' -> if id' = id then raise Found) t; false
-  with Found -> true;;
-
-let occurs_in_field id fl =
-  try iter_field (fun id' -> if id' = id then raise Found) fl; false
-  with Found -> true;;
+  | Fcons (_, t, fl) -> iter_type f t; iter_fieldlist f fl;;
 
 (*****************************************************************************)
 (** (coq_type,ident) map *)
@@ -205,17 +196,48 @@ module TypMap = Map.Make (TypOrd);;
 
 let typMap = ref TypMap.empty;;
 
-type kind = Union | Struct;;
+let add_type_ident t id = typMap := TypMap.add t id !typMap;;
 
-let coq_type_of_kind k id fl =
-  match k with
-    | Union -> Tunion (id, fl)
-    | Struct -> Tstruct (id, fl);;
+(*****************************************************************************)
+(** printing function for [coq_type] replacing a struct or union by
+    the corresponding defined name *)
 
-let add_type_kind k id fl =
-  let t = coq_type_of_kind k id fl in
-    try TypMap.find t !typMap
-    with Not_found -> typMap := TypMap.add t id !typMap; id;;
+let type_ident b id = bprintf b "typ_%a" ident id;;
+
+let rec types_of_typelist = function
+  | Tnil -> []
+  | Tcons (t, tl) -> t :: types_of_typelist tl;;
+
+let rec coq_type b = function
+  | Tvoid -> string b "void"
+  | Tint (I8, Signed) -> string b "int8"
+  | Tint (I8, Unsigned) -> string b "uint8"
+  | Tint (I16, Signed) -> string b "int16"
+  | Tint (I16, Unsigned) -> string b "uint16"
+  | Tint (I32, Signed) -> string b "int32"
+  | Tint (I32, Unsigned) -> string b "uint32"
+  | Tfloat F32 -> string b "float32"
+  | Tfloat F64 -> string b "float64"
+  | Tpointer t -> app1 b "`*`" coq_type t
+  | Tarray (t, n) -> app2 b "Tarray" pcoq_type t coq_Z n
+  | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type t
+  | Tcomp_ptr id -> app1 b "Tcomp_ptr" ident id
+  | Tstruct (id, _)
+  | Tunion (id, _) as t -> iter_type add_type_ident t; type_ident b id
+
+and typelist b tl = bprintf b "T%a" (coq_list coq_type) (types_of_typelist tl)
+
+and pcoq_type b t =
+  match t with
+    | Tvoid
+    | Tint _
+    | Tfloat _
+    | Tstruct _
+    | Tunion _ -> coq_type b t
+    | Tpointer _
+    | Tarray _
+    | Tfunction _
+    | Tcomp_ptr _ -> par coq_type b t;;
 
 (*****************************************************************************)
 (** ordering of struct and union type definitions *)
@@ -233,119 +255,46 @@ let compute_typ_order () =
   lm := TC.level_map
     (TypMap.fold
        (fun t id g ->
-	  fold (fun id' g ->
-		  if id = id' then g else TC.trans_add_edge id id' g) g t)
+	  fold_type
+	    (fun _ id' g -> if id = id' then g else TC.trans_add_edge id id' g)
+	    g t)
        !typMap TC.empty);;
 
 let level id = try TC.XMap.find id !lm with Not_found -> 0;;
 
-let cmp (_, id1) (_, id2) = Pervasives.compare (level id1) (level id2);;
+let cmp_level (_, id1) (_, id2) = Pervasives.compare (level id1) (level id2);;
 
 (*****************************************************************************)
-(** functions for printing Coq definitions for structs and unions *)
-
-let rec types_of_typelist = function
-  | Tnil -> []
-  | Tcons (t, tl) -> t :: types_of_typelist tl;;
+(** functions for printing Coq definitions for struct and union types *)
 
 let rec fields_of_fieldlist = function
   | Fnil -> []
   | Fcons (id, t, fl) -> (id,t) :: fields_of_fieldlist fl;;
 
-let rec coq_type b = function
-  | Tvoid -> string b "void"
-  | Tint (I8, Signed) -> string b "int8"
-  | Tint (I8, Unsigned) -> string b "uint8"
-  | Tint (I16, Signed) -> string b "int16"
-  | Tint (I16, Unsigned) -> string b "uint16"
-  | Tint (I32, Signed) -> string b "int32"
-  | Tint (I32, Unsigned) -> string b "uint32"
-  | Tfloat F32 -> string b "float32"
-  | Tfloat F64 -> string b "float64"
-  | Tpointer t -> app1 b "`*`" coq_type t
-  | Tarray (t, n) -> app2 b "Tarray" pcoq_type t coq_Z n
-  | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type t
-  | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist_ref fl
-  | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist_ref fl
-  | Tcomp_ptr id -> app1 b "Tcomp_ptr" ident id
+let field b = pair ident " -: " coq_type b;;
 
-and pcoq_type b t =
-  match t with
-  | Tvoid
-  | Tint _
-  | Tfloat _ -> coq_type b t
-  | Tpointer _
-  | Tarray _
-  | Tfunction _
-  | Tstruct _
-  | Tunion _
-  | Tcomp_ptr _ -> par coq_type b t
+let fieldlist b fl =
+  bprintf b "\nF%a" (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl);;
 
-and typelist b tl =
-  bprintf b "T%a" (coq_list coq_type) (types_of_typelist tl)
-
-(*REMOVE:and fieldlist b fl =
-  bprintf b "\nF%a" (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl)
-
-and field b = pair ident " -: " coq_type_ref b*)
-
-and coq_type_ref b t =
+let rec coq_type_def b t =
   match t with
     | Tvoid
     | Tint _
     | Tfloat _
-    | Tcomp_ptr _ -> coq_type b t
-    | Tpointer t -> app1 b "`*`" coq_type_ref t
-    | Tarray (t, n) -> app2 b "Tarray" pcoq_type_ref t coq_Z n
-    | Tfunction (tl, t) -> app2 b "Tfunction" typelist_ref tl pcoq_type_ref t
-    | Tstruct (id, fl) ->
-	if occurs_in_field id fl then coq_type b t
-	else prefix "typ_" ident b (add_type_kind Struct id fl)
-    | Tunion (id, fl) ->
-	if occurs_in_field id fl then coq_type b t
-	else prefix "typ_" ident b (add_type_kind Union id fl)
-
-and pcoq_type_ref b t =
-  match t with
-    | Tvoid
-    | Tint _
-    | Tfloat _
-    | Tstruct _
-    | Tunion _ -> coq_type_ref b t
     | Tpointer _
     | Tarray _
     | Tfunction _
-    | Tcomp_ptr _ -> par coq_type_ref b t
-
-and typelist_ref b tl =
-  bprintf b "T%a" (coq_list coq_type_ref) (types_of_typelist tl)
-
-and fieldlist_ref b fl =
-  bprintf b "\nF%a" (coq_list (prefix "\n  " field_ref))
-    (fields_of_fieldlist fl)
-
-and field_ref b (id, t) = bprintf b "%a -: %a" ident id coq_type_ref t;;
-
-let pcoq_type_ref b t =
-  match t with
-    | Tvoid
-    | Tint _
-    | Tfloat _ -> coq_type_ref b t
-    | Tpointer _
-    | Tarray _
-    | Tfunction _
-    | Tcomp_ptr _
-    | Tstruct _
-    | Tunion _ -> par coq_type_ref b t;;
-
-let params = coq_list (prefix "\n" (coq_pair2 ident coq_type_ref));;
+    | Tcomp_ptr _ -> assert false
+    | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist fl
+    | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist fl;;
 
 let structs_and_unions b =
   compute_typ_order ();
   bprintf b "\n(* structs and unions *)\n\n";
   List.iter
-    (fun (t,id) -> bprintf b "Definition typ_%a := %a.\n\n" ident id coq_type t)
-    (List.sort cmp (TypMap.bindings !typMap));;
+    (fun (t,id) ->
+       bprintf b "Definition %a := %a.\n\n" type_ident id coq_type_def t)
+    (List.sort cmp_level (TypMap.bindings !typMap));;
 
 (*****************************************************************************)
 (** printing functions for [expr] *)
@@ -412,9 +361,10 @@ let of_exptyp b t = bprintf b "`:%a" exptyp t;;
 
 let expr_types b =
   bprintf b "(* expression types *)\n\n";
-  TypMap.iter
-    (fun t k -> bprintf b "Definition T%d := %a.\n" k coq_type_ref t)
-    !exptypMap;;
+  List.iter
+    (fun (t,k) -> bprintf b "Definition T%d := %a.\n" k coq_type t)
+    (List.sort (fun (_,k1) (_,k2) -> Pervasives.compare k1 k2)
+       (TypMap.bindings !exptypMap));;
 
 let rec expr b = function
   | Eval (v, t) -> bprintf b "#%a%a" coq_val v of_exptyp t
@@ -566,13 +516,17 @@ let prog_var_def b (Coq_pair (id, v)) =
 let global_variables b p =
   bprintf b "\n(* global variables *)\n\n%a\
     Definition global_variables := %a.\n"
-    (list prog_var_def) p.prog_vars
+    (list prog_var_def)
+    (List.sort (fun (Coq_pair(id1,_)) (Coq_pair(id2,_)) -> cmp_ident id1 id2)
+       p.prog_vars)
     (coq_list prog_var_ref) p.prog_vars;;
 
 (*****************************************************************************)
 (** functions for printing Coq definitions for C functions *)
 
 let prog_funct_ref b (Coq_pair (id, _)) = bprintf b "fun_%a" ident id;;
+
+let params = coq_list (prefix "\n" (coq_pair2 ident coq_type));;
 
 let coq_function b f =
   bprintf b "{| fn_return := %a;\n     fn_params := %a;\n     \
@@ -587,7 +541,7 @@ let external_function b ef =
 let fundef b = function
   | Internal f -> bprintf b "Internal\n  %a" coq_function f
   | External (ef, tl, t) -> bprintf b "External\n  %a\n  %a\n  %a"
-      external_function ef typelist_ref tl pcoq_type_ref t;;
+      external_function ef typelist tl pcoq_type t;;
 
 let prog_funct_def b (Coq_pair (id, fd)) =
   bprintf b "Definition fun_%a :=\n  (%a, %a).\n\n"
