@@ -185,7 +185,7 @@ let option p f b = function
   | None -> ()
   | Some x -> prefix p f b x;;
 
-let pair f sep g b (x,y) = bprintf b "(%a%s%a)" f x sep g y;;
+let pair f sep g b (x,y) = bprintf b "%a%s%a" f x sep g y;;
 let first f b (x,_) = f b x;;
 let second f b (_,x) = f b x;;
 
