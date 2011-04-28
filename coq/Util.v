@@ -16,12 +16,14 @@ Open Scope Z_scope.
 Implicit Arguments orb_true_elim [b1 b2].
 
 (****************************************************************************)
-(** tactics *)
+(** some general purpose tactics *)
 (****************************************************************************)
 
 Ltac refl := reflexivity.
 Ltac discr := discriminate.
 Ltac hyp := assumption.
+
+Ltac check_eq := vm_compute; refl.
 
 (****************************************************************************)
 (** properties of boolean operators *)
@@ -33,6 +35,70 @@ Proof.
   destruct b; intuition.
 Qed.
 
+(****************************************************************************)
+(** convert a decidability lemma for a unary predicate into a unary
+boolean function *)
+(****************************************************************************)
+
+Section dec_bool.
+
+  Variables (A : Type) (P : A -> Prop) (Pdec : forall x, {P x}+{~P x}).
+
+  Definition bP x :=
+    match Pdec x with
+      | left _ => true
+      | right _ => false
+    end.
+
+  Lemma bP_ok : forall x, bP x = true <-> P x.
+
+  Proof.
+    intro x. unfold bP. case (Pdec x); intuition. discriminate.
+  Qed.
+
+End dec_bool.
+
+Implicit Arguments bP [A P].
+Implicit Arguments bP_ok [A P].
+
+(****************************************************************************)
+(** convert a binary boolean function into a decidability lemma for
+the binary predicate of equality *)
+(****************************************************************************)
+
+Section bool_dec.
+
+  Variables (A : Type) (beq : A -> A -> bool)
+    (beq_ok : forall x y, beq x y = true <-> x = y).
+
+  Definition eq_dec : forall x y : A, {x=y}+{~x=y}.
+
+  Proof.
+    intros x y. case_eq (beq x y); intro h.
+    left. rewrite <- beq_ok. hyp.
+    right. intro e. rewrite <- beq_ok, h in e. discr.
+  Defined.
+
+End bool_dec.
+
+(****************************************************************************)
+(** boolean equality on [comparison] *)
+(****************************************************************************)
+
+Definition beq_comparison c d :=
+  match c, d with
+    | Eq, Eq
+    | Lt, Lt
+    | Gt, Gt => true
+    | _, _ => false
+  end.
+
+Lemma beq_comparison_ok : forall c d, beq_comparison c d = true <-> c = d.
+
+Proof.
+intros c d. destruct c; destruct d; simpl; intuition; try discr.
+Qed.
+  
 (****************************************************************************)
 (** boolean equality on [positive] *)
 (****************************************************************************)
@@ -50,15 +116,45 @@ rewrite IHx. inversion H. refl.
 Qed.
 
 (****************************************************************************)
+(** boolean equality on [Z] *)
+(****************************************************************************)
+
+Fixpoint beq_Z x y :=
+  match x, y with
+    | Z0, Z0 => true
+    | Zpos x', Zpos y' => beq_positive x' y'
+    | Zneg x', Zneg y' => beq_positive x' y'
+    | _, _ => false
+  end.
+
+Lemma beq_Z_ok : forall x y, beq_Z x y = true <-> x = y.
+
+Proof.
+induction x; destruct y; simpl; intros; try (intuition; discr).
+rewrite beq_positive_ok. intuition. subst. refl. inversion H. refl.
+rewrite beq_positive_ok. intuition. subst. refl. inversion H. refl.
+Qed.
+
+(****************************************************************************)
 (** boolean comparison functions on integers *)
 (****************************************************************************)
 
-Definition zeq (x y : Z) : bool := if Z_eq_dec x y then true else false.
+(*REMOVE:
+Definition zeq (x y : Z) : bool := if Z_eq_dec x y then true else false.*)
+(*Definition zeq x y := beq_comparison (Zcompare x y) Eq.*)
+Definition zeq := beq_Z.
+Definition zne x y := negb (zeq x y).
+
+(*REMOVE:
 Definition zne (x y : Z) : bool := negb (zeq x y).
-Definition zlt (x y : Z) : bool := if Z_lt_ge_dec x y then true else false.
-Definition zge (x y : Z) : bool := negb (zlt x y).
-Definition zgt (x y : Z) : bool := zlt y x.
-Definition zle (x y : Z) : bool := negb (zgt x y).
+Definition zlt (x y : Z) : bool := if Z_lt_ge_dec x y then true else false.*)
+Definition zlt x y := beq_comparison (Zcompare x y) Lt.
+Definition zge x y := negb (zlt x y).
+
+(*REMOVE:
+Definition zgt (x y : Z) : bool := zlt y x.*)
+Definition zgt x y := beq_comparison (Zcompare x y) Gt.
+Definition zle x y := negb (zgt x y).
 
 (****************************************************************************)
 (** boolean comparison functions on booleans *)
@@ -81,7 +177,8 @@ Proof.
 Defined.
 
 (****************************************************************************)
-(** converts a positive integer into a natural number *)
+(** converts an integer into a natural number (non-positive integers
+are converted to 0) *)
 (****************************************************************************)
 
 Definition nat_of_Z (x : Z) : nat :=
@@ -139,7 +236,7 @@ Fixpoint clist (k : nat) : list A :=
 End clist.
 
 (****************************************************************************)
-(** convert a word into a list of booleans of length 32 *)
+(** convert a word into a list of booleans of length [wordsize] *)
 (****************************************************************************)
 
 Fixpoint bools_of_positive (p : positive) (acc : list bool) : list bool :=
@@ -217,31 +314,6 @@ Proof.
 Defined.
 
 (****************************************************************************)
-(** convert a decidability lemma into a boolean function *)
-(****************************************************************************)
-
-Section prop_dec.
-
-  Variables (A : Type) (P : A -> Prop) (Pdec : forall x, {P x}+{~P x}).
-
-  Definition bP x :=
-    match Pdec x with
-      | left _ => true
-      | right _ => false
-    end.
-
-  Lemma bP_ok : forall x, bP x = true <-> P x.
-
-  Proof.
-    intro x. unfold bP. case (Pdec x); intuition. discriminate.
-  Qed.
-
-End prop_dec.
-
-Implicit Arguments bP [A P].
-Implicit Arguments bP_ok [A P].
-
-(****************************************************************************)
 (** boolean functions on lists *)
 (****************************************************************************)
 
@@ -300,9 +372,7 @@ End list.
 Implicit Arguments blist_norepet_ok [A beq].
 
 (****************************************************************************)
-(** tactics *)
+(** specific tactics *)
 (****************************************************************************)
-
-Ltac check_eq := vm_compute; refl.
 
 Ltac list_norepet beq_ok := rewrite <- (blist_norepet_ok beq_ok); check_eq.
