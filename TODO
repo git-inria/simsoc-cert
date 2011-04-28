@@ -1,6 +1,8 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
+- check rendering of html doc generated from coq and ocaml files
+
 - check and complete README.simgen
 
 - check that README.simgen and simgen/main -help are coherent
