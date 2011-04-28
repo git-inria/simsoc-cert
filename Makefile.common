@@ -108,6 +108,9 @@ $(DEPENDOT): FORCE
 %.ps: %.dep $(DEPENDOT)
 	$(DEPENDOT) < $< | dot -Tps > $@
 
+%.pdf: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< | dot -Tpdf > $@
+
 clean::
 	rm -f *.dot *.ps
 

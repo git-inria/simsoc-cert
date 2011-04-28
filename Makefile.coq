@@ -57,13 +57,13 @@ html: $(VFILES) $(DIR)/tools/coqdoc/createIndex
 
 .PHONY: graphdep
 
-graphdep: graph.ps
+graphdep: graph.pdf
 
-%.ps: %.dep build-dependot
-	cat $< | $(DEPENDOT) | dot -Tps > $@
+%.pdf: %.dep build-dependot
+	cat $< | $(DEPENDOT) | dot -Tpdf > $@
 
 graph.dep: $(VFILES)
 	cat $(VFILES:%=%.d) | sed -e 's/ .*glob:/:/' -e 's,\.\./,,g' -e 's,\./,,g' -e 's,/,__,g' > $@
 
 clean::
-	rm -f graph.ps graph.dep
+	rm -f graph.pdf graph.dep
