@@ -2,11 +2,14 @@
 (* Transitive dependencies are removed                                *)
 (* Author: JF Monin, Verimag and University Joseph Fourier, Grenoble  *)
 (* Licence: CeCILL, http://www.cecill.info/index.en.html              *)
-(* 2005, 2006 *)
+(* 2005 - 2011 *)
 
 module StringSet = Set.Make (struct type t = string let compare = compare end)
 
 module StringMap = Map.Make (struct type t = string let compare = compare end)
+
+(* ------------------------------------------------------------ *)
+(* READING *)
 
 let add_targ_set key v m =
   try 
@@ -25,6 +28,7 @@ let rec k_add_targ buf add targs s r  =
    bouffe buf add targs1
 and bouffe buf add l = Scanf.bscanf buf "%s%[\n ]" (k_add_targ buf add l)
 
+(* Scans the whole input (buf), line by line *)
 let rec ligne buf add empty base = 
   let x = Scanf.bscanf buf "%s@:%[ ]" (fun s r -> s) in
   if x = "" then base 
@@ -33,8 +37,10 @@ let rec ligne buf add empty base =
     let l = bouffe buf (add bx) empty in
     ligne buf add empty (add_targ_set bx l base)
 
-(*let buf = Scanf.Scanning.from_file "exemple.depend" *)
+(* let buf = Scanf.Scanning.from_file "exemple.depend" *)
 let buf_in = Scanf.Scanning.stdib
+
+(* Building the buffer *)
 
 (* ocamldep puts  '\' for next line continuation *)
 let rec take_not_slash buf accu =
@@ -50,9 +56,16 @@ and remove_slash_nl buf accu =
 
 let buf = Scanf.Scanning.from_string (take_not_slash buf_in "")
 
+(* Result of reading: Data base of raw data *)
+
 let base = ligne buf addset StringSet.empty StringMap.empty
 
+(* ------------------------------------------------------------ *)
+
 (* TODO : circular dependendies forbidden and not checked *)
+
+(* ------------------------------------------------------------ *)
+(* COMPUTING THE INTENDED GRAPH *)
 
 let newroots src targs (roots,alltg) = 
   let alltg = StringSet.union targs alltg in
@@ -127,14 +140,25 @@ let rec simplify visited simplemap todo =
     let simplemap = StringMap.add x new_targs_x simplemap in
     simplify visited simplemap todo
 
+(* Result of the computation *)
 let simplemap = simplify StringSet.empty base roots
+
+(* ------------------------------------------------------------ *)
+(* WRITING *)
+
+(* The new version (April 2011) puts guillemets around names
+   in order to allow path expressions with / and .. 
+   (see dot manual)                                          
+*)
+
 
 let print_node x targs = 
   if StringSet.is_empty targs then ()
   else
     let y = StringSet.choose targs in
-    Printf.printf "%s -> { %s" x y;
-    StringSet.iter (fun z -> Printf.printf "; %s" z) (StringSet.remove y targs);
+    Printf.printf "\"%s\" -> { \"%s\"" x y;
+    StringSet.iter
+      (fun z -> Printf.printf "; \"%s\"" z) (StringSet.remove y targs);
     Printf.printf " }\n"
 
 let print_map m = 

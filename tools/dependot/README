@@ -1,9 +1,12 @@
 Construction of a dot file from Makefile dependence specifications 
-Transitive dependencies are removed                                
+Transitive dependencies are removed.
+
+Related software: dot, in the graphviz package 
+                                
 Author: JF Monin, Verimag and University Joseph Fourier, Grenoble 
         http://www-verimag.imag.fr/~monin/ 
 Licence: CeCILL, http://www.cecill.info/index.en.html              
-2005, 2006 
+2005 - 2011
 
 Install: you need Objective Caml
 
