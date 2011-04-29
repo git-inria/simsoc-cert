@@ -1,8 +1,8 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-# requires Makefile.common prerequisites
 # requires various variables to be defined:
+# - see the variables required by Makefile.common
 # - VFILES: list of Coq files to be compiled
 # provides additional Coq-specific targets to Makefile.common:
 #   default, config, coqtags, graphdep
