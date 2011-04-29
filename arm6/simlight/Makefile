@@ -57,9 +57,6 @@ all.vo: $(DIR)/coq/Cnotations.vo
 
 .PRECIOUS: all.v
 
-%.v: %.c $(SIMGEN)
-	$(SIMGEN) -ocompcertc-c $< > $@
-
 all.c: $(HEADERS) $(SOURCES) simlight.c
 	cat $+ | sed -e 's|#include "\(.*\)|//#include "\1|' -e 's|#include <elf.h>|//#include <elf.h>|' > $@
 
@@ -70,9 +67,8 @@ clean::
 # extraction
 
 ocaml: extraction-libcoq extraction
-	$(SHOW) ocamlbuild arm6/simlight/extraction/all
-	$(HIDE) $(OCAMLBUILD) arm6/simlight/extraction/all.d.byte \
-		arm6/simlight/extraction/all.native
+	$(SHOW) ocamlbuild arm6/simlight/extraction/all.cmo
+	$(HIDE) $(OCAMLBUILD) arm6/simlight/extraction/all.cmo
 
 extraction.v: all.vo
 

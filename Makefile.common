@@ -94,6 +94,9 @@ SIMGEN := $(DIR)/simgen/main
 $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
+%.v: %.c $(SIMGEN)
+	$(SIMGEN) -ocompcertc-c $< > $@
+
 ######################################################################
 # dependot
 
