@@ -515,7 +515,7 @@ let prog_var_def b (Coq_pair (id, v)) =
 
 let global_variables b p =
   bprintf b "\n(* global variables *)\n\n%a\
-    Definition global_variables := %a.\n"
+    Definition global_variables : list (prod ident (globvar type)) := %a.\n"
     (list prog_var_def)
     (List.sort (fun (Coq_pair(id1,_)) (Coq_pair(id2,_)) -> cmp_ident id1 id2)
        p.prog_vars)
@@ -548,7 +548,8 @@ let prog_funct_def b (Coq_pair (id, fd)) =
     ident id ident id fundef fd;;
 
 let functions b p =
-  bprintf b "\n(* functions *)\n\n%aDefinition functions := %a.\n"
+  bprintf b "\n(* functions *)\n\n%a\
+    Definition functions : list (prod ident fundef) := %a.\n"
     (list prog_funct_def) p.prog_funct
     (coq_list prog_funct_ref) p.prog_funct;;
 
