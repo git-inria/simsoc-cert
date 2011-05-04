@@ -30,7 +30,7 @@ $(TARGETS): $(FILES:%=%.ml) lexer.mll parser.mly RawCoq_Csyntax.v # instead of F
 patch-extraction: extraction
 	@if test `grep -c 'v0 = Vector.to_list n v0' extraction/RawCoq_Csyntax.ml` -eq 0; then echo sed -i 's/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml; sed -i 's/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml; fi
 
-extraction.v: RawCoq_Csyntax.vo
+extraction.v: libcoq RawCoq_Csyntax.vo
 
 clean::
 	rm -f $(TARGETS) RawCoq_Csyntax.vo
