@@ -1,6 +1,9 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 --------------------------------------------------------------------
 
+- create a cma/cmxa for compcert for not having to check its
+   dependencies every time with ocamlbuild
+ 
 - check rendering of html doc generated from coq and ocaml files
 
 - check and complete README.simgen
