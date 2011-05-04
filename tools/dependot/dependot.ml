@@ -17,6 +17,7 @@ let add_targ_set key v m =
     StringMap.add key (StringSet.union v0 v) (StringMap.remove key m)
   with Not_found -> StringMap.add key v m
 
+(* File names with the same extension are considered equivalent *)
 let addset a x s = 
   let b = Filename.chop_extension x in
   if a = b then s else StringSet.add b s
@@ -62,7 +63,8 @@ let base = ligne buf addset StringSet.empty StringMap.empty
 
 (* ------------------------------------------------------------ *)
 
-(* TODO : circular dependendies forbidden and not checked *)
+(* TODO: check circular dependencies -- the current result is
+   unspecified, though it seems to be not so bad                *)
 
 (* ------------------------------------------------------------ *)
 (* COMPUTING THE INTENDED GRAPH *)
