@@ -11,8 +11,8 @@ default:
 
 .PHONY: check
 
-check: exemple.dot
-	cmp exemple.dot exemple-ref.dot
+check: example.dot
+	cmp example.dot example-ref.dot
 
 clean::
-	rm -f dependot
+	rm -f dependot example.dot example.ps
