@@ -14,7 +14,7 @@ Chapter B3 - The System Control Coprocessor (p. 683)
 
 Set Implicit Arguments.
 
-Require Import Bitvec Util.
+Require Import Coqlib Bitvec Util.
 
 (****************************************************************************)
 (** B3.4.1 Control register (p. 694) *)
