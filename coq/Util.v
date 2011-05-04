@@ -177,24 +177,67 @@ Proof.
 Defined.
 
 (****************************************************************************)
-(** converts an integer into a natural number (non-positive integers
-are converted to 0) *)
+(** decidability of (forall x, a <= x < b -> P x) *)
 (****************************************************************************)
 
-Definition nat_of_Z (x : Z) : nat :=
-  match x with
-    | Zpos p => nat_of_P p
-    | _ => O
-  end.
+Section range_dec.
 
-Lemma nat_of_Z_ok : forall x : Z, x >= 0 -> Z_of_nat (nat_of_Z x) = x.
+  Variables (P : Z -> Prop) (Pdec : forall z, {P z}+{~P z}).
 
-Proof.
-  destruct x; simpl.
-    reflexivity.
-    intros _. rewrite Zpos_eq_Z_of_nat_o_nat_of_P. reflexivity.
-    compute. intro n; case n; reflexivity.
-Qed.
+  Definition ranged a b := forall z, a <= z < b -> P z.
+
+  Definition ranged_aux a k := forall z, a <= z < a + Z_of_nat k -> P z.
+
+  Lemma ranged_eq : forall a b, ranged a b <-> ranged_aux a (nat_of_Z (b-a)).
+
+  Proof.
+    intros a b. split; intros h.
+    (* -> *)
+    intros z [za zb]. apply h. destruct (Z_ge_dec (b-a) 0).
+    rewrite nat_of_Z_eq in zb. 2: hyp. omega.
+    rewrite nat_of_Z_neg in zb. 2: omega. simpl in zb. omega.
+    (* <- *)
+    intros z [za zb]. apply h. destruct (Z_ge_dec (b-a) 0).
+    rewrite nat_of_Z_eq. 2: hyp. omega.
+    rewrite nat_of_Z_neg. 2: omega. simpl. omega.
+  Qed.
+
+  Lemma ranged_aux_S : forall a k,
+    ranged_aux a (S k) <-> ranged_aux a k /\ P (a + Z_of_nat k).
+
+  Proof.
+    intros a k. split; intro h.
+    split. intros z hz. apply h. rewrite inj_S. omega.
+    apply h. rewrite inj_S. omega.
+    destruct h. intros z hz. rewrite inj_S in hz.
+    destruct (Z_eq_dec z (a + Z_of_nat k)).
+    subst. hyp.
+    apply H. omega.
+  Qed.
+
+  Lemma ranged_aux_dec : forall a k, {ranged_aux a k}+{~ranged_aux a k}.
+
+  Proof.
+    intro a. induction k.
+    left. intros z h. simpl in h. apply False_rec. omega.
+    destruct IHk.
+    destruct (Pdec (a+Z_of_nat k)).
+    left. rewrite ranged_aux_S. intuition.
+    right. intro h. absurd (P(a+Z_of_nat k)). hyp.
+    apply h. rewrite inj_S. omega.
+    right. intro h. absurd (ranged_aux a k). hyp.
+    rewrite ranged_aux_S in h. intuition.
+  Defined.
+
+  Lemma ranged_dec : forall a b, {ranged a b}+{~ranged a b}.
+
+  Proof.
+    intros a b. destruct (ranged_aux_dec a (nat_of_Z (b-a))).
+    left. rewrite ranged_eq. hyp.
+    right. rewrite ranged_eq. hyp.
+  Defined.
+
+End range_dec.
 
 (****************************************************************************)
 (** properties of two_power_nat *)
