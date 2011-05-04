@@ -7,8 +7,8 @@ Proof of simlight.
 
 Set Implicit Arguments.
 
-Require Import Csem Smallstep Events Integers Globalenvs AST Memory Csyntax
-  Coqlib.
+Require Import Csem Cstrategy Smallstep Events Integers Globalenvs AST Memory
+  Csyntax Coqlib.
 Import Genv.
 
 Require Import Util Cnotations add.
@@ -38,36 +38,73 @@ Ltac bind :=
 
 Open Scope positive_scope.
 
-Set Printing Depth 10.
+Set Printing Depth 11.
+
+Ltac s := eapply star_step; [right|idtac|idtac].
+Ltac e := eapply star_step; [left |idtac|idtac].
 
 Lemma add_ok : exists t, exists k, exec_program p (Terminates t k).
 
 Proof.
-eapply ex_intro. eapply ex_intro. unfold exec_program.
-set (ge := globalenv p). eapply program_terminates.
+eapply ex_intro. eapply ex_intro.
+unfold exec_program. set (ge := globalenv p).
+eapply program_terminates.
+
 (* final state *)
 3: apply final_state_intro.
+
 (* initial state *)
 eapply initial_state_intro.
 comp; refl.
 comp; refl.
 comp; refl.
 refl.
-(* steps *)
-eapply star_step.
-right. eapply step_internal_function.
-list_norepet beq_positive_ok.
-comp. alloc.
-comp. bind.
-eapply star_step. simpl fn_body.
-right. eapply step_seq.
-eapply star_step.
-right. eapply step_do_1.
-eapply star_step.
-left. eapply step_lred with (C:=fun x => x `= _ `: _).
-eapply red_var_local. comp; refl.
-unfold not_stuck. intros.
 
-eapply step_rred with (C:=fun x => x).
-eapply red_assign.
-eapply red_var_local.
+(* steps *)
+s. eapply step_internal_function.
+list_norepet beq_positive_ok.
+comp; alloc.
+comp; bind.
+
+(* x = 2 *)
+s. apply step_seq.
+s. apply step_do_1.
+
+e. eapply step_assign with (C:=fun x =>x).
+apply lctx_top.
+apply esl_var_local. comp; refl.
+apply esr_val.
+simpl typeof. apply cast_nn_i; apply nfc_int.
+comp; refl.
+refl.
+
+s. apply step_do_2.
+s. apply step_skip_seq.
+
+(* y = 3 *)
+s. apply step_seq.
+s. apply step_do_1.
+
+e. eapply step_assign with (C:=fun x =>x).
+apply lctx_top.
+apply esl_var_local. comp; refl.
+apply esr_val.
+simpl typeof. apply cast_nn_i; apply nfc_int.
+comp; refl.
+refl.
+
+s. apply step_do_2.
+s. apply step_skip_seq.
+
+(* return x + y *)
+s. apply step_return_1.
+e. apply step_expr.
+eapply esr_binop.
+eapply esr_rvalof.
+apply esl_var_local. comp; refl.
+refl.
+comp. refl.
+eapply esr_rvalof.
+apply esl_var_local. comp; refl.
+refl.
+comp; refl.
