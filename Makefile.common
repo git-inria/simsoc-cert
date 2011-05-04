@@ -114,9 +114,6 @@ $(DEPENDOT): FORCE
 %.pdf: %.dep $(DEPENDOT)
 	$(DEPENDOT) < $< | dot -Tpdf > $@
 
-clean::
-	rm -f *.dot *.ps
-
 ######################################################################
 # otags
 
