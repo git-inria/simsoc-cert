@@ -6,31 +6,70 @@ then
   exit 1
 fi
 
-# --------------------------------------------------------------------------
-# JF: may be we should test ocamlc rather than ocamlopt?
-CAMLVERSION=$(ocamlopt -version)
+# create link to compcert directory
 
-case $CAMLVERSION in
-    1.*|2.*|3.0*|3.10*|3.11*)
-        echo "Your version of Objective-Caml is $CAMLVERSION."
-        echo "*Warning* You are compiling with an outdated version of Objective-Caml."
-        echo "          You need Objective-Caml 3.12.0 or later."
-        echo "          Configuration script failed!"
-        exit 1;;
-    ?*)
-        echo "You have Objective-Caml $CAMLVERSION. Good!";;
-    *)
-        echo "I found the Objective-Caml compiler but cannot find its version number!"
-        echo "Is it installed properly?"
-        echo "Configuration script failed!"
-        exit 1;;
-esac
+if test ! -d $1
+then
+  echo "warning: $1 does not exist or is not a directory!"
+  exit 1
+fi
 
-# --------------------------------------------------------------------------
-
-echo Create link to $1
+echo create link to $1
 ln -f -s $1 compcert
+
+# create coqrc
 
 echo create coqrc
 sed -e "s|/path/to/simsoc-cert|`pwd`|" coqrc.in > coqrc
 
+# check prog
+
+check_prog() {
+    echo -n "$prog: "
+    which $prog
+    if test $? -ne 0
+    then
+	echo 'cannot find $prog in path!'
+	exit 1
+    fi
+}
+
+# check version
+
+check_version() {
+    if test "$ver" != "$ref"
+    then
+	echo "warning: you use $prog $ver instead of $prog $ref!"
+	exit 1
+    fi
+}
+
+# check coq
+
+prog=coqc
+check_prog
+
+ref=8.3pl2
+ver=`coqc -v | head -1 | awk '{print$6}'`
+check_version
+
+# check ocaml
+
+prog=ocamlopt
+check_prog
+
+ref=3.12.0
+ver=`ocamlopt -version`
+check_version
+
+# check compcert
+
+f=compcert/driver/Configuration.ml
+if test ! -f $f
+then
+    echo "cannot find $f: configure compcert first!"
+    exit 1
+fi
+
+prog=ccomp
+check_prog
