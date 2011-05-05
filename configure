@@ -6,7 +6,29 @@ then
   exit 1
 fi
 
-echo create link to $1
+# --------------------------------------------------------------------------
+# JF: may be we should test ocamlc rather than ocamlopt?
+CAMLVERSION=$(ocamlopt -version)
+
+case $CAMLVERSION in
+    1.*|2.*|3.0*|3.10*|3.11*)
+        echo "Your version of Objective-Caml is $CAMLVERSION."
+        echo "*Warning* You are compiling with an outdated version of Objective-Caml."
+        echo "          You need Objective-Caml 3.12.0 or later."
+        echo "          Configuration script failed!"
+        exit 1;;
+    ?*)
+        echo "You have Objective-Caml $CAMLVERSION. Good!";;
+    *)
+        echo "I found the Objective-Caml compiler but cannot find its version number!"
+        echo "Is it installed properly?"
+        echo "Configuration script failed!"
+        exit 1;;
+esac
+
+# --------------------------------------------------------------------------
+
+echo Create link to $1
 ln -f -s $1 compcert
 
 echo create coqrc
