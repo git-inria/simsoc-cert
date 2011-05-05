@@ -6,40 +6,29 @@ Prerequisites:
 
 * OCaml 3.12.0 available from http://caml.inria.fr/ .
 
-* Coq 8.3pl1 available from http://coq.inria.fr/ .
+* Coq 8.3pl2 available from http://coq.inria.fr/ .
 
-* The sources of Compcert 1.8.1 available from
+* The sources of CompCert 1.8.1 available from
   http://compcert.inria.fr/ .
 
-* All the prerequisites required for CompCert, described in 
-  compcert-1.8.1/README.
+* All the prerequisites required for CompCert as described in
+  compcert-1.8.1/README (except for Coq 8.3pl1 that can be replaced by
+  Coq 8.3pl2).
 
-* The compilation of CompCert done with Coq 8.3pl1 as described in
-  compcert-1.8.1/README.
+* CompCert configured for ia32-linux and compiled with Coq 8.3pl2 as
+  described in compcert-1.8.1/README.
 
 * For ARM tests, a binary called 'arm-elf-gcc' needs to be accessible
   from the path. This binary can be found for example inside the
-  SimSoC project (http://formes.asia/cms/software/simsoc).
-
---------------------------------------------------------------------
-Compilation of compcert:
-
-      ./configure arm-linux
-Or (other options available, see README):
-      ./configure -prefix /path/to/install-dir arm-linux
-
-Then:
-      make all
-(Optional:)
-      make install
+  SimSoC project (see http://formes.asia/cms/software/simsoc).
 
 --------------------------------------------------------------------
 Configuration of SimSoC-Cert:
 
-      ./configure path/to/compcert
+      ./configure /path/to/compcert
 
 This creates in the top directory of SimSoC-Cert a symbolic link to
-path/to/compcert named 'compcert' and creates a file coqrc to add in
+/path/to/compcert named 'compcert' and creates a file coqrc to add in
 your ~/.coqrc file for interactive reading of Coq files in
 Emacs/ProofGeneral or CoqIDE.
 
