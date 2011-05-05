@@ -300,22 +300,39 @@ Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
   (Arm6_Proc.mk_state (cpsr_proj m e) (spsrs_proj m e) (regs_proj m e) nil (mode_proj m e))
   (Arm6_SCC.mk_state (scc_reg_proj m e) (mem_proj m e)).
 
-Definition mk_cpsr (c: val) (m:Mem.mem) (e:env) :=
+(*Definition mk_cpsr (c: val) (m:Mem.mem) (e:env) :=
   store_val cpsr e Int.zero c m.
 
 Definition mk_spsr (s:val) (m:Mem.mem) (e:env) :=
   store_val spsrs e Int.zero s m.
 
 Definition mk_mmu (mm:val) (m:Mem.mem) (e:env) :=
-  store_val mmu_ptr e Int.zero mm m. 
+  store_val mmu_ptr e Int.zero mm m. *)
 
+Definition mk_c_proc (mm c s cp i ur fr ir sr ar ur p jmp:val) (e:env) (m:Mem.mem):Mem.mem:=
+  store_val jump e Int.zero jmp
+  (store_val pc e Int.zero p
+  (store_val und_regs e Int.zero ur
+  (store_val abt_regs e Int.zero ar
+  (store_val svc_regs e Int.zero sr
+  (store_val irq_regs e Int.zero ir
+  (store_val fiq_regs e Int.zero fr
+  (store_val user_regs e Int.zero ur
+  (store_val id e Int.zero i
+  (store_val cp15 e Int.zero cp
+  (store_val spsrs e Int.zero s
+  (store_val cpsr e Int.zero c 
+  (store_val mmu_ptr e Int.zero mm m)))))))))))).
 
-(*Inductive proc_state_related : Mem.mem -> env -> Arm6_State.state -> Prop :=
-  |proc_state_related_intro : forall mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c
-    fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c,
-    let 
-    proc_state_related (Arm6_State.mk_state ())
-    (mk_c_state ()).*)
+Inductive proc_state_related : Mem.mem -> Arm6_State.state -> Prop :=
+  |proc_state_related_intro : 
+    forall mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c e m cpsr_coq spsr_coq reg_coq exns_coq mode_coq ssc_reg_coq mem_coq,
+      proc_state_related
+      (mk_c_proc mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c
+        fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c e m)
+      (Arm6_State.mk_state 
+        (Arm6_Proc.mk_state cpsr_coq spsr_coq reg_coq exns_coq mode_coq) 
+        (Arm6_SCC.mk_state ssc_reg_coq mem_coq)).
 
 
 (* Boolean function to check the equivalence of two cpsr*)
