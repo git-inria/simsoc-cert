@@ -17,9 +17,21 @@ Prerequisites:
 * The compilation of CompCert done with Coq 8.3pl1 as described in
   compcert-1.8.1/README.
 
-* For ARM tests, a binary called 'arm-elf-gcc' need to be accessible
+* For ARM tests, a binary called 'arm-elf-gcc' needs to be accessible
   from the path. This binary can be found for example inside the
   SimSoC project (http://formes.asia/cms/software/simsoc).
+
+--------------------------------------------------------------------
+Compilation of compcert:
+
+      ./configure arm-linux
+Or (other options available, see README):
+      ./configure -prefix /path/to/install-dir arm-linux
+
+Then:
+      make all
+(Optional:)
+      make install
 
 --------------------------------------------------------------------
 Configuration of SimSoC-Cert:
