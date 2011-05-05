@@ -22,6 +22,18 @@ Prerequisites:
   from the path. This binary can be found for example inside the
   SimSoC project (see http://formes.asia/cms/software/simsoc).
 
+-------------
+Compilation of compcert:
+
+      ./configure arm-linux
+Or (other options available, see README):
+      ./configure -prefix /path/to/install-dir arm-linux
+
+Then:
+      make all
+(Optional:)
+      make install
+
 --------------------------------------------------------------------
 Configuration of SimSoC-Cert:
 
