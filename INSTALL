@@ -12,27 +12,22 @@ Prerequisites:
   http://compcert.inria.fr/ .
 
 * All the prerequisites required for CompCert as described in
-  compcert-1.8.1/README (except for Coq 8.3pl1 that can be replaced by
-  Coq 8.3pl2).
+  /path/to/compcert/README (except for Coq 8.3pl1 that can be replaced
+  by Coq 8.3pl2).
 
-* CompCert configured for ia32-linux and compiled with Coq 8.3pl2 as
-  described in compcert-1.8.1/README.
+* CompCert configured with target 'ia32-linux' and compiled with Coq
+  8.3pl2 as described in /path/to/compcert/README.
 
 * For ARM tests, a binary called 'arm-elf-gcc' needs to be accessible
   from the path. This binary can be found for example inside the
   SimSoC project (see http://formes.asia/cms/software/simsoc).
 
--------------
-Compilation of compcert:
+--------------------------------------------------------------------
+Configuration and compilation of CompCert:
 
-      ./configure arm-linux
-Or (other options available, see README):
-      ./configure -prefix /path/to/install-dir arm-linux
+See /path/to/compcert/README.
 
-Then:
-      make all
-(Optional:)
-      make install
+Target to use: ia32-linux.
 
 --------------------------------------------------------------------
 Configuration of SimSoC-Cert:
