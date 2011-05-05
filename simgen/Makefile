@@ -28,7 +28,8 @@ $(TARGETS): $(FILES:%=%.ml) lexer.mll parser.mly RawCoq_Csyntax.v # instead of F
 .PHONY: patch-extraction
 
 patch-extraction: extraction
-	@if test `grep -c 'v0 = Vector.to_list n v0' extraction/RawCoq_Csyntax.ml` -eq 0; then echo sed -i 's/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml; sed -i 's/= Vector.to_list n/v0 = Vector.to_list n v0/' extraction/RawCoq_Csyntax.ml; fi
+	$(SHOW) patch extraction/RawCoq_Csyntax.ml
+	$(HIDE) awk '/let v_to_list =$$/{printf$$0;getline;printf$$0;getline}{print}' extraction/RawCoq_Csyntax.ml | sed -e 's|let v_to_list =[ ]*Vector.to_list[ ]*n|let v_to_list v = Vector.to_list n v|' > extraction/tmp.ml && mv -f extraction/tmp.ml extraction/RawCoq_Csyntax.ml
 
 extraction.v: libcoq RawCoq_Csyntax.vo
 
