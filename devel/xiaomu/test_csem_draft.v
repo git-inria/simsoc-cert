@@ -112,15 +112,6 @@ Definition build_env_proc (m:Mem.mem) (e:env) :=
   (build_env proc typ_SLv6_Processor Int.zero (m,e)))))))))))))).
 *)
 
-Definition mk_cpsr (c: val) (m:Mem.mem) (e:env) :=
-  store_val cpsr e Int.zero c m.
-
-Definition mk_spsr (s:val) (m:Mem.mem) (e:env) :=
-  store_val spsrs e Int.zero s m.
-
-Definition mk_mmu (mm:val) (m:Mem.mem) (e:env) :=
-  store_val mmu_ptr e Int.zero mm m. 
-
 (* if an option val is Some integer then return the integer value else return zero*)
 Definition load_val_bit (v : option val):word:=
   match v with
@@ -147,40 +138,25 @@ Definition ofs_of_fld (id:AST.ident):word:=
 
 (* from StateRegister to word*)
 Definition sr_proj (m:Mem.mem) (e:env) (b:block) :word:=
-  let nflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld N_flag)) in
-  let zflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld Z_flag)) in
-  let cflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld C_flag)) in
-  let vflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld V_flag)) in
-  let qflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld Q_flag)) in
-  let jflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld J_flag)) in
-  let ge0 := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld GE0)) in
-  let ge1 :=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld GE1)) in
-  let ge2 :=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld GE2)) in
-  let ge3 :=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld GE3)) in
-  let eflag :=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld E_flag)) in
-  let aflag :=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld A_flag)) in
-  let iflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld I_flag)) in
-  let fflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld F_flag)) in
-  let tflag := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld T_flag)) in
-  let md := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld mode)) in
-  let bg := 
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld background)) in
+  let load_val_of id:=
+    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld id)) in
+  let nflag := load_val_of N_flag in
+  let zflag := load_val_of Z_flag in
+  let cflag := load_val_of C_flag in
+  let vflag := load_val_of V_flag in
+  let qflag := load_val_of Q_flag in
+  let jflag := load_val_of J_flag in
+  let ge0 := load_val_of GE0 in
+  let ge1 := load_val_of GE1 in
+  let ge2 := load_val_of GE2 in
+  let ge3 := load_val_of GE3 in
+  let eflag := load_val_of E_flag in
+  let aflag := load_val_of A_flag in
+  let iflag :=  load_val_of I_flag in
+  let fflag := load_val_of F_flag in
+  let tflag := load_val_of T_flag in
+  let md := load_val_of mode in
+  let bg := load_val_of background in
     (set_bit 31 nflag
     (set_bit 30 zflag
     (set_bit 29 cflag
@@ -324,12 +300,23 @@ Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
   (Arm6_Proc.mk_state (cpsr_proj m e) (spsrs_proj m e) (regs_proj m e) nil (mode_proj m e))
   (Arm6_SCC.mk_state (scc_reg_proj m e) (mem_proj m e)).
 
+Definition mk_cpsr (c: val) (m:Mem.mem) (e:env) :=
+  store_val cpsr e Int.zero c m.
+
+Definition mk_spsr (s:val) (m:Mem.mem) (e:env) :=
+  store_val spsrs e Int.zero s m.
+
+Definition mk_mmu (mm:val) (m:Mem.mem) (e:env) :=
+  store_val mmu_ptr e Int.zero mm m. 
+
+
 (*Inductive proc_state_related : Mem.mem -> env -> Arm6_State.state -> Prop :=
   |proc_state_related_intro : forall mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c
     fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c,
+    let 
     proc_state_related (Arm6_State.mk_state ())
-    (mk_c_state ()).
-*)
+    (mk_c_state ()).*)
+
 
 (* Boolean function to check the equivalence of two cpsr*)
 (*Definition equiv_cpsr (coqcpsr : word) : bool =
