@@ -5,7 +5,7 @@ Require Import Csyntax Csem Coqlib Integers Values Maps.
 Require Import Arm6_State Arm6_Proc Arm6_SCC Bitvec Arm6.
 Require Import adc_compcert New_Memory New_Globalenvs.
 
-(* load/store in loc env*)
+(* load/store local variables of type t*)
 Definition store_value_of_type' (ty_dest: type) (m: Mem.mem) (loc: block) (ofs: int) (v: val) : option Mem.mem :=
   match access_mode ty_dest with
   | By_value chunk => Mem.storev chunk m (Vptr loc ofs) v
@@ -38,7 +38,7 @@ Definition build_env (id:AST.ident) (t:type) (ofs :int) (m:Mem.mem) (e:env):(Mem
     |(m',None) => (m',e)
   end.
 
-(* store value of variable "id" to memory*)
+(* store value of local variable by its id*)
 Definition store_val (id:AST.ident) (e:env) (ofs:int) (v:val) (m:Mem.mem):Mem.mem:=
   match (match (PTree.get id e) with
            |Some (b,t)=> store_value_of_type' t m b ofs v
@@ -48,7 +48,7 @@ Definition store_val (id:AST.ident) (e:env) (ofs:int) (v:val) (m:Mem.mem):Mem.me
     |None => m
   end.
 
-(* load value of variable "id" from memory*)
+(* load value of local variable by its id*)
 Definition load_val (id:AST.ident) (e:env) (ofs:int) (m:Mem.mem):option val:=
   match (PTree.get id e) with
     |Some (b,t) => load_value_of_type' t m b ofs
@@ -121,15 +121,15 @@ Definition load_val_bit (v : option val):word:=
 
 Require Import Errors.
 
-(* find the offset for every element of struct StatusRegister*)
-Definition fld_of_sr :=
-  match typ_SLv6_StatusRegister with
+(* find the offset for every element of a struct*)
+Definition fld_of_struct (tp:type) :=
+  match tp with
     |Tstruct id fl => fl
     |_ => Fnil
   end.
 
-Definition ofs_of_fld (id:AST.ident):word:=
-  match field_offset id fld_of_sr with
+Definition ofs_of_fld (tp:type) (id:AST.ident):word:=
+  match field_offset id (fld_of_struct tp) with
     | Error _ => Int.zero
     | OK r => repr r
   end.
@@ -137,26 +137,26 @@ Definition ofs_of_fld (id:AST.ident):word:=
 (* Projection from C to COQ ARM processor state *)
 
 (* from StateRegister to word*)
-Definition sr_proj (m:Mem.mem) (e:env) (b:block) :word:=
-  let load_val_of id:=
-    load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m b (ofs_of_fld id)) in
-  let nflag := load_val_of N_flag in
-  let zflag := load_val_of Z_flag in
-  let cflag := load_val_of C_flag in
-  let vflag := load_val_of V_flag in
-  let qflag := load_val_of Q_flag in
-  let jflag := load_val_of J_flag in
-  let ge0 := load_val_of GE0 in
-  let ge1 := load_val_of GE1 in
-  let ge2 := load_val_of GE2 in
-  let ge3 := load_val_of GE3 in
-  let eflag := load_val_of E_flag in
-  let aflag := load_val_of A_flag in
-  let iflag :=  load_val_of I_flag in
-  let fflag := load_val_of F_flag in
-  let tflag := load_val_of T_flag in
-  let md := load_val_of mode in
-  let bg := load_val_of background in
+Definition sr_proj (m:Mem.mem) (e:env) (b:block) (ofs:int) :word:=
+  let load_val_of id tp :=
+    load_val_bit (load_value_of_type' tp m b (add ofs (ofs_of_fld typ_SLv6_StatusRegister id))) in
+  let nflag := load_val_of N_flag (Tint I8 Unsigned) in
+  let zflag := load_val_of Z_flag (Tint I8 Unsigned) in
+  let cflag := load_val_of C_flag (Tint I8 Unsigned) in
+  let vflag := load_val_of V_flag (Tint I8 Unsigned) in
+  let qflag := load_val_of Q_flag (Tint I8 Unsigned) in
+  let jflag := load_val_of J_flag (Tint I8 Unsigned) in
+  let ge0 := load_val_of GE0 (Tint I8 Unsigned) in
+  let ge1 := load_val_of GE1 (Tint I8 Unsigned) in
+  let ge2 := load_val_of GE2 (Tint I8 Unsigned) in
+  let ge3 := load_val_of GE3 (Tint I8 Unsigned) in
+  let eflag := load_val_of E_flag (Tint I8 Unsigned) in
+  let aflag := load_val_of A_flag (Tint I8 Unsigned) in
+  let iflag :=  load_val_of I_flag (Tint I8 Unsigned) in
+  let fflag := load_val_of F_flag (Tint I8 Unsigned) in
+  let tflag := load_val_of T_flag (Tint I8 Unsigned) in
+  let md := load_val_of mode (Tint I32 Unsigned) in
+  let bg := load_val_of background (Tint I32 Unsigned) in
     (set_bit 31 nflag
     (set_bit 30 zflag
     (set_bit 29 cflag
@@ -174,37 +174,32 @@ Definition sr_proj (m:Mem.mem) (e:env) (b:block) :word:=
     (set_bit 5 tflag 
     (set_bits 4 0 md Int.zero)))))))))))))))).
 
-(* find the block which is the first one of cpsr struct*)
-Definition blk_of_cpsr (m:Mem.mem) (e:env) :block:=
-  match load_val cpsr e Int.zero m with
-    | Some (Vptr b ofs) => b
-    |_ => 0
-  end.
-
 (* projection form C cpsr to COQ cpsr*)
-Definition cpsr_proj (m:Mem.mem) (e:env) :word:= sr_proj m e (blk_of_cpsr m e).
-  
-(* find the block which is the first one of spsr struct *)
-Definition blk_of_spsr (m:Mem.mem) (e:env) (ofs:int):block:=
-  match (match load_val spsrs e Int.zero m with
-           |Some (Vptr b ofs) => 
-             load_value_of_type' (Tpointer (Tarray typ_SLv6_StatusRegister 5)) m b ofs
-           |_ => None
-         end) with
-    |Some (Vptr b ofs)=> b
-    |_=>0
+Definition cpsr_proj (m:Mem.mem) (e:env) :word:=
+  match e!proc with
+    |Some (b, t) => sr_proj m e b (ofs_of_fld t cpsr)
+    |None => Int.zero
   end.
-
+ 
 (* projection from C spsr to COQ spsr*)
-Definition spsrs_proj (m:Mem.mem) (e:env) (em:exn_mode):word:=
-  match em with
-    |fiq=>sr_proj m e (blk_of_spsr m e (repr 0))
-    |irq=>sr_proj m e (blk_of_spsr m e (repr 1))
-    |svc=>sr_proj m e (blk_of_spsr m e (repr 2))
-    |abt=>sr_proj m e (blk_of_spsr m e (repr 3))
-    |und=>sr_proj m e (blk_of_spsr m e (repr 4))
-  end
-.
+Definition spsr_proj (m:Mem.mem) (e:env) (em:exn_mode):word:=
+    match e!proc with 
+      |Some(b,t)=> 
+        let ob:=load_value_of_type' (Tarray typ_SLv6_StatusRegister 5) m b 
+          (ofs_of_fld t spsrs) in
+          match ob with
+            |Some(Vptr b' ofs)=>
+              match em with
+                |fiq=>sr_proj m e b' (add ofs (repr 0))
+                |irq=>sr_proj m e b' (add ofs (repr 1))
+                |svc=>sr_proj m e b' (add ofs (repr 2))
+                |abt=>sr_proj m e b' (add ofs (repr 3))
+                |und=>sr_proj m e b' (add ofs (repr 4))
+              end
+            |_=>Int.zero
+          end
+      |None=>Int.zero
+    end.
 
 (* Projection form COQ cpsr to C memory model which contain such cpsr*)
 (*Definition cpsr_proj' (s : Arm6_State.state) (m:Mem.mem) (e:env) :=
@@ -246,23 +241,86 @@ Definition spsrs_proj (m:Mem.mem) (e:env) (em:exn_mode):word:=
     (store_val N_flag e Int.zero nflag m))))))))))))))))).
 *)
 
-
 Definition mode_proj (m:Mem.mem) (e:env) :proc_mode:=
-  let md := proc_mode_of_word 
-    (load_val_bit (load_value_of_type' (Tpointer typ_SLv6_StatusRegister) m (blk_of_cpsr m e) (ofs_of_fld mode))) in
+  let md :=
+    match e!proc with
+      |Some(bp,t)=>
+        proc_mode_of_word (load_val_bit (load_value_of_type' (Tint I32 Unsigned) m bp 
+          (add (ofs_of_fld t cpsr) (ofs_of_fld typ_SLv6_StatusRegister mode)))) 
+      |None=>None
+    end in
     match md with
       |Some md'=>md'
       |None =>sys
     end.
 
-Definition load_reg (id:AST.ident) (m:Mem.mem) (e:env) (reg_num:int):word:=
-  match (match load_val id e Int.zero m with
-           |Some (Vptr b ofs) => load_value_of_type' (Tint I32 Unsigned) m b reg_num
-           |_=>None
-         end) with
-    |Some (Vint v) => v
-    |_ => Int.zero
+Definition load_reg (id:AST.ident) (a n:Z) (m:Mem.mem) (e:env):word:=
+  match e!proc with
+    |Some(bp,t)=> 
+      let ptr:=load_value_of_type' 
+        (Tarray (Tint I32 Unsigned) a) m bp (ofs_of_fld t id) in
+        match ptr with 
+          |Some(Vptr ba ofs)=>
+            match (load_value_of_type' (Tint I32 Unsigned) m ba (add ofs (repr n))) with
+              |Some(Vint v)=>v
+              |_=>Int.zero
+            end
+          |_=>Int.zero
+        end
+    |None=>Int.zero
   end.
+
+Definition regs_proj (m:Mem.mem) (e:env) (r:register):word:=
+  match r with
+    | R k => load_reg user_regs 16 k m e
+    | R_svc k _=> load_reg svc_regs 7 k m e
+    | R_abt k _=> load_reg abt_regs 2 k m e
+    | R_und k _=> load_reg und_regs 2 k m e
+    | R_irq k _=> load_reg irq_regs 2 k m e
+    | R_fiq k _=> load_reg fiq_regs 2 k m e
+  end.
+
+(*Definition op_case {A} (op:option A)*)
+
+Definition mem_proj (m:Mem.mem) (e:env) (ad:address):word:=
+  match e!proc with
+    |Some(bp,t)=>
+      let mptr:=load_value_of_type'
+        (Tpointer typ_SLv6_MMU) m bp (ofs_of_fld t mmu_ptr)
+        in match mptr with
+          |Some(Vptr bm ofs)=>
+            let mm:=load_value_of_type' 
+            (Tpointer (Tint I8 Unsigned)) m bm (add ofs (ofs_of_fld typ_SLv6_MMU adc_compcert.mem))
+            in match mm with
+              |Some(Vptr b ofs)=>
+                let ov:=load_value_of_type' (Tint I8 Unsigned) m b (add ofs (word_of_address ad))
+                  in match ov with |Some(Vint v)=>v|_=>Int.zero end
+              |_=>Int.zero end
+          |_=>Int.zero
+        end
+    |None=>Int.zero
+  end.
+
+Definition scc_reg_proj (m:Mem.mem) (e:env) (r:regnum):word:=
+  match e!proc with
+    |Some(bp,t)=>
+      let regbit id:=
+        match (load_value_of_type' (Tint I8 Unsigned) m bp 
+        (add (ofs_of_fld t cp15) (ofs_of_fld typ_SLv6_SystemCoproc id))) with
+          |Some(Vint v)=>v
+          |_=>Int.zero
+        end in
+  let ee := regbit ee_bit in
+  let u := regbit u_bit in
+  let v := regbit v_bit in
+    set_bit 13 v (set_bit 22 u (set_bit 25 ee Int.zero))
+    |None=>Int.zero
+  end.
+
+Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
+  Arm6_State.mk_state 
+  (Arm6_Proc.mk_state (cpsr_proj m e) (spsr_proj m e) (regs_proj m e) nil (mode_proj m e))
+  (Arm6_SCC.mk_state (scc_reg_proj m e) (mem_proj m e)).
 
 (*Definition map_proc_mode (id:AST.ident) :proc_mode:=
   if Peqb id fiq_regs then exn fiq else if Peqb id irq_regs then exn irq
@@ -270,35 +328,6 @@ Definition load_reg (id:AST.ident) (m:Mem.mem) (e:env) (reg_num:int):word:=
       else if Peqb id und_regs then exn und else if Peqb id user_regs then usr
         else sys.
 *)
-
-Definition regs_proj (m:Mem.mem) (e:env) (r:register):word:=
-  match r with
-    | R k => load_reg user_regs m e k
-    | R_svc k _=> load_reg svc_regs m e (repr k)
-    | R_abt k _=> load_reg abt_regs m e (repr k)
-    | R_und k _=> load_reg und_regs m e (repr k)
-    | R_irq k _=> load_reg irq_regs m e (repr k)
-    | R_fiq k _=> load_reg fiq_regs m e (repr k)
-  end.
-Definition mem_proj (m:Mem.mem) (e:env) (ad:address):word:=
-  match (match (load_val adc_compcert.mem e Int.zero m) with
-           |Some (Vptr b ofs)=>load_value_of_type' (Tint I32 Unsigned) m b (word_of_address ad)
-           |_=>None
-         end) with
-    |Some (Vint v) => v
-    |_=>Int.zero
-  end.
-
-Definition scc_reg_proj (m:Mem.mem) (e:env) (r:regnum):word:=
-  let ee := load_val_bit (load_val ee_bit e Int.zero m) in
-  let u := load_val_bit (load_val u_bit e Int.zero m) in
-  let v := load_val_bit (load_val v_bit e Int.zero m) in
-    set_bit 13 v (set_bit 22 u (set_bit 25 ee Int.zero)).
-
-Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
-  Arm6_State.mk_state 
-  (Arm6_Proc.mk_state (cpsr_proj m e) (spsrs_proj m e) (regs_proj m e) nil (mode_proj m e))
-  (Arm6_SCC.mk_state (scc_reg_proj m e) (mem_proj m e)).
 
 (*Definition mk_cpsr (c: val) (m:Mem.mem) (e:env) :=
   store_val cpsr e Int.zero c m.
@@ -324,16 +353,18 @@ Definition mk_c_proc (mm c s cp i ur fr ir sr ar ur p jmp:val) (e:env) (m:Mem.me
   (store_val cpsr e Int.zero c 
   (store_val mmu_ptr e Int.zero mm m)))))))))))).
 
-Inductive proc_state_related : Mem.mem -> Arm6_State.state -> Prop :=
+Inductive proc_state_related : Mem.mem -> env -> Arm6_State.state -> Prop :=
   |proc_state_related_intro : 
     forall mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c e m cpsr_coq spsr_coq reg_coq exns_coq mode_coq ssc_reg_coq mem_coq,
       proc_state_related
       (mk_c_proc mmu_ptr_c cpsr_c spsrs_c cp15_c id_c user_regs_c
-        fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c e m)
+        fiq_regs_c irq_regs_c svc_regs_c abt_regs_c und_regs_c pc_c jump_c e m) e
       (Arm6_State.mk_state 
         (Arm6_Proc.mk_state cpsr_coq spsr_coq reg_coq exns_coq mode_coq) 
         (Arm6_SCC.mk_state ssc_reg_coq mem_coq)).
 
+Definition proc_state_func_related (m:Mem.mem) (e:env) (s:Arm6_State.state) :Prop:=
+  proc_proj m e = s.
 
 (* Boolean function to check the equivalence of two cpsr*)
 (*Definition equiv_cpsr (coqcpsr : word) : bool =
