@@ -140,10 +140,12 @@ comp; refl.
 refl.
 
 (* steps *)
-s. simple eapply step_internal_function'.
+s. simple eapply step_internal_function.
 list_norepet beq_positive_ok.
-comp; refl.
-hcomp; refl.
+comp; alloc.
+comp; bind.
+(*comp. refl.
+hcomp. refl.*)
 
 (* x = 2 *)
 s. apply step_seq.
