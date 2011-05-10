@@ -207,10 +207,12 @@ let manual_of_in_channel o_file =
               let r_bank = Str.regexp ".*_BANK" in
               let r_accol_end = Str.regexp ".*}" in
               let replace c_code =
-                let l1, n0, _ :: ll = List.split_beg (fun x -> Str.string_match r_bank x 0) c_code in
-                let l, n1, l2 = List.split_beg (fun x -> Str.string_match r_accol_end x 0) ll in
-                l1 @ List.flatten (
-                  List.init (fun n -> List.map (Str.global_replace (Str.regexp "R._BANK") (Printf.sprintf "R%d_BANK" n)) ([n0] @ l @ [n1; ""])) 8), l2 in
+                match List.split_beg (fun x -> Str.string_match r_bank x 0) c_code with
+                  | l1, n0, _ :: ll ->
+                    let l, n1, l2 = List.split_beg (fun x -> Str.string_match r_accol_end x 0) ll in
+                    l1 @ List.flatten (
+                      List.init (fun n -> List.map (Str.global_replace (Str.regexp "R._BANK") (Printf.sprintf "R%d_BANK" n)) ([n0] @ l @ [n1; ""])) 8), l2 
+                  | _ -> failwith importation_error in
               fun c_code -> 
                 let l1, l2 = replace c_code in
                 let l2, l3 = replace l2 in

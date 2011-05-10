@@ -166,61 +166,68 @@ struct
         | Next l -> aux [l]
         | Last _ -> 
           Last (
-let rec aux ll ic = 
-  match 
-    try Some (input_page_a ic) with 
-      | Unknown_header _ -> None
-  with
-    | None -> List.rev ll, ic
-    | Some (l, ic) -> aux (l :: ll) ic in
-let l, ic = aux [] t.ic in
+            let rec aux ll ic = 
+              match 
+                try Some (input_page_a ic) with 
+                  | Unknown_header _ -> None
+              with
+                | None -> List.rev ll, ic
+                | Some (l, ic) -> aux (l :: ll) ic in
 
-match l with
-  | [] -> failwith importation_error 
-  |  l :: ls -> 
+            match aux [] t.ic with
+              | [], _ -> failwith importation_error 
+              |  l :: ls, ic -> 
 
-  let reg_big = Str.regexp "([0-9]+) .+" in
-  let reg_table = Str.regexp "Table A.[0-9]+ .+" in
+                let reg_big = Str.regexp "([0-9]+) .+" in
+                let reg_table = Str.regexp "Table A.[0-9]+ .+" in
+                
+                let separate f_reg = 
+                  let rec aux acc n1 l1 = 
+                    match List.split_from_beg_at f_reg l1 with
+                      | None -> List.rev ((n1, List.del_line l1) :: acc)
+                      | Some (l1, n2, l2) -> aux ((n1, List.del_line l1) :: acc) n2 l2 in
+                  aux [] in
 
-  let separate f_reg = 
-    let rec aux acc n1 l1 = 
-      match List.split_from_beg_at f_reg l1 with
-        | None -> List.rev ((n1, List.del_line l1) :: acc)
-        | Some (l1, n2, l2) -> aux ((n1, List.del_line l1) :: acc) n2 l2 in
-    aux [] in
+                let _, n1, l = List.split_beg ((=) "(1) No Operand") l in 
+                let l = separate (fun s -> Str.string_match reg_big s 0) n1 (List.flatten (l :: ls)) in
+                let ll = 
+                  let map f = 
+                    List.map (function 
+                      | title, x :: xs -> title, f x xs
+                      | _ -> failwith importation_error) in
+                  map (fun x xs -> 
+                    map (separate (fun x -> 
+                      Str.string_match (Str.regexp ".+T Bit") x 0 
+                      || Str.string_match (Str.regexp_string "tion") x 0
+                      || Str.string_match (Str.regexp_string "on") x 0))
+                      (separate (fun s -> Str.string_match reg_table s 0) x xs)
+                  ) l in
 
-  let _, n1, l = List.split_beg ((=) "(1) No Operand") l in 
-  let l = separate (fun s -> Str.string_match reg_big s 0) n1 (List.flatten (l :: ls)) in
-  let ll = List.map (function (title, x :: xs) -> title, List.map (function (title, x :: xs) -> title, separate (fun x -> Str.string_match (Str.regexp ".+T Bit") x 0 || Str.string_match (Str.regexp_string "tion") x 0 || Str.string_match (Str.regexp_string "on") x 0) x xs | _ -> failwith importation_error) (separate (fun s -> Str.string_match reg_table s 0) x xs) | _ -> failwith importation_error) l in
-
-  let ll = 
-  match ll with
-    | (_, (_, (_, l1) :: l2) :: l3) :: l4 -> 
-      List.fold_left (fun l s -> 
-        if s.[0] = ' ' then 
-          l
-        else
-          let ll = Str.split (Str.regexp " +") s in
-          List.hd ll :: l) [] l1,
-      let fold_left f a l = List.fold_left (fun a (_, l) -> f a l) a l in
-      fold_left (fold_left (fold_left (List.fold_left (fun acc s -> 
-        if s = "" || s.[0] = ' ' then
-          acc 
-        else 
-          let x1 :: x2 :: l = Str.split (Str.regexp " +") s in
-          (x1, x2, List.exists ((=) "Privileged") l) :: acc)))) 
-        []
-        (("", ("", l2) :: l3) :: l4)
-    | _ -> failwith importation_error in
-  let _ = ignore ll in
-  let l1, l2 = ll in 
-(*  let () = Printf.printf "LLLLLLLLL %d %d\n%!" (List.length l1) (List.length l2) in*)
-  ll
-
-)
+                  match ll with
+                    | (_, (_, (_, l1) :: l2) :: l3) :: l4 -> 
+                      List.fold_left (fun l s -> 
+                        if s.[0] = ' ' then 
+                          l
+                        else
+                          let ll = Str.split (Str.regexp " +") s in
+                          List.hd ll :: l) [] l1,
+                          let fold_left f a l = List.fold_left (fun a (_, l) -> f a l) a l in
+                          fold_left (fold_left (fold_left (List.fold_left (fun acc s -> 
+                            if s = "" || s.[0] = ' ' then 
+                              acc 
+                            else 
+                              match Str.split (Str.regexp " +") s with
+                                | x1 :: x2 :: l -> 
+                                  (x1, x2, List.exists ((=) "Privileged") l) :: acc
+                                | _ -> failwith importation_error
+                          )))) 
+                            []
+                            (("", ("", l2) :: l3) :: l4)
+                    | _ -> failwith importation_error
+          )
 
   let pos t = t.pos
   let c_code t = t.c_code
-
+    
   let close_in t = P.close_in t.ic
 end
