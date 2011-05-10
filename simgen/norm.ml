@@ -12,6 +12,17 @@ open Util;;
 open Syntaxtype;;
 open Lightheadertype;;
 
+let nop = Block [];;
+
+let is_nop = (=) nop;;
+
+module type NORM = 
+sig
+  val not_name : string
+end
+
+module Norm (N : NORM) =
+struct
 (*****************************************************************************)
 (** normalization of expressions *)
 (*****************************************************************************)
@@ -42,9 +53,9 @@ let rec exp = function
      and change the argument into a list of arguments,
      e.g. CarryFrom(a+b) is replaced by CarryFrom_add2(a,b) *)
   | Fun (("OverflowFrom"|"BorrowFrom"|"CarryFrom"|"CarryFrom8"|"CarryFrom16"
-	      as f), (BinOp (_, op, _) as e) :: _) -> let es = args e in
+              as f), (BinOp (_, op, _) as e) :: _) -> let es = args e in
       Fun (sprintf "%s_%s%d" f (string_of_op op) (List.length es),
-	   List.map exp es)
+           List.map exp es)
   
   | Fun (("SignedSat"|"SignedDoesSat" as f),
          (BinOp (_, op, _) as e) :: [Num "32"]) -> (
@@ -52,7 +63,14 @@ let rec exp = function
         | BinOp (e', "*", Num "2") -> Fun (sprintf "%s32_double" f, [e'])
         | _ -> let es = args e in
             Fun (sprintf "%s32_%s" f (string_of_op op),
-	         List.map exp es))
+                 List.map exp es))
+
+  (* The reference manual does not distinguish between boolean "not"
+     and bitwise "NOT". Indeed, the operator is always written "NOT".*)
+  | Fun ("NOT", [e]) -> (
+      match e with
+        | Var "mask" | Var "shifter_operand" | Reg _ -> Fun ("NOT", [e])
+        | _ -> Fun (N.not_name, [exp e]))
 
   (* normalize if-expressions wrt Unpredictable_exp's: if-expressions
      are flattened so that there is at most one Unpredictable_exp in the
@@ -60,20 +78,20 @@ let rec exp = function
   | If_exp (_, e1, e2) when e1 = e2 -> exp e1
   | If_exp (c0, If_exp (c1, Unpredictable_exp, e1), e2) ->
       exp (If_exp (BinOp (c0, "and", c1),
-		   Unpredictable_exp,
-		   If_exp (Fun ("not", [c0]), e2, e1)))
+                   Unpredictable_exp,
+                   If_exp (Fun ("not", [c0]), e2, e1)))
   | If_exp (c0, If_exp (c1, e1, Unpredictable_exp), e2) ->
       exp (If_exp (BinOp (c0, "and", Fun ("not", [c1])),
-		   Unpredictable_exp,
-		   If_exp (Fun ("not", [c0]), e2, e1)))
+                   Unpredictable_exp,
+                   If_exp (Fun ("not", [c0]), e2, e1)))
   | If_exp (c0, e0, If_exp (c1, Unpredictable_exp, e1)) ->
       exp (If_exp (BinOp (Fun ("not", [c0]), "and", c1),
-		   Unpredictable_exp,
-		   If_exp (c0, e0, e1)))
+                   Unpredictable_exp,
+                   If_exp (c0, e0, e1)))
   | If_exp (c0, e0, If_exp (c1, e1, Unpredictable_exp)) ->
       exp (If_exp (BinOp (Fun ("not", [c0]), "and", Fun ("not", [c1])),
-		   Unpredictable_exp,
-		   If_exp (c0, e0, e1)))
+                   Unpredictable_exp,
+                   If_exp (c0, e0, e1)))
 
   (* recursive expressions *)
   | Fun (f, es) -> Fun (f, List.map exp es)
@@ -93,17 +111,17 @@ and range =
   and int k = sprintf "%i" k in
     fun e r ->
       match e with
-	| Range (e1, Bits (_, n)) ->
-	    begin match r with
-	      | Bits (p1, p2) ->
-		  let n = tni n and p1 = tni p1 and p2 = tni p2 in
-		    Range (e1, Bits (int (n+p1), int (n+p2)))
-	      | Index (Num p) ->
-		  let n = tni n and p = tni p in
-		    Range (e1, Index (Num (int (n+p))))
-	      | r -> Range (e, r)
-	    end
-	| e -> Range (e, r);;
+        | Range (e1, Bits (_, n)) ->
+            begin match r with
+              | Bits (p1, p2) ->
+                  let n = tni n and p1 = tni p1 and p2 = tni p2 in
+                    Range (e1, Bits (int (n+p1), int (n+p2)))
+              | Index (Num p) ->
+                  let n = tni n and p = tni p in
+                    Range (e1, Index (Num (int (n+p))))
+              | r -> Range (e, r)
+            end
+        | e -> Range (e, r);;
 
 (*****************************************************************************)
 (** normalization of blocks:
@@ -113,8 +131,8 @@ blocks are flattened and removed if they reduce to a single instruction *)
 let rec raw_inst = function
   | Block is ->
       begin match raw_block is with
-	| [i] -> i
-	| is -> Block is
+        | [i] -> i
+        | is -> Block is
       end
   | i -> i
 
@@ -122,18 +140,14 @@ and raw_block = function
   | [] -> []
   | i :: is ->
       begin match raw_inst i with
-	| Block is' -> is' @ raw_block is
-	| i -> i :: raw_block is
+        | Block is' -> is' @ raw_block is
+        | i -> i :: raw_block is
       end;;
 
 (*****************************************************************************)
 (** normalization of instructions (1st pass):
 an instruction is replaced by at most one instruction *)
 (*****************************************************************************)
-
-let nop = Block [];;
-
-let is_nop = (=) nop;;
 
 (* variables used as local variables *)
 let locals = set_of_list
@@ -164,8 +178,8 @@ let rec inst = function
   (* replace affectations to Unaffected by nop's *)
   | Affect (e1, e2) ->
       begin match exp e2 with
-	| Unaffected -> nop
-	| e2 -> Affect (exp e1, e2)
+        | Unaffected -> nop
+        | e2 -> Affect (exp e1, e2)
       end
 
   (* simplify conditional instructions with a computable condition *)
@@ -175,40 +189,40 @@ let rec inst = function
   (* simplify conditional instructions wrt nop's *)
   | If (c, i, None) ->
       let i = inst i in
-	if is_nop i then nop else If (exp c, i, None)
+        if is_nop i then nop else If (exp c, i, None)
   | If (c, i1, Some i2) ->
       let i1 = inst i1 and i2 = inst i2 in
-	if is_nop i2 then
-	  if is_nop i1
-	  then nop
-	  else If (exp c, i1, None)
-	else
-	  if is_nop i1
-	  then If (Fun ("not", [exp c]), i2, None)
-	  else
+        if is_nop i2 then
+          if is_nop i1
+          then nop
+          else If (exp c, i1, None)
+        else
+          if is_nop i1
+          then If (Fun ("not", [exp c]), i2, None)
+          else
 
-	    (* normalization of affectations for local variables: if
-	       both branches of an if-instruction affect the same
-	       variable, then it is converted into a single affectation
-	       which value is defined with an if-expression *)
-	    begin match i1, i2 with
-	      | Affect (x1, e1), Affect (x2, e2) when eq_local x1 x2 ->
-		  inst (Affect (x1, If_exp (c, e1, e2)))
-	      | Affect (x, e), Unpredictable when is_local x ->
-		  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
-	      | Unpredictable, Affect (x, e) when is_local x ->
-		  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
+            (* normalization of affectations for local variables: if
+               both branches of an if-instruction affect the same
+               variable, then it is converted into a single affectation
+               which value is defined with an if-expression *)
+            begin match i1, i2 with
+              | Affect (x1, e1), Affect (x2, e2) when eq_local x1 x2 ->
+                  inst (Affect (x1, If_exp (c, e1, e2)))
+              | Affect (x, e), Unpredictable when is_local x ->
+                  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
+              | Unpredictable, Affect (x, e) when is_local x ->
+                  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
 
-	      (* case of two affectations *)
-	      | Block [Affect (x1, u1); Affect (y1, v1)],
-		Block [Affect (x2, u2); Affect (y2, v2)]
-		  when eq_local x1 x2 && eq_local y1 y2 ->
-		  inst (Block
-			  [Affect (x1, If_exp (c, u1, u2));
-			   Affect (y1, If_exp (c, v1, v2))])
+              (* case of two affectations *)
+              | Block [Affect (x1, u1); Affect (y1, v1)],
+                Block [Affect (x2, u2); Affect (y2, v2)]
+                  when eq_local x1 x2 && eq_local y1 y2 ->
+                  inst (Block
+                          [Affect (x1, If_exp (c, u1, u2));
+                           Affect (y1, If_exp (c, v1, v2))])
 
-	      | _ -> If (exp c, i1, Some i2)
-	    end
+              | _ -> If (exp c, i1, Some i2)
+            end
 
   (* recursive instructions *)
   | Proc (f, es) -> Proc (f, List.map exp es)
@@ -216,7 +230,7 @@ let rec inst = function
   | For (s, n, p, i) -> For (s, n, p, inst i)
   | Coproc (e, s, es) -> Coproc (exp e, s, List.map exp es)
   | Case (e, s, o) -> Case (exp e, List.map (fun (n, i) -> (n, inst i)) s, 
-			    option_map inst o)
+                            option_map inst o)
   | Let (n, ns, li, loc) -> Let (n, ns, List.map inst li, loc)
   | Return e -> Return (exp e)
 
@@ -241,7 +255,7 @@ let rec affect = function
   | While (e, i) -> While (e, affect i)
   | For (s, n, p, i) -> For (s, n, p, affect i)
   | Case (e, s, o) -> Case (e, List.map (fun (n, i) -> (n, affect i)) s, 
-			    option_map affect o)
+                            option_map affect o)
 
   | i -> i
 
@@ -253,19 +267,24 @@ and affects = function
   | Affect (Range (Var x1 as x, Bits ("31", "0")), e1) ::
     Affect (Range (Var x2, Bits ("63", "32")), e2) :: is when x1 = x2 ->
       let e1 = Fun ("ZeroExtend", [e1]) and e2 = Fun ("ZeroExtend", [e2]) in
-	Affect (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
+        Affect (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
 
   | i :: is ->
       begin match affect i with
-	| Block is' -> is' @ affects is
-	| i -> i :: affects is
+        | Block is' -> is' @ affects is
+        | i -> i :: affects is
       end;;
+
+end
 
 (*****************************************************************************)
 (** normalization of programs *)
 (*****************************************************************************)
 
-let prog p = 
+let prog norm = 
+  let module N = Norm ((val norm : NORM)) in
+  let open N in
+  fun p ->
   let norm x = affect (inst x) in
     { header = List.map norm p.header;
       body = List.map (fun p -> { p with pinst = norm p.pinst }) p.body };;

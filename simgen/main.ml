@@ -165,7 +165,7 @@ let parse_args() =
   if is_set_dat_input_file() then
     if is_set_pc_input_file() || is_set_dec_input_file()
       || is_set_syntax_input_file() then
-	error "-idat is incompatible with -ipc, -idec or -isyntax"
+        error "-idat is incompatible with -ipc, -idec or -isyntax"
     else begin
       set_pc_input_file (get_dat_input_file());
       set_dec_input_file (get_dat_input_file());
@@ -173,10 +173,10 @@ let parse_args() =
     end;
   match get_output_type() with
     | PCout ->
-	ignore (get_pc_input_file());
+        ignore (get_pc_input_file());
     | Cxx ->
-	ignore (get_pc_input_file());
-	ignore (get_dec_input_file())
+        ignore (get_pc_input_file());
+        ignore (get_dec_input_file())
     | C4dt ->
         ignore (get_pc_input_file());
         ignore (get_syntax_input_file());
@@ -186,7 +186,7 @@ let parse_args() =
     | CompcertCInst ->
         ignore (get_pc_input_file())
     | RawCoq_Csyntax ->
-	()
+        ()
     | CoqDec ->
         ignore (get_dec_input_file())
     | MlDec ->
@@ -264,12 +264,12 @@ let check() =
 (** pseudocode normalization (-norm option) *)
 (*****************************************************************************)
 
-let norm() =
+let norm proc =
   if get_norm() then begin
     verbose "normalization... ";
-    let ps = Norm.prog (get_pc_input()) in
+    let ps = Norm.prog proc (get_pc_input()) in
       if get_check() then
-          if Norm.prog ps = ps then verbose "ok\n" else error "failed"
+          if Norm.prog proc ps = ps then verbose "ok\n" else error "failed"
       else verbose "\n";
       set_pc_input ps
   end;;
@@ -283,7 +283,10 @@ let parse_input_files() =
     verbose "read .dat file...\n";
     let v = parse_value (get_dat_input_file()) in
       set_dat_input v;
-      set_pc_input (C2pc.program_of_manual v); check(); norm();
+      set_pc_input (C2pc.program_of_manual v); 
+      check(); norm (module struct
+                       let not_name = "NOT" 
+                     end : Norm.NORM);
       set_dec_input (C2pc.maplist_of_manual v)
   end else begin
     if is_set_syntax_input_file() then begin
@@ -293,8 +296,10 @@ let parse_input_files() =
     if is_set_pc_input_file() then begin
       verbose "parsing .pc file...\n";
       set_pc_input { Ast.header = [];
-		     Ast.body = parse_file (get_pc_input_file()) };
-      check(); norm()
+                     Ast.body = parse_file (get_pc_input_file()) };
+      check(); norm (module struct
+                       let not_name = "not" 
+                     end : Norm.NORM)
     end;
     if is_set_dec_input_file() then begin
       verbose "read .dec file...\n";
@@ -317,15 +322,15 @@ let genr_output() =
   match get_output_type() with
 
     | PCout ->
-	print Genpc.lib (get_pc_input())
+        print Genpc.lib (get_pc_input())
 
     | Cxx ->
-	Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+        Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
 
     | C4dt ->
         Simlight2.lib (get_output_file())
-	  (get_pc_input()) (get_syntax_input()) (get_dec_input())
-	  (if is_set_weight_file() then Some (get_weight_file()) else None)
+          (get_pc_input()) (get_syntax_input()) (get_dec_input())
+          (if is_set_weight_file() then Some (get_weight_file()) else None)
 
     | CoqInst -> print (Gencoq.lib (if get_sh4() then
         (module struct
@@ -354,7 +359,7 @@ let genr_output() =
         | Some b -> print_csyntax b)
 
     | CoqDec ->
-	print (let open Dec in
+        print (let open Dec in
                let module D = Gencoqdec.Make ((val (
                          if get_sh4 () then
                            (module Sh4 : DEC) 
@@ -363,7 +368,7 @@ let genr_output() =
                        D.decode) (get_dec_input())
 
     | MlDec ->
-	print Genmldec.decode (get_dec_input())
+        print Genmldec.decode (get_dec_input())
 
     | DecBinTest ->
         Gendectest.gen_bin_test stdout (get_pc_input()) (get_syntax_input())
@@ -374,7 +379,7 @@ let genr_output() =
           (get_syntax_input()) (get_dec_input()) (get_seed())
 
     | DecTest ->
-	Gendectest.gen_test (get_output_file()) (get_pc_input()) 
+        Gendectest.gen_test (get_output_file()) (get_pc_input()) 
           (get_syntax_input()) (get_dec_input()) (get_seed())
 ;;
 
