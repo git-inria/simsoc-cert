@@ -621,11 +621,11 @@ Definition remember_assgnt :=
 
 (* The assignment of old_Rn has no effect on the part of memory where located proc*)
 Lemma no_effect_for_old_Rn_assgnt:
- forall m e s m' v,
-  proc_state_related m e s ->
+ forall m e l b s m' v,
+  proc_state_related m e (Ok tt (mk_semstate l b s)) ->
   eval_expression (Genv.globalenv prog_adc) e m
   remember_assgnt Events.E0 m' v ->
-  proc_state_related m' e s.
+  forall l b, proc_state_related m' e (Ok tt (mk_semstate l b s)).
 Proof.
   (*intros until v. intros psrel rn_assgnt.
   inv rn_assgnt. inv H. inv H5.
@@ -688,14 +688,14 @@ Definition set_regpc :=
         Enil))) T9.
 Check reg_content.
 Lemma same_setregpc :
-  forall e m l b s t m' v d n so,
+  forall e m l b s0 s t m' v d n so,
     proc_state_related m e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m set_regpc t m' v ->
     (forall l b, proc_state_related m' e 
       (Ok tt (mk_semstate l b
-        (Arm6_State.set_reg s d (add (add (Arm6_State.reg_content s n) so)
+        (Arm6_State.set_reg s d (add (add (Arm6_State.reg_content s0 n) so)
           ((Arm6_State.cpsr s)[Cbit]) ))))).
 Proof.
   intros until so. intros psrel nfrel sorel setreg.
@@ -925,14 +925,14 @@ Definition cflag_assgnt:=
             (Efield (Efield (Evar proc T3) cpsr T6) C_flag T4)
             T4) Enil))) T9) T9.
 Lemma same_cflag_assgnt:
-  forall m e l b s n so t m' v,
+  forall m e l b s0 s n so t m' v,
     proc_state_related m e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m cflag_assgnt t m' v->
     forall l b, proc_state_related m' e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Cbit
-        (Arm6_Functions.CarryFrom_add3 (Arm6_State.reg_content s n) so
+        (Arm6_Functions.CarryFrom_add3 (Arm6_State.reg_content s0 n) so
           (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
 Proof.
   intros until v. intros psrel nfrel sofrel cf.
@@ -949,20 +949,21 @@ Definition vflag_assgnt:=
             (Efield (Efield (Evar proc T3) cpsr T6) C_flag T4)
             T4) Enil))) T9) T9.
 Lemma same_vflag_assgnt:
-  forall m e l b s n so t m' v,
+  forall m e l b s0 s n so t m' v,
     proc_state_related m e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m vflag_assgnt t m' v->
     proc_state_related m' e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Arm6_SCC.Vbit
-        (Arm6_Functions.OverflowFrom_add3 (Arm6_State.reg_content s n) so
+        (Arm6_Functions.OverflowFrom_add3 (Arm6_State.reg_content s0 n) so
            (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
 Proof.
   intros until v. intros psrel nfrel sofrel vf.
   inv vf. inv H. simpl in H15.
   inv H15.
 Qed.
+
 
 (* During function execution, none other parameters are changed*)
 Lemma cp_SR_params_not_changed:
@@ -1027,6 +1028,7 @@ Lemma cf_params_not_changed:
 Proof.
 Admitted.
 
+
 Theorem related_aft_ADC: forall e m0 m1 m2 mfin vargs s out sbit cond d n so,
   alloc_variables empty_env m0 (ADC_body.(fn_params) ++ ADC_body.(fn_vars)) e m1 ->
   bind_parameters e m1 ADC_body.(fn_params) vargs m2 ->
@@ -1060,12 +1062,15 @@ Proof.
   intros until so.
   intros al bi valacc psrel sfrel cfrel dfrel nfrel sofrel exstmt.
 
+  assert (Util.zne d 15 && Util.zne d 15 = Util.zne d 15) as d_15.
+  destruct (Util.zne d 15); simpl; reflexivity.
+
   inv exstmt; [idtac | nod];
   apply Events.Eapp_E0_inv in H3; destruct H3; subst.
   rename H4 into rn_assgnt, H7 into main_p.
   inv rn_assgnt;
   rename H2 into rn_assgnt.
-  apply (no_effect_for_old_Rn_assgnt m2 e (Ok tt (mk_semstate nil true s)) m3 v) in psrel; 
+  apply (no_effect_for_old_Rn_assgnt m2 e nil true s m3 v) with nil true in psrel; 
     [idtac|exact rn_assgnt];
   unfold sbit_func_related in sfrel; unfold S_proj in sfrel;
   rewrite (rn_ass_params_not_changed m2 e v m3 S) in sfrel;
@@ -1099,7 +1104,8 @@ Proof.
     apply Events.Eapp_E0_inv in evs; destruct evs; subst.
     inv setreg;
     rename H2 into setreg;
-    eapply (same_setregpc e m4 nil true s Events.E0 m5 v0 d n so) in psrel;
+    apply (same_setregpc e m4 nil true s s Events.E0 m5 v0 d n so) 
+      with nil (Util.zne d 15) in psrel;
       [idtac | exact nfrel | exact sofrel | exact setreg].
     unfold sbit_func_related in sfrel; unfold S_proj in sfrel;   
     rewrite (set_reg_params_not_changed m4 e v0 m5 S) in sfrel;
@@ -1130,7 +1136,7 @@ Proof.
       apply (S_set_and_is_pc_true e mfin Events.E0 m6 v2 sbit d) in sd_b;
         [idtac | inv cp_b];
       apply (condpass_true e m4 Events.E0 m5 v1 cond s) in cp_b;
-        [idtac |inv cp_b].
+        [idtac |inv cp_b];
       inv main_p;
       rename H5 into hasspsr, H8 into spsr_b, H9 into main_p, H4 into evs;
           simpl in spsr_b;
@@ -1140,11 +1146,11 @@ Proof.
         (* CurrentModeHasSPSR(proc) evaluates to true *)
         inv main_p;
         rename H2 into cp_sr.
-        eapply (same_cp_SR e m7 nil true
+        apply (same_cp_SR e m7 nil (Util.zne d 15)
           (Arm6_State.set_reg s d
                        (add (add (Arm6_State.reg_content s n) so)
                           (Arm6_State.cpsr s) [Cbit]))
-          Events.E0 mfin v4 und) in psrel;
+          Events.E0 mfin v4 und) with nil (Util.zne d 15) in psrel;
           [idtac | exact cp_sr ].
         unfold sbit_func_related in sfrel; unfold S_proj in sfrel;   
         rewrite (cp_SR_params_not_changed m7 e v4 mfin S) in sfrel;
@@ -1179,13 +1185,13 @@ Proof.
         unfold _get_bo; unfold bind_s; unfold next; unfold bind; simpl;
         unfold _Arm_State.set_reg.
         rewrite spsr_b; simpl; unfold _Arm_State.set_reg; unfold _Arm_State.set_cpsr.
-        unfold _set_bo; unfold ok_semstate;
+        unfold _set_bo; unfold ok_semstate. unfold loc. unfold st. rewrite d_15.
         apply psrel.
         (* CurrentModeHasSPSR(proc) evaluates to false *)
         inv main_p; rename H2 into unp.
         apply (same_unpred e m7 
-                (Ok tt (mk_semstate nil true (Arm6_State.set_reg s d
-                  (add (add (reg_content (Arm6_State.proc s) n) so)
+                (Ok tt (mk_semstate nil (Util.zne d 15) (Arm6_State.set_reg s d
+                  (add (add (Arm6_State.reg_content s n) so)
                     (Arm6_State.cpsr s) [Cbit]))))
                 Events.E0 mfin v4) in psrel;
         [idtac | exact unp].
@@ -1224,6 +1230,7 @@ Proof.
         rewrite spsr_b; simpl.
         exact psrel.
       (* ((S == 1) && (d == 15)) evaluates to false *)
+      
       apply (S_set_and_is_pc_false e m5 Events.E0 m6 v2 sbit d) in sd_b;
         [idtac | inv cp_b].
       inv main_p;
@@ -1241,7 +1248,8 @@ Proof.
                        (add (add (Arm6_State.reg_content s n) so)
                           (Arm6_State.cpsr s) [Cbit]));
         fold s0 in psrel;
-        eapply (same_nflag_assgnt e m7 nil true s0 d Events.E0 m8 v4)
+        eapply (same_nflag_assgnt e m7 nil (Util.zne d 15)
+          s0 d Events.E0 m8 v4)
           in psrel;
           [idtac | exact dfrel | exact nf].
 
@@ -1273,7 +1281,7 @@ Proof.
         pose (s1 := Arm6_State.set_cpsr_bit s0 Nbit
                        (Arm6_State.reg_content s0 d) [n31]);
         revert psrel; fold s1; intro psrel;
-        eapply (same_zflag_assgnt e m8 nil true
+        eapply (same_zflag_assgnt e m8 nil (Util.zne d 15)
           s1
           d Events.E0 m9 v5) in psrel;
         [idtac| exact dfrel | exact zf].
@@ -1306,8 +1314,8 @@ Proof.
                         then repr 1
                         else repr 0));
         revert psrel; fold s2; intro psrel;
-        eapply (same_cflag_assgnt m9 e nil true
-          s2
+        eapply (same_cflag_assgnt m9 e nil (Util.zne d 15)
+          s s2
           n so Events.E0 m10 v6) in psrel;
         [idtac| exact nfrel | exact sofrel| exact cf]. 
         unfold sbit_func_related in sfrel; unfold S_proj in sfrel;   
@@ -1335,11 +1343,11 @@ Proof.
         inv vf; rename H2 into vf;
         pose (s3 := Arm6_State.set_cpsr_bit s2 Cbit
                        (Arm6_Functions.CarryFrom_add3
-                         (Arm6_State.reg_content s2 n) so
+                         (Arm6_State.reg_content s n) so
                          (Arm6_State.cpsr s2) [Cbit]));
         revert psrel; fold s3; intro psrel;
-        eapply (same_vflag_assgnt m10 e nil true
-          s3
+        eapply (same_vflag_assgnt m10 e nil (Util.zne d 15)
+          s s3
           n so Events.E0 mfin v7) in psrel;
         [clear vf| exact nfrel | exact sofrel| exact vf].
         apply (S_is_set e m10 Events.E0 mfin v3 sbit) in s_b;
@@ -1355,38 +1363,80 @@ Proof.
         unfold set_reg. simpl; unfold _Arm_State.set_reg. 
         fold s0. 
         rewrite sd_b; rewrite s_b; simpl.
-        
-        unfold bind at 5. unfold _get_bo at 2. unfold bind_s at 1.
+        (* Nflag *)
+        unfold bind at 5. unfold _get_bo at 2. unfold bind_s at 1. 
         unfold bind at 5. unfold bind at 5.
-        unfold set_cpsr_bit at 1; unfold _Arm_State.set_cpsr_bit at 1. 
-        unfold map_st at 1. unfold _get_st at 1. unfold bind_s at 1.
-        unfold bind at 5. unfold _set_st.
+        simpl; unfold _Arm_State.set_cpsr_bit at 1. 
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        unfold _set_bo at 1.  simpl. unfold ok_semstate.
         
+        (* Zflag *)
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        unfold bind at 5. simpl; unfold _Arm_State.set_cpsr_bit at 1.
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        simpl. unfold _set_bo at 1. simpl. unfold ok_semstate.
+        (* Cflag *)
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        unfold bind at 5. simpl; unfold _Arm_State.set_cpsr_bit at 1.
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        simpl. unfold _set_bo at 1. simpl. unfold ok_semstate.
+        (* Vflag *)
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        unfold bind at 5. simpl; unfold _Arm_State.set_cpsr_bit at 1.
+        unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
+        simpl. unfold _set_bo at 1. simpl. unfold ok_semstate.
 
+(*        pose (fff x := st x). change (st lbs0) with (fff lbs0) at 1.
+        
+        pose (stl lbs0 := Arm6_State.set_cpsr_bit 
+                               (st lbs0) Nbit
+                               (Arm6_State.reg_content (st lbs0) d) [n31]).
+        change *)
+        unfold bind at 4. unfold loc at 1. unfold bo at 1. unfold bo at 3.
+        unfold st at 1. unfold st at 3.
+        unfold bind at 3. unfold loc at 1. unfold bo at 1. unfold bo at 5.
+        unfold st at 1. unfold st at 5.
+        unfold bind at 2. unfold loc at 1. unfold bo at 1. unfold bo at 9.
+        unfold st at 1. unfold st at 9.
+        
+        unfold bind at 1. unfold _get_bo at 2. unfold bind_s at 1.
+        unfold bind at 1. unfold bo at 1.
+        unfold _set_bo at 1. unfold loc at 1. unfold st at 1.
+        unfold ok_semstate.
+        unfold _get_bo at 1. unfold bind_s at 1. unfold bind at 1.
+        unfold loc at 1. unfold bo. unfold st at 1. unfold st.
+        fold s1. fold s2. unfold s3 in psrel. unfold st in psrel.
+        rewrite d_15. rewrite d_15. rewrite d_15. rewrite d_15. rewrite d_15.
+        exact psrel.
 
-(* garbage
-   Util.zne d 15
-        unfold S.ADC_step; unfold _get_st; unfold bind_s; unfold bind; simpl.
-        rewrite cp_b; rewrite sd_b; rewrite s_b; simpl.
-
-        unfold block; unfold next; unfold _get_bo; unfold fold_left.
-        unfold bind_s; unfold bind. 
-*)
         (* S == 1 evaluates to false *)
         inv main_p.
-        unfold adc_return; unfold S.ADC_step; unfold _get_st; unfold bind_s; unfold bind.
-        (*erewrite condpass_true. simpl. erewrite S_set_and_is_pc_false. simpl.
-        erewrite S_not_set. simpl.
-        apply (same_setregpc (Genv.globalenv prog_adc) e m5 s Events.E0 mfin v1 d 
-          (add (add (Arm6_State.reg_content s n) so) (Arm6_State.cpsr s) [Cbit])).*)
-        admit.
-      
+        apply (S_not_set e m6 Events.E0 mfin v3 sbit) in s_b;
+          [idtac | inv cp_b];
+        apply (condpass_true e m6 Events.E0 mfin v1 cond s) in cp_b;
+          [idtac | inv cp_b].
+        unfold S.ADC_step; unfold _get_st; unfold bind_s; unfold bind; simpl.
+        rewrite cp_b; rewrite sd_b; rewrite s_b; simpl.
+        unfold block. unfold fold_left. unfold next.
+        unfold bind at 3. simpl; unfold _Arm_State.set_reg.
+        unfold _get_bo at 2. unfold bind_s at 1. unfold _set_bo at 1.
+        unfold ok_semstate.
+        unfold bind at 3. unfold loc at 1. unfold bo at 1.
+        unfold st at 1.
+        unfold _get_bo at 1. unfold bind_s at 1. unfold bind at 3.
+        unfold bind at 2.
+        unfold bind at 2. unfold _get_bo at 1. unfold bind_s at 1.
+        unfold bind at 2. unfold _get_bo at 1. unfold bind_s at 1.
+        unfold _set_bo at 1. unfold ok_semstate.
+        unfold bind at 2.
+        unfold bind at 1. unfold loc. unfold bo. unfold st. simpl.
+        simpl. rewrite d_15. exact psrel.
+
     (* ConditionPassed(&proc->cpsr, cond) evaluates to false *)
     inv main_p.
-    unfold adc_return; unfold S.ADC_step; unfold _get_st; unfold bind_s; unfold bind.
-    rewrite (condpass_false e mfin Events.E0 mfin v1). 
-    simpl.
-    exact psrel. inv cp_true. exact cp_true.
+    unfold S.ADC_step; unfold _get_st; unfold bind_s; unfold bind; simpl.
+    rewrite (condpass_false e mfin Events.E0 mfin v1); [simpl | inv cp_b|exact cp_b].
+    exact psrel.
 Qed.
 
 
