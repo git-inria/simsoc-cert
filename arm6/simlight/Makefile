@@ -23,7 +23,7 @@ SOURCES := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
 HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h arm_mmu.h \
-	arm_system_coproc.h slv6_math.h \
+	arm_system_coproc.h int64_emul.h slv6_math.h \
 	slv6_mode.h slv6_status_register.h slv6_processor.h slv6_condition.h \
 	arm_not_implemented.h slv6_iss_c_prelude.h slv6_iss_h_prelude.h \
 	slv6_iss.h

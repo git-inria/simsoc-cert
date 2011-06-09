@@ -7,6 +7,7 @@
 #define ARM_MATH_H
 
 #include "common.h"
+#include "int64_emul.h"
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -88,10 +89,16 @@ static inline uint32_t SignExtend8(uint32_t x) {return x&(1<<7) ? 0xffffff00|x :
 
 static inline uint32_t ZeroExtend(uint32_t x) {return x;}
 
-static inline uint32_t get_bits(uint64_t x, size_t a, size_t b) {
+static inline uint32_t get_bits(uint32_t x, size_t a, size_t b) {
   /* return x[a:b] */
-  assert(64>a && a>b);
-  return (x>>b) & ((1llu<<(a-b+1))-1);
+  assert(32>a && a>b && a-b+1 < 32);
+  return (x>>b) & ((1lu<<(a-b+1))-1);
+}
+
+static inline uint32_t get_bits64(uint64 x, size_t a, size_t b) {
+  /* return x[a:b] */
+  assert(64>a && a>b && a-b+1 <= 32);
+  return I64_to_int32(I64_and(I64_lsr(x, b), I64_sub(I64_lsl(I64_of_int32(1),a-b+1), I64_of_int32(1))));
 }
 
 static inline bool get_bit(uint32_t x, uint32_t n) { /* return x[a] */
@@ -113,8 +120,8 @@ extern uint32_t SignedSat32_double(int32_t a);
 extern bool SignedDoesSat32_add(int32_t a, int32_t b);
 extern bool SignedDoesSat32_sub(int32_t a, int32_t b);
 extern bool SignedDoesSat32_double(int32_t a);
-extern uint32_t SignedSat(int64_t a, uint32_t b);
-extern uint32_t SignedDoesSat(int64_t a, uint32_t b);
+extern uint32_t SignedSat(int64 a, uint32_t b);
+extern uint32_t SignedDoesSat(int64 a, uint32_t b);
 extern uint32_t UnsignedSat(int32_t a, uint32_t b);
 extern uint32_t UnsignedDoesSat(int32_t a, uint32_t b);
 

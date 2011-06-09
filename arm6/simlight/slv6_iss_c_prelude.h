@@ -22,6 +22,5 @@ static bool not_cpy_instr(uint32_t bincode) {
 }
 
 static int32_t to_int32(uint32_t x) {return (int32_t)x;}
-static int64_t to_int64(uint64_t x) {return (int64_t)x;}
-static int64_t to_i64(uint32_t x) {return (int64_t)(int32_t)x;}
-static uint64_t to_u64(uint32_t x) {return (uint64_t)x;}
+static int64 to_i64(uint32_t x) {return I64_of_int32((int32_t)x);}
+static uint64 to_u64(uint32_t x) {return I64_of_int32(x);}
