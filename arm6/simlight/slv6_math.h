@@ -7,6 +7,8 @@
 #define ARM_MATH_H
 
 #include "common.h"
+
+#include "int64_native.h"
 #include "int64_emul.h"
 
 BEGIN_SIMSOC_NAMESPACE

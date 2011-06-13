@@ -95,7 +95,7 @@ $(SIMGEN): FORCE
 	$(MAKE) -C $(DIR)/simgen
 
 %.v: %.c $(SIMGEN)
-	$(SIMGEN) -ocompcertc-c $< > $@
+	$(SIMGEN) -ocompcertc-c -fstruct-assign -fno-longlong $< > $@
 
 ######################################################################
 # dependot
