@@ -6,24 +6,8 @@ Require Import Arm6_State Arm6_Proc Arm6_SCC Bitvec Arm6.
 Require Import adc_compcert.
 (*Require Import New_Memory New_Globalenvs.*)
 
-(*
-(* load/store local variables of type t*)
-Definition store_value_of_type' (ty_dest: type) (m: Mem.mem) (loc: block) (ofs: int) (v: val) : option Mem.mem :=
-  match access_mode ty_dest with
-  | By_value chunk => Mem.storev chunk m (Vptr loc ofs) v
-  | By_reference => None
-  | By_nothing => None
-  end.
+(* Some constants for ADC *)
 
-Definition load_value_of_type' (ty: type) (m: Mem.mem) (b: block) (ofs: int) : option val :=
-  match access_mode ty with
-  | By_value chunk => Mem.loadv chunk m (Vptr b ofs)
-  | By_reference => Some (Vptr b ofs)
-  | By_nothing => None
-  end.
-
-Definition store_value_of_type':=store_value_of_type.
-Definition load_value_of_type':=load_value_of_type.*)
 
 (* Initial local environment, an empty PTree contents var location & type*)
 Definition env0 := (PTree.empty (block * type)).
@@ -331,16 +315,6 @@ Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
   (Arm6_Proc.mk_state (cpsr_proj m e) (spsr_proj m e) (regs_proj m e) nil (mode_proj m e))
   (Arm6_SCC.mk_state (screg_proj m e) (mem_proj m e)).
 
-(*Inductive proc_proj' (m:Mem.mem) (e:env):result:=
-  |state_ok : 
-    Ok tt (Arm6_State.mk_state 
-    (Arm6_Proc.mk_state (cpsr_proj m e) (spsr_proj m e) (regs_proj m e) nil 
-      (mode_proj m e))
-    (Arm6_SCC.mk_state (screg_proj m e) (mem_proj m e)))
-  |state_not_ok :
-    forall mes, Ko mes
-|*)
-
 (* From given values to the C memory which stores the corresponding value*)
 
 (* From address and a word to make a corresponding mem in C memory.
@@ -539,10 +513,6 @@ Require Import Arm6_Simul.
 Import I.
 Import Arm6_Functions.Semantics.
 
-Inductive proc_state_related_i : Mem.mem -> env -> @result unit -> Prop :=
-  |proc_state_related_intro:
-    forall m e l b, proc_state_related_i m e (Ok tt (mk_semstate l b (proc_proj m e))).
-
 Inductive proc_state_related : Mem.mem -> env -> @result unit -> Prop :=
   |proc_state_related_ok : 
     forall m e l b, proc_state_related m e (Ok tt (mk_semstate l b (proc_proj m e)))
@@ -612,28 +582,53 @@ Ltac nod :=
        case Hd; 
        apply (normal_outcome_for_do He) end.  
 
-(* old_Rn = reg(proc,n) *)
-Definition remember_assgnt := 
-  Eassign (Evar old_Rn T1)
-  (Ecall (Evalof (Evar reg T2) T2)
-    (Econs (Evalof (Evar proc T3) T3)
-      (Econs (Evalof (Evar adc_compcert.n T4) T4) Enil)) T1) T1.
+(* Return the memory model which only relates to this ident *)
+Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
 
-(* The assignment of old_Rn has no effect on the part of memory where located proc*)
-Lemma no_effect_for_old_Rn_assgnt:
- forall m e l b s m' v,
-  proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+Section Calls.
+
+Variable e : env.
+Variable m0: Mem.mem.
+Variable vargs: list val.
+Variable m: Mem.mem.
+
+Hypothesis bp: bind_parameters e m0 ADC_body.(fn_params) vargs m.
+
+(* old_Rn = reg(proc,n) *)
+Definition reg_n :=
+  Ecall (Evalof (Evar reg T2) T2)
+  (Econs (Evalof (Evar proc T3) T3)
+    (Econs (Evalof (Evar adc_compcert.n T4) T4) Enil)) T1.
+
+Axiom get_regn_ok :
+  forall m m' r,
+    eval_expr (Genv.globalenv prog_adc) e m RV reg_n Events.E0 m' r ->
+    m = m'.
+
+Definition oldrn_assgnt := 
+  Eassign (Evar old_Rn T1) reg_n T1.
+
+(* The assignment of old_Rn has no effect on the part of memory 
+   where located proc*)
+Axiom set_oldrn_ok:
+  forall m m' v oldrn_blk ofs,
+    store_value_of_type T1 m oldrn_blk ofs v = Some m'->
+    of_mem proc m = of_mem proc m'.
+
+Lemma oldrn_assgnt_ok:
+ forall l b s m' v,
+  proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
   eval_expression (Genv.globalenv prog_adc) e m
-  remember_assgnt Events.E0 m' v ->
-  forall l b, proc_state_related m' e (Ok tt (mk_semstate l b s)).
+    oldrn_assgnt Events.E0 m' v ->
+  proc_state_related (of_mem proc m') e (Ok tt (mk_semstate l b s)).
 Proof.
-  (*intros until v. intros psrel rn_assgnt.
-  inv rn_assgnt. inv H. inv H5.
-  inv H6. inv H3. inv H14.
-  inv H5. inv H6. inv H5.
-  inv H20. inv H5. inv H6.
-  inv H19. simpl in *.*)
-Admitted.
+  intros until v. intros psrel rn_as.
+  inv rn_as. inv H. apply Events.Eapp_E0_inv in H4. inv H4.
+  eapply get_regn_ok in H6. subst.
+  inv H5. simpl in *.
+  eapply set_oldrn_ok in H12.
+  rewrite <- H12. exact psrel.
+Qed.
 
 (* Lemmas on if ConditionPassed*)
 Definition condpass :=
@@ -643,20 +638,13 @@ Definition condpass :=
       (Efield (Ederef (Evalof (Evar proc T3) T3) T6) cpsr T6) T6)
     (Econs (Evalof (Evar adc_compcert.cond T7) T7) Enil)) T5.
 
-Lemma no_effect_condpass :
-  forall e m m' t v,
+Axiom no_effect_condpass :
+  forall m m' t v,
     eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->    
     m = m'.
-Proof.
-  (*intros until v. intros cdps.
-  inv cdps. inv H. inv H4. inv H9.
-  inv H5. inv H4. inv H5. inv H15. inv H4. inv H5.
-  inv H14. inv H4. inv H5. inv H13.
-  simpl in H8. inv H8.*)
-Admitted.
 
 Lemma condpass_false :
-  forall e m t m' v cond s,
+  forall m t m' v cond s,
     eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->
     Csem.is_false v T5 ->
     Arm6_Functions.State.ConditionPassed s cond = false.
@@ -666,7 +654,7 @@ Proof.
 Qed.
 
 Lemma condpass_true :
-  forall e m t m' v cond s,
+  forall m t m' v cond s,
     eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->
     Csem.is_true v T5 ->
     Arm6_Functions.State.ConditionPassed s cond = true.
@@ -676,49 +664,93 @@ Proof.
 Qed.
 
 (*Lemma on proc_state_relates holds after set_reg*)
+Definition set_reg_binop :=
+  Ebinop Oadd
+  (Ebinop Oadd (Evalof (Evar old_Rn T1) T1)
+    (Evar shifter_operand T1) T1)
+  (Efield (Efield (Evar proc T3) cpsr T6) C_flag T4) T1.
+
 Definition set_regpc :=
   Ecall (Evalof (Evar set_reg_or_pc T8) T8)
   (Econs (Evalof (Evar proc T3) T3)
     (Econs (Evalof (Evar adc_compcert.d T4) T4)
-      (Econs
-        (Ebinop Oadd
-          (Ebinop Oadd (Evalof (Evar old_Rn T1) T1)
-            (Evar shifter_operand T1) T1)
-          (Efield (Efield (Evar proc T3) cpsr T6) C_flag T4) T1)
-        Enil))) T9.
-Check reg_content.
+      (Econs set_reg_binop Enil))) T9.
+
+Axiom set_regpc_store :
+  forall m m' t v p_blk,
+    eval_expression (Genv.globalenv prog_adc) e m set_regpc t m' v ->
+    store_value_of_type T1 m p_blk (add (reg_ofs user_regs) (repr 15)) v = Some m'.
+
+Axiom set_regpc_binop_ok :
+  forall m m' t v so n s s0,
+  eval_expression (Genv.globalenv prog_adc) e m set_reg_binop t m' v ->
+  v=Vint (add (add (Arm6_State.reg_content s0 n) so) ((Arm6_State.cpsr s)[Cbit])).
+
+Axiom set_regpc_ok:
+  forall m s0 s m' t v n so ,
+    eval_expression (Genv.globalenv prog_adc) e m set_regpc t m' v ->
+    mk_reg (R (mk_regnum 15)) 
+    (fun rn => (add (add (Arm6_State.reg_content s0 n) so)
+      (Arm6_State.cpsr s) [Cbit])) e m = m'.
+
 Lemma same_setregpc :
-  forall e m l b s0 s t m' v d n so,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+  forall m l b s0 s t m' v d n so ,
+    (forall m ch b ofs, Mem.valid_access m ch b ofs Readable) ->
+    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m set_regpc t m' v ->
-    (forall l b, proc_state_related m' e 
+    (forall l b, proc_state_related (of_mem proc m') e 
       (Ok tt (mk_semstate l b
         (Arm6_State.set_reg s d (add (add (Arm6_State.reg_content s0 n) so)
           ((Arm6_State.cpsr s)[Cbit]) ))))).
 Proof.
-  intros until so. intros psrel nfrel sorel setreg.
-  inv setreg. inv H. inv H4. inv H9.
-  inv H5. inv H4. inv H5. inv H14. inv H4. inv H5.
-  inv H13. inv H4. inv H17. inv H19. 
-Qed.
+(*  intros until so. intros acc psrel nfrel sorel setreg. intros.
+  
+  apply (set_regpc_ok m1 s0 s m' t v n so) in setreg.
+  inversion psrel. inversion setreg.
+
+  unfold mk_reg. unfold find_reg. unfold find_field.
+  unfold proc_loc.
+  inversion bp.
+  rewrite H10.
+  unfold Arm6_State.set_reg. unfold Arm6_Proc.set_reg.
+  unfold Arm6_Proc.set_reg_mode.
+  unfold proc_proj. unfold regs_proj. unfold find_reg. unfold find_field.
+  unfold proc_loc. rewrite H10. simpl.
+
+
+  unfold load_value_of_type. simpl.
+  unfold  store_value_of_type in H13. simpl in H13.
+
+  induction (Mem.load AST.Mint32 m1 b1 (signed w0)). 
+    induction a. inversion psrel.
+    unfold Arm6_State.set_reg. unfold Arm6_Proc.set_reg.
+    unfold Arm6_Proc.set_reg_mode. 
+    
+
+  inv bp.
+  apply (set_regpc_store _ _ _ _ b0) in setreg.
+  intros.
+  eapply set_regpc_ok with m1 l b s0 s m' b0 v d n so l0 b1 in psrel;
+    [apply psrel | apply setreg].*)
+Admitted.
 
 (* Lemmas on if S==1 *)
 Definition is_S_set :=
   Ebinop Oeq (Evar S T4) (Eval (Vint (repr 1)) T7) T1.
 
 Lemma no_effect_is_S_set :
-  forall e m t m' v,
+  forall m t m' v,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
     m = m'.
 Proof.
-  intros until v. intros is_s. unfold is_S_set in is_s.
+  intros until v. intros is_s.
   inv is_s. inv H. clear H0 v. inversion H10. 
 Qed.
 
 Lemma S_not_set:
-  forall e m t m' v sbit,
+  forall m t m' v sbit,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
     Csem.is_false v T1 ->
     Util.zeq sbit 1 = false.
@@ -728,7 +760,7 @@ Proof.
 Qed.
 
 Lemma S_is_set:
-  forall e m t m' v sbit,
+  forall m t m' v sbit,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
     Csem.is_true v T1 ->
     Util.zeq sbit 1 = true.
@@ -746,7 +778,7 @@ Definition is_S_set_and_is_pc :=
     (Eval (Vint (repr 0)) T7) T4) (Eval (Vint (repr 0)) T7) T4.
 
 Lemma no_effect_is_S_set_and_is_pc :
-  forall e m t m' v,
+  forall m t m' v,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
     m = m'.
 Proof.
@@ -756,7 +788,7 @@ Proof.
 Qed.
 
 Lemma S_set_and_is_pc_true:
-  forall e m t m' v sbit d,
+  forall m t m' v sbit d,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
     Csem.is_true v T4 ->
     Util.zeq sbit 1 && Util.zeq d 15 = true.
@@ -766,7 +798,7 @@ Proof.
 Qed.  
 
 Lemma S_set_and_is_pc_false:
-  forall e m t m' v sbit d,
+  forall m t m' v sbit d,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
     Csem.is_false v T4 ->
     Util.zeq sbit 1 && Util.zeq d 15 = false.
@@ -780,19 +812,13 @@ Definition hasSPSR :=
   Ecall (Evalof (Evar CurrentModeHasSPSR T10) T10)
   (Econs (Evalof (Evar proc T3) T3) Enil) T10.
 
-Lemma no_effect_hasSPSR :
+Axiom if_hasSPSR_ok :
   forall e m t m' v,
     eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
     m = m'.
-Proof.
-  (*intros until v. intros hasspsr.
-  inv hasspsr. inv H. inv H4. inv H9.
-  inv H5. inv H4. inv H5. inv H14.
-  simpl in H8.*)
-Admitted.
 
 Lemma hasSPSR_true :
-  forall e m t m' v s em,
+  forall m t m' v s em,
     eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
     Csem.is_true v T10 ->
     Arm6_State.mode s = exn  em.
@@ -802,7 +828,7 @@ Proof.
 Qed.
 
 Lemma hasSPSR_false :
-  forall e m t m' v s,
+  forall m t m' v s,
     eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
     Csem.is_false v T10 ->
     Arm6_State.mode s = usr.
@@ -812,58 +838,55 @@ Proof.
 Qed.
 
 (*Lemma on proc_state_relates holds after copy_StatusRegister*)
+Definition get_spsr :=
+  Ecall (Evalof (Evar spsr T6) T6)
+  (Econs (Evalof (Evar proc T3) T3) Enil) T6.
+
+Axiom get_spsr_ok:
+  forall m m' r,
+    eval_expr (Genv.globalenv prog_adc) e m RV get_spsr Events.E0 m' r ->
+    m = m'.
+
 Definition cp_SR :=
   Ecall (Evalof (Evar copy_StatusRegister T11) T11)
   (Econs
     (Eaddrof
       (Efield (Ederef (Evalof (Evar proc T3) T3) T6) cpsr T6) T6)
-    (Econs
-      (Ecall (Evalof (Evar spsr T6) T6)
-        (Econs (Evalof (Evar proc T3) T3) Enil) T6) Enil)) T9.
+    (Econs get_spsr Enil)) T9.
+
+Axiom cp_SR_ok :
+  forall m t m' v s em,
+    eval_expression (Genv.globalenv prog_adc) e m cp_SR t m' v ->
+    mk_cpsr (Arm6_State.spsr s em) e m = m'.
 
 Lemma same_cp_SR :
-  forall e m l b s t m' v em,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+  forall m l b s t m' v em,
+    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
     eval_expression (Genv.globalenv prog_adc) e m cp_SR t m' v ->
-    (forall l b, proc_state_related m' e
+    (forall l b, proc_state_related (of_mem proc m') e
       (Ok tt (mk_semstate l b
       (Arm6_State.set_cpsr s (Arm6_State.spsr s em))))).
 Proof.
 Admitted.
 
-(*Lemma on proc_state_relates holds after unpredictable*)
+(* Lemma on proc_state_relates holds after unpredictable*)
+(* In fact, unpredictable in simlight is a annotation, which will print
+   a error message. 
+   For the moment, we consider it as a function call with an 
+   empty body *)
 Definition unpred :=
   Ecall (Evar adc_compcert.unpredictable T9) Enil T9.
 
 Lemma same_unpred :
   forall e m s t m' v,
-    proc_state_related m e s ->
+    proc_state_related (of_mem proc m) e s ->
     eval_expression (Genv.globalenv prog_adc) e m unpred t m' v ->
-    proc_state_related m' e (Ko Arm6_Message.EmptyMessage).
+    proc_state_related (of_mem proc m') e (Ko Arm6_Message.EmptyMessage).
 Proof.
   intros until v. intros psrel unp.
   inv unp. inv H. inv H4.
 Qed.
- (*    ([fun lbs0 : semstate =>
-       set_reg d
-         (add (add (Arm6_State.reg_content s n) so)
-            (Arm6_State.cpsr (st lbs0)) [Cbit]) lbs0;
-      [fun lbs0 : semstate =>
-       set_cpsr_bit Nbit (Arm6_State.reg_content (st lbs0) d) [n31] lbs0;
-      fun lbs0 : semstate =>
-      set_cpsr_bit Zbit
-        (if Util.zeq (Arm6_State.reg_content (st lbs0) d) 0
-         then repr 1
-         else repr 0) lbs0;
-      fun lbs0 : semstate =>
-      set_cpsr_bit Cbit
-        (Arm6_Functions.CarryFrom_add3 (Arm6_State.reg_content s n) so
-           (Arm6_State.cpsr (st lbs0)) [Cbit]) lbs0;
-      fun lbs0 : semstate =>
-      set_cpsr_bit Arm6_SCC.Vbit
-        (Arm6_Functions.OverflowFrom_add3 (Arm6_State.reg_content s n) so
-           (Arm6_State.cpsr (st lbs0)) [Cbit]) lbs0]]
-        {| loc := nil; bo := true; st := s |})*)
+
 (* Lemma on proc_state_relates holds after NZCV flag setting*)
 Definition nflag_assgnt:=
   Eassign (Efield (Efield (Evar proc T3) cpsr T6) N_flag T4)
@@ -875,11 +898,11 @@ Definition nflag_assgnt:=
       (Econs (Eval (Vint (repr 31)) T7) Enil)) T1) T9.
 Lemma same_nflag_assgnt :
   forall e m l b s d t m' v,
-  proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+  proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
   d_func_related m e d ->
   eval_expression (Genv.globalenv prog_adc) e m nflag_assgnt t m' v->
   forall l b,
-  proc_state_related m' e
+  proc_state_related (of_mem proc m') e
     (Ok tt
         (mk_semstate l b
            (Arm6_State.set_cpsr_bit s Nbit
@@ -902,10 +925,10 @@ Definition zflag_assgnt :=
     (Eval (Vint (repr 0)) T7) T4) T9.
 Lemma same_zflag_assgnt :
   forall e m l b s d t m' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
     d_func_related m e d ->
     eval_expression (Genv.globalenv prog_adc) e m zflag_assgnt t m' v->
-    forall l b, proc_state_related m' e 
+    forall l b, proc_state_related (of_mem proc m') e 
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Zbit
         (if Util.zeq (Arm6_State.reg_content s d) 0
          then repr 1
@@ -926,11 +949,11 @@ Definition cflag_assgnt:=
             T4) Enil))) T9) T9.
 Lemma same_cflag_assgnt:
   forall m e l b s0 s n so t m' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m cflag_assgnt t m' v->
-    forall l b, proc_state_related m' e
+    forall l b, proc_state_related (of_mem proc m') e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Cbit
         (Arm6_Functions.CarryFrom_add3 (Arm6_State.reg_content s0 n) so
           (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
@@ -950,11 +973,11 @@ Definition vflag_assgnt:=
             T4) Enil))) T9) T9.
 Lemma same_vflag_assgnt:
   forall m e l b s0 s n so t m' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
     n_func_related m e n ->
     so_func_related m e so ->
     eval_expression (Genv.globalenv prog_adc) e m vflag_assgnt t m' v->
-    proc_state_related m' e
+    proc_state_related (of_mem proc m') e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Arm6_SCC.Vbit
         (Arm6_Functions.OverflowFrom_add3 (Arm6_State.reg_content s0 n) so
            (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
@@ -981,7 +1004,7 @@ Admitted.
 
 Lemma rn_ass_params_not_changed:
   forall m e v m' i, 
-    eval_expression (Genv.globalenv prog_adc) e m remember_assgnt Events.E0 m' v ->
+    eval_expression (Genv.globalenv prog_adc) e m oldrn_assgnt Events.E0 m' v ->
     param_val i m e = param_val i m' e.
 Proof.
 Admitted.
@@ -1028,13 +1051,19 @@ Lemma cf_params_not_changed:
 Proof.
 Admitted.
 
+End Calls.
+
+Lemma same_bool : forall b, b&&b = b.
+Proof.
+  destruct b;simpl;reflexivity.
+Qed.
 
 Theorem related_aft_ADC: forall e m0 m1 m2 mfin vargs s out sbit cond d n so,
   alloc_variables empty_env m0 (ADC_body.(fn_params) ++ ADC_body.(fn_vars)) e m1 ->
   bind_parameters e m1 ADC_body.(fn_params) vargs m2 ->
 (* TODO: valid_access needs to be more precise *)
   (forall m ch b ofs, Mem.valid_access m ch b ofs Readable) ->
-  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related (of_mem proc m2) e (Ok tt (mk_semstate nil true s)) ->
   sbit_func_related m2 e sbit ->
   cond_func_related m2 e cond ->
   d_func_related m2 e d ->
@@ -1056,21 +1085,18 @@ Theorem related_aft_ADC: forall e m0 m1 m2 mfin vargs s out sbit cond d n so,
    The final memory state is the memory which contains the final values of parameters.
    The final [proc] is in this memory state which we want to relate.*)
   exec_stmt (Genv.globalenv prog_adc) e m2 ADC_body.(fn_body) Events.E0 mfin out ->
-  proc_state_related mfin e (S.ADC_step sbit cond d n so (mk_semstate nil true s)). 
+  proc_state_related (of_mem proc mfin) e (S.ADC_step sbit cond d n so (mk_semstate nil true s)). 
 Proof.
   
   intros until so.
   intros al bi valacc psrel sfrel cfrel dfrel nfrel sofrel exstmt.
-
-  assert (Util.zne d 15 && Util.zne d 15 = Util.zne d 15) as d_15.
-  destruct (Util.zne d 15); simpl; reflexivity.
 
   inv exstmt; [idtac | nod];
   apply Events.Eapp_E0_inv in H3; destruct H3; subst.
   rename H4 into rn_assgnt, H7 into main_p.
   inv rn_assgnt;
   rename H2 into rn_assgnt.
-  apply (no_effect_for_old_Rn_assgnt m2 e nil true s m3 v) with nil true in psrel; 
+  apply (oldrn_assgnt_ok e m1 vargs m2 bi nil true s m3 v) in psrel; 
     [idtac|exact rn_assgnt];
   unfold sbit_func_related in sfrel; unfold S_proj in sfrel;
   rewrite (rn_ass_params_not_changed m2 e v m3 S) in sfrel;
@@ -1106,7 +1132,7 @@ Proof.
     rename H2 into setreg;
     apply (same_setregpc e m4 nil true s s Events.E0 m5 v0 d n so) 
       with nil (Util.zne d 15) in psrel;
-      [idtac | exact nfrel | exact sofrel | exact setreg].
+      [idtac | apply valacc | exact nfrel | exact sofrel | exact setreg].
     unfold sbit_func_related in sfrel; unfold S_proj in sfrel;   
     rewrite (set_reg_params_not_changed m4 e v0 m5 S) in sfrel;
       [idtac | exact setreg];
@@ -1141,16 +1167,16 @@ Proof.
       rename H5 into hasspsr, H8 into spsr_b, H9 into main_p, H4 into evs;
           simpl in spsr_b;
           apply Events.Eapp_E0_inv in evs; destruct evs; subst;
-          apply no_effect_hasSPSR in hasspsr; rewrite hasspsr in * |- *; 
+          apply if_hasSPSR_ok in hasspsr; rewrite hasspsr in * |- *; 
             clear hasspsr (* m6=m7*).
         (* CurrentModeHasSPSR(proc) evaluates to true *)
         inv main_p;
         rename H2 into cp_sr.
-        apply (same_cp_SR e m7 nil (Util.zne d 15)
+        apply (same_cp_SR e m7 nil (Util.zne d 15) 
           (Arm6_State.set_reg s d
-                       (add (add (Arm6_State.reg_content s n) so)
-                          (Arm6_State.cpsr s) [Cbit]))
-          Events.E0 mfin v4 und) with nil (Util.zne d 15) in psrel;
+          (add (add (Arm6_State.reg_content s n) so)
+            (Arm6_State.cpsr s) [Cbit])) Events.E0 mfin v4 und) 
+        with nil (Util.zne d 15) in psrel;
           [idtac | exact cp_sr ].
         unfold sbit_func_related in sfrel; unfold S_proj in sfrel;   
         rewrite (cp_SR_params_not_changed m7 e v4 mfin S) in sfrel;
@@ -1185,7 +1211,7 @@ Proof.
         unfold _get_bo; unfold bind_s; unfold next; unfold bind; simpl;
         unfold _Arm_State.set_reg.
         rewrite spsr_b; simpl; unfold _Arm_State.set_reg; unfold _Arm_State.set_cpsr.
-        unfold _set_bo; unfold ok_semstate. unfold loc. unfold st. rewrite d_15.
+        unfold _set_bo; unfold ok_semstate. unfold loc. unfold st. rewrite same_bool.
         apply psrel.
         (* CurrentModeHasSPSR(proc) evaluates to false *)
         inv main_p; rename H2 into unp.
@@ -1385,13 +1411,6 @@ Proof.
         unfold bind at 5. simpl; unfold _Arm_State.set_cpsr_bit at 1.
         unfold _get_bo at 2. unfold bind_s at 1. unfold bind at 5.
         simpl. unfold _set_bo at 1. simpl. unfold ok_semstate.
-
-(*        pose (fff x := st x). change (st lbs0) with (fff lbs0) at 1.
-        
-        pose (stl lbs0 := Arm6_State.set_cpsr_bit 
-                               (st lbs0) Nbit
-                               (Arm6_State.reg_content (st lbs0) d) [n31]).
-        change *)
         unfold bind at 4. unfold loc at 1. unfold bo at 1. unfold bo at 3.
         unfold st at 1. unfold st at 3.
         unfold bind at 3. unfold loc at 1. unfold bo at 1. unfold bo at 5.
@@ -1405,8 +1424,9 @@ Proof.
         unfold ok_semstate.
         unfold _get_bo at 1. unfold bind_s at 1. unfold bind at 1.
         unfold loc at 1. unfold bo. unfold st at 1. unfold st.
-        fold s1. fold s2. unfold s3 in psrel. unfold st in psrel.
-        rewrite d_15. rewrite d_15. rewrite d_15. rewrite d_15. rewrite d_15.
+        fold s1. fold s2. fold s3. unfold st in psrel.
+        rewrite same_bool; rewrite same_bool; rewrite same_bool;
+        rewrite same_bool; rewrite same_bool.
         exact psrel.
 
         (* S == 1 evaluates to false *)
@@ -1430,7 +1450,7 @@ Proof.
         unfold _set_bo at 1. unfold ok_semstate.
         unfold bind at 2.
         unfold bind at 1. unfold loc. unfold bo. unfold st. simpl.
-        simpl. rewrite d_15. exact psrel.
+        simpl. rewrite same_bool. exact psrel.
 
     (* ConditionPassed(&proc->cpsr, cond) evaluates to false *)
     inv main_p.
@@ -1439,62 +1459,3 @@ Proof.
     exact psrel.
 Qed.
 
-
-
-
-
-
-
-
-
-  (*inv bi. unfold proc_state_func_related. unfold proc_proj.
-  unfold cpsr_proj. unfold find_cpsr. unfold find_field. unfold proc_loc. 
-  rewrite H4. unfold load_value_of_type. simpl.
-  destruct (Mem.valid_access_load m3 AST.Mint32 b(signed w0)) as [v ev];
-    [trivial | idtac].
-        rewrite ev.
-apply Mem.valid_access_load in H1.*)
- 
-
-
-
-
-
-
-(* Boolean function to check the equivalence of two cpsr*)
-(*Definition equiv_cpsr (coqcpsr : word) : bool =
-  let eq_nflag n := Int.eq coqcpsr[31] n in
-  (*let eq_zflag z := Int.eq coqcpsr[30] z in
-  let eq_cflag c := Int.eq coqcpsr[29] c in
-  let eq_vflag v := Int.eq coqcpsr[28] v in*)
-    match nflag_val with
-      |Some n => eq_nflag n
-      |None => false
-    end.
-*)
-
-(*
-Set Printing Depth 10.
-Transparent Mem.alloc.
-About Mem.alloc.
-Transparent Mem.range_perm_dec.
-About Mem.range_perm_dec.
-Transparent Mem.store.
-Opaque Mem.valid_access_dec.
-Eval lazy in ccpsr_val.
-
-Theorem tt : {true = true}+{True}.
-right; exact I.
-Qed.
-
-About tt.
-Opaque tt.
-About tt.
-Transparent tt.
-About tt.
-
-Transparent Mem.range_perm_dec.
-About Mem.range_perm_dec.
-
-Check ccpsr_val.
-Print val.*)
