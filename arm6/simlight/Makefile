@@ -14,7 +14,7 @@ default: simlight
 
 CPPFLAGS := #-I$(DIR)/tools/bin2elf
 #CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
-#CC := ccomp
+#CC := ccomp -fstruct-assign -fno-longlong
 
 SOURCES := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
 	slv6_mode.c slv6_status_register.c slv6_processor.c slv6_condition.c \

@@ -100,7 +100,7 @@ static inline uint32_t get_bits(uint32_t x, size_t a, size_t b) {
 static inline uint32_t get_bits64(uint64 x, size_t a, size_t b) {
   /* return x[a:b] */
   assert(64>a && a>b && a-b+1 <= 32);
-  return I64_to_int32(I64_lsr(x,b)) & ((1lu<<(a-b+1))-1);
+  return I64_to_int32(I64_and(I64_lsr(x, b), I64_sub(I64_lsl(I64_of_int32(1),a-b+1), I64_of_int32(1))));
 }
 
 static inline bool get_bit(uint32_t x, uint32_t n) { /* return x[a] */
