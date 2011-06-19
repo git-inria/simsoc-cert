@@ -8,11 +8,11 @@ Prerequisites:
 
 * Coq 8.3pl2 available from http://coq.inria.fr/ .
 
-* The sources of CompCert 1.8.1 available from
+* The sources of CompCert 1.8.2 available from
   http://compcert.inria.fr/ .
 
 * All the prerequisites required for CompCert as described in
-  /path/to/compcert/README (except for Coq 8.3pl1 that can be replaced
+  /path/to/compcert/README (except for Coq 8.3pl1 that must be replaced
   by Coq 8.3pl2).
 
 * CompCert configured with target 'ia32-linux' and compiled with Coq
