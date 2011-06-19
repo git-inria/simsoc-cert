@@ -1,0 +1,1 @@
+../../../../../arm6/simlight/slv6_status_register.c
