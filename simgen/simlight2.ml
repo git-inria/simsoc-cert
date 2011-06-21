@@ -159,7 +159,7 @@ let may_branch_prog b (x: xprog) =
     let combine (b,l) (b',l') = ((b||b'), union l l') in
     let rec inst acc = function
       | Block is -> List.fold_left inst acc is
-      | Affect (dst, _) -> combine acc (exp dst)
+      | Assign (dst, _) -> combine acc (exp dst)
       | If (BinOp (Var "d", "==", Num "15"), i1, Some i2) ->
           (* case used by LDR (i1) and MRC (i2) *)
           let b1,l1 = inst default i1 in

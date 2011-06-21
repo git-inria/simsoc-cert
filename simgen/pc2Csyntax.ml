@@ -334,7 +334,7 @@ let rec stm_trans = function
         |i::is -> Ssequence (stm_trans i, stm_trans (Block is)))
   |Let (_, _, insts, _) -> stm_trans (Block insts)
   |Unpredictable -> Sdo (Ecall (Evar (id "unpredictable", Tvoid),Enil,Tvoid))
-  |Affect (dst, src) -> affect dst src
+  |Assign (dst, src) -> affect dst src
   |Return e -> Sreturn (Some (exp_trans e))
   |Case (e,s,o) ->
      Sswitch (exp_trans e, switch_aux s o)

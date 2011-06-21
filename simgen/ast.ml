@@ -73,7 +73,7 @@ type inst =
   * inst list (* let ... = <here> *)
   * (type_param * string) list (* hint indicating local variable *)
 | Unpredictable
-| Affect of exp * exp
+| Assign of exp * exp
 | If of exp * inst * inst option
 | Proc of string * exp list
 | While of exp * inst
@@ -222,11 +222,11 @@ module Make (G : Var) = struct
   (* add every affected variable as local except if it is an output
      register or in a case instruction *)
   let rec vars_inst ((gs,ls) as acc) = function
-    | Affect (Var s, e) | Affect (Range (Var s, _), e) -> vars_exp
+    | Assign (Var s, e) | Assign (Range (Var s, _), e) -> vars_exp
         (if StrSet.mem s output_registers
          then StrMap.add_no_erase s (G.global_type s) gs, ls
          else gs, StrMap.add_no_erase s (G.local_type s e) ls) e
-    | Affect (e1, e2) -> vars_exp (vars_exp acc e1) e2
+    | Assign (e1, e2) -> vars_exp (vars_exp acc e1) e2
     | Block is -> vars_insts acc is
     | Let (_, ns, _, l_loc) -> 
       let map_of_list = List.fold_left (fun map (ty, k) -> 
@@ -290,7 +290,7 @@ let ast_map (fi: inst -> inst) (fe: exp -> exp) (i: inst) =
   and inst i =
     let i' = match i with
     | Block is -> Block (List.map inst is)
-    | Affect (e1, e2) -> Affect (exp e1, exp e2)
+    | Assign (e1, e2) -> Assign (exp e1, exp e2)
     | If (e, i1, Some i2) -> If (exp e, inst i1, Some (inst i2))
     | If (e, i, None) -> If (exp e, inst i, None)
     | Proc (s, es) -> Proc (s, List.map exp es)
@@ -342,7 +342,7 @@ let inst_exists pi pe pr =
     | Block is
     | Let (_, _, is, _) -> List.exists inst is
     | Unpredictable -> false
-    | Affect (e1, e2) -> exp e1 || exp e2
+    | Assign (e1, e2) -> exp e1 || exp e2
     | If (e, i, None) -> exp e || inst i
     | If (e, i1, Some i2) -> exp e || inst i1 || inst i2
     | Proc (_, es) -> List.exists exp es

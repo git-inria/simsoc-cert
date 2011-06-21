@@ -78,7 +78,7 @@ let rec inst k b i = indent b k; inst_sc k b i
 
 and inst_sc k b i =
   match i with
-    | Unpredictable | Affect _ | Proc _ | Assert _ ->
+    | Unpredictable | Assign _ | Proc _ | Assert _ ->
 	bprintf b "%a;" (inst_aux k) i
     | _ -> bprintf b "%a" (inst_aux k) i
 
@@ -91,8 +91,8 @@ and inst_aux k b = function
 	n   (list_sep " " (fun b (_, x) -> string b x)) ns   indent k
 	(list (postfix "\n" (inst k))) is   indent k   
   | Unpredictable -> bprintf b "UNPREDICTABLE"
-  | Affect (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
-  | Affect (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
+  | Assign (Reg (Num "15", None), e) -> bprintf b "PC = %a" exp e
+  | Assign (e1, e2) -> bprintf b "%a = %a" exp e1 exp e2
   | If (e, i, None) -> bprintf b "if %a then\n%a" exp e (inst (k+4)) i
   | If (e, i1, Some i2) ->
       bprintf b "if %a then\n%a\n%aelse %a"

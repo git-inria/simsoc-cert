@@ -38,11 +38,11 @@ let rec remove_cond_passed i =
  * because a failed memory access cancels this register writeback. *)
 let postpone_writeback (pcs: prog list) =
   let init_new =  Block [
-    Affect (Var "new_Rn", Hex "0xBAD"); (* avoid g++ warnings *)
-    Affect (Var "old_mode", Fun ("get_current_mode", []))] in
+    Assign (Var "new_Rn", Hex "0xBAD"); (* avoid g++ warnings *)
+    Assign (Var "old_mode", Fun ("get_current_mode", []))] in
   let prog p = 
     let inst = function
-      | Affect (Reg (Var "n", None), e) -> Affect (Var "new_Rn", e)
+      | Assign (Reg (Var "n", None), e) -> Assign (Var "new_Rn", e)
       | i -> i
     in match p.pkind with
       | InstARM | InstThumb -> p
@@ -64,7 +64,7 @@ let patch_addr_of_next_instr (p: fprog) =
     try 
       let i = replace_exp o n p.finst in
       let size = if p.fkind = ARM then "4" else "2" in
-      let a = Affect (Var "addr_of_next_instr",
+      let a = Assign (Var "addr_of_next_instr",
                       BinOp (Reg (Num "15", None), "-", Num size))
       in {p with finst = merge_inst a i}
     with Not_found -> p;;
@@ -79,8 +79,8 @@ let patch_coproc (p: fprog) =
       | _ -> [] in
     let inst = function
       | Coproc (e, s, es) -> Coproc (e, s, args p.finstr @ es)
-      | Affect (d, Coproc_exp (e, s, es)) ->
-          Affect (d, Coproc_exp (e, s, args p.finstr @ es))
+      | Assign (d, Coproc_exp (e, s, es)) ->
+          Assign (d, Coproc_exp (e, s, args p.finstr @ es))
       | i -> i
     in {p with finst = ast_map inst (fun x -> x) p.finst};; 
 
@@ -154,9 +154,9 @@ let computed_params (p: fprog) (ps: (string*string) list) =
           p', List.filter remove ps, [("signed_offset_12", "uint32_t")]
       with Not_found ->
         (* Case 2: we search a conditional instruction *)
-        let o' = If (u, Affect (Var "new_Rn", plus),
-                     Some (Affect (Var "new_Rn", minus)))
-        and n' = Affect (Var "new_Rn", n) in
+        let o' = If (u, Assign (Var "new_Rn", plus),
+                     Some (Assign (Var "new_Rn", minus)))
+        and n' = Assign (Var "new_Rn", n) in
         let inst' = replace_inst o' n' p.finst in
         let p' = {p with finst = inst'} in
           p', List.filter remove ps, [("signed_offset_12", "uint32_t")])
@@ -308,7 +308,7 @@ let insert_writeback fp ls kps =
         let aux = match fp.finstr with
           | "LDM3" -> Proc ("set_reg_m", [Var "n"; Var "old_mode"; Var "new_Rn"])
           | "SRS" -> Proc ("set_reg_m", [Num "13"; Var "mode"; Var "new_Rn"])
-          | _ -> Affect (Reg (Var "n", None), Var "new_Rn")
+          | _ -> Assign (Reg (Var "n", None), Var "new_Rn")
         in if List.mem_assoc "W" kps
           then If (BinOp (Var "W", "==", Num "1"), aux, None)
           else aux

@@ -76,7 +76,7 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
 
     | C.COMPUTATION (C.UNARY (C.POSINCR | C.POSDECR as op, v), _) -> 
       let v, op = e_of_expression v, s_of_unary_operator op in
-      E.Affect (v, E.Fun (op, [v]))
+      E.Assign (v, E.Fun (op, [v]))
 
     | C.COMPUTATION (C.BINARY (C.ASSIGN, v1, C.BINARY (C.ASSIGN, v2, C.BINARY (C.ASSIGN, v3, e))), _) -> 
       (* REMARK This case can be deleted and the whole expression can be treated in [e_of_expression]. 
@@ -85,14 +85,14 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
       E.Block (List.rev (snd (List.fold_left 
                                 (fun (e, l) v -> 
                                   let v = e_of_expression v in
-                                  v, E.Affect (v, e) :: l)
+                                  v, E.Assign (v, e) :: l)
                                 (e_of_expression e, []) 
                                 [v3; v2; v1])))
 
     | C.COMPUTATION (C.BINARY (op, v, e), _) -> 
       let affect_b v e f = 
         let v = e_of_expression v in
-        E.Affect (v, f v (e_of_expression e)) in
+        E.Assign (v, f v (e_of_expression e)) in
       if op = C.ASSIGN then
         affect_b v e (fun _ e -> e)
       else

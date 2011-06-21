@@ -262,7 +262,7 @@ let use_loc loc =
   inst_exists 
     (fun e -> not !under_for2 && match e with
       | Proc (_, l) -> condition_var_l l
-      | Affect (_, Var s) -> condition_var s
+      | Assign (_, Var s) -> condition_var s
       | For _ | If (_, _, None) -> if !under_for then under_for2 := true else (); under_for := true ; false
       | _ -> if !under_for then under_for2 := true else (); false)
     (fun e -> not !under_for2 && match e with
@@ -453,7 +453,7 @@ let try_todo msg f b i =
 
 let case bin loc nm k b (n, i) =
   match i with
-    | Affect (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
+    | Assign (_, e) -> indent b k; bprintf b "| %a => %a\n" bin n (exp loc nm) e
     | _ -> raise Not_found;;
 
 let simplify_loc_st s = function
@@ -544,7 +544,7 @@ and inst_aux loc nm k b = function
         | Fun ("CurrentModeHasSPSR", _), _ -> 
             bprintf b "if_CurrentModeHasSPSR (fun em =>\n%a)"
               (pinst loc nm (k+2)) i1
-        | _, Affect (_, SPSR None) -> 
+        | _, Assign (_, SPSR None) -> 
             bprintf b 
               "if_then_else %a (if_CurrentModeHasSPSR (fun em =>\n%a))\n%a"
               (pexp loc nm) e (pinst loc nm (k+2)) i1 (pinst loc nm (k+2)) i2
@@ -556,11 +556,11 @@ and inst_aux loc nm k b = function
   (* try to generate the code of an affectation; in case of failure,
      output a "todo" *)
 
-  (*| Affect (e, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) -> *)
+  (*| Assign (e, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) -> *)
       
 
-  | Affect (e, v) as i ->
-      try_todo "Affect" (fun b -> 
+  | Assign (e, v) as i ->
+      try_todo "Assign" (fun b -> 
         match 
           match v with
             | Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) -> Some (s, v, fun x -> x)
@@ -666,11 +666,11 @@ let result b p =
 - the prefix of the block consisting of the affectations and cases
 - the remainder of the instructions *)
 
-let is_affect = function Affect _ | Case _ -> true | _ -> false;;
+let is_affect = function Assign _ | Case _ -> true | _ -> false;;
 
 let split = function
   | Block is -> firsts is_affect is
-  | Affect _ as i -> [i], []
+  | Assign _ as i -> [i], []
   | i -> [], [i];;
 
 let block nm k b i =
@@ -708,7 +708,7 @@ let pinst b p =
           let inst_fold_affect i = 
             let map = ref StringMap.empty in
             let _ = 
-              inst_exists (function Affect (Var v, _) -> 
+              inst_exists (function Assign (Var v, _) -> 
                 let () = map := StringMap.add v (succ (if StringMap.mem v !map then StringMap.find v !map else 0)) !map in
                 false
                 | _ -> false) ffalse ffalse i in

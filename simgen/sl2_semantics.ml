@@ -39,8 +39,8 @@ let lst (p: xprog) = match p.xprog.finstr with
 
 let inst_size (p: xprog) =
   let pi = function
-    | Affect (Ast.Range (CPSR, Flag ("T", _)), _)
-    | Affect (Ast.Range (CPSR, Index (Num "5")), _) -> true
+    | Assign (Ast.Range (CPSR, Flag ("T", _)), _)
+    | Assign (Ast.Range (CPSR, Index (Num "5")), _) -> true
     | _ -> false
   in let exchange = inst_exists pi ffalse ffalse (* true if the instruction may switch ARM/Thumb mode *)
   in if exchange p.xprog.finst then "inst_size(proc)"
@@ -125,13 +125,13 @@ and inst_aux p k b = function
   | Coproc (e, s, es) ->
       bprintf b "if (!slv6_%s_%s(proc,%a)) return"
         p.xprog.finstr s (list_sep "," (exp p)) (e::es)
-  | Affect (Var d, Coproc_exp (e, s, es)) ->
+  | Assign (Var d, Coproc_exp (e, s, es)) ->
       bprintf b "if (!slv6_%s_%s(proc,&%s,%a)) return"
         p.xprog.finstr s d (list_sep "," (exp p)) (e::es)
-  | Affect (Reg (r, None), Coproc_exp (e, s, es)) ->
+  | Assign (Reg (r, None), Coproc_exp (e, s, es)) ->
       bprintf b "if (!slv6_%s_%s(proc,addr_of_reg(proc,%a),%a)) return"
         p.xprog.finstr s (exp p) r (list_sep "," (exp p)) (e::es)
-  | Affect (dst, src) -> affect p k b dst src
+  | Assign (dst, src) -> affect p k b dst src
   | Proc ("ClearExclusiveByAddress" as f, es) ->
       bprintf b "%s%d(%s%a)"
         f (List.length es) (implicit_arg f) (list_sep ", " (exp p)) es

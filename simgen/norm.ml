@@ -176,10 +176,10 @@ let rec inst = function
   | Block is -> raw_inst (Block (List.map inst is))
 
   (* replace affectations to Unaffected by nop's *)
-  | Affect (e1, e2) ->
+  | Assign (e1, e2) ->
       begin match exp e2 with
         | Unaffected -> nop
-        | e2 -> Affect (exp e1, e2)
+        | e2 -> Assign (exp e1, e2)
       end
 
   (* simplify conditional instructions with a computable condition *)
@@ -206,20 +206,20 @@ let rec inst = function
                variable, then it is converted into a single affectation
                which value is defined with an if-expression *)
             begin match i1, i2 with
-              | Affect (x1, e1), Affect (x2, e2) when eq_local x1 x2 ->
-                  inst (Affect (x1, If_exp (c, e1, e2)))
-              | Affect (x, e), Unpredictable when is_local x ->
-                  inst (Affect (x, If_exp (c, e, Unpredictable_exp)))
-              | Unpredictable, Affect (x, e) when is_local x ->
-                  inst (Affect (x, If_exp (c, Unpredictable_exp, e)))
+              | Assign (x1, e1), Assign (x2, e2) when eq_local x1 x2 ->
+                  inst (Assign (x1, If_exp (c, e1, e2)))
+              | Assign (x, e), Unpredictable when is_local x ->
+                  inst (Assign (x, If_exp (c, e, Unpredictable_exp)))
+              | Unpredictable, Assign (x, e) when is_local x ->
+                  inst (Assign (x, If_exp (c, Unpredictable_exp, e)))
 
               (* case of two affectations *)
-              | Block [Affect (x1, u1); Affect (y1, v1)],
-                Block [Affect (x2, u2); Affect (y2, v2)]
+              | Block [Assign (x1, u1); Assign (y1, v1)],
+                Block [Assign (x2, u2); Assign (y2, v2)]
                   when eq_local x1 x2 && eq_local y1 y2 ->
                   inst (Block
-                          [Affect (x1, If_exp (c, u1, u2));
-                           Affect (y1, If_exp (c, v1, v2))])
+                          [Assign (x1, If_exp (c, u1, u2));
+                           Assign (y1, If_exp (c, v1, v2))])
 
               | _ -> If (exp c, i1, Some i2)
             end
@@ -246,9 +246,9 @@ let rec inst = function
 let rec affect = function
   | Block is -> Block (affects is)
 
-  | Affect (_, Unpredictable_exp) -> Unpredictable
-  | Affect (e1, If_exp (c, Unpredictable_exp, e2)) ->
-      Block [If (c, Unpredictable, None); Affect (e1, e2)]
+  | Assign (_, Unpredictable_exp) -> Unpredictable
+  | Assign (e1, If_exp (c, Unpredictable_exp, e2)) ->
+      Block [If (c, Unpredictable, None); Assign (e1, e2)]
 
   | If (e, i, None) -> If (e, affect i, None)
   | If (e, i1, Some i2) -> If (e, affect i1, Some (affect i2))
@@ -264,10 +264,10 @@ and affects = function
 
   (* adhoc treatment of the affectation of a 64-bits word
      with two 32-bits affectations *)
-  | Affect (Range (Var x1 as x, Bits ("31", "0")), e1) ::
-    Affect (Range (Var x2, Bits ("63", "32")), e2) :: is when x1 = x2 ->
+  | Assign (Range (Var x1 as x, Bits ("31", "0")), e1) ::
+    Assign (Range (Var x2, Bits ("63", "32")), e2) :: is when x1 = x2 ->
       let e1 = Fun ("ZeroExtend", [e1]) and e2 = Fun ("ZeroExtend", [e2]) in
-        Affect (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
+        Assign (x, BinOp (BinOp (e2, "<<", Num "32"), "OR", e1)) :: affects is
 
   | i :: is ->
       begin match affect i with

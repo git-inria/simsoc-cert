@@ -315,10 +315,10 @@ let rec inst p k b = function
 
 and inst_aux p k b = function
   | Unpredictable -> string b "unpredictable()"
-  | Affect (Var "value", If_exp (BinOp (Var "R", "==", Num "1"), e1, e2)) -> 
+  | Assign (Var "value", If_exp (BinOp (Var "R", "==", Num "1"), e1, e2)) -> 
     (* CompCert does not handle an affectation containing such a value, we rewrite to an semantically equivalent one. For an example, see "SMMUL". *)
-    inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Affect (Var "value", e1), Some (Affect (Var "value", e2))))
-  | Affect (dst, src) -> affect p k b dst src
+    inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Assign (Var "value", e1), Some (Assign (Var "value", e2))))
+  | Assign (dst, src) -> affect p k b dst src
   | Proc (f, es) -> bprintf b "%s(%s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
@@ -485,12 +485,12 @@ let decl b p =
 let lsm_hack p =
   let rec inst = function
     | Block is -> Block (List.map inst is)
-    | If (_, Affect (Reg (Var "n", None), e), None) -> Affect (Var "new_Rn", e)
+    | If (_, Assign (Reg (Var "n", None), e), None) -> Assign (Var "new_Rn", e)
     | i -> i
   in
   let guard_ldm_stm i = (i.iname = "LDM" || i.iname = "STM") && i.ivariant <> Some "2"
   in let a = If (Var "W",
-                 Affect (Reg (Var "n", None), Var "new_Rn"),
+                 Assign (Reg (Var "n", None), Var "new_Rn"),
                  None)
   in match p.pkind with
     | InstARM when guard_ldm_stm p.pident ->

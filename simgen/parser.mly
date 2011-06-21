@@ -74,7 +74,7 @@ variant:
 ;
 simple_inst:
 | UNPREDICTABLE        { Unpredictable }
-| exp EQ exp           { Affect ($1, $3) }
+| exp EQ exp           { Assign ($1, $3) }
 | IDENT LPAR exps RPAR { Proc ($1, $3) }
 | ASSERT exp           { Assert $2 }
 | coproc_inst          { $1 }
