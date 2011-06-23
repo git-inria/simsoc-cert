@@ -9,7 +9,7 @@ set -e # exit on error
 function SIMLIGHT () {
   echo ${1:0:$(expr ${#1} - 6)}
   ocaml unix.cma /dev/stdin << ML
-  module Sys = struct let command s = let f = Unix.gettimeofday () in let _ = Sys.command s in Unix.gettimeofday () -. f end
+  module Sys = struct include Sys let command s = let f = Unix.gettimeofday () in let _ = Sys.command s in Unix.gettimeofday () -. f end
   let rec aux s n acc = if n = 0 then acc else aux s (pred n) (List.map2 (fun acc s -> acc +. Sys.command (s "$@")) acc s);;
   let run s = 
     let run n = aux s n (List.map (fun _ -> 0.) s) in
@@ -27,7 +27,7 @@ function SIMLIGHT () {
     if Sys.file_exists fic then
       Printf.sprintf "%s -d -i %s" fic
     else
-      failwith ("the simulator %s does not exist" fic)) [ "../simlight/simlight_comp" ; "../simlight/simlight_gcc" ]) in
+      failwith (Printf.sprintf "the simulator %s does not exist" fic)) [ "../simlight/simlight_comp" ; "../simlight/simlight_gcc" ]) in
   Printf.printf "%d %s\n%!" nb (List.fold_left (fun acc f -> Printf.sprintf "%s %.03f%!" acc f) "" a);;
 ML
 }
