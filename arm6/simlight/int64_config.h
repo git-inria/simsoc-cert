@@ -3,15 +3,32 @@
 
 #include "int64_init.h"
 
-#define SIZEOF_INT 4
+#define SIZEOF_INT 4 // sizeof(int)
+#define SIZEOF_LONG 8 // sizeof(long)
+#define SIZEOF_PTR 8 // sizeof(long *)
+#define SIZEOF_SHORT 2 // sizeof(short)
 
 #if defined(USE_INT64)
 #  define CAML_INT64_EMUL_H
+// if SIZEOF_LONG = 8 then
 #  define ARCH_INT64_TYPE long
 #  define ARCH_UINT64_TYPE unsigned long
+// else match  "the longlong.c program"  with 
+//   0-1-2)
+//     #define ARCH_INT64_TYPE long long
+//     #define ARCH_UINT64_TYPE unsigned long long
+//   *) No suitable 64-bit integer type found, must use software emulation
+//     if SIZEOF_PTR = 8 then failwith "This architecture has 64-bit pointers but no 64-bit integer type" ;
+//     #undef ARCH_INT64_TYPE
+//     #undef ARCH_UINT64_TYPE
 #else
 #  define CAML_INT64_NATIVE_H
+// match  "the endian.c program"  with
+// 0)
+//   #define ARCH_BIG_ENDIAN
+// 1)
 #  undef ARCH_BIG_ENDIAN
+// *) failwith TODO
 #endif
 
 /***********************************************************************/
