@@ -1,0 +1,6 @@
+'make.sh' 
+1) generates adc_compcert.v 
+2) compiles it
+3) compiles correctness_ADC.v 
+
+Temporarily, (if adc_compcert.v is present) some changes have been manually made in it. It should be fixed soon.

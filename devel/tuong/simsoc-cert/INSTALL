@@ -18,10 +18,6 @@ Prerequisites:
 * CompCert configured with target 'ia32-linux' and compiled with Coq
   8.3pl2 as described in /path/to/compcert/README.
 
-* For ARM tests, a binary called 'arm-elf-gcc' needs to be accessible
-  from the path. This binary can be found for example inside the
-  SimSoC project (see http://formes.asia/cms/software/simsoc).
-
 --------------------------------------------------------------------
 Configuration and compilation of CompCert:
 
@@ -55,8 +51,10 @@ C simulators:
 
 Read arm6/simlight/README for more details.
 
-Coq simulators:
+Coq formal semantics of ARMv6:
       cd arm6/coq; make
 
-OCaml simulators can be extracted from the Coq simulators:
-      cd arm6/coq; make ocaml
+--------------------------------------------------------------------
+Coq files for the correctness of ADC:
+
+      cd correctness_ADC ; ./make.sh
