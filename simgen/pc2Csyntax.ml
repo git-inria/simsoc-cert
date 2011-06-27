@@ -122,42 +122,46 @@ let hex str = Camlcoq.z_of_camlint (Int32.of_string str);;
 
 let id s = Camlcoq.intern_string s;;
 
+(* Notations for long type definition *)
+let uint32 = Tint (I32,Unsigned);;
+let int32 = Tint (I32,Signed);;
+let uint8 = Tint (I8,Unsigned);;
 (* Type representation of struct SLv6_MMU *)
 let tp_mmu =
   Tstruct (id "SLv6_MMU",
-           Fcons (id "begin",Tint (I32,Unsigned),
-           Fcons (id "size",Tint (I32,Unsigned),
-           Fcons (id "end",Tint (I32,Unsigned),
-           Fcons (id "mem",Tpointer (Tint (I8,Unsigned)),
+           Fcons (id "begin",uint32,
+           Fcons (id "size",uint32,
+           Fcons (id "end",uint32,
+           Fcons (id "mem",Tpointer (uint8),
            Fnil)))))
 (* Type representation of struct SLv6_StatusRegister *)
 let tp_sr = 
   Tstruct (id "SLv6_StatusRegister",
-           Fcons (id "N_flag",Tint (I8,Unsigned),
-           Fcons (id "Z_flag",Tint (I8,Unsigned),
-           Fcons (id "C_flag",Tint (I8,Unsigned),
-           Fcons (id "V_flag",Tint (I8,Unsigned),
-           Fcons (id "Q_flag",Tint (I8,Unsigned),
-           Fcons (id "J_flag",Tint (I8,Unsigned),
-           Fcons (id "GE0",Tint (I8,Unsigned),
-           Fcons (id "GE1",Tint (I8,Unsigned),
-           Fcons (id "GE2",Tint (I8,Unsigned),
-           Fcons (id "GE3",Tint (I8,Unsigned),
-           Fcons (id "E_flag",Tint (I8,Unsigned),
-           Fcons (id "A_flag",Tint (I8,Unsigned),
-           Fcons (id "I_flag",Tint (I8,Unsigned),
-           Fcons (id "F_flag",Tint (I8,Unsigned),
-           Fcons (id "T_flag",Tint (I8,Unsigned),
-           Fcons (id "mode",Tint (I32,Unsigned),
-           Fcons (id "background",Tint (I32,Unsigned),
+           Fcons (id "N_flag",uint8,
+           Fcons (id "Z_flag",uint8,
+           Fcons (id "C_flag",uint8,
+           Fcons (id "V_flag",uint8,
+           Fcons (id "Q_flag",uint8,
+           Fcons (id "J_flag",uint8,
+           Fcons (id "GE0",uint8,
+           Fcons (id "GE1",uint8,
+           Fcons (id "GE2",uint8,
+           Fcons (id "GE3",uint8,
+           Fcons (id "E_flag",uint8,
+           Fcons (id "A_flag",uint8,
+           Fcons (id "I_flag",uint8,
+           Fcons (id "F_flag",uint8,
+           Fcons (id "T_flag",uint8,
+           Fcons (id "mode",uint32,
+           Fcons (id "background",uint32,
            Fnil))))))))))))))))))
 
 (* Type representation of struct SLv6_SystemCoproc *)
 let tp_sc =
   Tstruct (id "SLv6_SystemCoproc",
-           Fcons (id "ee_bit",Tint (I8,Unsigned),
-           Fcons (id "u_bit",Tint (I8,Unsigned),
-           Fcons (id "v_bit",Tint (I8,Unsigned),
+           Fcons (id "ee_bit",uint8,
+           Fcons (id "u_bit",uint8,
+           Fcons (id "v_bit",uint8,
            Fnil))))
 
 (* Type representation of struct SLv6_Processor *)
@@ -167,80 +171,92 @@ let tp_proc =
            Fcons (id "cpsr",tp_sr,
            Fcons (id "spsrs",Tarray (tp_sr,num "5"),
            Fcons (id "cp15",tp_sc,
-           Fcons (id "id",Tint (I8,Unsigned),
-           Fcons (id "user_regs",Tarray (Tint (I32,Unsigned),num "16"),
-           Fcons (id "fiq_regs",Tarray (Tint (I32,Unsigned),num "7"),
-           Fcons (id "irq_regs",Tarray (Tint (I32,Unsigned),num "2"),
-           Fcons (id "svc_regs",Tarray (Tint (I32,Unsigned),num "2"),
-           Fcons (id "abt_regs",Tarray (Tint (I32,Unsigned),num "2"),
-           Fcons (id "und_regs",Tarray (Tint (I32,Unsigned),num "2"),
-           Fcons (id "pc",Tpointer (Tint (I32,Unsigned)),
-           Fnil)))))))))))));;
+           Fcons (id "id",Tint (I8,Signed),
+           Fcons (id "user_regs",Tarray (uint32,num "16"),
+           Fcons (id "fiq_regs",Tarray (uint32,num "7"),
+           Fcons (id "irq_regs",Tarray (uint32,num "2"),
+           Fcons (id "svc_regs",Tarray (uint32,num "2"),
+           Fcons (id "abt_regs",Tarray (uint32,num "2"),
+           Fcons (id "und_regs",Tarray (uint32,num "2"),
+           Fcons (id "pc",Tpointer (uint32),
+           Fcons (id "jump",uint8,
+           Fnil))))))))))))));;
 
 (* Type representation of function reg *)
 let tp_reg = 
-  Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I8,Unsigned),Tnil)),Tint(I32,Unsigned));;
+  Tfunction(Tcons(Tpointer tp_proc,Tcons(uint8,Tnil)),uint32);;
 
 (* Type representation of function reg_m *)
 let tp_regm = 
-  Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I8,Unsigned),Tcons(Tint(I8,Unsigned),Tnil))),Tint (I32,Unsigned))
+  Tfunction(Tcons(Tpointer tp_proc,Tcons(uint8,Tcons(uint8,Tnil))),uint32)
 ;;
 
 (* Type representation of function get_bits*)
 let tp_gbits = 
-  Tfunction(Tcons(Tint(I32,Unsigned),Tcons(Tint(I32,Unsigned),Tcons(Tint(I32,Unsigned),Tnil))),Tint (I32,Unsigned));;
+  Tfunction(Tcons(uint32,Tcons(uint32,Tcons(uint32,Tnil))),uint32);;
 
 (* Type representation of function get_bit*)
 let tp_gbit = 
-  Tfunction(Tcons(Tint(I32,Unsigned),Tcons(Tint(I32,Unsigned),Tnil)),Tint (I8,Unsigned));;
+  Tfunction(Tcons(uint32,Tcons(uint32,Tnil)),uint8);;
 
 (* Type representation of reg setting functions*)
 let tp_setreg =
-  Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I8,Unsigned),Tcons(Tint(I32,Unsigned),Tnil))),Tvoid);;
+  Tfunction(Tcons(Tpointer tp_proc,Tcons(uint8,Tcons(uint32,Tnil))),Tvoid);;
 let tp_setpc = 
-  Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I32,Unsigned),Tnil)),Tvoid)
+  Tfunction(Tcons(Tpointer tp_proc,Tcons(uint32,Tnil)),Tvoid)
 let tp_setregm =
-  Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I8,Unsigned),Tcons(Tint(I8,Unsigned),Tcons(Tint(I32,Unsigned),Tnil)))),Tvoid)
+  Tfunction(Tcons(Tpointer tp_proc,Tcons(uint8,Tcons(uint8,Tcons(uint32,Tnil)))),Tvoid)
 let tp_setf =
-  Tfunction(Tcons(Tpointer(Tint(I32,Unsigned)),Tcons(Tint(I32,Unsigned),Tcons(Tint(I32,Unsigned),Tcons(Tint(I32,Unsigned),Tnil)))),Tvoid)
+  Tfunction(Tcons(Tpointer(uint32),Tcons(uint32,Tcons(uint32,Tcons(uint32,Tnil)))),Tvoid)
 let tp_setb =
-  Tfunction(Tcons(Tpointer(Tint(I32,Unsigned)),Tcons(Tint(I32,Unsigned),Tcons(Tint(I8,Unsigned),Tnil))),Tvoid)
+  Tfunction(Tcons(Tpointer(uint32),Tcons(uint32,Tcons(uint8,Tnil))),Tvoid)
 
 (* Type representation of get spsr*)
-let tp_spsr = Tfunction(Tcons(Tpointer tp_sr,Tnil),tp_sr)
-let tp_spsrm = Tfunction(Tcons(Tpointer tp_sr,Tcons(Tint(I8,Unsigned),Tnil)),tp_sr)
+let tp_spsr = Tfunction(Tcons(Tpointer tp_sr,Tnil),Tpointer tp_sr)
+let tp_spsrm = Tfunction(Tcons(Tpointer tp_sr,Tcons(uint8,Tnil)),Tpointer tp_sr)
 
 (* Type representation of StatusRegister setting functions *)
-let tp_setsr = Tfunction(Tcons(Tpointer tp_sr,Tcons(Tint(I32,Unsigned),Tnil)),Tvoid)
+let tp_setsr = Tfunction(Tcons(Tpointer tp_sr,Tcons(uint32,Tnil)),Tvoid)
 let tp_copysr = Tfunction(Tcons(Tpointer tp_sr,Tcons(Tpointer tp_sr,Tnil)),Tvoid)
-let tp_srtoui32 = Tfunction(Tcons(Tpointer tp_sr,Tnil),Tint(I32,Unsigned))
+let tp_srtoui32 = Tfunction(Tcons(Tpointer tp_sr,Tnil),uint32)
 
 let tp_read t =
-  Tfunction(Tcons(Tpointer tp_mmu,Tcons(Tint(I32,Unsigned),Tnil)),
+  Tfunction(Tcons(Tpointer tp_mmu,Tcons(uint32,Tnil)),
            (match t with
-              |Byte->Tint(I8,Unsigned)
+              |Byte->uint8
               |Half->Tint(I16,Unsigned)
-              |Word->Tint(I32,Unsigned)));;
+              |Word->uint32));;
 
 let implicit_arg = function
   |"ConditionPassed" ->
-     Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),Enil)
+     Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),
+                          id "cpsr",tp_sr),Tpointer tp_sr),Enil)
   |"write_word" | "write_half" | "write_byte" ->
-     Econs(Efield(Evalof(Evar(id "proc",tp_proc),tp_proc),id "mmu_ptr",tp_mmu),Enil)
+     Econs(Efield(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),id "mmu_ptr",tp_mmu),Enil)
   |"CP15_reg1_EEbit"|"CP15_reg1_Ubit"|"CP15_reg1_Vbit" -> 
-     Econs(Eaddrof(Efield(Evalof(Evar(id "proc",tp_proc),tp_proc),id "cp15",tp_sc),tp_sc),Enil)
+     Econs(Eaddrof(Efield(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),id "cp15",tp_sc),tp_sc),Enil)
   |"InAPrivilegedMode"|"CurrentModeHasSPSR"|"address_of_next_instruction"
   |"address_of_current_instruction"|"high_vectors_configured"|"set_reg_m" ->
-     Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),Enil)
+     Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil)
   |_ -> Enil
 
 let implicit_type = function
   |"ConditionPassed" -> 
-     Tfunction(Tcons(Tpointer tp_proc,Tcons(Tint(I32,Unsigned),Tnil)),Tint(I8,Unsigned))
+     Tfunction(Tcons(Tpointer tp_sr,Tcons(uint32,Tnil)),uint8)
   |"InAPrivilegedMode"|"CurrentModeHasSPSR"|"high_vectors_configured" -> 
-     Tfunction(Tcons(Tpointer tp_proc,Tnil),Tint(I8,Unsigned))
+     Tfunction(Tcons(Tpointer tp_proc,Tnil),uint8)
   |"address_of_next_instruction"|"address_of_current_instruction"->
-     Tfunction(Tcons(Tpointer tp_proc,Tnil),Tint(I32,Unsigned))
+     Tfunction(Tcons(Tpointer tp_proc,Tnil),uint32)
+  |"CarryFrom_add3"->
+     Tfunction(Tcons(uint32,Tcons(uint32,Tcons(uint32,Tnil))),uint8)
+  |"OverflowFrom_add3"->
+     Tfunction(Tcons(uint32,Tcons(uint32,Tcons(uint8,Tnil))),uint8)
+  |_ -> Tvoid
+;;
+
+let implicit_ret = function
+  |"ConditionPassed"|"CurrentModeHasSPSR"|"InAPrivilegedMode" -> uint8
+  |"CarryFrom_add3"|"OverflowFrom_add3"-> uint8
   |_ -> Tvoid
 ;;
 
@@ -255,75 +271,94 @@ let rec exp_trans = function
   |Hex str -> Eval (Values.Vint (hex str),Tint (I32, Signed))
   |Bin str -> Eval (Values.Vint (bin str),Tint (I32, Signed))
   |Float_zero -> Eval (Values.Vfloat 0.0,Tfloat F32)
-  |Var str -> Evar (id str,type_of_var str)
+  |Var str -> Evalof (Evar (id str,type_of_var str), type_of_var str)
   |If_exp (e1, e2, e3) -> 
-     Econdition (exp_trans e1,exp_trans e2,exp_trans e3,Tint (I8, Unsigned))
+     Econdition (exp_trans e1,exp_trans e2,exp_trans e3,int32)
   |BinOp (e1, str, e2) -> 
-     Ebinop (binop_trans str, exp_trans e1, exp_trans e2,Tint (I32, Unsigned))
+     (match str with
+        |"and"->coq_Eseqand (exp_trans e1) (exp_trans e2) int32
+        |"or"->coq_Eseqor (exp_trans e1) (exp_trans e2) int32
+        |_->Ebinop (binop_trans str, exp_trans e1, exp_trans e2,int32))
   |Unpredictable_exp -> 
-     Ecall (Evar (id "unpredicatable",Tfunction (Tnil,Tvoid)),Enil,
-            Tfunction(Tnil,Tvoid))
+     Ecall (Evalof(Evar(id "unpredicatable",
+                      Tfunction(Tnil,Tvoid)),Tfunction(Tnil,Tvoid)),Enil,
+            Tvoid)
   |Memory (e,n) -> 
      Ecall(Evalof(Evar(id ("read_"^(access_type n)),tp_read n),tp_read n),
            Econs(exp_trans e,Enil), 
            (match n with
-              |Byte->Tint(I8,Unsigned)
+              |Byte->uint8
               |Half->Tint(I16,Unsigned)
-              |Word->Tint(I32,Unsigned)))
+              |Word->uint32))
   |Reg (Var s,None) -> 
      if List.mem s input_registers then
-       Evalof (Evar (id ("old_R"^s),Tint (I32,Unsigned)),Tint(I32,Unsigned))
-     else Ecall (Evalof (Evar (id "reg",tp_reg),tp_reg),
-            Econs (Evalof (Evar (id "proc",tp_proc),tp_proc), 
-            Econs (Evalof (Evar (id s,Tint (I8,Unsigned)),Tint (I8,Unsigned)),
-            Enil)),Tint (I32,Unsigned))
+       Evalof (Evar (id ("old_R"^s),uint32),uint32)
+     else Ecall(Evalof(Evar(id "reg",tp_reg),tp_reg),
+            Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc), 
+            Econs(Evalof(Evar(id s,uint8),uint8),
+            Enil)),uint32)
   |Reg (e,None)->
-     Ecall (Evalof (Evar (id "reg",tp_reg),tp_reg),
-            Econs (Evalof (Evar (id "proc",tp_proc),tp_proc), 
-            Econs (Evalof (exp_trans e,typeof (exp_trans e)), Enil)),Tint (I32,Unsigned))
+     Ecall (Evalof(Evar(id "reg",tp_reg),tp_reg),
+            Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc), 
+            Econs(Evalof(exp_trans e,typeof(exp_trans e)),Enil)),uint8)
   |Reg (e,Some m) ->
-     Ecall (Evalof (Evar (id "reg_m",tp_regm),tp_regm),
-            Econs (Evalof (Evar (id "proc",tp_proc),tp_proc), 
+     Ecall (Evalof (Evar(id "reg_m",tp_regm),tp_regm),
+            Econs (Evalof (Evar (id "proc",Tpointer tp_proc),tp_proc), 
             Econs (Evalof (exp_trans e,typeof (exp_trans e)),
-            Econs (Evalof (Evar (id (mode m),Tint (I32,Unsigned)),Tint (I32,Unsigned)),
-            Enil))),Tint (I32,Unsigned))
+            Econs (Evalof (Evar (id (mode m),Tint (I32,Signed)),uint32),
+            Enil))),uint32)
   |Coproc_exp (e,f,es) ->
-     Ecall (Evalof (Evar (id f, Tint (I32,Unsigned)),Tint (I32,Unsigned)),
+     Ecall (Evalof (Evar (id f, uint32),uint32),
             Econs (Evalof (exp_trans e,typeof (exp_trans e)),
                    explst es),typeof (exp_trans e))
-  |Fun (f,es)->
+  |Fun(("CarryFrom_add3"|"OverflowFrom_add3") as f,_)->
+     Ecall (Evalof(Evar (id f,implicit_type f),(implicit_type f)),
+                  (Econs(Evalof(Evar(id ("old_Rn"),uint32),uint32),
+                   Econs(Evalof(Evar(id "shifter_operand",uint32),uint32),
+                   Econs(Evalof(Efield(Efield(Ederef
+                               (Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),
+                                              id "cpsr",tp_sr),id ("C_flag"),uint8),uint8),
+                   Enil))))
+            ,(implicit_ret f))
+  |Fun(f,es)->
      Ecall (Evalof (Evar (id f,implicit_type f),(implicit_type f)),
-            (acc_exprlist (implicit_arg f) (explst es)),(implicit_type f))
+                  (acc_exprlist (implicit_arg f) (explst es)),(implicit_ret f))
   |CPSR->
-     Ecall (Evalof (Evar (id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
-            Econs (Eaddrof (Efield (Ederef (Evalof (Evar (id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),Enil),Tint (I32,Unsigned))
+     Ecall (Evalof(Evar(id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
+            Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc)
+                                                 ,tp_proc),tp_proc),id "cpsr",tp_sr),tp_sr),Enil),uint32)
   |SPSR None ->
-     Ecall (Evalof (Evar (id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
-            Econs (Ecall (Evalof (Evar (id "spsr",tp_sr),tp_sr),
-                          Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),Enil),Tint (I32,Unsigned)),Enil),Tint (I32,Unsigned))
+     Ecall (Evalof(Evar(id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
+            Econs(Ecall(Evalof(Evar(id "spsr",tp_sr),tp_sr),
+                        Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil),uint32),Enil),uint32)
   |SPSR (Some m)->
-     Ecall (Evalof (Evar (id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
-            Econs (Ecall (Evalof (Evar (id "spsr_m",tp_sr),tp_sr),
-                          Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),
-                          Econs (Evalof (Evar (id (mode m),tp_proc),tp_proc),Enil)),Tint (I32,Unsigned)),Enil),Tint (I32,Unsigned))
+     Ecall (Evalof(Evar(id "StatusRegister_to_uint32",tp_srtoui32),tp_srtoui32),
+            Econs(Ecall(Evalof(Evar(id "spsr_m",tp_sr),tp_sr),
+                        Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),
+                        Econs(Evalof(Evar(id (mode m),Tint(I32,Signed)),Tint(I32,Signed)),
+                        Enil)),uint32),Enil),uint32)
   |Range (e,Bits (n1,n2))->
      Ecall (Evalof (Evar (id "get_bits",tp_gbits),tp_gbits),
             Econs (Evalof (exp_trans e,typeof (exp_trans e)),
-            Econs (Eval (Values.Vint (num n1),Tint (I32,Unsigned)),
-            Econs (Eval (Values.Vint (num n2),Tint (I32,Unsigned)),Enil))),Tint (I32,Unsigned))
+            Econs (Eval (Values.Vint (num n1),uint32),
+            Econs (Eval (Values.Vint (num n2),uint32),Enil))),uint32)
   |Range (_,Flag (s,_))-> (*"proc->cpsr.%s_flag"*)
-     Efield (Efield (Evar (id "proc",tp_proc),id "cpsr",tp_sr),id (s^"_flag"), Tint (I8,Unsigned))
+     Efield(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),
+                          id "cpsr",tp_sr),id (s^"_flag"),uint8)
   |Range (CPSR,Index (Num n)) -> (*"proc->cpsr.%s"*)
-     Efield (Efield (Evar (id "proc",tp_proc),id "cpsr",tp_sr),id (cpsr_flag n), Tint (I8,Unsigned))
+     Efield(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),
+                          id "cpsr",tp_sr),id (cpsr_flag n),uint8)
   |Range (e1,Index e2) ->
-     Ecall (Evalof (Evar (id "get_bit",tp_gbit),tp_gbit),
-            Econs (exp_trans e1,Econs (exp_trans e2,Enil)),Tint (I32,Unsigned))
-  |Unaffected -> Ecall (Evar (id "ETodo", Tvoid),Enil,Tvoid)
+     Ecall(Evalof(Evar(id "get_bit",tp_gbit),tp_gbit),
+            Econs(exp_trans e1,Econs(exp_trans e2,Enil)),uint8)
+  |Unaffected -> Ecall(Evar(id "ETodo", Tvoid),Enil,Tvoid)
 
 and explst = function
   |[] -> Enil
-  |h::t -> Econs (Evalof (exp_trans h,typeof (exp_trans h)),explst t)
+  |h::t -> Econs (exp_trans h,explst t)
 ;;
+
+let arg_exp_trans e = Evalof (e, typeof e);;
 
 (* transformation from pseudocode instruction to CompcertC statement*)
 let rec stm_trans = function
@@ -333,19 +368,19 @@ let rec stm_trans = function
         |[i] -> stm_trans i
         |i::is -> Ssequence (stm_trans i, stm_trans (Block is)))
   |Let (_, _, insts, _) -> stm_trans (Block insts)
-  |Unpredictable -> Sdo (Ecall (Evar (id "unpredictable", Tvoid),Enil,Tvoid))
-  |Assign (dst, src) -> affect dst src
+  |Unpredictable -> Sdo(exp_trans Unpredictable_exp)
+  |Assign (dst, src) -> assign dst src
   |Return e -> Sreturn (Some (exp_trans e))
   |Case (e,s,o) ->
      Sswitch (exp_trans e, switch_aux s o)
   |Coproc (e, f, es) -> 
      Sdo (Ecall (Evalof (Evar (id f, Tvoid),Tvoid),explst ([e]@es), Tvoid))
   |For (counter,min,max,i) ->
-     Sfor(Sdo(Eassign(Evalof(Evar(id counter,Tint(I32,Unsigned)),Tint(I32,Unsigned)),
-                      (Eval(Values.Vint(num min),Tint(I32,Unsigned))),Tint(I32,Unsigned))),
-          Ebinop(Olt,Evalof(Evar(id counter,Tint(I32,Unsigned)),Tint(I32,Unsigned)),
-                 Eval(Values.Vint (num max),Tint(I32,Unsigned)),Tint(I32,Unsigned)),
-          Sdo(Epostincr(Incr,Evalof(Evar(id counter,Tint(I32,Unsigned)),Tint(I32,Unsigned)),Tint(I32,Unsigned))),
+     Sfor(Sdo(Eassign(Evalof(Evar(id counter,uint32),uint32),
+                      (Eval(Values.Vint(num min),uint32)),uint32)),
+          Ebinop(Olt,Evalof(Evar(id counter,uint32),uint32),
+                 Eval(Values.Vint (num max),uint32),uint32),
+          Sdo(Epostincr(Incr,Evalof(Evar(id counter,uint32),uint32),uint32)),
            stm_trans i)
   |Assert e -> Sdo (Ecall (Evar (id "_assert_fail", Tvoid),explst [e],Tvoid))
   |While (e,i) -> Sdowhile (exp_trans e,stm_trans i)
@@ -358,24 +393,24 @@ let rec stm_trans = function
                    |Some i -> stm_trans i))
 
 (*specific cases for registers and ranges assignement*)
-and affect dst src =
+and assign dst src =
   match dst with
     |Reg(Var s,None) -> 
         (match s with
            |"d"-> Sdo (Ecall (Evalof (Evar (id "set_reg_or_pc",tp_setreg),tp_setreg),
-                              Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),
-                              Econs (Evalof (Evar (id "d",Tint (I8,Unsigned)),Tint (I8,Unsigned)),
-                              Econs (exp_trans src,Enil))),Tvoid))
+                              Econs (Evalof(Evar (id "proc",Tpointer tp_proc),tp_proc),
+                              Econs (Evalof(Evar (id "d",uint8),uint8),
+                              Econs (arg_exp_trans(exp_trans src),Enil))),Tvoid))
            |"15"-> Sdo (Ecall (Evalof(Evar (id "set_pc_raw",tp_setpc),tp_setpc),
-                               Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),Enil),Tvoid))
+                               Econs (Evalof (Evar (id "proc",Tpointer tp_proc),tp_proc),Enil),Tvoid))
            |s -> Sdo (Ecall (Evalof (Evar (id "set_reg",tp_setreg),tp_setreg),
-                             Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),
-                             Econs (Evalof (Evar (id s,Tint (I8,Unsigned)),Tint (I8,Unsigned)),
-                             Econs (exp_trans src,Enil))),Tvoid)))
+                             Econs (Evalof (Evar (id "proc",Tpointer tp_proc),tp_proc),
+                             Econs (Evalof (Evar (id s,uint8),uint8),
+                             Econs (arg_exp_trans(exp_trans src),Enil))),Tvoid)))
     |Reg (Var s,Some m) -> 
        Sdo (Ecall (Evalof (Evar (id "set_reg_m",tp_setregm),tp_setregm),
-            Econs (Evalof (Evar (id "proc",tp_proc),tp_proc),
-            Econs (Evalof (Evar (id s,Tint(I8,Unsigned)),Tint(I8,Unsigned)),
+            Econs (Evalof (Evar (id "proc",Tpointer tp_proc),tp_proc),
+            Econs (Evalof (Evar (id s,uint8),uint8),
             Econs (Evalof (Evar (id (mode m),Tint(I8, Unsigned)),Tint(I8, Unsigned)),
             Econs (exp_trans src,Enil)))),Tvoid))
     |Range (e1,Index e2) ->
@@ -384,21 +419,24 @@ and affect dst src =
     |Range (e,Bits (n1, n2)) ->
         Sdo(Ecall(Evalof(Evar(id "set_field",tp_setf),tp_setf), 
             Econs (exp_trans e,
-            Econs (Eval (Values.Vint (num n1),Tint (I32,Unsigned)),
-            Econs (Eval (Values.Vint (num n2),Tint (I32,Unsigned)),Enil))),Tvoid))
+            Econs (Eval (Values.Vint (num n1),uint32),
+            Econs (Eval (Values.Vint (num n2),uint32),Enil))),Tvoid))
+    |Range (CPSR,Flag _)->(*"proc->cpsr.%s_flag = %a"*)
+       Sdo(Eassign (exp_trans dst,exp_trans src,uint8))
     |CPSR -> 
         (match src with
           |SPSR None -> (*"copy_StatusRegister(&proc->cpsr, spsr(proc))"*)
-             Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_setsr),tp_setsr),
-                 Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),
-                 Econs(Ecall(Evalof(Evar(id "spsr",tp_sr),tp_sr),Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),Enil),tp_sr),
+             Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_copysr),tp_copysr),
+                 Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),id "cpsr",tp_sr),Tpointer tp_sr),
+                 Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),
+                             Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil),Tpointer tp_sr),
                  Enil)),Tvoid))
           |SPSR (Some m) -> (*"copy_StatusRegister(&proc->cpsr, spsr_m(proc,m))"*)
-             Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_spsrm),tp_spsrm),
-                 Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),
-                 Econs(Ecall(Evalof(Evar(id "spsr_m",tp_setsr),tp_setsr),
-                             Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),
-                             Econs(Evalof(Evar(id(mode m),Tint(I8,Unsigned)),Tint(I8,Unsigned)),Enil)),tp_sr),
+             Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_copysr),tp_copysr),
+                 Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),id "cpsr",tp_sr),Tpointer tp_sr),
+                 Econs(Ecall(Evalof(Evar(id "spsr_m",tp_spsrm),tp_spsrm),
+                             Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),
+                             Econs(Evalof(Evar(id(mode m),uint8),uint8),Enil)),Tpointer tp_sr),
                  Enil)),Tvoid))
           |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|CPSR|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
@@ -407,9 +445,11 @@ and affect dst src =
         (match src with
           |CPSR -> (*"copy_StatusRegister(spsr(proc), &proc->cpsr)"*)
              Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_copysr),tp_copysr),
-                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),Econs(Evar(id "proc",tp_proc),Enil),Tvoid),
-                       Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),
-                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),Enil),tp_sr),
+                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),
+                                   Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil),Tvoid),
+                       Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),tp_proc),id "cpsr",tp_sr),Tpointer tp_sr),
+                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),
+                                   Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil),Tpointer tp_sr),
                        Enil))),Tvoid))
           |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|SPSR _|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
@@ -419,10 +459,12 @@ and affect dst src =
           |CPSR -> (*"copy_StatusRegister(spsr_m(proc,m), &proc->cpsr)"*)
              Sdo(Ecall(Evalof(Evar(id "copy_StatusRegister",tp_copysr),tp_copysr),
                        Econs(Ecall(Evalof(Evar(id "spsr_m",tp_spsrm),tp_spsrm),
-                                   Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),
-                                   Econs(Evalof(Evar(id (mode m),Tint(I32,Unsigned)),Tint(I32,Unsigned)),Enil)),Tvoid),
-                       Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",tp_proc),tp_proc),tp_sr),id "cpsr",tp_sr),tp_sr),
-                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),Enil),tp_spsr),
+                                   Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),
+                                   Econs(Evalof(Evar(id (mode m),uint32),uint32),Enil)),Tvoid),
+                       Econs(Eaddrof(Efield(Ederef(Evalof(Evar(id "proc",Tpointer tp_proc),
+                                                          tp_proc),tp_proc),id "cpsr",tp_sr),Tpointer tp_sr),
+                       Econs(Ecall(Evalof(Evar(id "spsr",tp_spsr),tp_spsr),
+                                   Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),Enil),Tpointer tp_spsr),
                        Enil))),Tvoid))
           |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|SPSR _|Reg _|Var _|Range (_,Bits _)
           |Range (_,Flag _)|Range (_,Index _)|Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
@@ -431,9 +473,9 @@ and affect dst src =
        Sdo(Ecall(Evalof(Evar(id ("write_"^(access_type n)),tp_read n),tp_read n),
            Econs(exp_trans e,Enil), 
            (match n with
-              |Byte->Tint(I8,Unsigned)
+              |Byte->uint8
               |Half->Tint(I16,Unsigned)
-              |Word->Tint(I32,Unsigned))))
+              |Word->uint32)))
     |Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|Reg _|Var _|Range (_,Flag _)
     |Unaffected|Unpredictable_exp|Coproc_exp _  -> 
        Sdo(Eassign(exp_trans dst,exp_trans src,Tvoid))
@@ -463,11 +505,11 @@ let var_id l =
 (*declaration for loading old_R *)
 let rec oldr_decl rs st =
   let aux r =
-    Sdo(Eassign(Evar(id ("old_R"^r),Tint(I32,Unsigned)),
+    Sdo(Eassign(Evar(id ("old_R"^r),uint32),
                 Ecall(Evalof(Evar (id "reg",tp_reg),tp_reg),
-                      Econs(Evalof(Evar(id "proc",tp_proc),tp_proc),
-                      Econs(Evalof(Evar(id r,Tint(I8,Unsigned)),Tint(I8,Unsigned)),Enil)),
-                      Tint(I32,Unsigned)),Tint(I32,Unsigned)))
+                      Econs(Evalof(Evar(id "proc",Tpointer tp_proc),tp_proc),
+                      Econs(Evalof(Evar(id r,uint8),uint8),Enil)),
+                      uint32),uint32))
   in match rs with
     | [] -> st
     | r::rs -> Ssequence (aux r, oldr_decl rs st)
@@ -481,7 +523,7 @@ let fn_trans p =
   let ss = List.fold_left (fun l (s, _) -> s::l) [] gs in
   let old_r =  List.filter (fun x -> List.mem x input_registers) ss in
   let fvar = 
-    (List.map (fun x->Coq_pair(id("old_R"^x),Tint (I32,Unsigned))) old_r)@ls_id in
+    (List.map (fun x->Coq_pair(id("old_R"^x),uint32)) old_r)@ls_id in
   {fn_return = Tvoid;
    fn_params = (Coq_pair (id "proc",Tpointer (tp_proc)))::gs_id;
    fn_vars = fvar;
@@ -492,7 +534,7 @@ let fndef_trans p = Internal (fn_trans p);;
 let fn_index p = Coq_pair (id p.pident.iname, fndef_trans p);;
 
 let gvars = 
-  {AST.gvar_info = Tarray (Tint(I8,Unsigned),num "0") ;
+  {AST.gvar_info = Tarray (uint8,num "0") ;
    AST.gvar_init = [];
    AST.gvar_readonly = false;
    AST.gvar_volatile =false};;
