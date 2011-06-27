@@ -107,10 +107,10 @@ let valid_coq_ident s =
     match s with
       | "end" as s -> "_" ^ s
       | _ ->
-	  for i = 0 to String.length s - 1 do
-	    if s.[i] = '$' || s.[i] = ' ' then s.[i] <- '_'
-	  done;
-	  s;;
+          for i = 0 to String.length s - 1 do
+            if s.[i] = '$' || s.[i] = ' ' then s.[i] <- '_'
+          done;
+          s;;
 
 let add_ident id s = Hashtbl.add identTable id (valid_coq_ident s);;
 
@@ -255,9 +255,9 @@ let compute_typ_order () =
   lm := TC.level_map
     (TypMap.fold
        (fun t id g ->
-	  fold_type
-	    (fun _ id' g -> if id = id' then g else TC.trans_add_edge id id' g)
-	    g t)
+          fold_type
+            (fun _ id' g -> if id = id' then g else TC.trans_add_edge id id' g)
+            g t)
        !typMap TC.empty);;
 
 let level id = try TC.XMap.find id !lm with Not_found -> 0;;
@@ -273,27 +273,33 @@ let rec fields_of_fieldlist = function
 
 let field b = pair ident " -: " coq_type b;;
 
-let fieldlist b fl =
-  bprintf b "\nF%a" (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl);;
+let fieldlist id s b fl =
+  bprintf b "Definition typ_%s_%a := \nF%a.\n\n" s ident id 
+    (coq_list (prefix "\n  " field)) (fields_of_fieldlist fl);;
 
-let rec coq_type_def b t =
-  match t with
-    | Tvoid
-    | Tint _
-    | Tfloat _
-    | Tpointer _
-    | Tarray _
-    | Tfunction _
-    | Tcomp_ptr _ -> assert false
-    | Tstruct (id, fl) -> app2 b "Tstruct" ident id fieldlist fl
-    | Tunion (id, fl) -> app2 b "Tunion" ident id fieldlist fl;;
+let coq_type_def t =
+  let type_type, id, fl = 
+    match t with
+      | Tvoid
+      | Tint _
+      | Tfloat _
+      | Tpointer _
+      | Tarray _
+      | Tfunction _
+      | Tcomp_ptr _ -> assert false
+      | Tstruct (id, fl) -> "struct", id, fl
+      | Tunion (id, fl) -> "union", id, fl in
+  (fun b _ -> fieldlist id type_type b fl), 
+  (fun b _ -> app2 b ("T" ^ type_type) ident id 
+    (fun b -> bprintf b "typ_%s_%a" type_type ident) id);;
 
 let structs_and_unions b =
   compute_typ_order ();
   bprintf b "\n(* structs and unions *)\n\n";
   List.iter
     (fun (t,id) ->
-       bprintf b "Definition %a := %a.\n\n" type_ident id coq_type_def t)
+      let f_beg, f_body = coq_type_def t in
+      bprintf b "%aDefinition %a := %a.\n\n" f_beg () type_ident id f_body ())
     (List.sort cmp_level (TypMap.bindings !typMap));;
 
 (*****************************************************************************)
@@ -385,7 +391,7 @@ let rec expr b = function
   | Eassign (e1, e2, t) -> bprintf b "%a `= %a%a" pexpr e1 pexpr e2 of_exptyp t
   | Eassignop (op, e1, e2, t1, t2) ->
       bprintf b "%a %a= %a%a%a" pexpr e1 binary_operation op pexpr e2
-	of_exptyp t1 of_exptyp t2
+        of_exptyp t1 of_exptyp t2
   | Epostincr (id, e, t) ->
       bprintf b "%a%a%a" pexpr e incr_of_decr id of_exptyp t
   | Ecomma (e1, e2, t) -> papp3 b "Ecomma" pexpr e1 pexpr e2 exptyp t
@@ -465,7 +471,7 @@ let is_printable x = (x >= 32 && x <= 126) || (x >= 9 && x <= 10);;
 let char_of_init_data = function
   | Init_int8 x ->
       let x = Int32.to_int (camlint_of_coqint x) in
-	if is_printable x then Char.chr x else raise Not_found
+        if is_printable x then Char.chr x else raise Not_found
   | Init_int16 _
   | Init_int32 _
   | Init_float32 _
@@ -478,7 +484,7 @@ let remove_null =
   let rec aux x = function
     | [] -> if x = null then [] else raise Not_found
     | y :: l -> let c = char_of_init_data x in
-	if c = '"' then c :: c :: aux y l else c :: aux y l
+        if c = '"' then c :: c :: aux y l else c :: aux y l
   in function
     | [] -> []
     | x :: l -> aux x l;;
@@ -496,15 +502,15 @@ let gvar_init =
   let b' = Buffer.create 100 in
     fun b l ->
       if List.for_all is_int8 l then
-	try
-	  match remove_null l with
-	    | [] -> bprintf b "[Init_int8 0]"
-	    | l -> Buffer.clear b';
-		List.iter (bprintf b' "%c") l;
-		bprintf b "null_termin_string \"%a\"" Buffer.add_buffer b'
-	with Not_found ->
-	  bprintf b "list_init_data_of_list_ascii %a%%char"
-	    (coq_list init_data) l
+        try
+          match remove_null l with
+            | [] -> bprintf b "[Init_int8 0]"
+            | l -> Buffer.clear b';
+                List.iter (bprintf b' "%c") l;
+                bprintf b "null_termin_string \"%a\"" Buffer.add_buffer b'
+        with Not_found ->
+          bprintf b "list_init_data_of_list_ascii %a%%char"
+            (coq_list init_data) l
       else coq_list init_data b l;;
 
 let prog_var_def b (Coq_pair (id, v)) =
@@ -538,14 +544,22 @@ let external_function b ef =
   bprintf b "{| ef_id := %a;\n     ef_sig := %a;\n     ef_inline := %a |}"
     ident ef.ef_id signature ef.ef_sig bool ef.ef_inline;;
 
-let fundef b = function
-  | Internal f -> bprintf b "Internal\n  %a" coq_function f
-  | External (ef, tl, t) -> bprintf b "External\n  %a\n  %a\n  %a"
-      external_function ef typelist tl pcoq_type t;;
+let fundef_internal id b = 
+  bprintf b "Definition fun_internal_%a :=\n  %a.\n\n" ident id coq_function
+
+let fundef id = function
+  | Internal f -> 
+    (fun b _ -> fundef_internal id b f),
+    (fun b _ -> bprintf b "Internal fun_internal_%a" ident id)
+  | External (ef, tl, t) -> 
+    (fun _ _ -> ()),
+    (fun b _ -> bprintf b "External\n  %a\n  %a\n  %a"
+      external_function ef typelist tl pcoq_type t);;
 
 let prog_funct_def b (Coq_pair (id, fd)) =
-  bprintf b "Definition fun_%a :=\n  (%a, %a).\n\n"
-    ident id ident id fundef fd;;
+  let f_beg, f_end = fundef id fd in
+  bprintf b "%aDefinition fun_%a :=\n  (%a, %a).\n\n"
+    f_beg () ident id ident id f_end ();;
 
 let functions b p =
   bprintf b "\n(* functions *)\n\n%a\
