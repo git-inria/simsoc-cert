@@ -3,7 +3,7 @@
 Require Import Globalenvs Memory.
 Require Import Csyntax Csem Cstrategy Coqlib Integers Values Maps Errors. 
 Require Import Arm6_State Arm6_Proc Arm6_SCC Bitvec Arm6.
-Require Import adc_compcert.
+Require Import adc_compcert_fixed.
 
 (* Some constants for ADC *)
 
@@ -33,32 +33,40 @@ Definition ofs_of_fld (f_id:AST.ident) (fl:fieldlist) :word:=
   end.
 
 (* offset of each element in Processor Tstruct *)
-Definition cpsr_ofs:int:=ofs_of_fld cpsr fld_proc.
+Definition cpsr_ofs:int:=ofs_of_fld cpsr typ_struct_SLv6_Processor.
 
-Definition spsr_ofs:int:=ofs_of_fld spsrs fld_proc.
+Definition spsr_ofs:int:=ofs_of_fld spsrs typ_struct_SLv6_Processor.
 
 Definition mode_ofs:int:=
-  add (ofs_of_fld cpsr fld_proc) (ofs_of_fld mode fld_sr).
+  add (ofs_of_fld cpsr typ_struct_SLv6_Processor) 
+  (ofs_of_fld mode typ_struct_SLv6_StatusRegister).
 
-Definition reg_ofs (id:AST.ident):int:=ofs_of_fld id fld_proc.
+Definition reg_ofs (id:AST.ident):int:=
+  ofs_of_fld id typ_struct_SLv6_Processor.
 
-Definition mmu_ofs:int:=ofs_of_fld mmu_ptr fld_proc.
+Definition mmu_ofs:int:=ofs_of_fld mmu_ptr typ_struct_SLv6_Processor.
 
-Definition mem_ofs:int:=ofs_of_fld adc_compcert.mem fld_mmu.
+Definition mem_ofs:int:=ofs_of_fld mem typ_struct_SLv6_MMU.
 
-Definition cp15_ofs:int:=ofs_of_fld cp15 fld_proc.
+Definition cp15_ofs:int:=ofs_of_fld cp15 typ_struct_SLv6_Processor.
 
-Definition pc_ofs:int:=ofs_of_fld pc fld_proc.
+Definition pc_ofs:int:=ofs_of_fld pc typ_struct_SLv6_Processor.
 
-Definition id_ofs:int:=ofs_of_fld adc_compcert.id fld_proc.
+Definition id_ofs:int:=ofs_of_fld id typ_struct_SLv6_Processor.
 
-Definition jump_ofs:int:=ofs_of_fld jump fld_proc.
+Definition jump_ofs:int:=ofs_of_fld jump typ_struct_SLv6_Processor.
 
 Definition proc_loc (m:Mem.mem) (e:env):option val:=
   match e!proc with
-    |Some(b,_)=>load_value_of_type (Tpointer typ_SLv6_Processor) m b Int.zero
+    |Some(b,_)=>
+      match 
+        (load_value_of_type (Tpointer typ_SLv6_Processor) m b Int.zero) with
+        |Some(Vptr b o) as v=>v
+        |_=>None
+      end
     |None=>None
   end.
+
 
 (* Projection from C parameters to COQ parameters*)
 (* If in local env the parameter of ADC (S, cond, d or n) exists,
@@ -100,7 +108,7 @@ Definition n_proj (m:Mem.mem) (e:env):regnum:=
 Definition so_proj (m:Mem.mem) (e:env):word:=
   varg_proj (param_val shifter_operand m e).
 
-Definition find_field (id:AST.ident) (ofs:int) (m:Mem.mem) (e:env)
+Definition find_field (ofs:int) (m:Mem.mem) (e:env)
   :option val:=
   match proc_loc m e with
     |Some(Vptr b o) => Some (Vptr b (add o ofs))
@@ -108,22 +116,22 @@ Definition find_field (id:AST.ident) (ofs:int) (m:Mem.mem) (e:env)
   end.
 
 Definition find_cpsr (m:Mem.mem) (e:env):option val:=
-  find_field cpsr cpsr_ofs m e.
+  find_field cpsr_ofs m e.
 
 Definition find_spsr (m:Mem.mem) (e:env):option val:=
-  find_field spsr spsr_ofs m e.
+  find_field spsr_ofs m e.
 
-Definition find_reg (rid:AST.ident) (m:Mem.mem) (e:env):option val:=
-  find_field rid (ofs_of_fld rid fld_proc) m e.
+Definition find_reg (m:Mem.mem) (e:env) (rid:AST.ident):option val:=
+  find_field (ofs_of_fld rid typ_struct_SLv6_Processor) m e.
 
 Definition find_cp15 (m:Mem.mem) (e:env):option val:=
-  find_field cp15 cp15_ofs m e.
+  find_field cp15_ofs m e.
 
 Definition find_id (m:Mem.mem) (e:env):option val:=
-  find_field adc_compcert.id id_ofs m e.
+  find_field id_ofs m e.
 
 Definition find_jump (m:Mem.mem) (e:env):option val:=
-  find_field jump jump_ofs m e.
+  find_field jump_ofs m e.
 
 (* If cpsr can be found, use the location of [cpsr] and the offset of 
    mode in StatusRegister struct to get location of [mode]*)
@@ -139,17 +147,25 @@ Definition find_mode (m:Mem.mem) (e:env):option val:=
 (* If in local environment the variable [porc] exists,
    then return the pointer of [proc] field [mmu_ptr].
    From this MMU struct, returns the pointer to the field [mem]*)
-Definition find_mem (m:Mem.mem) (e:env):option val:=
+Definition find_mmu (m:Mem.mem) (e:env):option val:=
   match proc_loc m e with
     |Some(Vptr bp op)=>
-      let mmu_p:=
-        load_value_of_type (Tpointer typ_SLv6_MMU) m bp (add op mmu_ofs) 
-        in
-        match mmu_p with
-          |Some(Vptr bm om)=>
-            load_value_of_type (Tpointer(Tint I8 Unsigned)) m bm (add om mem_ofs)
-          |_=>None
-        end
+      match 
+        (load_value_of_type (Tpointer typ_SLv6_MMU) m bp (add op mmu_ofs)) with
+        |Some(Vptr bm om) as v=>v
+        |_=>None
+      end
+    |_=>None
+  end.
+
+Definition find_mem (m:Mem.mem) (e:env):option val:=
+  match find_mmu m e with
+    |Some(Vptr bm om)=>
+      match 
+        (load_value_of_type (Tpointer(Tint I8 Unsigned)) m bm (add om mem_ofs)) with
+        |Some(Vptr b o) as v=>v
+        |_=>None
+      end
     |_=>None
   end.
 
@@ -160,15 +176,381 @@ Definition find_mem (m:Mem.mem) (e:env):option val:=
 Definition find_pc (m:Mem.mem) (e:env):option val:=
   match proc_loc m e with
     |Some(Vptr b ofs)=>
-      load_value_of_type (Tpointer (Tint I32 Unsigned)) m b ofs
+      match 
+        (load_value_of_type (Tpointer (Tint I32 Unsigned)) m b ofs) with
+        |Some(Vptr b o) as v=>v
+        |_=>None
+      end
     |_=>None
   end.
 
 Definition pc_usereg15 (m:Mem.mem) (e:env):Prop:=
-  find_pc m e = find_reg user_regs m e.
+  find_pc m e = find_reg m e user_regs.
+
+Definition find_fld (f: Mem.mem->env->option val) (fld:fieldlist)
+  (id:AST.ident) (m:Mem.mem) (e:env):
+  option val:=
+  match f m e with
+    |Some(Vptr bp op)=> 
+      Some(Vptr bp (add op (ofs_of_fld id fld)))
+    |_=>None
+  end.
+
+(*
+(*memory blocks of SystemCoproc*)
+(*Record sc_mem := mk_scm
+  {eeb: option val;
+    ub: option val;
+    vb: option val}.
+*)
+Record sc_mem := mk_scm
+  {eeb: val;
+    ub: val;
+    vb: val}.
+
+Definition slv6_sc (m:Mem.mem) (e:env):option sc_mem:=
+  let fld_v b o id:= Vptr b (add o (ofs_of_fld id typ_struct_SLv6_SystemCoproc))
+    in
+    match find_cp15 m e with
+      |Some(Vptr b o)=> 
+        Some(mk_scm (fld_v b o ee_bit) (fld_v b o u_bit) (fld_v b o v_bit))
+      |_=>None
+  end.
+
+(*memory blocks of StatusRegister*)
+(*Record sr_mem := mk_srm
+  {nf: option val;
+    zf: option val;
+    cf: option val;
+    vf: option val;
+    qf: option val;
+    jf: option val;
+    ge0: option val;
+    ge1: option val;
+    ge2: option val;
+    ge3: option val;
+    ef: option val;
+    af: option val;
+    i_f: option val;
+    ff: option val;
+    tf: option val;
+    md: option val;
+    bg: option val}.
+*)
+Record sr_mem := mk_srm
+  {nf: val;
+    zf: val;
+    cf: val;
+    vf: val;
+    qf: val;
+    jf: val;
+    ge0: val;
+    ge1: val;
+    ge2: val;
+    ge3: val;
+    ef: val;
+    af: val;
+    i_f: val;
+    ff: val;
+    tf: val;
+    md: val;
+    bg: val}.
+
+Definition slv6_cpsr (m:Mem.mem) (e:env):option sr_mem:=
+  let fld_v b o id:=Vptr b (add o (ofs_of_fld id typ_struct_SLv6_StatusRegister))
+    in
+    match find_cpsr m e with
+      |Some(Vptr b o)=>
+        Some(mk_srm (fld_v b o N_flag) (fld_v b o Z_flag) (fld_v b o C_flag) 
+          (fld_v b o V_flag) (fld_v b o Q_flag) (fld_v b o J_flag) 
+          (fld_v b o GE0) (fld_v b o GE1) (fld_v b o GE2) (fld_v b o GE3)
+          (fld_v b o E_flag) (fld_v b o A_flag) (fld_v b o I_flag) 
+          (fld_v b o F_flag) (fld_v b o T_flag) (fld_v b o mode) 
+          (fld_v b o background))
+    |_=>None
+    end.
+
+Definition mode2mode (pm:proc_mode) :=
+  match pm with
+    |usr|sys=>(user_regs,5)
+    |exn e=>match e with
+              |fiq=>(fiq_regs,0)
+              |irq=>(irq_regs,1)
+              |svc=>(svc_regs,2)
+              |abt=>(abt_regs,3)
+              |und=>(und_regs,4)
+            end
+  end.
+
+(*Definition find_spsr_m (m:Mem.mem) (e:env) (em:exn_mode):option val:=
+  let ofs o :=
+    add o (repr ((snd (mode2mode (exn em)))*sizeof typ_SLv6_StatusRegister)) in
+  match find_spsr m e with
+    |Some(Vptr b o)=>
+      Some (Vptr b (ofs o))
+    |_=>None
+  end.
+*)
+Definition find_spsr_m (m:Mem.mem) (e:env):option(exn_mode->val):=
+  let ofs o em:=
+    add o (repr ((snd (mode2mode (exn em)))*sizeof typ_SLv6_StatusRegister)) in
+  match find_spsr m e with
+    |Some(Vptr b o)=>
+      Some(fun em=>(Vptr b (ofs o em)))
+    |_=>None
+  end.
+
+Definition blk_spsr (m:Mem.mem) (e:env):=
+  let ofs o em:=
+    add o (repr ((snd (mode2mode (exn em)))*sizeof typ_SLv6_StatusRegister)) in
+  match find_spsr m e with
+    |Some(Vptr b o)=>
+      Some(fun em=>(b, (ofs o em)))
+    |_=>None
+  end.
+
+Definition slv6_spsr (m:Mem.mem) (e:env):option(exn_mode->sr_mem):=
+  let fld_v b o id:=Vptr b (add o (ofs_of_fld id typ_struct_SLv6_StatusRegister))
+    in
+    match blk_spsr m e with
+      |Some v=>
+        Some(fun em=>let (b,o):=v em in 
+          mk_srm (fld_v b o N_flag) (fld_v b o Z_flag) (fld_v b o C_flag) 
+          (fld_v b o V_flag) (fld_v b o Q_flag) (fld_v b o J_flag) 
+          (fld_v b o GE0) (fld_v b o GE1) (fld_v b o GE2) (fld_v b o GE3)
+          (fld_v b o E_flag) (fld_v b o A_flag) (fld_v b o I_flag) 
+          (fld_v b o F_flag) (fld_v b o T_flag) (fld_v b o mode) 
+          (fld_v b o background))
+      |_=>None
+    end.
+
+(*memory blocks of MMU*)
+Record mmu_mem := mk_mmum
+  {bgn: val;
+    sz: val;
+    ed: val;
+    mm: val}.
+
+(*Record mmu_mem := mk_mmum
+  {bgn: option val;
+    sz: option val;
+    ed: option val;
+    mm: option val}.
+*)
+
+Definition slv6_mmu (m:Mem.mem) (e:env):option mmu_mem:=
+  let fld_v b o id:=Vptr b (add o (ofs_of_fld id typ_struct_SLv6_MMU)) in
+  match find_mmu m e with
+    |Some(Vptr b o)=>
+      Some(mk_mmum (fld_v b o begin) (fld_v b o size) 
+                   (fld_v b o _end) (fld_v b o mem))
+    |_=>None
+  end.
+
+(*memory blocks of proc*)
+Record proc_mem := mk_pcm
+  {mmup: mmu_mem;
+    cpsr_m: sr_mem;
+    spsr_m: exn_mode->sr_mem;
+    sc: sc_mem;
+    id: val;
+    rg: register->val;
+    p: val;
+    jp: val}.
+
+Definition reg2reg (r:register):=
+  match r with
+    |R k=>(user_regs,k)
+    |R_svc k _=>(svc_regs,mk_regnum k)
+    |R_abt k _=>(abt_regs,mk_regnum k)
+    |R_und k _=>(und_regs,mk_regnum k)
+    |R_irq k _=>(irq_regs,mk_regnum k)
+    |R_fiq k _=>(fiq_regs,mk_regnum k)
+  end.
+
+Definition slv6_proc (m:Mem.mem) (e:env):option proc_mem:=
+  let fld_v b o i:=Vptr b (add o (ofs_of_fld i typ_struct_SLv6_Processor)) in
+  let fld_reg b o r:=
+    Vptr b (add o (ofs_of_fld (fst(reg2reg r)) 
+      typ_struct_SLv6_Processor)) in
+  let mm:=slv6_mmu m e in
+  let c:=slv6_cpsr m e in
+  let s:=slv6_spsr m e in
+  let sc:=slv6_sc m e in
+    match proc_loc m e with
+      |Some(Vptr b o)=>
+        match mm,c,(*fs,is,ss,abs,us,*)s,sc with
+          |Some vm,Some vc,(*Some vfs,Some vis,Some vss,Some vabs,Some vus,*)
+            Some vs,Some vsc =>
+            Some(mk_pcm vm vc (*vfs vis vss vabs vus*) vs vsc 
+              (fld_v b o adc_compcert_fixed.id) 
+              (fld_reg b o)
+              (fld_v b o pc)
+              (fld_v b o jump))
+          |_,_,_,_(*,_,_,_,_*)=>None
+        end
+      |_=>None
+    end.
+
+(* From a StateRegister Tstruct to word*)
+Definition sr_proj (m:Mem.mem) (sr:sr_mem) :option word:=
+  let valof ptr typ :=
+    match ptr with
+      |Vptr b o=>load_value_of_type typ m b o
+      |_=>None
+    end in
+    let setcpsr n ov ow :=
+      match ov, ow with
+        |Some(Vint v), Some w=>Some (set_bit n v w)
+        |_,_=>None
+      end in 
+    let setcpsrs n1 n2 ov ow :=
+      match ov, ow with
+        |Some(Vint v), Some w=>Some (set_bits n1 n2 v w)
+        |_,_=>None
+      end in 
+    (setcpsr Nbit (valof sr.(nf) (Tint I8 Unsigned))
+    (setcpsr Zbit (valof sr.(zf) (Tint I8 Unsigned))
+    (setcpsr Cbit (valof sr.(cf) (Tint I8 Unsigned))
+    (setcpsr Vbit (valof sr.(vf) (Tint I8 Unsigned))
+    (setcpsr Qbit (valof sr.(qf) (Tint I8 Unsigned))
+    (setcpsr Jbit (valof sr.(jf) (Tint I8 Unsigned))
+(* set bits 16 to 19 is set GEbits*)
+    (setcpsr 19%nat (valof sr.(ge3) (Tint I8 Unsigned))
+    (setcpsr 18%nat (valof sr.(ge2) (Tint I8 Unsigned))
+    (setcpsr 17%nat (valof sr.(ge1) (Tint I8 Unsigned))
+    (setcpsr 16%nat (valof sr.(ge0) (Tint I8 Unsigned))
+    (setcpsr Ebit (valof sr.(ef) (Tint I8 Unsigned))
+    (setcpsr Abit (valof sr.(af) (Tint I8 Unsigned))
+    (setcpsr Ibit (valof sr.(i_f) (Tint I8 Unsigned))
+    (setcpsr Fbit (valof sr.(ff) (Tint I8 Unsigned)) 
+    (setcpsr Tbit (valof sr.(tf) (Tint I8 Unsigned)) 
+(* set bits 0 to 4 is set Mbits*)
+    (setcpsrs 0%nat 4%nat (valof sr.(md) (Tint I32 Unsigned)) 
+      (Some Int.zero))))))))))))))))).
+
+(* Projection form C cpsr to COQ cpsr*)
+Definition cpsr_proj (m:Mem.mem) (c:sr_mem):option word:=
+  sr_proj m c.
+
+Definition spsr_proj (m:Mem.mem) (s:exn_mode->sr_mem) (em:exn_mode):word:=
+  let sr:=s em in
+    match sr_proj m sr with
+      |Some w=>w
+      |None=>repr 16
+    end.
+
+(* Projection from C mode in cpsr, to COQ mode*)
+Definition mode_proj (m:Mem.mem) (c:sr_mem) :option proc_mode:=
+  match c.(md) with
+    |Vptr b o=>
+      match load_value_of_type (Tint I32 Unsigned) m b o with
+        |Some(Vint v)=>proc_mode_of_word v
+        |_=>None
+      end
+    |_=>None
+  end.
+
+
+(* Projection from C reg to COQ reg*)
+Definition regs_proj (m:Mem.mem) (p:proc_mem) (r:register):word:=
+  let valof k:=
+    match p.(rg) r with
+      |Vptr b o=>load_value_of_type (Tint I32 Unsigned) m b (add o (repr k))
+      |_=>None
+    end in
+    let reg_val v :=
+    match v with
+      |Some(Vint v')=> v'
+      |_=>w0
+    end in
+    reg_val (valof (snd(reg2reg r))).
+
+
+(* Projection from C memory to COQ memory*)
+Definition mem_proj (m:Mem.mem) (mu:mmu_mem) (ad:address): word:=
+  match mu.(mm) with
+    |Vptr b o=>
+      match
+        load_value_of_type (Tint I8 Unsigned) m b (add o (word_of_address ad)) with
+        |Some(Vint v)=>v
+        |_=>w0
+      end
+    |_=>w0
+  end.
+
+(*Definition mem_proj (m:Mem.mem) (e:env) (ad:address):option word:=
+  match (find_mem m e) with
+    |Some(Vptr b o)=>
+      match load_value_of_type (Tint I8 Unsigned) m b 
+        (add o (word_of_address ad)) with
+        |Some(Vint v)=>Some v
+        |_=>None
+      end
+    |_=>None
+  end.*)
+
+(* Projection from C cp15 to COQ SCC register*)
+Definition screg_proj (m:Mem.mem) (sc:sc_mem) (r:regnum): word:=
+  let bit_val_e :=
+  match sc.(eeb) with
+    |Vptr b o=> load_value_of_type (Tint I8 Unsigned) m b o
+    |_=>None
+  end in
+  let bit_val_u :=
+  match sc.(ub) with
+    |Vptr b o=> load_value_of_type (Tint I8 Unsigned) m b o
+    |_=>None
+  end in
+  let bit_val_v :=
+  match sc.(vb) with
+    |Vptr b o=> load_value_of_type (Tint I8 Unsigned) m b o
+    |_=>None
+  end in  
+  let setscreg n ov ow :=
+    match ov, ow with
+      |Some(Vint v),w=>set_bit n v w
+      |_,_=>w0
+    end in
+    setscreg Vbit (bit_val_v) 
+    (setscreg Ubit (bit_val_u) 
+    (setscreg EEbit (bit_val_e) Int.zero)).  
+
+
+(* Projection from C proc to COQ state. exn in COQ proc state is assigned by
+   a nil exception list*)
+
+Definition proc_proj (m:Mem.mem) (e:env):option (Arm6_State.state):=
+  let mkpst ocpsr vspsr vreg omode:=
+    match ocpsr, omode with
+      |Some vcpsr, Some vmode=>
+        Some (Arm6_Proc.mk_state vcpsr vspsr vreg nil vmode)
+      |_,_ => None
+    end in
+    let mksst vscreg vmem := Arm6_SCC.mk_state vscreg vmem in
+      let mkst oproc vscc :=
+        match oproc with
+          |Some vproc=>Some (Arm6_State.mk_state vproc vscc)
+          |_=>None
+        end in
+        let opc := slv6_proc m e in
+        match opc with
+          |Some pc =>
+            mkst (mkpst (cpsr_proj m pc.(cpsr_m)) (spsr_proj m pc.(spsr_m)) 
+            (regs_proj m pc) 
+            (mode_proj m pc.(cpsr_m)))
+          (mksst (screg_proj m pc.(sc)) (mem_proj m pc.(mmup)))
+          |None=>None
+        end.
+*)
+
 
 (* From a StateRegister Tstruct to word*)
 (* Every bit is transformed from uint8 to one bit *)
+
+Definition fld_sr:= typ_struct_SLv6_StatusRegister.
+
+
 Definition sr_proj (m:Mem.mem) (b:block) (ofs:int) :word:=
   let load_val_of id tp :=
     load_val (load_value_of_type tp m b 
@@ -262,7 +644,7 @@ Definition mode_proj (m:Mem.mem) (e:env) :proc_mode:=
    else return zero*)
 Definition regs_proj (m:Mem.mem) (e:env) (r:register):word:=
   let load_reg id n m e:=
-    match find_reg id m e with 
+    match find_reg m e id with 
     |Some(Vptr b ofs)=>
       load_val (load_value_of_type 
         (Tint I32 Unsigned) m b (add ofs (repr n))) 
@@ -293,6 +675,9 @@ Definition mem_proj (m:Mem.mem) (e:env) (ad:address):word:=
 (* If the location of cp15 is found, 
    get the value of ee_bit u_bit and v_bit to set the bits in
    COQ SCC reg*)
+
+Definition fld_sc :=typ_struct_SLv6_SystemCoproc.
+
 Definition screg_proj (m:Mem.mem) (e:env) (r:regnum):word:=
   match find_cp15 m e with
     |Some(Vptr b ofs)=>
@@ -313,11 +698,28 @@ Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
   (Arm6_Proc.mk_state (cpsr_proj m e) (spsr_proj m e) (regs_proj m e) nil (mode_proj m e))
   (Arm6_SCC.mk_state (screg_proj m e) (mem_proj m e)).
 
+
 (* Stating theorems *)
 
 Require Import Arm6_Simul.
 Import I.
 Import Arm6_Functions.Semantics.
+
+Check proc_proj.
+
+(*Inductive proc_state_related : Mem.mem -> env -> @result unit -> Prop :=
+  |proc_state_related_ok : 
+    forall m e l b v, 
+      proc_proj m e = Some v ->
+      proc_state_related m e (Ok tt (mk_semstate l b v))
+  |state_not_ok: 
+    forall e m mes,
+      proc_proj m e = None ->
+      proc_state_related m e (Ko mes)
+  |state_todo: 
+    forall e m mes,
+      proc_proj m e = None ->
+      proc_state_related m e (Todo mes).*)
 
 Inductive proc_state_related : Mem.mem -> env -> @result unit -> Prop :=
   |proc_state_related_ok : 
@@ -327,8 +729,8 @@ Inductive proc_state_related : Mem.mem -> env -> @result unit -> Prop :=
 
 (* Functional relation between the C memory module which contains proc, 
    and the COQ specification of Arm6 state *)
-Definition proc_state_func_related (m:Mem.mem) (e:env) (s:Arm6_State.state) :Prop:=
-  proc_proj m e = s.
+(*Definition proc_state_func_related (m:Mem.mem) (e:env) (s:Arm6_State.state) :Prop:=
+  proc_proj m e = s.*)
 
 (* Functional relation between the C memory module which contains the other ADC parameters, 
    and the COQ specification of ADC parameters *)
@@ -348,7 +750,7 @@ Definition so_func_related (m:Mem.mem) (e:env) (so:word):Prop:=
   so_proj m e = so.
 
 (* Human readable renaming of [p], which is generated by the Coq printer *)
-Definition prog_adc := p.
+(*Definition prog_adc := adc_compcert_fixed.p.*)
 
 (* The assignment of old_Rn has a normal outcome *)
 Lemma normal_outcome_for_assgnt: 
@@ -391,6 +793,201 @@ Ltac nod :=
 (* Return the memory model which only relates to this ident *)
 Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
 
+(*exp get_bit*)
+
+
+Definition reg_id id :=
+  Ecall (Evalof (Evar reg T2) T2)
+  (Econs (Evalof (Evar proc T3) T3)
+    (Econs 
+      (Evalof (Evar id T4) T4) Enil)) T1.
+
+Definition get_bit_reg :=
+  Ecall (Evalof (Evar get_bit T16) T16)
+  (Econs (reg_id d)
+    (Econs (Eval (Vint (repr 31)) T9)
+      Enil)) T4.
+
+Axiom get_rg_ok :
+  forall e m t m' a' st d,
+    eval_expr (Genv.globalenv prog_adc) e m RV 
+              (reg_id adc_compcert_fixed.d) t m' a' ->
+    a'= (Eval (Vint (Arm6_State.reg_content st d)) T1).
+
+Lemma same_nflag_assgnt :
+  forall e m0 m0' vargs m l b s d t m' v,
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    d_func_related m e d ->
+    eval_expression (Genv.globalenv prog_adc) e m get_bit_reg t m' v->
+    v = Vint ((Arm6_State.reg_content s d) [n31]).
+Proof.
+  intros until v. intros av bp psrel dfrel get_bit.
+  inv get_bit. 
+  (*rename H into get_bit_reg_exp, H0 into get_bit_reg_v.
+  inv get_bit_reg_exp.*) 
+  inv H.
+  inv H4. inv H8. inv H9. inv H5.
+  apply get_rg_ok with e m2 t1 m1 a1' s d in H4.
+  rewrite H4 in *. 
+  inv H13. inv H5. inv H14.
+  inv H0. inv H6. inv H2. inv H4.
+  inv H1.
+    assert (e!get_bit=None).
+    inv av. inv H9. inv H13. inv H14. inv H15. inv H17. inv H18. inv H19.
+    simpl. reflexivity. rewrite H in H4. inv H4.
+    inv H6.
+    inv H7. inv H6. inv H10. inv H6. inv H13. simpl in H8.
+    inv H8.
+      (*cast int to int*) simpl in H16. simpl in H9. 
+      inv H9;
+        (*cast int to int*) simpl in H16;
+        inv H3; inv H11;
+        induction (eq_dec w0 w0); [idtac|inv H1|inv H3|inv H3].
+        inv H1.
+        inv H12. inv H0.
+        inv H16. inv H4. simpl in H5.
+        inv H5.
+        inv H9. inv H5. inv H17. inv H16. inv H11. inv H19. inv H11. inv H18.
+        inv H4; inv H6; simpl in H13; unfold sem_and in  H13; simpl in H13;
+          [simpl|inv H8|inv H8].
+          (*cast int to int*)
+          destruct v1,v2; inv H13. inv H12. inv H11. simpl in H13.
+          inv H1. simpl in H15. inv H16. simpl in H14. inv H17.
+          inv H3. inv H19. inv H21.
+          inv H10; inv H5.
+          inv H4; [idtac|rewrite H17 in H5; inv H5].
+          rewrite H17 in H9; inv H9.
+          inv H12; inv H5.
+          inv H4; [idtac|rewrite H16 in H5; inv H5].
+          rewrite H16 in H10; inv H10.          
+          simpl in H17. inv H17. simpl in H16. inv H16.
+          unfold load_value_of_type in *; simpl in H8, H9.
+          unfold store_value_of_type in *; simpl in H18, H20.
+          assert (Mem.store AST.Mint32 m6 b2 (signed w0) (Vint (repr 31)) =
+            Some m5).
+          exact H20.
+          apply Mem.load_store_other with
+            AST.Mint32 _ _ _ _ _ AST.Mint32 b4 (signed w0) in H1; 
+            [idtac|admit(*b<>b'*)].
+          rewrite H1 in H8.
+          eapply Mem.load_store_same in H18; [idtac|simpl; auto]. 
+          rewrite H18 in H8.
+          inv H8.
+          eapply Mem.load_store_same in H20; [idtac|simpl; auto].
+          rewrite H20 in H9.
+          inv H9.
+          inv H13.
+          unfold bit. unfold bits. unfold bits_val. unfold masks.
+          simpl masks_aux.
+          rewrite and_commut.
+          (*assert (forall c, and (repr 1) c = (repr c)).
+             intro. unfold and. unfold bitwise_binop.
+             apply eqm_samerepr. eapply eqm_trans. 2: apply Z_of_bits_of_Z.
+             apply eqm_refl2. apply Z_of_bits_exten.
+             intros. 
+             fold one. rewrite unsigned_one.
+             unfold wordsize. unfold Wordsize_32.wordsize.
+             *)
+          admit
+(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
+   = Vint (Arm6_State.reg_content s d) [n31]*).
+        (*cast has no change*)
+        inv H1; inv H4.
+        inv H12. inv H0.
+        inv H16. 
+        inv H4. simpl in H5.
+        inv H5.
+        inv H9. inv H5. inv H17. inv H16. inv H11. inv H19. inv H11. inv H18.
+        inv H4; inv H6; simpl in H13; unfold sem_and in  H13; simpl in H13;
+          [simpl|inv H8|inv H8].
+          destruct v1,v2; inv H13. inv H12. inv H11. simpl in H13.
+          inv H1. simpl in H15. inv H16. simpl in H14. inv H17.
+          inv H3. inv H19. inv H21.
+          inv H10; inv H5.
+          inv H4; [rewrite H17 in H9; inv H9|rewrite H17 in H5; inv H5].
+          inv H12; inv H5.
+          inv H4; [rewrite H16 in H10; inv H10|rewrite H16 in H5; inv H5].
+          simpl in H17. inv H17. simpl in H16. inv H16.
+          unfold load_value_of_type in *; simpl in H8, H9.
+          unfold store_value_of_type in *; simpl in H18, H20.
+          assert (Mem.store AST.Mint32 m6 b2 (signed w0) (Vint (repr 31)) =
+            Some m5).
+          exact H20.
+          apply Mem.load_store_other with
+            AST.Mint32 _ _ _ _ _ AST.Mint32 b4 (signed w0) in H1; 
+            [idtac|admit(*b<>b'*)].
+          rewrite H1 in H8.
+          eapply Mem.load_store_same in H18; [idtac|simpl; auto]. 
+          rewrite H18 in H8.
+          inv H8.
+          eapply Mem.load_store_same in H20; [idtac|simpl; auto].
+          rewrite H20 in H9.
+          inv H9.
+          inv H13.
+          admit
+(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
+   = Vint (Arm6_State.reg_content s d) [n31]*).
+        (*cast has no change*)
+        inv H1; inv H4.
+        inv H3. inv H11; inv H0.
+        induction (eq_dec w0 w0); [idtac|inv H1].
+        inv H1. inv H12. simpl in H9.
+        inv H16. 
+        inv H4. simpl in H5. inv H5.
+        inv H4; [idtac|inv H6|inv H6].
+        inv H10; inv H4; inv H18; inv H17; inv H16; inv H11; inv H18; inv H11.
+        inv H3; inv H17; inv H19.
+        inv H5. inv H11. inv H12. simpl in H13. simpl in H19.
+        inv H10. inv H17.
+        inv H6; inv H10.
+        inv H5; [rewrite H12 in H15; inv H15|rewrite H6 in H15; inv H15].        
+        inv H8; [rewrite H10 in H14; inv H14|rewrite H5 in H14; inv H14].
+        unfold load_value_of_type in *; simpl in H11, H20.
+        unfold store_value_of_type in *; simpl in H16, H18.
+        inv H9; simpl in H16.
+        assert (Mem.store AST.Mint32 m4 b1 (signed w0) (Vint (repr 31)) =
+          Some m5).
+        exact H18.
+        apply Mem.load_store_other with
+          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H3; 
+          [idtac|admit(*b<>b'*)].
+        rewrite H3 in H11.
+        eapply Mem.load_store_same in H16; [idtac|simpl; auto].
+        simpl in H16.
+        rewrite H16 in H11; inv H11.
+        eapply Mem.load_store_same in H18; [idtac|simpl; auto].
+        simpl in H18.
+        rewrite H18 in H20; inv H20.
+        unfold sem_shr in H19. simpl in H19. inv H19.
+        inv H13. simpl.
+        admit
+(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
+   = Vint (Arm6_State.reg_content s d) [n31]*).
+        assert (Mem.store AST.Mint32 m4 b1 (signed w0) (Vint (repr 31)) =
+          Some m5).
+        exact H18.
+        apply Mem.load_store_other with
+          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H3; 
+          [idtac|admit(*b<>b'*)].
+        rewrite H3 in H11.
+        eapply Mem.load_store_same in H16; [idtac|simpl; auto].
+        simpl in H16.
+        rewrite H16 in H11; inv H11.
+        eapply Mem.load_store_same in H18; [idtac|simpl; auto].
+        simpl in H18.
+        rewrite H18 in H20; inv H20.
+        unfold sem_shr in H19. simpl in H19. inv H19.
+        inv H13. simpl.
+        admit
+(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
+   = Vint (Arm6_State.reg_content s d) [n31]*).
+Qed.
+          
+
+
 (* Assume that every function that ADC calls, executes correctly
    and the C proc and ARM state related after these function execution *)
 Axiom functions_behavior_ok:
@@ -409,18 +1006,12 @@ Axiom funct_unpredictable:
     proc_state_related (of_mem proc m') e 
     (unpredictable Arm6_Message.EmptyMessage semstt).
 
-(* old_Rn = reg(proc,n) *)
-Definition reg_id id :=
-  Ecall (Evalof (Evar reg T2) T2)
-  (Econs (Evalof (Evar proc T3) T3)
-    (Econs (Evalof (Evar id T4) T4) Enil)) T1.
-
 (* Assume function reg_n only load from memory, not change it*)
 
 Axiom get_reg_ok :
   forall e id m t m' r,
     eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m' r ->
-    eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m r/\m=m'.  
+    eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m r/\m=m'. 
 
 Definition oldrn_assgnt := 
   Eassign (Evar old_Rn T1) (reg_id n) T1.
@@ -536,7 +1127,7 @@ Qed.
 (* Lemmas on if S==1 *)
 Definition is_S_set :=
   Ebinop Oeq (Evalof (Evar S T4) T4)
-  (Eval (Vint (repr 1)) T7) T7.
+  (Eval (Vint (repr 1)) T9) T9.
 
 Lemma no_effect_is_S_set :
   forall e m t m' v,
@@ -551,7 +1142,7 @@ Lemma S_not_set:
   forall e m t m' v sbit,
     sbit_func_related m e sbit ->
     eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
-    Csem.is_false v T7 ->
+    Csem.is_false v T9 ->
     Util.zeq sbit 1 = false.
 Proof.
   intros until sbit. intros sfrel s_set is_false. inv is_false.
@@ -573,7 +1164,7 @@ Lemma S_is_set:
   forall e m t m' v sbit,
     sbit_func_related m e sbit ->
     eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
-    Csem.is_true v T7 ->
+    Csem.is_true v T9 ->
     Util.zeq sbit 1 = true.
 Proof.
   intros until sbit. intros sfrel s_set is_true.
@@ -600,13 +1191,13 @@ Qed.
 Definition is_S_set_and_is_pc :=
   Econdition
   (Ebinop Oeq (Evalof (Evar S T4) T4)
-    (Eval (Vint (repr 1)) T7) T7)
+    (Eval (Vint (repr 1)) T9) T9)
   (Econdition
     (Ebinop Oeq (Evalof (Evar d T4) T4)
-      (Eval (Vint (repr 15)) T7) T7)
-    (Eval (Vint (repr 1)) T7)
-    (Eval (Vint (repr 0)) T7) T7)
-  (Eval (Vint (repr 0)) T7) T7.
+      (Eval (Vint (repr 15)) T9) T9)
+    (Eval (Vint (repr 1)) T9)
+    (Eval (Vint (repr 0)) T9) T9)
+  (Eval (Vint (repr 0)) T9) T9.
 
 Lemma no_effect_is_S_set_and_is_pc :
   forall e m t m' v,
@@ -632,7 +1223,7 @@ Lemma S_set_and_is_pc_true:
     sbit_func_related m e sbit ->
     d_func_related m e d ->
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
-    Csem.is_true v T7 ->
+    Csem.is_true v T9 ->
     Util.zeq sbit 1 && Util.zeq d 15 = true.
 Proof.
   intros until d. intros sfrel dfrel spc spc_true.
@@ -705,7 +1296,7 @@ Lemma S_set_and_is_pc_false:
     sbit_func_related m e sbit ->
     d_func_related m e d ->
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
-    Csem.is_false v T7 ->
+    Csem.is_false v T9 ->
     Util.zeq sbit 1 && Util.zeq d 15 = false.
 Proof.
   intros until d. intros sfrel dfrel spc spc_false.
@@ -840,7 +1431,7 @@ Qed.
    For the moment, we consider it as a function call with an 
    empty body *)
 Definition unpred :=
-  Ecall (Evalof (Evar adc_compcert.unpredictable T9) T9) Enil T9.
+  Ecall (Evalof (Evar adc_compcert_fixed.unpredicatable T9) T9) Enil T9.
 
 Lemma same_unpred :
   forall e m s t m' v,
