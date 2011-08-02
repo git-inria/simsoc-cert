@@ -92,7 +92,7 @@ let list_of_string_01nmid s =
   let () = match lg with 16 | 32 -> () | _ -> failwith (string_of_int lg) in
   let rec aux l n = 
     if n = lg then
-      List.rev l
+      l
     else
       let rec aux2 i = 
         if n + i = lg then
