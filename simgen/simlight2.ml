@@ -67,6 +67,14 @@ See the COPYRIGHTS and LICENSE files.
      o one version taking an SLv6_Instruction* as argument
 *)
 
+module Make (Gencxx : Gencxx.GENCXX) = 
+struct
+
+module Sl2_patch = Sl2_patch.Make (Gencxx)
+module Sl2_semantics = Sl2_semantics.Make (Gencxx)
+module Sl2_decoder = Sl2_decoder.Make (Gencxx)
+module Sl2_print = Sl2_print.Make (Gencxx)
+
 open Ast;;
 open Util;;
 open Printf;;
@@ -171,8 +179,8 @@ let may_branch_prog b (x: xprog) =
       | While (_, i) -> inst acc i
       | For (_, _, _, i) -> inst acc i
       | Case (_, sis, oi) -> List.fold_left inst acc 
-	(let sis = List.map snd sis in
-	 match oi with None -> sis | Some i -> sis @ [ i ])
+        (let sis = List.map snd sis in
+         match oi with None -> sis | Some i -> sis @ [ i ])
       | _ -> acc
     and exp = function
       | Reg (Var s, None)
@@ -345,3 +353,5 @@ let lib (bn: string) ({ body = pcs ; _ } : program) (ss: syntax list)
     (* Now, we generate the semantics functions. *)
     semantics_functions bn all_xs "expanded" decl_expanded prog_expanded;
     semantics_functions bn all_xs "grouped" decl_grouped prog_grouped;;
+
+end

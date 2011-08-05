@@ -5,6 +5,11 @@ See the COPYRIGHTS and LICENSE files.
 Generation of the ASM printers.
 *)
 
+module Make (Gencxx : Gencxx.GENCXX) = 
+struct
+
+module Sl2_patch = Sl2_patch.Make (Gencxx)
+
 open Util;;
 open Flatten;;
 open Syntaxtype;;
@@ -285,3 +290,5 @@ let cxx_printers bn xs =
     );;
 
 let printers bn xs = c_printers bn xs; cxx_printers bn xs;;
+
+end

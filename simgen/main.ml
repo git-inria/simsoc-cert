@@ -325,12 +325,21 @@ let genr_output() =
         print Genpc.lib (get_pc_input())
 
     | Cxx ->
-        Gencxx.lib (get_output_file()) (get_pc_input()) (get_dec_input())
+      (if get_sh4 () then
+          Gencxx.Sh4.lib
+       else
+          Gencxx.Arm6.lib) (get_output_file()) (get_pc_input()) (get_dec_input())
 
     | C4dt ->
-        Simlight2.lib (get_output_file())
-          (get_pc_input()) (get_syntax_input()) (get_dec_input())
-          (if is_set_weight_file() then Some (get_weight_file()) else None)
+      (let open Gencxx in
+       let module Simlight2 = Simlight2.Make ((val (
+         if get_sh4 () then
+           (module Sh4 : GENCXX) 
+         else
+           (module Arm6 : GENCXX)) : GENCXX)) in 
+       Simlight2.lib) (get_output_file())
+        (get_pc_input()) (get_syntax_input()) (get_dec_input())
+        (if is_set_weight_file() then Some (get_weight_file()) else None)
 
     | CoqInst -> print (Gencoq.lib (if get_sh4() then
         (module struct
@@ -359,13 +368,13 @@ let genr_output() =
         | Some b -> print_csyntax b)
 
     | CoqDec ->
-        print (let open Dec in
-               let module Gencoqdec = Gencoqdec.Make ((val (
-               if get_sh4 () then
-                 (module Sh4 : DEC) 
-               else
-                 (module Arm6 : DEC)) : DEC)) in
-               Gencoqdec.decode) (get_dec_input())
+      print (let open Dec in
+             let module Gencoqdec = Gencoqdec.Make ((val (
+             if get_sh4 () then
+               (module Sh4 : DEC) 
+             else
+               (module Arm6 : DEC)) : DEC)) in
+             Gencoqdec.decode) (get_dec_input())
 
     | MlDec ->
         print Genmldec.decode (get_dec_input())

@@ -7,6 +7,11 @@ Generate the semantics function used by simlight2.
 
 (** Generate the code corresponding to an expression *)
 
+module Make (Gencxx : Gencxx.GENCXX) = 
+struct
+
+module Sl2_patch = Sl2_patch.Make (Gencxx)
+
 open Ast;;
 open Sl2_patch;;
 open Flatten;;
@@ -147,9 +152,9 @@ and inst_aux p k b = function
 
   | Let ((_, n), ns, is, _) ->
       bprintf b "function %s(%a) {\n%a%a\n  }" n   
-	(list_sep ", " (fun b (ty, x) -> 
-	  string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty x) x))) ns
-	indent k   (list (inst p (k+2))) is
+        (list_sep ", " (fun b (ty, x) -> 
+          string b (sprintf "%s %s" (Gencxx.G.explicit_annot_type ty x) x))) ns
+        indent k   (list (inst p (k+2))) is
 
   | While (e, i) -> bprintf b "while (%a)\n%a" (exp p) e (inst p (k+2)) i
 
@@ -160,9 +165,9 @@ and inst_aux p k b = function
   | Case (e, s, o) ->
       bprintf b "switch (%a) {\n%a%a  default:\n%a\n  }"
         (exp p) e (list (case_aux p k)) s indent k
-	(fun b -> function
-	  | None -> bprintf b "%aabort();" indent (k+2)
-	  | Some i -> inst p (k+2) b i) o
+        (fun b -> function
+          | None -> bprintf b "%aabort();" indent (k+2)
+          | Some i -> inst p (k+2) b i) o
 
 
   (* the condition has already been checked, or has been removed *)
@@ -175,16 +180,16 @@ and inst_aux p k b = function
 
   | If (e, (Block _|If _ as i1), Some (Block _|If _ as i2)) ->
       bprintf b "if (%a) {\n%a\n%a} else {\n%a\n%a}"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, (Block _|If _ as i1), Some i2) ->
       bprintf b "if (%a) {\n%a\n%a} else\n%a"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
   | If (e, i1, Some (Block _|If _ as i2)) ->
       bprintf b "if (%a)\n%a\n%aelse {\n%a\n%a}"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2 indent k
   | If (e, i1, Some i2) ->
       bprintf b "if (%a)\n%a\n%aelse\n%a"
-	(exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
+        (exp p) e (inst p (k+2)) i1 indent k (inst p (k+2)) i2
   | Return e -> bprintf b "return %a;\n" (exp p) e
 
 and case_aux p k b (n, i) =
@@ -201,7 +206,7 @@ and affect (p: xprog) k b dst src =
     | Reg (Num "15", None) -> bprintf b "set_pc_raw_ws(proc,%a,%s)" (exp p) src (inst_size p)
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
-	bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (Gencxx.mode m) (exp p) src
+        bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (Gencxx.mode m) (exp p) src
     | CPSR -> (
         match src with
           | SPSR None -> bprintf b "set_cpsr_sr(proc, *spsr(proc))"
@@ -333,3 +338,5 @@ let semantics_functions bn (xs: xprog list) (v: string) decl prog =
         Buffer.output_buffer outh bh; close_out outh;
         Buffer.output_buffer cold_outc cold_bc; close_out cold_outc;
         Buffer.output_buffer  hot_outc  hot_bc; close_out  hot_outc;;
+
+end

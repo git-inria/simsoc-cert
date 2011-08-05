@@ -5,6 +5,9 @@ See the COPYRIGHTS and LICENSE files.
 All the patch functions used by simlight2
 *)
 
+module Make (Gencxx : Gencxx.GENCXX) = 
+struct
+
 open Ast;;
 open Util;;
 open Flatten;;
@@ -387,3 +390,5 @@ let no_immed_variants xs =
   in List.map prog (List.filter no_immed_filter xs);;
 
 let restricted_variants xs = no_cond_variants xs @ no_immed_variants xs;;
+
+end

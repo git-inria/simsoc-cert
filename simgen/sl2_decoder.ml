@@ -5,6 +5,12 @@ See the COPYRIGHTS and LICENSE files.
 Generate the C decoders used by simlight2.
 *)
 
+module Make (Gencxx : Gencxx.GENCXX) = 
+struct
+
+module Sl2_patch = Sl2_patch.Make (Gencxx)
+module Sl2_semantics = Sl2_semantics.Make (Gencxx)
+
 open Sl2_patch;;
 open Sl2_semantics;; (* for the generation of validity tests *)
 open Flatten;;
@@ -181,3 +187,5 @@ module DecStoreConfig = struct
   let return_action = "if (!found) instr->args.g0.id = SLV6_UNPRED_OR_UNDEF_ID;"
 end;;
 module DecStore = DecoderGenerator(DecStoreConfig);;
+
+end
