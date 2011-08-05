@@ -50,8 +50,4 @@ end
 
 
 module Arm6 : GENCXX = Gencxx_arm6
-
-module Sh4 : GENCXX =
-struct
-  include Arm6
-end
+module Sh4 : GENCXX = Gencxx_sh4

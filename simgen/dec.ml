@@ -114,7 +114,10 @@ end
 
 module Sh4 : DEC = 
 struct
-  let add_mode _ = DecInstARMUncond
+  let add_mode = function 
+    | LH ((9 :: (34|44|53) :: _), _) -> DecEncoding
+    | LH _ -> DecInstARMUncond
+
   let gen_pattern_get_array x = x
   let word_size = "16"
 

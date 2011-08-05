@@ -2,14 +2,14 @@
 SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files.
 
-   C code generator for processor instructions.
+   C code generator for SH4 processor instructions.
 *)
 
 open Ast;;
 open Printf;;
 open Util;;
 open Dec;;
-open Dec.Arm6;;
+open Dec.Sh4;;
 
 let num = string;;
 
@@ -462,9 +462,10 @@ let prog b p =
 let decl b p =
   match p.xprog.pkind with
     | InstARM  ->
-        bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
+        bprintf b "extern bool try_%s(struct SLSH4_Processor*, uint16_t bincode);" p.xid
+(**        bprintf b "%aextern void %s(struct SLv6_Processor*%a);\nextern bool try_%s(struct SLv6_Processor*, uint32_t bincode);\n"
           comment p p.xid
-          (list prog_arg) p.xgs p.xid
+          (list prog_arg) p.xgs p.xid *)
     | InstThumb -> () (* TODO: thumb mode *)
     | Mode m ->
         let os =
@@ -604,7 +605,7 @@ let mask_value pcs =
         | Codetype.Value false | Codetype.Shouldbe false ->
             (Int32.succ m', v')
         | _ -> (m', v')
-  in Array.fold_right f pcs (Int32.zero, Int32.zero);;
+    in Array.fold_right f pcs (Int32.zero, Int32.zero);;
 
 (* generate the decoder - instructions *)
 let dec_inst b is =
@@ -614,11 +615,12 @@ let dec_inst b is =
       bprintf b "  if ((bincode&0x%08lx)==0x%08lx && try_%s(proc,bincode)) {\n"
         mask value p.xid;
       bprintf b "    DEBUG(puts(\"decoder choice: %s\"));\n" p.xid;
-      bprintf b "    assert(!found); found = true;\n  }\n"
+      bprintf b "    assert(!found); found = true;\n  }\n\n"
   in
     (* Phase B: extract parameters and check validity *)
   let instB b p =
-    bprintf b "bool try_%s(struct SLv6_Processor *proc, uint32_t bincode) {\n" p.xid;
+    bprintf b "bool try_%s(struct SLSH4_Processor *proc, uint16_t bincode) {\n" p.xid;
+(**
     (* extract parameters *)
     bprintf b "%a" (list (dec_param p.xgs p.xvc)) (parameters_of p.xdec);
     (* check validity *)
@@ -633,14 +635,15 @@ let dec_inst b is =
              bprintf b "%a  if (!try_M%d(proc,bincode%a)) return false;\n"
                (list local_decl) os m (list aux) os
        | None -> ());
+*)
     (* execute the instruction *)
-    let aux b (s,_) = bprintf b ",%s" s in
-    bprintf b "  EXEC(%s(proc%a));\n" p.xid (list aux) p.xgs;
+(**    let aux b (s,_) = bprintf b ",%s" s in
+    bprintf b "  EXEC(%s(proc%a));\n" p.xid (list aux) p.xgs; *)
     bprintf b "  return true;\n}\n"
   in
   let is' = List.rev is in
-    bprintf b "bool decode_and_exec(struct SLv6_Processor *proc, uint32_t bincode) {\n";
-    bprintf b "  bool found = false;\n";
+    bprintf b "bool decode_and_exec(struct SLSH4_Processor *proc, uint16_t bincode) {\n";
+    bprintf b "  bool found = false;\n\n";
     bprintf b "%a" (list instA) is';
     bprintf b "  return found;\n}\n\n%a"
       (list_sep "\n" instB) is';;
@@ -686,7 +689,42 @@ let dec_modes b ms =
 (* main function
  * bn: output file basename, pcs: pseudo-code trees, decs: decoding rules *)
 let lib (bn: string) ({ body = pcs ; _ } : program) (decs: Codetype.maplist) =
-  let pcs' = List.map lsm_hack pcs in (* hack LSM instructions *)
+(*  let pcs_len = List.length pcs and decs_len = List.length decs in *)
+  (* remove decoding rules that don't have corresponding pseudo-code trees *)
+  let decs' =
+    let aux (lh, _) = add_mode lh <> DecEncoding in
+      List.filter aux decs in
+(*  let decs'_len = List.length decs' in *)
+  let xs = List.map2 xprog_of pcs decs' in (* compute extended programs *)
+  let is, _ = split xs in (* group by kind *)
+(*  let is_len = List.length is and ms_len = Array.length ms in *)
+  (* create buffers for header file (bh) and source file (bc) *)
+  let bh = Buffer.create 10000 and bc = Buffer.create 10000 in
+    (* generate the header file *)
+    bprintf bh "#ifndef SH4_ISS_H\n#define SH4_ISS_H\n\n";
+    bprintf bh "#include \"slsh4_iss_h_prelude.h\"\n\n";
+    bprintf bh "%a" (list_sep "\n" decl) xs;
+    bprintf bh "\nextern bool decode_and_exec(struct SLSH4_Processor*, uint16_t bincode);\n";
+    bprintf bh "\n#endif /* SH4_ISS_H */\n";
+    (* generate the source file *)
+    bprintf bc "#include \"%s.h\"\n\n" bn;
+(**    bprintf bc "bool decode_and_exec(struct SLSH4_Processor *proc, uint16_t bincode) {\n";
+    bprintf bc "  bool found = false;\n";
+    bprintf bc "# Pseudo-Code Trees: %d\n" pcs_len;
+    bprintf bc "# Decoding Rules: %d\n" decs_len;
+    bprintf bc "# Decoding Rules (Filtered): %d\n" decs'_len;
+    bprintf bc "is_len: %d\n" is_len;
+    bprintf bc "ms_len: %d\n" ms_len;
+    bprintf bc "  return found;\n}\n"; *)
+    bprintf bc "%a\n" dec_inst is;
+    (* write buffers to files *)
+    let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
+      Buffer.output_buffer outh bh; close_out outh;
+      Buffer.output_buffer outc bc; close_out outc;;
+
+(**
+  (* let pcs' = List.map lsm_hack pcs in *) (* hack LSM instructions *)
+  let pcs' = pcs in
   let decs' = (* remove encodings *)
     let aux (lh, _) = add_mode lh <> DecEncoding in
       List.filter aux decs
@@ -711,3 +749,4 @@ let lib (bn: string) ({ body = pcs ; _ } : program) (decs: Codetype.maplist) =
     let outh = open_out (bn^".h") and outc = open_out (bn^".c") in
       Buffer.output_buffer outh bh; close_out outh;
       Buffer.output_buffer outc bc; close_out outc;;
+*)
