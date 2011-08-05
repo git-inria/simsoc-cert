@@ -9,7 +9,7 @@ open Ast;;
 open Printf;;
 open Util;;
 open Dec;;
-open Dec.Arm;;
+open Dec.Arm6;;
 
 let num = string;;
 

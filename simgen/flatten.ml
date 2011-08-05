@@ -10,7 +10,7 @@ open Printf;;
 open Util;;
 open Ast;;
 open Dec;;
-open Dec.Arm;;
+open Dec.Arm6;;
 open Codetype;;
 open Validity;;
 open Syntaxtype;;
@@ -323,8 +323,8 @@ let flatten (ps: prog list) (ss: syntax list) (ds: maplist) : fprog list =
               let id = str_ident i in
                 [{fid = id; finstr = id; fmode = None; fref = i.pref;
                   fkind = ARM; fname = str_name i; finst = i.pinst;
-		  fsyntax = s; fdec = d; fparams = parameters_of d;
-		  fvcs = get_constraints id}]
+                  fsyntax = s; fdec = d; fparams = parameters_of d;
+                  fvcs = get_constraints id}]
       else
         let id = str_ident i in
           [{fid = id; finstr = id; fmode = None; fref = i.pref;

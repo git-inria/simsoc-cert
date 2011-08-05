@@ -47,7 +47,7 @@ let name =
     match name_lst ps with
       | "Data" :: "processing" :: "operands" :: s -> "M1" :: s
       | "Load" :: "and" :: "Store" :: "Word" :: "or" :: "Unsigned" :: "Byte"
-	:: s -> "M2" :: s
+        :: s -> "M2" :: s
       | "Miscellaneous" :: "Loads" :: "and" :: "Stores" :: s -> "M3" :: s
       | "Load" :: "and" :: "Store" :: "Multiple" :: s -> "M4" :: s
       | "Load" :: "and" :: "Store" :: "Coprocessor" :: s -> "M5" :: s
@@ -69,7 +69,7 @@ sig
   val nb_buff : int
 end
 
-module Arm : DEC =
+module Arm6 : DEC =
 struct
   let add_mode = function
     | LH ((4 :: 1 :: (8|16|45|59|67|90) :: _), _) -> DecInstARMUncond
@@ -78,7 +78,7 @@ struct
     | LH ([5; n; _], _) -> DecMode n
     | LH ([7; _; _], _) -> DecInstThumb
     | LH _ as lh ->
-	raise (Invalid_argument ("add_mode: " ^ lightheader_to_string lh));;
+        raise (Invalid_argument ("add_mode: " ^ lightheader_to_string lh));;
 
   let twenty_height = 28
   let gen_pattern_get_array x = Array.sub x 0 twenty_height

@@ -10,7 +10,7 @@ open Printf;;
 open Util;;
 open Codetype;;
 open Dec;;
-open Dec.Arm;;
+open Dec.Arm6;;
 open Lightheadertype;;
 
 (*****************************************************************************)

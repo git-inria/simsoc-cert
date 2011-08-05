@@ -360,12 +360,12 @@ let genr_output() =
 
     | CoqDec ->
         print (let open Dec in
-               let module D = Gencoqdec.Make ((val (
-                         if get_sh4 () then
-                           (module Sh4 : DEC) 
-                         else
-                           (module Arm : DEC)) : DEC)) in
-                       D.decode) (get_dec_input())
+               let module Gencoqdec = Gencoqdec.Make ((val (
+               if get_sh4 () then
+                 (module Sh4 : DEC) 
+               else
+                 (module Arm6 : DEC)) : DEC)) in
+               Gencoqdec.decode) (get_dec_input())
 
     | MlDec ->
         print Genmldec.decode (get_dec_input())
