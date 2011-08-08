@@ -14,7 +14,7 @@ default: patch-extraction extraction-libcoq $(TARGETS)
 FILES := util ast flatten norm \
 	dec gencoqdec genmldec \
 	validity gendectest \
-	genpc gencoq gencxx \
+	genpc gencoq gencxx_arm6 gencxx_sh4 gencxx \
 	codetype lightheadertype syntaxtype \
 	c2pc pc2Csyntax Csyntax2coq \
 	CompCert_Driver \
