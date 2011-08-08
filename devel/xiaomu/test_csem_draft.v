@@ -795,7 +795,6 @@ Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
 
 (*exp get_bit*)
 
-
 Definition reg_id id :=
   Ecall (Evalof (Evar reg T2) T2)
   (Econs (Evalof (Evar proc T3) T3)
@@ -808,12 +807,55 @@ Definition get_bit_reg :=
     (Econs (Eval (Vint (repr 31)) T9)
       Enil)) T4.
 
-Axiom get_rg_ok :
-  forall e m t m' a' st d,
+Lemma get_rg_ok :
+  forall e m t m' a' l b st d,
+    proc_state_related m e (Ok tt (mk_semstate l b st)) ->
+    d_func_related m e d ->    
     eval_expr (Genv.globalenv prog_adc) e m RV 
               (reg_id adc_compcert_fixed.d) t m' a' ->
     a'= (Eval (Vint (Arm6_State.reg_content st d)) T1).
+Admitted.
 
+Set Implicit Arguments.
+Lemma alloc_diff_block :
+  forall m e e' m' x y b_x tx b_y ty,
+    alloc_variables e m ((x,tx)::(y,ty)::nil) e' m'->
+    list_norepet (x::y::nil) ->
+    e' ! x = Some (b_x, tx) ->
+    e' ! y = Some (b_y, ty) ->
+    b_x <> b_y.
+Proof.
+  intros until ty. intros av norepet getx gety.
+  inv av. inv H7. inv H9.
+  apply Mem.valid_new_block in H6.
+  unfold Mem.valid_block in H6.
+  apply Mem.alloc_result in H8.
+  rewrite <- H8 in H6; clear H8.
+(* SearchPattern (_ < _ -> _ <> _). *)
+  apply Zlt_not_eq in H6.
+  assert (findy: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! y =
+                  Some (b0, ty)).
+  apply PTree.gss. rewrite findy in gety. inversion gety.
+
+  assert (findx: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! x =
+                  (PTree.set x (b1, tx) e) ! x).
+  apply PTree.gso.
+  inv norepet. unfold In in H2. intro exy. apply H2. left. symmetry. exact exy.
+
+(*info intuition.*)
+
+  rewrite findx in getx.
+  rewrite PTree.gss in getx. inversion getx.
+  rewrite <- H0. rewrite <- H1.
+  exact H6.
+Qed.
+
+
+Lemma same_getbit :
+  forall x n ,
+    zero_ext 8 (and (shru x (repr n)) (repr 1)) = x [nat_of_Z n].
+Admitted.
+  
 Lemma same_nflag_assgnt :
   forall e m0 m0' vargs m l b s d t m' v,
     alloc_variables empty_env m0 
@@ -830,160 +872,132 @@ Proof.
   inv get_bit_reg_exp.*) 
   inv H.
   inv H4. inv H8. inv H9. inv H5.
-  apply get_rg_ok with e m2 t1 m1 a1' s d in H4.
+  apply get_rg_ok with e m2 t1 m1 a1' l b s d in H4;
+    [idtac| exact psrel |exact dfrel].
   rewrite H4 in *. 
   inv H13. inv H5. inv H14.
   inv H0. inv H6. inv H2. inv H4.
-  inv H1.
-    assert (e!get_bit=None).
+
+  assert (e!get_bit=None).
     inv av. inv H9. inv H13. inv H14. inv H15. inv H17. inv H18. inv H19.
-    simpl. reflexivity. rewrite H in H4. inv H4.
-    inv H6.
-    inv H7. inv H6. inv H10. inv H6. inv H13. simpl in H8.
-    inv H8.
-      (*cast int to int*) simpl in H16. simpl in H9. 
-      inv H9;
-        (*cast int to int*) simpl in H16;
-        inv H3; inv H11;
-        induction (eq_dec w0 w0); [idtac|inv H1|inv H3|inv H3].
-        inv H1.
-        inv H12. inv H0.
-        inv H16. inv H4. simpl in H5.
-        inv H5.
-        inv H9. inv H5. inv H17. inv H16. inv H11. inv H19. inv H11. inv H18.
-        inv H4; inv H6; simpl in H13; unfold sem_and in  H13; simpl in H13;
-          [simpl|inv H8|inv H8].
-          (*cast int to int*)
-          destruct v1,v2; inv H13. inv H12. inv H11. simpl in H13.
-          inv H1. simpl in H15. inv H16. simpl in H14. inv H17.
-          inv H3. inv H19. inv H21.
-          inv H10; inv H5.
-          inv H4; [idtac|rewrite H17 in H5; inv H5].
-          rewrite H17 in H9; inv H9.
-          inv H12; inv H5.
-          inv H4; [idtac|rewrite H16 in H5; inv H5].
-          rewrite H16 in H10; inv H10.          
-          simpl in H17. inv H17. simpl in H16. inv H16.
-          unfold load_value_of_type in *; simpl in H8, H9.
-          unfold store_value_of_type in *; simpl in H18, H20.
-          assert (Mem.store AST.Mint32 m6 b2 (signed w0) (Vint (repr 31)) =
-            Some m5).
-          exact H20.
-          apply Mem.load_store_other with
-            AST.Mint32 _ _ _ _ _ AST.Mint32 b4 (signed w0) in H1; 
-            [idtac|admit(*b<>b'*)].
-          rewrite H1 in H8.
-          eapply Mem.load_store_same in H18; [idtac|simpl; auto]. 
-          rewrite H18 in H8.
-          inv H8.
-          eapply Mem.load_store_same in H20; [idtac|simpl; auto].
-          rewrite H20 in H9.
-          inv H9.
-          inv H13.
-          unfold bit. unfold bits. unfold bits_val. unfold masks.
-          simpl masks_aux.
-          rewrite and_commut.
-          (*assert (forall c, and (repr 1) c = (repr c)).
-             intro. unfold and. unfold bitwise_binop.
-             apply eqm_samerepr. eapply eqm_trans. 2: apply Z_of_bits_of_Z.
-             apply eqm_refl2. apply Z_of_bits_exten.
-             intros. 
-             fold one. rewrite unsigned_one.
-             unfold wordsize. unfold Wordsize_32.wordsize.
-             *)
-          admit
-(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
-   = Vint (Arm6_State.reg_content s d) [n31]*).
-        (*cast has no change*)
-        inv H1; inv H4.
-        inv H12. inv H0.
-        inv H16. 
-        inv H4. simpl in H5.
-        inv H5.
-        inv H9. inv H5. inv H17. inv H16. inv H11. inv H19. inv H11. inv H18.
-        inv H4; inv H6; simpl in H13; unfold sem_and in  H13; simpl in H13;
-          [simpl|inv H8|inv H8].
-          destruct v1,v2; inv H13. inv H12. inv H11. simpl in H13.
-          inv H1. simpl in H15. inv H16. simpl in H14. inv H17.
-          inv H3. inv H19. inv H21.
-          inv H10; inv H5.
-          inv H4; [rewrite H17 in H9; inv H9|rewrite H17 in H5; inv H5].
-          inv H12; inv H5.
-          inv H4; [rewrite H16 in H10; inv H10|rewrite H16 in H5; inv H5].
-          simpl in H17. inv H17. simpl in H16. inv H16.
-          unfold load_value_of_type in *; simpl in H8, H9.
-          unfold store_value_of_type in *; simpl in H18, H20.
-          assert (Mem.store AST.Mint32 m6 b2 (signed w0) (Vint (repr 31)) =
-            Some m5).
-          exact H20.
-          apply Mem.load_store_other with
-            AST.Mint32 _ _ _ _ _ AST.Mint32 b4 (signed w0) in H1; 
-            [idtac|admit(*b<>b'*)].
-          rewrite H1 in H8.
-          eapply Mem.load_store_same in H18; [idtac|simpl; auto]. 
-          rewrite H18 in H8.
-          inv H8.
-          eapply Mem.load_store_same in H20; [idtac|simpl; auto].
-          rewrite H20 in H9.
-          inv H9.
-          inv H13.
-          admit
-(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
-   = Vint (Arm6_State.reg_content s d) [n31]*).
-        (*cast has no change*)
-        inv H1; inv H4.
-        inv H3. inv H11; inv H0.
-        induction (eq_dec w0 w0); [idtac|inv H1].
-        inv H1. inv H12. simpl in H9.
-        inv H16. 
-        inv H4. simpl in H5. inv H5.
-        inv H4; [idtac|inv H6|inv H6].
-        inv H10; inv H4; inv H18; inv H17; inv H16; inv H11; inv H18; inv H11.
-        inv H3; inv H17; inv H19.
-        inv H5. inv H11. inv H12. simpl in H13. simpl in H19.
-        inv H10. inv H17.
-        inv H6; inv H10.
-        inv H5; [rewrite H12 in H15; inv H15|rewrite H6 in H15; inv H15].        
-        inv H8; [rewrite H10 in H14; inv H14|rewrite H5 in H14; inv H14].
-        unfold load_value_of_type in *; simpl in H11, H20.
-        unfold store_value_of_type in *; simpl in H16, H18.
-        inv H9; simpl in H16.
-        assert (Mem.store AST.Mint32 m4 b1 (signed w0) (Vint (repr 31)) =
-          Some m5).
-        exact H18.
+    simpl. reflexivity. 
+  inv H1.
+    (*get_bit is in local env*)
+    rewrite H in H5. discriminate H5.
+    
+    (*get_bit is in gloval env*)
+    inv H7. inv H6. inv H13. inv H6. inv H14. simpl in H10, H9.
+    inv H9.
+    
+      (*cast int to int*) 
+      simpl in H16.
+      inv H10; simpl in H16; inv H4; clear H8; inv H11;
+        induction (eq_dec w0 w0);[idtac|inv H1|inv H4|inv H4].
+      inv H1.
+      clear H12.
+      inv H16. inv H5. simpl in H6.
+      destruct H6.
+      inv H10. inv H6. inv H18. inv H17. inv H12. inv H20. inv H12. inv H19.
+      inv H5; inv H7; simpl in H14; unfold sem_and in  H14; simpl in H14;
+        [simpl|inv H9|inv H9].
+      destruct v1,v2; inv H14. inv H13. inv H12. simpl in H14.
+      inv H4. inv H19. inv H21. inv H11; clear H7. inv H13; clear H9.
+      inv H6; [idtac| inv H11].
+      inv H7; [idtac| inv H9].
+      rewrite H13 in H17. rewrite H11 in H16.
+      inv H17; inv H16.
+      unfold load_value_of_type in *; simpl in H10, H12.
+      unfold store_value_of_type in *; simpl in H18, H20.
+      generalize H20; intro.
+      apply Mem.load_store_other with
+        AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H4.
+      rewrite H4 in H10.
+      eapply Mem.load_store_same in H20;[idtac|simpl; auto].
+      rewrite H12 in H20.
+      eapply Mem.load_store_same in H18;[idtac|simpl; auto].
+      rewrite H10 in H18.
+      inv H18; inv H20. inv H14.
+      rewrite (same_getbit (Arm6_State.reg_content s d) 31). reflexivity.
+      left. apply (alloc_diff_block H2); assumption.
+
+      (*cast has no change*)
+      clear H1; clear H2.
+      clear H12.
+      inv H16.
+      inv H5. simpl in H6.
+      destruct H6.
+      inv H10. inv H6. inv H18. inv H17. inv H12. inv H20. inv H12. inv H19.
+      inv H5; inv H7; simpl in H14; unfold sem_and in  H14; simpl in H14;
+        [simpl|inv H9|inv H9].
+      destruct v1,v2; inv H14. inv H13. inv H12. simpl in H14.
+      inv H4. inv H19. inv H21. inv H11; clear H7. inv H13; clear H9.
+      inv H6; [idtac| inv H11].
+      inv H7; [idtac| inv H9].
+      rewrite H13 in H17. rewrite H11 in H16.
+      inv H17; inv H16.
+      unfold load_value_of_type in *; simpl in H10, H12.
+      unfold store_value_of_type in *; simpl in H18, H20.
+      generalize H20; intro.
+      apply Mem.load_store_other with
+        AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H4.
+      rewrite H4 in H10.
+      eapply Mem.load_store_same in H20;[idtac|simpl; auto].
+      rewrite H12 in H20.
+      eapply Mem.load_store_same in H18;[idtac|simpl; auto].
+      rewrite H10 in H18.
+      inv H18; inv H20. inv H14.
+      rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+      left. apply (alloc_diff_block H2); assumption.
+
+      clear H1; clear H2.
+      inv H4. inv H11; clear H8.
+      induction (eq_dec w0 w0); [idtac|inv H1].
+      inv H1. clear H12.
+      inv H16.
+      inv H5. simpl in H6. destruct H6.
+      inv H5; [idtac|inv H7|inv H7].
+      inv H11; inv H5; inv H19; inv H18; inv H17; inv H12; inv H19; inv H12.
+      inv H4; inv H18; inv H20.
+      inv H6. inv H12. inv H13. simpl in H14. simpl in H20.
+      inv H11. inv H18.
+      inv H7; inv H11.
+      inv H6; [rewrite H13 in H16; inv H16|rewrite H7 in H16; inv H16].        
+      inv H9; [rewrite H11 in H15; inv H15|rewrite H6 in H15; inv H15].
+      unfold load_value_of_type in *; simpl in H12, H21.
+      unfold store_value_of_type in *; simpl in H17, H19.
+      inv H10; simpl in H17.
+
+        (*cast int to int*)
+        generalize H19; intro.
         apply Mem.load_store_other with
-          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H3; 
-          [idtac|admit(*b<>b'*)].
-        rewrite H3 in H11.
-        eapply Mem.load_store_same in H16; [idtac|simpl; auto].
-        simpl in H16.
-        rewrite H16 in H11; inv H11.
-        eapply Mem.load_store_same in H18; [idtac|simpl; auto].
-        simpl in H18.
-        rewrite H18 in H20; inv H20.
-        unfold sem_shr in H19. simpl in H19. inv H19.
-        inv H13. simpl.
-        admit
-(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
-   = Vint (Arm6_State.reg_content s d) [n31]*).
-        assert (Mem.store AST.Mint32 m4 b1 (signed w0) (Vint (repr 31)) =
-          Some m5).
-        exact H18.
+          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H4.
+        rewrite H4 in H12.
+        eapply Mem.load_store_same in H17; [idtac|simpl; auto].
+        simpl in H17.
+        rewrite H17 in H12; inv H12.
+        eapply Mem.load_store_same in H19; [idtac|simpl; auto].
+        simpl in H19.
+        rewrite H19 in H21; inv H21.
+        unfold sem_shr in H20. simpl in H20. inv H20.
+        inv H14. simpl.
+        rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+        left. apply (alloc_diff_block H2); assumption.
+
+        (*cast has no change*)
+        generalize H19; intro.
         apply Mem.load_store_other with
-          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H3; 
-          [idtac|admit(*b<>b'*)].
-        rewrite H3 in H11.
-        eapply Mem.load_store_same in H16; [idtac|simpl; auto].
-        simpl in H16.
-        rewrite H16 in H11; inv H11.
-        eapply Mem.load_store_same in H18; [idtac|simpl; auto].
-        simpl in H18.
-        rewrite H18 in H20; inv H20.
-        unfold sem_shr in H19. simpl in H19. inv H19.
-        inv H13. simpl.
-        admit
-(*Vint(zero_ext 8 (and (shru (Arm6_State.reg_content s d) (repr 31)) (repr 1)))
-   = Vint (Arm6_State.reg_content s d) [n31]*).
+          AST.Mint32 _ _ _ _ _ AST.Mint32 b0 (signed w0) in H4.
+        rewrite H4 in H12.
+        eapply Mem.load_store_same in H17; [idtac|simpl; auto].
+        simpl in H17.
+        rewrite H17 in H12; inv H12.
+        eapply Mem.load_store_same in H19; [idtac|simpl; auto].
+        simpl in H19.
+        rewrite H19 in H21; inv H21.
+        unfold sem_shr in H20. simpl in H20. inv H20.
+        inv H14. simpl.
+        rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+        left. apply (alloc_diff_block H2); assumption.
 Qed.
           
 
