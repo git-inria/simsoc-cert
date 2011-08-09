@@ -93,7 +93,7 @@ type xprog = {
 let xprog_of p (_, pcs) =
   let gs, ls = V.vars p.pinst and id = Flatten.str_ident p in
     {xprog = p; xid = id; xgs = gs; xls = ls; xdec = pcs;
-     xvc = Validity.to_exp id;
+     xvc = None;
      xmode = addr_mode_of_prog p gs};;
 
 let mode_outputs: ((string * string) list) array = Array.create 5 [];;
