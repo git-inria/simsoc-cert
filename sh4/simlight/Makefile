@@ -16,13 +16,18 @@ CPPFLAGS := #-I$(DIR)/tools/bin2elf
 #CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 #CC := ccomp -fstruct-assign -fno-longlong
 
-SOURCES := common.c elf_loader.c \
-  sh4_mmu.c slsh4_processor.c slsh4_iss.c
+SOURCES := common.c elf_loader.c sh4_mmu.c slsh4_math.c \
+	slsh4_processor.c \
+	slsh4_iss.c
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
 HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h sh4_mmu.h \
-  slsh4_processor.h slsh4_iss.h slsh4_iss_h_prelude.h
+	\
+	slsh4_math.h \
+	slsh4_processor.h \
+	slsh4_iss_c_prelude.h slsh4_iss_h_prelude.h \
+	slsh4_iss.h 
 
 simlight: $(OBJECTS)
 	$(CC) $^ -o simlight
@@ -31,7 +36,7 @@ simlight: $(OBJECTS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 slsh4_iss.h slsh4_iss.c: $(SIMGEN) ../sh4.dat
-	$(SIMGEN) -sh4 -idat ../sh4.dat -ocxx slsh4_iss
+	$(SIMGEN) -ocxx slsh4_iss -sh4 -idat ../sh4.dat
 
 ../sh4.dat: FORCE
 	$(MAKE) -C .. $(@:../%=%)
@@ -40,7 +45,7 @@ simlight.opt: FORCE
 	gcc simlight.c $(SOURCES:%=--include %) -g -DNDEBUG -O3 -I../elf -o $@
 
 clean::
-	rm -f $(OBJECTS) slv6_iss.[ch] simlight simlight.opt
+	rm -f $(OBJECTS) slsh4_iss.[ch] simlight simlight.opt
 
 ######################################################################
 # representation of simlight in Coq

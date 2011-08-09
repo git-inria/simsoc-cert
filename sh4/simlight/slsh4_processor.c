@@ -32,9 +32,9 @@ void init_Processor(struct SLSH4_Processor *proc, struct SLSH4_MMU *m) {
 void destruct_Processor(struct SLSH4_Processor *proc) {
   destruct_MMU(proc->mmu_ptr);
 }
-/*
-uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m) {
-  switch (m) {
+
+uint32_t *addr_of_reg_m(struct SLSH4_Processor *proc, uint8_t reg_id/*, SLv6_Mode m*/) {
+  /*switch (m) {
   case fiq:
     return (8<=reg_id && reg_id<=14) ?
       &proc->fiq_regs[reg_id-8] : &proc->user_regs[reg_id];
@@ -53,8 +53,8 @@ uint32_t *addr_of_reg_m(struct SLv6_Processor *proc, uint8_t reg_id, SLv6_Mode m
   case sys: // no break;
   case usr:
     return &proc->user_regs[reg_id];
-  }
+    }*/
   abort();
 }
-*/
+
 END_SIMSOC_NAMESPACE
