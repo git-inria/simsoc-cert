@@ -15,7 +15,8 @@ then
 fi
 
 echo create link to $1
-ln -f -s $1 compcert
+echo ln -f -n -s $1 compcert
+ln -f -n -s $1 compcert
 
 # create coqrc
 
@@ -58,7 +59,7 @@ check_version
 prog=ocamlopt
 check_prog
 
-ref=3.12.0
+ref=3.12.1
 ver=`ocamlopt -version`
 check_version
 

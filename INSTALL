@@ -4,7 +4,7 @@ See the COPYRIGHTS and LICENSE files
 --------------------------------------------------------------------
 Prerequisites:
 
-* OCaml 3.12.0 available from http://caml.inria.fr/ .
+* OCaml 3.12.1 available from http://caml.inria.fr/ .
 
 * Coq 8.3pl2 available from http://coq.inria.fr/ .
 
