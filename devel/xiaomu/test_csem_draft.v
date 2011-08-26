@@ -850,12 +850,171 @@ Proof.
   exact H6.
 Qed.
 
+Set Printing Depth 30.
 
 Lemma same_getbit :
   forall x n ,
     zero_ext 8 (and (shru x (repr n)) (repr 1)) = x [nat_of_Z n].
-Admitted.
+Proof.
+  intros.
+  SearchAbout (zero_ext).
+  assert (0 < 8 < Z_of_nat wordsize).
+  simpl. omega.
+  SearchAbout (zero_ext).
+  apply zero_ext_and with (x := (and (shru x (repr n)) (repr 1))) in H.
+  rewrite H.
   
+  unfold bit. unfold bits. unfold bits_val.
+  induction n. 
+  simpl nat_of_Z. 
+  unfold masks. simpl masks_aux.
+  rewrite two_power_nat_O.
+  SearchAbout (Zdiv).
+  rewrite Zdiv_1_r.
+  (*lemma on 'repr' apply eqm_samerepr. apply eqm_refl2.*)
+  SearchAbout two_p.
+  assert (8 = Z_of_nat 8).
+  simpl; reflexivity. rewrite H0.
+  rewrite <- two_power_nat_two_p.
+  rewrite Word.shru_zero.
+  SearchAbout and.
+  admit.
+  admit.
+  unfold nat_of_Z.
+  unfold masks. simpl masks_aux.
+  rewrite two_power_nat_O.
+  rewrite Zdiv_1_r.
+  assert (8 = Z_of_nat 8).
+  simpl; reflexivity. rewrite H0.
+  rewrite <- two_power_nat_two_p.
+  SearchAbout shru. SearchAbout Zneg.
+Admitted.
+
+(*
+Ltac gen_inv_S y :=
+ pattern y; 
+ match goal with [ |- ?concl _ ] => 
+   change (match S y with S y => concl y | _ => True end) end;
+ cbv beta.
+*)
+
+Ltac case_I h := case h; try (intros; exact I); clear h.
+
+Lemma same_nflag_assgnt' :
+  forall e m0 m0' vargs m l b s d t m' v,
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    d_func_related m e d ->
+    eval_expression (Genv.globalenv prog_adc) e m get_bit_reg t m' v->
+    v = Vint ((Arm6_State.reg_content s d) [n31]).
+Proof.
+  intros until v. intros av bp psrel dfrel get_bit.
+  inversion get_bit as [env m1 gb t1 m1' gb' v1 gb_expr gb_sim_rv Heqenv Heqm
+    Heqexp Heqt Heqm' Heqv]; clear get_bit; subst.
+  unfold get_bit_reg in gb_expr.
+  match goal with [gb_expr : context c [Ecall ?a1 ?a2 ?a3] |- ?concl ] => 
+    assert (gb_match : match get_bit_reg with 
+            |Ecall a b c => 
+              (a = a1) /\ (b = a2) /\ (c = a3)
+              |_ => False
+          end)
+    by repeat (split || reflexivity)
+  end.
+  revert gb_match.
+  revert gb_sim_rv.
+  fold get_bit_reg in gb_expr.
+  case gb_expr; clear gb_expr; try contradiction.
+  intros until vres.
+  intros gb_expr explst gb_sim_rv1 ev_simlst _ Heqfindfd _ ev_funcall.
+  intros.
+  destruct gb_match as [e1 [e2 e3]]; rewrite e1, e2, e3 in *; clear e1 e2 e3.
+
+
+  (*harmless inversion: no ordering changes, no new hyp*)
+  inversion gb_sim_rv; subst; clear gb_sim_rv.
+
+(* useful trick for later
+  match goal with [_ : eval_expr _ _ _ _ ?interesting _ _ _ |- ?c ] => 
+     let name := fresh e0 in 
+     pose (name := interesting) end.
+*)
+
+  match goal with [_ : eval_expr _ _ _ _ (Evalof ?a1 ?a2) _ _ _ |- ?c ] =>
+    pose (myexpr := Evalof a1 a2);
+    assert 
+      (gb_match : match myexpr with 
+                    |Evalof a b => 
+                      (a = a1) /\ (b = a2)
+                    |_ => False
+                  end)
+      by repeat (split || reflexivity)
+  end.
+  revert gb_match.
+  revert gb_sim_rv1.
+  fold myexpr in gb_expr.
+  case gb_expr; clear gb_expr; try contradiction.
+
+
+
+
+
+  (*revert gb_sim_rv.  
+  generalize (refl_equal get_bit_reg).
+  unfold get_bit_reg at 2.
+  case gb_expr; clear gb_expr; try (intros; discriminate). 
+  intros. injection H7. clear H7. intros; subst.*)
+
+
+(*match goal with [ |- context c [Ecall ?a1 ?a2 ?a3]] => pattern a1, a2, a3 end.
+    change 
+      (match Ecall (Evalof (Evar get_bit T16) T16)
+     (Econs (reg_id adc_compcert_fixed.d)
+        (Econs (Eval (Vint (repr 31)) T9) Enil)) T4 with 
+         | Ecall a b c => 
+(fun (e0 : expr) (e1 : exprlist) (t0 : type) =>
+    get_bit_reg = Ecall e0 e1 t0 ->
+    v = Vint (Arm6_State.reg_content s d) [n31]) a b c
+ | _ => True end). cbv beta.
+  case_I gb_expr. red.
+*)
+
+(*
+  generalize (refl_equal get_bit_reg).
+  pattern get_bit_reg at 1.*)
+
+  (*match goal with [ |- ?concl _ _ _ ] =>
+    change 
+      (match Ecall a1 a2 a3 with 
+         | Ecall a b c => concl a b c | _ => True end) end. cbv beta.
+  
+  unfold get_bit_reg in gb_expr.
+match goal with [ |- ?concl] => change ((fun _ _ _ => concl) 
+   (Evalof (Evar get_bit T16) T16)
+   (Econs (reg_id adc_compcert_fixed.d)
+                    (Econs (Eval (Vint (repr 31)) T9) Enil))
+   T4) end.
+  match goal with [ gb_expr : context c [Ecall ?a1 ?a2 ?a3] |- ?concl _ _ _ ] =>
+    change 
+      (match Ecall a1 a2 a3 with 
+         | Ecall a b c => concl a b c | _ => True end) end. cbv beta.
+  case_I gb_expr. red.
+  intros until rargs. intro ty.
+  intros until vres.
+  intros rf_exp rargs_exp vf_rval targs_vlst Heqtprf Heqfun Heqtpfun fd_funcall.
+  
+  match goal with [ |- ?concl _ _ _ ] =>
+    change 
+      (match get_bit_reg with 
+         | Ecall a b c => concl a b c | _ => True end) end. cbv beta.
+  
+
+  case_eq get_bit_reg. intro
+  case get_bit. intro
+  unfold get_bit_reg in get_bit.*)
+Admitted.
+
 Lemma same_nflag_assgnt :
   forall e m0 m0' vargs m l b s d t m' v,
     alloc_variables empty_env m0 
