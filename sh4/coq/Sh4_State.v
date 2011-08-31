@@ -32,6 +32,9 @@ Definition set_cpsr (s : state) (w : word) : state :=
 Definition set_cpsr_bit (s : state) (n : nat) (w : word) : state :=
   mk_state (set_cpsr_bit (proc s) n w) (mem s).
 
+Definition reg_content_bank (s : state) k : word :=
+  reg_content (proc s) (mk_regnum k).
+
 Definition reg_content (s : state) (k : regnum) : word :=
   reg_content (proc s) k.
 

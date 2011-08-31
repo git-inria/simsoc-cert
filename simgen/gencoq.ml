@@ -275,6 +275,7 @@ let use_loc loc =
     ffalse
 
 (* add parentheses around complex expressions *)
+let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0)
 
 let rec pexp' par (loc: (string*string*int) list) nm sz b = function
   | Var s as e -> 
@@ -385,7 +386,7 @@ and exp' loc nm sz b = function
 
   | If_exp (e1, e2, e3) ->
       bprintf b "if %a then %a else %a"
-	(exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
+        (exp loc nm) e1 (exp loc nm) e2 (exp loc nm) e3
   | CPSR -> string b (if is_cpsr_s0 nm then "cpsr s0" else "cpsr st")
   | Range (e, r) -> 
       begin match e, r with
@@ -419,9 +420,12 @@ and exp' loc nm sz b = function
   | SPSR None -> string b "spsr st em"
   | SPSR (Some m) -> bprintf b "spsr st %a" exn_mode m
   | Reg (Var s, None) -> 
-      if List.mem s input_registers
-      then bprintf b "reg_content s0 %s" s
-      else bprintf b "reg_content st %s" s
+      if List.mem s input_registers then
+        bprintf b "reg_content s0 %s" s
+      else if l_match [Str.regexp "R._BANK", s] then
+        bprintf b "reg_content_bank st %c" s.[1]
+      else
+        bprintf b "reg_content st %s" s
   | Reg (e, None) -> 
       bprintf b "reg_content st %a" (regnum_exp loc nm) e
   | Reg (e, Some m) ->
@@ -620,6 +624,7 @@ and affect' b v loc nm = function
   | e -> bprintf b "%a %a" (set' loc nm) e (pexp loc nm) v
 
 and set' loc nm b = function
+  | Reg (Var s, None) when l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank %c" s.[1]
   | Reg (e, None) -> bprintf b "set_reg %a" 
       (regnum_exp loc nm) e
   | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m (regnum_exp loc nm) e

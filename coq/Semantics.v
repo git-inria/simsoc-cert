@@ -218,6 +218,10 @@ Module Make (Import P : PROC) (Import S : STATE P) (Import M : MESSAGE).
   Definition set_cpsr v := map_st (fun st => set_cpsr st v).
   Definition set_cpsr_bit n v := map_st (fun st => set_cpsr_bit st n v).
 
+  Definition set_reg_bank n (v : word) : semfun unit := 
+    let n := mk_regnum n in
+    fun lbs => ok_semstate tt (loc lbs) (zne n 15) (set_reg (st lbs) n v).
+
   Definition set_reg (n : regnum) (v : word) : semfun unit := 
     fun lbs => ok_semstate tt (loc lbs) (zne n 15) (set_reg (st lbs) n v).
 

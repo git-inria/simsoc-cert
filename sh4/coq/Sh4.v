@@ -26,15 +26,6 @@ Inductive proc_mode : Type := usr.
 (**  Registers *)
 (****************************************************************************)
 
-Definition R0_BANK := mk_regnum 0. (* General Register *)
-Definition R1_BANK := mk_regnum 1. (* General Register *)
-Definition R2_BANK := mk_regnum 2. (* General Register *)
-Definition R3_BANK := mk_regnum 3. (* General Register *)
-Definition R4_BANK := mk_regnum 4. (* General Register *)
-Definition R5_BANK := mk_regnum 5. (* General Register *)
-Definition R6_BANK := mk_regnum 6. (* General Register *)
-Definition R7_BANK := mk_regnum 7. (* General Register *)
-
 Definition SR := mk_regnum 16. (* Control Register *)
 Definition SSR := mk_regnum 17. (* Control Register *)
 Definition GBR := mk_regnum 18. (* Control Register *)
