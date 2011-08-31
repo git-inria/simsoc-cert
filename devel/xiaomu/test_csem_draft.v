@@ -890,6 +890,7 @@ Proof.
   SearchAbout shru. SearchAbout Zneg.
 Admitted.
 
+(* expirement on how to avoid using inversion *)
 (*
 Ltac gen_inv_S y :=
  pattern y; 
@@ -899,6 +900,151 @@ Ltac gen_inv_S y :=
 *)
 
 Ltac case_I h := case h; try (intros; exact I); clear h.
+
+Ltac case_h h := case h; clear h; try contradiction.
+
+Ltac rew_clean eq :=
+  match type of eq with ?l = ?r => rewrite eq in *; clear eq l end.
+
+Ltac and_eq_subst_obsol ae :=
+  repeat (rewrite ae in *; clear ae) ||
+         (let feq := fresh "eq" in destruct ae as [feq ae];
+          rewrite feq in *; clear feq).
+
+Ltac and_eq_subst ae :=
+  repeat (rew_clean ae) ||
+         (let feq := fresh "eq" in destruct ae as [feq ae];
+          rew_clean feq).
+
+Ltac inv_ecall_begin ev mm mm' :=
+  let e := fresh "expr" in
+  let em := fresh "expr_match" in
+  match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?c] =>
+    pose (e := Ecall a1 a2 a3); 
+    pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    assert 
+      (em : match e with 
+                      |Ecall a b c =>
+                        (a=a1)/\(b=a2)/\(c=a3)/\(env=ev)/\(m=mm)/\(m'=mm')
+                      |_=> False
+                    end)
+      by repeat (split || reflexivity);
+  fold e in h;
+  revert em;
+  case_h h;
+  clear e
+  end.
+
+Ltac inv_ecall_end ev mm mm' :=
+   unfold ev, mm, mm' in *; clear ev mm mm'; 
+   let ae := fresh "ae" in (intro ae; and_eq_subst ae).
+
+Ltac inv_ecall_obsol tt :=
+  let ev:=fresh "ev" in 
+  let mm:=fresh "mm" in 
+  let mm':=fresh "mm'" in
+  inv_ecall_begin ev mm mm'; tt; inv_ecall_end ev mm mm'.
+
+Ltac inv_ecall t1 m2 rf' t2 m3 rargs' 
+         vf vargs0 targs tres fd t3 vres H H0 H1 H2 H3 H4 H5 H6 :=
+  let ev:=fresh "ev" in 
+  let mm:=fresh "mm" in 
+  let mm':=fresh "mm'" in
+  inv_ecall_begin ev mm mm'; 
+  intros e0 m1 rf rargs ty t1 m2 rf' t2 m3 rargs' 
+         vf vargs0 targs tres fd t3 m4 vres H H0 H1 H2 H3 H4 H5 H6;
+  inv_ecall_end ev mm mm'.
+(*
+  e0 : env
+  m1 : Memory.mem
+  rf : expr
+  rargs : exprlist
+  ty : type
+  t1 : Events.trace
+  m2 : Memory.mem
+  rf' : expr
+  t2 : Events.trace
+  m3 : Memory.mem
+  rargs' : exprlist
+  vf : val
+  vargs0 : list val
+  targs : typelist
+  tres : type
+  fd : fundef
+  t3 : Events.trace
+  m4 : Memory.mem
+  vres : val
+  H : eval_expr (Genv.globalenv prog_adc) e0 m1 RV rf t1 m2 rf'
+  H0 : eval_exprlist (Genv.globalenv prog_adc) e0 m2 rargs t2 m3 rargs'
+  H1 : eval_simple_rvalue (Genv.globalenv prog_adc) e0 m3 rf' vf
+  H2 : eval_simple_list (Genv.globalenv prog_adc) e0 m3 rargs' targs vargs0
+  H3 : typeof rf = Tfunction targs tres
+  H4 : Genv.find_funct (Genv.globalenv prog_adc) vf = Some fd
+  H5 : type_of_fundef fd = Tfunction targs tres
+  H6 : eval_funcall (Genv.globalenv prog_adc) m3 fd vargs0 t3 m4 vres
+  expr_match : rf = Evalof (Evar get_bit T16) T16 /\
+               rargs =
+               Econs (reg_id adc_compcert_fixed.d)
+                 (Econs (Eval (Vint (repr 31)) T9) Enil) /\
+               ty = T4 /\ e0 = ev /\ m1 = mm /\ m4 = mm'
+*)
+Ltac inv_evalof h e ev mm mm' em :=
+  match goal with [h : eval_expr _ ?env ?m _ (Evalof ?a1 ?a2) _ ?m' _ |- ?c ] =>
+    pose (e := Evalof a1 a2); 
+    pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    assert 
+      (em : match e with 
+                    |Evalof a b => 
+                      (a=a1)/\(b=a2)/\(env=ev)/\(m=mm)/\(m'=mm')
+                    |_ => False
+                  end)
+      by repeat (split || reflexivity);
+  fold e in h
+  end.
+
+Ltac inv_evar e ev mm mm' em:=
+  match goal with [_: eval_expr _ ?env ?m _ (Evar ?a1 ?a2) _ ?m' _ |- ?c] =>
+    pose (e := Evar a1 a2); pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    assert
+      (em: match e with
+                   |Evar a b => 
+                     (a=a1)/\(b=a2)/\(env=ev)/\(m=mm)/\(m'=mm')
+                   |_ => False
+                 end)
+      by repeat (split||reflexivity)
+  end.
+
+Ltac inv_av_cons lst ev lm :=
+  match goal with [av': alloc_variables ?env ?a2 (?h ::?t) ?a3 ?a4 |- ?c] => 
+    pose (lst := (h::t)); pose (ev:=env);
+    change (alloc_variables ev a2 lst a3 a4) in av';
+    assert
+      (lm: match lst with
+                    |a::b=>(a=h)/\(b=t)/\(ev=env)
+                    |_=>False
+                  end)
+      by repeat (split||reflexivity)
+  end.
+
+Ltac inv_av_nil lnil ev ev' lm :=  
+  match goal with [av': alloc_variables ?env ?a2 ?lst ?env' ?a4 |- ?c] =>
+    pose (lnil:=lst); pose (ev:=env); pose (ev':=env');
+    change (alloc_variables ev a2 lnil ev' a4) in av';
+    assert (lm:match lnil with 
+                        |nil =>(nil = lst)/\(env=ev)/\(env'=ev')
+                        |_ =>False end) 
+      by repeat (split||reflexivity)
+  end.
+
+Ltac inv_ev_simpl_rv e rm :=
+  match goal with [_: eval_simple_rvalue _ _ _ (Evalof ?a1 ?a2) _ |- ?c] =>
+    assert
+      (rm: match e with
+                   |Evalof a b =>(a = a1) /\ (b = a2)
+                   |_=>False
+                 end)
+      by repeat  (split||reflexivity)
+  end.
 
 Lemma same_nflag_assgnt' :
   forall e m0 m0' vargs m l b s d t m' v,
@@ -911,54 +1057,143 @@ Lemma same_nflag_assgnt' :
     v = Vint ((Arm6_State.reg_content s d) [n31]).
 Proof.
   intros until v. intros av bp psrel dfrel get_bit.
-  inversion get_bit as [env m1 gb t1 m1' gb' v1 gb_expr gb_sim_rv Heqenv Heqm
+  
+  inversion get_bit as [env m1 gb t1 m1' gb' v1 gb_expr ev_rv Heqenv Heqm
     Heqexp Heqt Heqm' Heqv]; clear get_bit; subst.
-  unfold get_bit_reg in gb_expr.
-  match goal with [gb_expr : context c [Ecall ?a1 ?a2 ?a3] |- ?concl ] => 
-    assert (gb_match : match get_bit_reg with 
-            |Ecall a b c => 
-              (a = a1) /\ (b = a2) /\ (c = a3)
-              |_ => False
-          end)
-    by repeat (split || reflexivity)
-  end.
-  revert gb_match.
-  revert gb_sim_rv.
-  fold get_bit_reg in gb_expr.
-  case gb_expr; clear gb_expr; try contradiction.
-  intros until vres.
-  intros gb_expr explst gb_sim_rv1 ev_simlst _ Heqfindfd _ ev_funcall.
-  intros.
-  destruct gb_match as [e1 [e2 e3]]; rewrite e1, e2, e3 in *; clear e1 e2 e3.
 
+  unfold get_bit_reg in gb_expr.
+
+  revert ev_rv.
+  inv_ecall t1 m2 rf' t2 m3 rargs' vf vargs0 targs tres fd t3 vres
+            gb_expr explst ev_rv1 ev_simlst H_ Heqfindfd Heqt16 ev_funcall. clear H_.
+  intro ev_rv.
 
   (*harmless inversion: no ordering changes, no new hyp*)
-  inversion gb_sim_rv; subst; clear gb_sim_rv.
+  inversion ev_rv; subst; clear ev_rv.
+
+  revert ev_rv1.
+  inv_evalof expr_evalof ev mm mm' expr_match.
+  fold expr_evalof in gb_expr.
+  revert expr_match.
+  case_h gb_expr.
+  intros until ty0. intro gb_expr. intros.
+  inv_ecall_end expr_match ev mm mm'.
+  clear e1 m5 a m'0  ty0.
+
+  revert ev_rv1.
+  inv_evar expr_evar ev mm mm' expr_match.
+  fold expr_evar in gb_expr.
+  revert expr_match.
+  case_h gb_expr.
+  intros.
+  inv_ecall_end expr_match ev mm mm'.
+
+  inv_ev_simpl_rv expr_evalof rv_match.
+  fold expr_evalof in ev_rv1.
+  revert rv_match.
+  case_h ev_rv1.
+  intros until v0.
+  intros ev_lv _ Heqload.
+  intro.
+  and_eq_subst rv_match.
+
+  assert (globenv: e!get_bit=None).
+    simpl in av.
+
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e3. intros m6_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e4. intros m10_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e5. intros m13_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e6. intros m16_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e7. intros m19_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e8. intros m22_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+    inv_av_cons vlst ev lst_match.
+    revert lst_match.
+    case_h av.
+    intros until e9. intros m25_alloc av. intro.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    (* harmless inversion *)
+    inversion eq1; clear eq1; subst; clear vlst ev.
+
+    inv_av_nil lnil ev ev' lst_match.
+    revert lst_match.
+    case_h av.
+    intros.
+    destruct lst_match as [eq1 [eq2 eq3]]. 
+    clear eq1; subst; clear ev ev'.
+
+    simpl; reflexivity.
+
+  match goal with [_: eval_simple_lvalue _ _ _ (Evar ?a1 ?a2) _ _ |- ?c] =>
+    assert
+      (lv_match: match expr_evar with
+                   |Evar a b =>(a = a1) /\ (b = a2)
+                   |_=>False
+                 end)
+      by repeat  (split||reflexivity)
+  end. 
+  fold expr_evar in ev_lv.
+  revert lv_match.
+
+  case_h ev_lv.
+    (*get_bit is in global environment *)
+    intros until b1. intro locenv. intros.
+    destruct lv_match as [eq1 eq2]; subst.
+    rewrite locenv in globenv; discriminate.
+    (*get_bit is in local environment *)
+    intros until b1; intros _ Heqfindsymb _; intros.
+    destruct lv_match as [eq1 eq2]; rewrite eq1 in *; clear eq1 eq2.
+
+    (*match goal with [_:eval_exprlist _ _ _ (Econs ?a1 ?a2) _ _ _]*)
+    
+    
+   
+  
 
 (* useful trick for later
   match goal with [_ : eval_expr _ _ _ _ ?interesting _ _ _ |- ?c ] => 
      let name := fresh e0 in 
      pose (name := interesting) end.
-*)
-
-  match goal with [_ : eval_expr _ _ _ _ (Evalof ?a1 ?a2) _ _ _ |- ?c ] =>
-    pose (myexpr := Evalof a1 a2);
-    assert 
-      (gb_match : match myexpr with 
-                    |Evalof a b => 
-                      (a = a1) /\ (b = a2)
-                    |_ => False
-                  end)
-      by repeat (split || reflexivity)
-  end.
-  revert gb_match.
-  revert gb_sim_rv1.
-  fold myexpr in gb_expr.
-  case gb_expr; clear gb_expr; try contradiction.
-
-
-
-
+*)  
 
   (*revert gb_sim_rv.  
   generalize (refl_equal get_bit_reg).
@@ -1015,6 +1250,8 @@ match goal with [ |- ?concl] => change ((fun _ _ _ => concl)
   unfold get_bit_reg in get_bit.*)
 Admitted.
 
+
+
 Lemma same_nflag_assgnt :
   forall e m0 m0' vargs m l b s d t m' v,
     alloc_variables empty_env m0 
@@ -1045,7 +1282,7 @@ Proof.
     rewrite H in H5. discriminate H5.
     
     (*get_bit is in gloval env*)
-    inv H7. inv H6. inv H13. inv H6. inv H14. simpl in H10, H9.
+    inv H7. inv H6. inv H13. inv H14. inv H6. simpl in H10, H9.
     inv H9.
     
       (*cast int to int*) 
