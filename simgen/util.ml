@@ -94,14 +94,14 @@ let array_map2 =
   let get = Array.unsafe_get in
     fun f a b ->
       let l = Array.length a in
-	assert (l = Array.length b);
-	if l = 0 then [||] else begin
-	  let r = Array.create l (f (get a 0) (get b 0)) in
+        assert (l = Array.length b);
+        if l = 0 then [||] else begin
+          let r = Array.create l (f (get a 0) (get b 0)) in
             for i = 1 to l - 1 do
               Array.set r i (f (get a i) (get b i))
             done;
             r
-	end;;
+        end;;
 
 (*****************************************************************************)
 (** functions on strings *)
@@ -147,6 +147,8 @@ let set_of_list =
 let list_of_map m =
   List.sort (fun (s1,_) (s2,_) -> Pervasives.compare s1 s2)
     (StrMap.fold (fun s t l -> (s,t)::l) m []);;
+
+let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0)
 
 (*****************************************************************************)
 (** functions on options *)
@@ -226,11 +228,11 @@ module TransClos (X : Set.OrderedType) = struct
     (* if (x,y) is already in g, do nothing *)
     if XSet.mem y (succs x g) then g
       (* otherwise, for every pair (w,x) in g,
-	 add a pair (w,z) for every z in {y} U (succs y g) *)
+         add a pair (w,z) for every z in {y} U (succs y g) *)
     else let ysy = XSet.add y (succs y g) in
       XMap.fold (add_pred x ysy) g
-	(* and, for every z in {y} U (succs y g), add a pair (x,z) *)
-	(XSet.fold (add_edge x) ysy g);;
+        (* and, for every z in {y} U (succs y g), add a pair (x,z) *)
+        (XSet.fold (add_edge x) ysy g);;
 
   let bindings g =
     XMap.fold (fun x s l -> XSet.fold (fun y l -> (x,y)::l) s l) g [];;

@@ -275,8 +275,6 @@ let use_loc loc =
     ffalse
 
 (* add parentheses around complex expressions *)
-let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0)
-
 let rec pexp' par (loc: (string*string*int) list) nm sz b = function
   | Var s as e -> 
     (if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") 
