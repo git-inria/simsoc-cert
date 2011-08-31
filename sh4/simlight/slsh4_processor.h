@@ -49,7 +49,16 @@ static inline uint32_t reg(struct SLSH4_Processor *proc, uint8_t reg_id) {
   return reg_m(proc,reg_id/*,proc->cpsr.mode*/);
 }
 
+static inline uint32_t reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id) {
+  return reg_m(proc,reg_id/*,proc->cpsr.mode*/);
+}
+
 static inline void set_reg(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
+  assert(reg_id!=15);
+  set_reg_m(proc,reg_id,/*proc->cpsr.mode,*/data);
+}
+
+static inline void set_reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
   assert(reg_id!=15);
   set_reg_m(proc,reg_id,/*proc->cpsr.mode,*/data);
 }

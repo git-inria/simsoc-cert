@@ -277,7 +277,12 @@ let rec exp p b = function
           bprintf b "%s(old_R%s)" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
         else
           bprintf b "old_R%s" s
-      else 
+      else if l_match [Str.regexp "R._BANK", s] then
+        (if is_int64 () then
+            bprintf b "%s(reg_bank(proc,%c))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64")
+         else
+            bprintf b "reg_bank(proc,%c)") s.[1]
+      else
         if is_int64 () then
           bprintf b "%s(reg(proc,%s))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
         else
@@ -386,6 +391,7 @@ and affect p k b dst src =
     | Reg (Var "d", _) -> bprintf b
         "set_reg_or_pc(proc,d,%a)" (exp p) src
     | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
+    | Reg (Var s, None) when l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank(proc,%c,%a)" s.[1] (exp p) src
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
         bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
