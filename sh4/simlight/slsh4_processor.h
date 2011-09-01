@@ -14,8 +14,7 @@ BEGIN_SIMSOC_NAMESPACE
 
 struct SLSH4_Processor {
   struct SLSH4_MMU *mmu_ptr;
-
-  uint32_t *pc;
+  uint32_t pc;
 
   /* true if last instruction modified the pc; must be cleared after each step */
   bool jump;

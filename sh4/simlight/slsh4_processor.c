@@ -9,7 +9,6 @@ BEGIN_SIMSOC_NAMESPACE
 
 void init_Processor(struct SLSH4_Processor *proc, struct SLSH4_MMU *m) {
   proc->mmu_ptr = m;
-  proc->pc = malloc(sizeof(uint32_t));
   proc->jump = false;
   proc->VBR = 0x00000000;
 
