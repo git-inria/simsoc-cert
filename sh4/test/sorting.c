@@ -4,6 +4,7 @@
 /* test various sorting algorithms
  * After 2,487,176 instructions executed, r0 should contain 63 = 0x3f */
 
+#include "common.h"
 #include <stdlib.h>
 
 int count = 0;

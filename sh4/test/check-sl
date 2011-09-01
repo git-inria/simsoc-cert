@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+SIMLIGHT="../simlight/simlight -d -i"
+
+set -e # exit on error
+set -x # verbose
+
+make # generate elf files
+
+$SIMLIGHT sorting_a.elf -r0=0x3f
