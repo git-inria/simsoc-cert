@@ -287,7 +287,7 @@ let rec exp p b = function
           bprintf b "%s(reg(proc,%s))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
         else
           bprintf b "reg(proc,%s)" s
-  | Reg (Num "15", None) -> bprintf b "*proc->pc"
+  | Reg (Num "15", None) -> bprintf b "proc->pc"
   | Reg (e, None) -> bprintf b "reg(proc,%a)" (exp p) e
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (mode m)
   | Var s -> if is_pointer p s then bprintf b "*%s" s else 
