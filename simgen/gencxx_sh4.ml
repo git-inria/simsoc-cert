@@ -295,8 +295,7 @@ let rec exp p b = function
         begin bprintf b "%s(%s)" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s end
       else string b s 
   | Memory (e, n) -> bprintf b "read_%s(proc->mmu_ptr,%a)" (access_type n) (exp p) e
-  | Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
-  | Range (CPSR, Index (Num s)) -> bprintf b "proc->cpsr.%s" (cpsr_flag s)
+  | Range (CPSR, Flag (s,_)) -> bprintf b "proc->SR.%s" s
   | Range (e1, Index e2) -> bprintf b "get_bit(%a,%a)" (exp p) e1 (exp p) e2
   | Range (e, Bits (n1, n2)) ->
       begin
@@ -415,15 +414,7 @@ and affect p k b dst src =
       bprintf64 b (fun b -> bprintf b "%a = " (exp p) (Var v)) (fun b -> exp p b src) (fun _ -> ())
     | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
     | Range (CPSR, Flag (s,_)) ->
-        bprintf b "proc->cpsr.%s_flag = %a" s (exp p) src
-    | Range (CPSR, Index (Num n)) ->
-        bprintf b "proc->cpsr.%s = %a" (cpsr_flag n) (exp p) src
-    | Range (CPSR, Bits ("19", "18")) ->
-        bprintf b "set_GE_32(&proc->cpsr,%a)" (exp p) src
-    | Range (CPSR, Bits ("17", "16")) ->
-        bprintf b "set_GE_10(&proc->cpsr,%a)" (exp p) src
-    | Range (CPSR, Bits (n1, n2)) ->
-        bprintf b "proc->cpsr.%s = %a" (cpsr_field (n1,n2)) (exp p) src
+        bprintf b "proc->SR.%s = %a" s (exp p) src
     | Range (e1, Bits (n1, n2)) ->
         inst_aux p k b (Proc ("set_field", [e1; Num n1; Num n2; src]))
     | Memory (addr, n) ->

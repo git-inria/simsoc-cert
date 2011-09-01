@@ -157,13 +157,13 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
                  | "R0_BANK" | "R1_BANK" | "R2_BANK" | "R3_BANK" | "R4_BANK" | "R5_BANK" | "R6_BANK" | "R7_BANK"
                  | "TRA" | "SGR" | "EXPEVT"
                  as v) -> E.Reg (E.Var v, None)
-    | C.VARIABLE "T" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("1", "0"))
-    | C.VARIABLE "S" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("2", "1"))
-    | C.VARIABLE "Q" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("9", "8"))
-    | C.VARIABLE "M" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("10", "9"))
-    | C.VARIABLE "SR_BL" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("29", "28"))
-    | C.VARIABLE "SR_RB" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("30", "29"))
-    | C.VARIABLE "SR_MD" -> E.Range (E.Reg (E.Var "SR", None), E.Bits ("31", "30"))
+    | C.VARIABLE "T" -> E.Range (E.CPSR, E.Flag ("T", "") (* , E.Bits ("1", "0") *) )
+    | C.VARIABLE "S" -> E.Range (E.CPSR, E.Flag ("S", "") (* , E.Bits ("2", "1") *) )
+    | C.VARIABLE "Q" -> E.Range (E.CPSR, E.Flag ("Q", "") (* , E.Bits ("9", "8") *) )
+    | C.VARIABLE "M" -> E.Range (E.CPSR, E.Flag ("M", "") (* , E.Bits ("10", "9") *) )
+    | C.VARIABLE "SR_BL" -> E.Range (E.CPSR, E.Flag ("BL", "") (* , E.Bits ("29", "28") *) )
+    | C.VARIABLE "SR_RB" -> E.Range (E.CPSR, E.Flag ("RB", "") (* , E.Bits ("30", "29") *) )
+    | C.VARIABLE "SR_MD" -> E.Range (E.CPSR, E.Flag ("MD", "") (* , E.Bits ("31", "30") *) )
 
     | C.VARIABLE i -> E.Var i
 
