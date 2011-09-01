@@ -194,7 +194,7 @@ let access_type = function
 
 let optemps = ["index"; "offset_8"; "end_address"];;
 
-let input_registers = ["n"; "m"; "s"; "dLo"];;
+let input_registers = [];;
 
 let is_pointer p s = match p.xprog.pkind with
   | InstARM | InstThumb -> false
