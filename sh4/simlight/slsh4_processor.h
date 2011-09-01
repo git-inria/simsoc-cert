@@ -76,7 +76,7 @@ static inline uint32_t inst_size(struct SLSH4_Processor *proc) {
 
 static inline void set_pc_raw(struct SLSH4_Processor *proc, uint32_t new_pc) {
   assert(!(new_pc&(inst_size(proc)-1)) && "pc misaligned");
-  proc->jump = true; *proc->pc = new_pc + 2 * inst_size(proc);
+  proc->jump = true; proc->pc = new_pc + 2 * inst_size(proc);
 }
 
 static inline void set_pc(struct SLSH4_Processor *proc, uint32_t new_pc) {
@@ -84,7 +84,7 @@ static inline void set_pc(struct SLSH4_Processor *proc, uint32_t new_pc) {
 }
 
 static inline uint32_t address_of_current_instruction(struct SLSH4_Processor *proc) {
-  return (*proc->pc - 2 * inst_size(proc));
+  return (proc->pc - 2 * inst_size(proc));
 }
 
 END_SIMSOC_NAMESPACE

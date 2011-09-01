@@ -55,7 +55,7 @@ void simulate(struct SLSH4_Processor *proc, struct ElfFile *elf) {
     if (proc->jump)
       proc->jump = false;
     else
-      *proc->pc += 2;
+      proc->pc += 2;
     ++inst_count;
   } while (bincode!=infinite_loop);
   DEBUG(puts("---------------------"));
