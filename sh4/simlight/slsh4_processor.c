@@ -9,7 +9,8 @@ BEGIN_SIMSOC_NAMESPACE
 
 void init_Processor(struct SLSH4_Processor *proc, struct SLSH4_MMU *m) {
   proc->mmu_ptr = m;
-  proc->jump = false;
+  proc->delayed = false;
+  proc->pc = 0xa0000000;
   proc->VBR = 0x00000000;
 
   proc->SR.MD = 1;

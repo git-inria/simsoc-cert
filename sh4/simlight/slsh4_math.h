@@ -6,8 +6,8 @@
 #ifndef SH4_MATH_H
 #define SH4_MATH_H
 
+#include "slsh4_processor.h"
 #include "common.h"
-
 
 BEGIN_SIMSOC_NAMESPACE
 
@@ -26,7 +26,7 @@ extern uint32_t Read_Long(uint32_t a);
 extern uint32_t Write_Long(uint32_t a, uint32_t b);
 extern uint32_t Read_Word(uint32_t a);
 extern uint32_t Write_Word(uint32_t a, uint32_t b);
-extern uint32_t Delay_Slot(uint32_t a);
+extern void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr);
 extern uint32_t succ(uint32_t a);
 extern uint32_t pred(uint32_t a);
 extern uint32_t bool_of_word(uint32_t a);

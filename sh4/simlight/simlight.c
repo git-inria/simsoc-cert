@@ -39,7 +39,6 @@ void simulate(struct SLSH4_Processor *proc, struct ElfFile *elf) {
 
   INFO(printf("entry point: 0x%x\n", entry));
   set_pc(proc,entry);
-  proc->jump = false;
 
   sl_debug = true;
   
@@ -49,16 +48,29 @@ void simulate(struct SLSH4_Processor *proc, struct ElfFile *elf) {
     printf("decode %x -> ", bincode);
     bool found = decode_and_exec(proc,bincode);
 
+    if (proc->delayed == true) {
+      ++inst_count;
+
+      const uint32_t old_pc = proc->pc;
+      proc->pc = proc->slot_pc;
+
+      DEBUG(puts("---------------------"));
+      bincode = read_half(proc->mmu_ptr,address_of_current_instruction(proc));
+      printf("decode %x -> ", bincode);
+      bool found = decode_and_exec(proc,bincode);
+
+      proc->pc = old_pc;
+      proc->delayed = false;
+    }
+
 /*
     if (!found)
       TODO("Unpredictable or undefined instruction");
 */
 
-//    if (proc->jump)
-//      proc->jump = false;
-
     ++inst_count;
   } while (inst_count < 100); // (bincode!=infinite_loop);
+
   DEBUG(puts("---------------------"));
   INFO(printf("Reached infinite loop after %d instructions executed.\n", inst_count));
 }

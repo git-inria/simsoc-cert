@@ -16,8 +16,8 @@ struct SLSH4_Processor {
   struct SLSH4_MMU *mmu_ptr;
   uint32_t pc;
 
-  /* true if last instruction modified the pc; must be cleared after each step */
-  bool jump;
+  bool delayed;
+  uint32_t slot_pc;
 
   uint32_t R[24]; // R0_BANK0-R7_BANK0, R0_BANK1-R7_BANK1, R8-R15
   struct SLSH4_StatusRegister SR;
@@ -76,7 +76,7 @@ static inline uint32_t inst_size(struct SLSH4_Processor *proc) {
 
 static inline void set_pc_raw(struct SLSH4_Processor *proc, uint32_t new_pc) {
   assert(!(new_pc&(inst_size(proc)-1)) && "pc misaligned");
-  proc->jump = true; proc->pc = new_pc;
+  proc->pc = new_pc;
 }
 
 static inline void set_pc(struct SLSH4_Processor *proc, uint32_t new_pc) {

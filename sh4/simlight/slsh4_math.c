@@ -42,8 +42,9 @@ uint32_t Write_Word(uint32_t n, uint32_t n2) {
   return n;
 }
 
-uint32_t Delay_Slot(uint32_t n) {
-  return n;
+void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr) {
+  proc->delayed = true;
+  proc->slot_pc = addr;
 }
 
 uint32_t succ(uint32_t n) {
