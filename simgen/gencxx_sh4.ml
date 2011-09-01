@@ -335,6 +335,7 @@ and inst_aux p k b = function
     (* CompCert does not handle an affectation containing such a value, we rewrite to an semantically equivalent one. For an example, see "SMMUL". *)
     inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Assign (Var "value", e1), Some (Assign (Var "value", e2))))
   | Assign (dst, src) -> affect p k b dst src
+  | Proc ("Delay_Slot" as f, es) -> bprintf b "%s(proc, %s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
   | Proc (f, es) -> bprintf b "%s(%s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
