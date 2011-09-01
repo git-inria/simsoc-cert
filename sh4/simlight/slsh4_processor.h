@@ -8,21 +8,29 @@
 
 #include "common.h"
 #include "sh4_mmu.h"
+#include "slsh4_status_register.h"
 
 BEGIN_SIMSOC_NAMESPACE
 
 struct SLSH4_Processor {
   struct SLSH4_MMU *mmu_ptr;
 
-  uint32_t *pc; /* = &user_regs[15] */
+  uint32_t *pc;
 
   /* true if last instruction modified the pc; must be cleared after each step */
   bool jump;
 
-  // registers
-    // Sixteen 32-bit general registers (and eight 32-bit shadow registers)
-    // Seven 32-bit control registers
-    // Four 32-bit system registers
+  uint32_t R[24]; // R0_BANK0-R7_BANK0, R0_BANK1-R7_BANK1, R8-R15
+  struct SLSH4_StatusRegister SR;
+  struct SLSH4_StatusRegister SSR;
+  uint32_t SPC;
+  uint32_t GBR;
+  uint32_t VBR;
+  uint32_t SGR;
+  uint32_t DBR;
+  uint32_t MACH;
+  uint32_t MACL;
+  uint32_t PR;
 
   // MMU 
 } SLSH4_Processor;
@@ -60,6 +68,9 @@ static inline void set_reg(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_
 
 static inline void set_reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
   assert(reg_id!=15);
+
+  /* TBD */
+
   set_reg_m(proc,reg_id,/*proc->cpsr.mode,*/data);
 }
 
