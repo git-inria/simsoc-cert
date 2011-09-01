@@ -25,7 +25,7 @@ OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h sh4_mmu.h \
 	\
 	slsh4_math.h \
-	slsh4_processor.h \
+	slsh4_processor.h slsh4_status_register.h \
 	slsh4_iss_c_prelude.h slsh4_iss_h_prelude.h \
 	slsh4_iss.h 
 

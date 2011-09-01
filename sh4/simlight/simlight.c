@@ -37,16 +37,21 @@ void simulate(struct SLSH4_Processor *proc, struct ElfFile *elf) {
   uint16_t bincode;
   const uint32_t entry = ef_get_initial_pc(elf);
 
-  INFO(printf("entry point: %x\n", entry));
-//  set_pc(proc,entry);
+  INFO(printf("entry point: 0x%x\n", entry));
+  set_pc(proc,entry);
   proc->jump = false;
 
+  sl_debug = true;
+  
   do {
     DEBUG(puts("---------------------"));
-//    bincode = read_half(proc->mmu_ptr,address_of_current_instruction(proc));
+    bincode = read_half(proc->mmu_ptr,address_of_current_instruction(proc));
+    printf("decode %x -> ", bincode);
     bool found = decode_and_exec(proc,bincode);
+/*
     if (!found)
       TODO("Unpredictable or undefined instruction");
+*/
     if (proc->jump)
       proc->jump = false;
     else
@@ -123,8 +128,6 @@ int main(int argc, const char *argv[]) {
     ef_load_sections(&elf);
     sl_debug = tmp;}
   /* main task */
-
-  printf("sl_exec\n");
 
   if (sl_exec)
     simulate(&proc,&elf);

@@ -45,16 +45,16 @@ static inline uint32_t *addr_of_reg(struct SLSH4_Processor *proc, uint8_t reg_id
   return addr_of_reg_m(proc,reg_id);
 }
 
-static inline uint32_t reg_m(struct SLSH4_Processor *proc, uint8_t reg_id/*, SLSH4_Mode m*/) {
-  return *addr_of_reg_m(proc,reg_id/*,m*/);
+static inline uint32_t reg_m(struct SLSH4_Processor *proc, uint8_t reg_id) {
+  return *addr_of_reg_m(proc,reg_id);
 }
 
-static inline void set_reg_m(struct SLSH4_Processor *proc, uint8_t reg_id/*, SLSH4_Mode m*/, uint32_t data) {
-  *addr_of_reg_m(proc,reg_id/*,m*/) = data;
+static inline void set_reg_m(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
+  *addr_of_reg_m(proc,reg_id) = data;
 }
 
 static inline uint32_t reg(struct SLSH4_Processor *proc, uint8_t reg_id) {
-  return reg_m(proc,reg_id/*,proc->cpsr.mode*/);
+  return reg_m(proc,reg_id);
 }
 
 static inline uint32_t reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id) {
@@ -62,26 +62,30 @@ static inline uint32_t reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id) {
 }
 
 static inline void set_reg(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
-  assert(reg_id!=15);
-  set_reg_m(proc,reg_id,/*proc->cpsr.mode,*/data);
+  set_reg_m(proc,reg_id, data);
 }
 
 static inline void set_reg_bank(struct SLSH4_Processor *proc, uint8_t reg_id, uint32_t data) {
-  assert(reg_id!=15);
-
   /* TBD */
 
-  set_reg_m(proc,reg_id,/*proc->cpsr.mode,*/data);
+  set_reg_m(proc,reg_id, data);
 }
 
 static inline uint32_t inst_size(struct SLSH4_Processor *proc) {
-  return /*proc->cpsr.T_flag ? 2 : */4; // FIXME
+  return 2;
 }
 
 static inline void set_pc_raw(struct SLSH4_Processor *proc, uint32_t new_pc) {
-  /* never set thumb/arm32 mode */
   assert(!(new_pc&(inst_size(proc)-1)) && "pc misaligned");
-  proc->jump = true; *proc->pc = new_pc + 2*inst_size(proc);
+  proc->jump = true; *proc->pc = new_pc + 2 * inst_size(proc);
+}
+
+static inline void set_pc(struct SLSH4_Processor *proc, uint32_t new_pc) {
+  set_pc_raw(proc, new_pc & ~1);
+}
+
+static inline uint32_t address_of_current_instruction(struct SLSH4_Processor *proc) {
+  return (*proc->pc - 2 * inst_size(proc));
 }
 
 END_SIMSOC_NAMESPACE
