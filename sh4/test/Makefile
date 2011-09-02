@@ -1,7 +1,8 @@
 # SimSoC-Cert, a toolkit for generating certified processor simulators
 # See the COPYRIGHTS and LICENSE files.
 
-C_FILES := sorting
+C_FILES := sum_recursive sum_direct endian multiply simsoc_new1 \
+	test_mem sorting
 
 SH_FILES := $(C_FILES)
 
