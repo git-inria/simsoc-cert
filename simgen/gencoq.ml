@@ -420,7 +420,7 @@ and exp' loc nm sz b = function
   | Reg (Var s, None) -> 
       if List.mem s input_registers then
         bprintf b "reg_content s0 %s" s
-      else if l_match [Str.regexp "R._BANK", s] then
+      else if Str.l_match [Str.regexp "R._BANK", s] then
         bprintf b "reg_content_bank st %c" s.[1]
       else
         bprintf b "reg_content st %s" s
@@ -622,7 +622,7 @@ and affect' b v loc nm = function
   | e -> bprintf b "%a %a" (set' loc nm) e (pexp loc nm) v
 
 and set' loc nm b = function
-  | Reg (Var s, None) when l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank %c" s.[1]
+  | Reg (Var s, None) when Str.l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank %c" s.[1]
   | Reg (e, None) -> bprintf b "set_reg %a" 
       (regnum_exp loc nm) e
   | Reg (e, Some m) -> bprintf b "set_reg_mode %a %a" mode m (regnum_exp loc nm) e

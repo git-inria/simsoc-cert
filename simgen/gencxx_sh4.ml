@@ -277,7 +277,7 @@ let rec exp p b = function
           bprintf b "%s(old_R%s)" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
         else
           bprintf b "old_R%s" s
-      else if l_match [Str.regexp "R._BANK", s] then
+      else if Str.l_match [Str.regexp "R._BANK", s] then
         (if is_int64 () then
             bprintf b "%s(reg_bank(proc,%c))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64")
          else
@@ -335,8 +335,11 @@ and inst_aux p k b = function
     (* CompCert does not handle an affectation containing such a value, we rewrite to an semantically equivalent one. For an example, see "SMMUL". *)
     inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Assign (Var "value", e1), Some (Assign (Var "value", e2))))
   | Assign (dst, src) -> affect p k b dst src
-  | Proc ("Delay_Slot" as f, es) -> bprintf b "%s(proc, %s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
-  | Proc (f, es) -> bprintf b "%s(%s%a)" f (implicit_arg f) (list_sep ", " (exp p)) es
+  | Proc (f, es) -> 
+    bprintf b "%s(%s%s%a)" f (match Str.str_match "\\(.+\\)_\\(.+\\)" f [ 1 ; 2 ] with
+      | Some [ s1 ; s2 ] when List.mem s1 [ "Delay" ; "Write" ; "Read" ] && List.mem s2 [ "Slot" ; "Byte" ; "Word" ; "Long" ] -> 
+        "proc, "
+      | _ -> "") (implicit_arg f) (list_sep ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
       bprintf b "%s(proc,%a)" (func f) (list_sep "," (exp p)) (e::es)
@@ -392,7 +395,7 @@ and affect p k b dst src =
     | Reg (Var "d", _) -> bprintf b
         "set_reg_or_pc(proc,d,%a)" (exp p) src
     | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
-    | Reg (Var s, None) when l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank(proc,%c,%a)" s.[1] (exp p) src
+    | Reg (Var s, None) when Str.l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank(proc,%c,%a)" s.[1] (exp p) src
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
         bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
