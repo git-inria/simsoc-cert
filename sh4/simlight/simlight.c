@@ -22,7 +22,7 @@ void test_decode(struct SLSH4_Processor *proc, struct ElfFile *elf) {
     sl_debug = false;
     const uint16_t bincode = read_half(proc->mmu_ptr,a);
     sl_debug = true;
-    printf("decode %x -> ", bincode);
+    printf("%x: decode %x -> ", a, bincode);
     bool found = decode_and_exec(proc,bincode);
     if (!found)
       puts("undefined or unpredictable");
