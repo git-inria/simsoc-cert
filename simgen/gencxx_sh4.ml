@@ -224,6 +224,12 @@ let is_int64, bprintf64 =
       f2 b;
     end
 
+let add_proc_param f = 
+  match Str.str_match "\\(.+\\)_\\(.+\\)" f [ 1 ; 2 ] with
+    | Some [ s1 ; s2 ] when List.mem s1 [ "Delay" ; "Write" ; "Read" ] && List.mem s2 [ "Slot" ; "Byte" ; "Word" ; "Long" ] -> 
+      "proc, "
+    | _ -> ""
+
 let rec exp p b = function
   | Bin s -> string b (hex_of_bin s)
   | Hex s | Num s -> if is_int64 () then begin bprintf b "%s(" (if p.xid.[0] = 'S' then "to_i64" else "to_u64"); string b s; bprintf b ")" end else string b s
@@ -255,6 +261,7 @@ let rec exp p b = function
   | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
       bprintf b "to_int32(%s)" v
   | Fun (f, es) -> 
+    let implicit_arg f = add_proc_param f ^ implicit_arg f in
     if is_int64 () then
       bprintf b "%s(%s(%s%a))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64")
         (func f) (implicit_arg f) (list_sep ", " (fun b s -> if s = Var "shift_imm" then exp p b s else begin bprintf b "I64_to_int32(" ; exp p b s ; bprintf b ")" end)) es
@@ -335,11 +342,7 @@ and inst_aux p k b = function
     (* CompCert does not handle an affectation containing such a value, we rewrite to an semantically equivalent one. For an example, see "SMMUL". *)
     inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Assign (Var "value", e1), Some (Assign (Var "value", e2))))
   | Assign (dst, src) -> affect p k b dst src
-  | Proc (f, es) -> 
-    bprintf b "%s(%s%s%a)" f (match Str.str_match "\\(.+\\)_\\(.+\\)" f [ 1 ; 2 ] with
-      | Some [ s1 ; s2 ] when List.mem s1 [ "Delay" ; "Write" ; "Read" ] && List.mem s2 [ "Slot" ; "Byte" ; "Word" ; "Long" ] -> 
-        "proc, "
-      | _ -> "") (implicit_arg f) (list_sep ", " (exp p)) es
+  | Proc (f, es) -> bprintf b "%s(%s%s%a)" f (add_proc_param f) (implicit_arg f) (list_sep ", " (exp p)) es
   | Assert e -> bprintf b "assert(%a)" (exp p) e
   | Coproc (e, f, es) ->
       bprintf b "%s(proc,%a)" (func f) (list_sep "," (exp p)) (e::es)
