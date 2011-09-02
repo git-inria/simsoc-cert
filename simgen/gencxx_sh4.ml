@@ -278,6 +278,7 @@ let rec exp p b = function
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
   | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
   | SPSR (Some m) -> bprintf b "StatusRegister_to_uint32(spsr_m(proc,%s))" (mode m)
+  | Reg (Var ("SPC" | "GBR" | "VBR" | "SGR" | "DBR" | "MACH" | "MACL" | "PR" as s), None) -> bprintf b "proc->%s" s
   | Reg (Var s, None) ->
       if List.mem s input_registers then 
         if is_int64 () then
@@ -397,8 +398,9 @@ and affect p k b dst src =
   else match dst with
     | Reg (Var "d", _) -> bprintf b
         "set_reg_or_pc(proc,d,%a)" (exp p) src
-    | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
     | Reg (Var s, None) when Str.l_match [Str.regexp "R._BANK", s] -> bprintf b "set_reg_bank(proc,%c,%a)" s.[1] (exp p) src
+    | Reg (Var ("SPC" | "GBR" | "VBR" | "SGR" | "DBR" | "MACH" | "MACL" | "PR" as s), None) -> bprintf b "proc->%s = %a" s (exp p) src
+    | Reg (Num "15", None) -> bprintf b "set_pc_raw(proc,%a)" (exp p) src
     | Reg (e, None) -> bprintf b "set_reg(proc,%a,%a)" (exp p) e (exp p) src
     | Reg (e, Some m) ->
         bprintf b "set_reg_m(proc,%a,%s,%a)" (exp p) e (mode m) (exp p) src
