@@ -20,27 +20,27 @@ void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src) {
 }
 
 uint8_t Read_Byte(struct SLSH4_Processor *proc, uint32_t Addr) {
-  return read_byte(proc->mmu, Addr);
+  return read_byte(proc->mmu_ptr, Addr);
 }
 
 uint16_t Read_Word(struct SLSH4_Processor *proc, uint32_t Addr) {
-  return read_half(proc->mmu, Addr);
+  return read_half(proc->mmu_ptr, Addr);
 }
 
 uint32_t Read_Long(struct SLSH4_Processor *proc, uint32_t Addr) {
-  return read_word(proc->mmu, Addr);
+  return read_word(proc->mmu_ptr, Addr);
 }
 
 uint8_t Write_Byte(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data) {
-  write_byte(proc->mmu, Addr, (uint8_t)Data);
+  write_byte(proc->mmu_ptr, Addr, (uint8_t)Data);
 }
 
 uint16_t Write_Word(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data) {
-  write_half(proc->mmu, Addr, (uint16_t)Data);
+  write_half(proc->mmu_ptr, Addr, (uint16_t)Data);
 }
 
 uint32_t Write_Long(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data) {
-  write_word(proc->mmu, Addr, (uint32_t)Data);
+  write_word(proc->mmu_ptr, Addr, (uint32_t)Data);
 }
 
 void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr) {
