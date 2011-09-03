@@ -12,21 +12,7 @@
 BEGIN_SIMSOC_NAMESPACE
 
 /* constants */
-static const uint8_t DBR = 0;
-static const uint8_t EXPEVT = 1;
-static const uint8_t FPSCR_MASK = 2;
-static const uint8_t FPSCR = 3;
-static const uint8_t FPUL = 4;
-static const uint8_t GBR = 5;
-static const uint8_t H_00000100 = 6;
-static const uint8_t MACH = 7;
-static const uint8_t MACL = 8;
-static const uint8_t PR = 9;
-static const uint8_t SGR = 18;
-static const uint8_t SPC = 19;
-static const uint8_t SR = 20;
-static const uint8_t SSR = 21;
-static const uint8_t TRA = 22;
-static const uint8_t VBR = 23;
+static const uint32_t FPSCR_MASK = 0x003FFFFF;
+static const uint32_t H_00000100 = 256;
 
 static int32_t to_signed(uint32_t x) {return x;}

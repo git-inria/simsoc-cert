@@ -31,6 +31,11 @@ struct SLSH4_Processor {
   uint32_t MACL;
   uint32_t PR;
 
+  uint32_t EXPEVT;
+  uint32_t FPSCR;
+  uint32_t FPUL;
+  uint32_t TRA;
+
   // MMU 
 } SLSH4_Processor;
 
@@ -39,6 +44,14 @@ extern void init_processor(struct SLSH4_Processor* , struct SLSH4_MMU*);
 extern void destruct_processor(struct SLSH4_Processor*);
 
 extern uint32_t *addr_of_reg_m(struct SLSH4_Processor*, uint8_t reg_id);
+
+extern uint32_t reg_sr(struct SLSH4_Processor *proc);
+
+extern void set_reg_sr(struct SLSH4_Processor *proc, uint32_t data);
+
+extern uint32_t reg_ssr(struct SLSH4_Processor *proc);
+
+extern void set_reg_ssr(struct SLSH4_Processor *proc, uint32_t data);
 
 static inline uint32_t *addr_of_reg(struct SLSH4_Processor *proc, uint8_t reg_id) {
   return addr_of_reg_m(proc,reg_id);
