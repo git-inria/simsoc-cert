@@ -14,10 +14,10 @@ default: $(SH_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
 # generation of elf files
 
 %_a.elf: %.c common.h
-	sh-elf-gcc $< -g -nostdlib -lc -lnosys -o $@
+	sh-elf-gcc -ml $< -g -nostdlib -lc -lnosys -o $@
 
 %_t.elf: %.c common.h
-	sh-elf-gcc -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
+	sh-elf-gcc -ml -mthumb $< -g -nostdlib -lc -lnosys -lgcc -o $@
 
 clean::
 	rm -f $(SH_FILES:%=%_a.elf) $(THUMB_FILES:%=%_t.elf)
