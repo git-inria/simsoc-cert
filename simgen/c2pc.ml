@@ -182,9 +182,9 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
     | C.CONSTANT (C.CONST_FLOAT "0.0") -> E.Float_zero
 
     | C.CAST ((C.SpecType C.Tunsigned :: _, C.JUSTBASE), C.SINGLE_INIT e) -> e_of_expression e
-    | C.CAST (([C.SpecType (C.Tlong (*| C.Tint | C.Tshort*))], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("/*long*/to_signed", [e_of_expression e])
-    | C.CAST (([C.SpecType ((*C.Tlong | *)C.Tint(* | C.Tshort*))], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("/*int*/to_signed", [e_of_expression e])
-    | C.CAST (([C.SpecType ((*C.Tlong | C.Tint | *)C.Tshort)], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("/*short*/to_signed", [e_of_expression e])
+    | C.CAST (([C.SpecType (C.Tlong (*| C.Tint | C.Tshort*))], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("(long)", [e_of_expression e])
+    | C.CAST (([C.SpecType ((*C.Tlong | *)C.Tint(* | C.Tshort*))], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("(int)", [e_of_expression e])
+    | C.CAST (([C.SpecType ((*C.Tlong | C.Tint | *)C.Tshort)], C.JUSTBASE), C.SINGLE_INIT e) -> E.Fun ("(short)", [e_of_expression e])
 
     | C.CALL (C.VARIABLE s, l) -> E.Fun (s, List.map e_of_expression l)
 
