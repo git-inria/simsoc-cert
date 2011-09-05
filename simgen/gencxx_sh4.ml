@@ -149,7 +149,7 @@ let binop = function
   | "Rotate_Right" -> "rotate_right"
   | "Arithmetic_Shift_Right" -> "asr"
 
-  | "zgt" -> "<"
+  | "zgt" -> ">"
   | s -> sprintf "TODO_binop /* %s */" s;;
 
 let binop_64 = function
