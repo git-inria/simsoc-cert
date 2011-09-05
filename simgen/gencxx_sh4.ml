@@ -240,7 +240,7 @@ let rec exp p b = function
       bprintf b "I64_lsl(%a, 32)" (exp p) e
   | BinOp (BinOp (Var "operand1", "*", Var "operand2"), "<", Num "0") -> 
     bprintf b "I64_compare(I64_mul(to_i64(operand1), to_i64(operand2)), to_i64(0)) < 0"
-  | BinOp (e, ("<"|">=" as op), Num "0") -> bprintf b "(%a %s 0)" (exp p) (to_signed e) op
+  (*| BinOp (e, ("<"|">=" as op), Num "0") -> bprintf b "(%a %s 0)" (exp p) (to_signed e) op*)
   | BinOp (Num n, "*", e) | BinOp (e, "*", Num n)->
       bprintf b "(%a * %s)" (exp p) e n
   | BinOp (e1, "*", e2) -> 
