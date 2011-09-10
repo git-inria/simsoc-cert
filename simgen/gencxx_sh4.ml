@@ -232,11 +232,12 @@ let add_proc_param f =
 
 let rec exp p b = 
   let to_iu64 = 
-    let to_iu = if p.xid.[0] = 'S' then "to_i64" else "to_u64" in
+    let to_iu = if match p.xid with "SMLALD" | "SMLSLD" | "SMMUL" -> false | _ -> p.xid.[0] = 'S' then "to_i64" else "to_u64" in
     fun b -> bprintf b "%s(%a)" to_iu in
   let iu64 = if is_int64 () then to_iu64 else fun b -> bprintf b "%a" in
   function
   | Bin s -> string b (hex_of_bin s)
+  (*| Hex ("0x80000000" as s) -> bprintf b "to_u64(%a)" string s*)
   | Hex s | Num s -> iu64 b string s
   | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" (exp p) e1 (exp p) e2 (exp p) e3
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
