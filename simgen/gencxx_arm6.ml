@@ -213,9 +213,14 @@ let is_int64, bprintf64 =
       f2 b;
     end
 
-let rec exp p b = function
+let rec exp p b = 
+  let to_iu64 = 
+    let to_iu = if p.xid.[0] = 'S' then "to_i64" else "to_u64" in
+    fun b -> bprintf b "%s(%a)" to_iu in
+  let iu64 = if is_int64 () then to_iu64 else fun b -> bprintf b "%a" in
+  function
   | Bin s -> string b (hex_of_bin s)
-  | Hex s | Num s -> if is_int64 () then begin bprintf b "%s(" (if p.xid.[0] = 'S' then "to_i64" else "to_u64"); string b s; bprintf b ")" end else string b s
+  | Hex s | Num s -> iu64 b string s
   | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" (exp p) e1 (exp p) e2 (exp p) e3
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
       (exp p) b (Fun (binop op, [e1; e2]))
@@ -245,8 +250,8 @@ let rec exp p b = function
       bprintf b "to_int32(%s)" v
   | Fun (f, es) -> 
     if is_int64 () then
-      bprintf b "%s(%s(%s%a))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64")
-        (func f) (implicit_arg f) (list_sep ", " (fun b s -> if s = Var "shift_imm" then exp p b s else begin bprintf b "I64_to_int32(" ; exp p b s ; bprintf b ")" end)) es
+      to_iu64 b (fun b () -> bprintf b "%s(%s%a)"
+        (func f) (implicit_arg f) (list_sep ", " (fun b s -> if s = Var "shift_imm" then exp p b s else begin bprintf b "I64_to_int32(" ; exp p b s ; bprintf b ")" end)) es) ()
     else if f = "SignedSat" || f = "SignedDoesSat" then
       (* extra coercion to the 1st parameter *)
       let e, es = match es with [] -> assert false | e :: es -> e, es in
@@ -261,21 +266,16 @@ let rec exp p b = function
   | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
   | SPSR (Some m) -> bprintf b "StatusRegister_to_uint32(spsr_m(proc,%s))" (mode m)
   | Reg (Var s, None) ->
-      if List.mem s input_registers then 
-        if is_int64 () then
-          bprintf b "%s(old_R%s)" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
-        else
-          bprintf b "old_R%s" s
-      else 
-        if is_int64 () then
-          bprintf b "%s(reg(proc,%s))" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s
-        else
-          bprintf b "reg(proc,%s)" s
+    iu64 b 
+      (if List.mem s input_registers then 
+         fun b -> bprintf b "old_R%s" 
+       else 
+         fun b -> bprintf b "reg(proc,%s)") s
   | Reg (e, None) -> bprintf b "reg(proc,%a)" (exp p) e
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (mode m)
   | Var s -> if is_pointer p s then bprintf b "*%s" s else 
       if is_int64 () && type_of_var s <> "uint64" && s <> "shift_imm" then 
-        begin bprintf b "%s(%s)" (if p.xid.[0] = 'S' then "to_i64" else "to_u64") s end
+        to_iu64 b string s
       else string b s 
   | Memory (e, n) -> bprintf b "read_%s(proc->mmu_ptr,%a)" (access_type n) (exp p) e
   | Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
