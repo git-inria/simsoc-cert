@@ -15,7 +15,8 @@ SOURCES := slv6_iss.c common.c slv6_condition.c slv6_math.c \
         arm_system_coproc.c elf_loader.c arm_not_implemented.c \
 	slv6_iss_printers.c
 
-HEADERS := $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
+HEADERS := int64_init.h int64_config.h int64_native.h int64_emul.h \
+        $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
         arm_not_implemented.h slv6_iss_expanded.h slv6_iss_grouped.h
 
 EXTRA_SOURCES := slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \

@@ -61,42 +61,87 @@ let extended s p = is_arm p || (
 let pc_possible s (p: fprog) =
   not (List.mem (Validity.NotPC s) p.fvcs) && extended s p;;
 
-let rec exp (p: xprog) b = function
+let not_cast_to_int64 p = 
+  List.mem p.xprog.fid [ "SMLAxy" ; "SMLAD" ; "SMLALxy" ; "SMLALD" ; "SMLSD" ; "SMLSLD" ; "SMUAD" ; "SMULxy" ; "SMUSD" ]
+
+let is_int64, bprintf64 = 
+  let r = ref false in
+  (fun () -> !r), 
+  fun b f1 f_rec f2 -> 
+    begin
+      f1 b;
+      r := true;
+      f_rec b;
+      r := false;
+      f2 b;
+    end
+
+let rec exp (p: xprog) b = 
+  let to_iu64 = 
+    let to_iu = if match p.xprog.fid with "SMLALD" | "SMLSLD" | "SMMUL" -> false | _ -> p.xprog.fid.[0] = 'S' then "to_i64" else "to_u64" in
+    fun b -> bprintf b "%s(%a)" to_iu in
+  let iu64 = if is_int64 () then to_iu64 else fun b -> bprintf b "%a" in
+  function
   | Bin s -> string b (Gencxx.hex_of_bin s)
-  | Hex s | Num s -> string b s
+  | Hex ("0x80000000" as s) -> bprintf b "to_u64(%a)" string s
+  | Hex s | Num s -> iu64 b string s
   | If_exp (e1, e2, e3) -> bprintf b "(%a? %a: %a)" (exp p) e1 (exp p) e2 (exp p) e3
   | BinOp (e1, ("Rotate_Right"|"Arithmetic_Shift_Right" as op), e2) ->
       (exp p) b (Fun (Gencxx.binop op, [e1; e2]))
   | BinOp (e, "<<", Num "32") ->
-      bprintf b "(to_u64(%a) << 32)" (exp p) e
-  | BinOp (e, ("<"|">=" as op), Num "0") ->
-      bprintf b "(%a %s 0)" (exp p) (Gencxx.to_signed e) op
+      bprintf b "I64_lsl(%a, 32)" (exp p) e
+  | BinOp (BinOp (Var "operand1", "*", Var "operand2"), "<", Num "0") -> 
+    bprintf b "I64_compare(I64_mul(to_i64(operand1), to_i64(operand2)), to_i64(0)) < 0"
+  | BinOp (e, ("<"|">=" as op), Num "0") -> bprintf b "(%a %s 0)" (exp p) (Gencxx.to_signed e) op
   | BinOp (Num n, "*", e) | BinOp (e, "*", Num n)->
       bprintf b "(%a * %s)" (exp p) e n
-  | BinOp (e1, "*", e2) -> if p.xprog.fid.[0] = 'S'
-    then bprintf b "(to_i64(%a) * to_i64(%a))" (exp p) e1 (exp p) e2
-    else bprintf b "(to_u64(%a) * to_u64(%a))" (exp p) e1 (exp p) e2
-  | BinOp (e1, op, e2) ->
+  | BinOp (e1, "*", e2) -> 
+    if not_cast_to_int64 p then
+      bprintf b "%a * %a" (exp p) e1 (exp p) e2
+    else
+      bprintf b "I64_mul(%a, %a)" (exp p) e1 (exp p) e2
+  | BinOp (e1, op, e2) -> 
+    if is_int64 () then
+      if op = "==" then
+        bprintf b "I64_ucompare(%a, %a) == 0" (exp p) e1 (exp p) e2
+      else
+        bprintf b "%s(%a, %a)" (Gencxx.binop_64 op) (exp p) e1 (exp p) e2
+    else
       bprintf b "(%a %s %a)" (exp p) e1 (Gencxx.binop op) (exp p) e2
 
   (* try to find the right conversion operator *)
   | Fun ("to_signed", [Var v]) when typeof p v = "uint32_t" ->
       bprintf b "to_int32(%s)" v
-  | Fun ("to_signed", [e]) -> bprintf b "to_int64(%a)" (exp p) e
-
-  | Fun (f, es) -> bprintf b "%s(%s%a)"
-      (Gencxx.func f) (implicit_arg f) (list_sep ", " (exp p)) es
+  | Fun (f, es) -> 
+    if is_int64 () then
+      to_iu64 b (fun b () -> bprintf b "%s(%s%a)"
+        (Gencxx.func f) (implicit_arg f) (list_sep ", " (fun b s -> if s = Var "shift_imm" then exp p b s else begin bprintf b "I64_to_int32(" ; exp p b s ; bprintf b ")" end)) es) ()
+    else if f = "SignedSat" || f = "SignedDoesSat" then
+      (* extra coercion to the 1st parameter *)
+      let e, es = match es with [] -> assert false | e :: es -> e, es in
+      bprintf b "%s(%s%a,%a)"
+        (Gencxx.func f) (implicit_arg f) 
+        (fun b s -> begin bprintf b "I64_of_int32(" ; exp p b s ; bprintf b ")" end) 
+        e (list_sep ", " (exp p)) es
+    else
+      bprintf b "%s(%s%a)"
+        (Gencxx.func f) (implicit_arg f) (list_sep ", " (exp p)) es
   | CPSR -> string b "StatusRegister_to_uint32(&proc->cpsr)"
   | SPSR None -> string b "StatusRegister_to_uint32(spsr(proc))"
   | SPSR (Some m) ->
       bprintf b "StatusRegister_to_uint32(spsr_m(proc,%s))" (Gencxx.mode m)
   | Reg (Var s, None) ->
-      if List.mem s Gencxx.input_registers
-      then bprintf b "old_R%s" s
-      else bprintf b "reg(proc,%s)" s
+    iu64 b 
+      (if List.mem s Gencxx.input_registers then 
+         fun b -> bprintf b "old_R%s" 
+       else 
+         fun b -> bprintf b "reg(proc,%s)") s
   | Reg (e, None) -> bprintf b "reg(proc,%a)" (exp p) e
   | Reg (e, Some m) -> bprintf b "reg_m(proc,%a,%s)" (exp p) e (Gencxx.mode m)
-  | Var s -> string b s
+  | Var s -> (*if is_pointer p s then bprintf b "*%s" s else *)
+      if is_int64 () && Gencxx.type_of_var s <> "uint64" && s <> "shift_imm" then 
+        to_iu64 b string s
+      else string b s 
   | Memory (e, n) ->
       bprintf b "slv6_read_%s%s(proc->mmu_ptr,%a)" (Gencxx.access_type n) (lst p) (exp p) e
   | Ast.Range (CPSR, Flag (s,_)) -> bprintf b "proc->cpsr.%s_flag" s
@@ -114,6 +159,13 @@ let rec exp (p: xprog) b = function
             | "15", "8" -> bprintf b "get%s_byte_1(%a)" signed (exp p) e
             | "23", "16" -> bprintf b "get%s_byte_2(%a)" signed (exp p) e
             | "31", "24" -> bprintf b "get%s_byte_3(%a)" signed (exp p) e
+            | "31", "0" 
+            | "63", "32"
+            | "47", "16" -> 
+              bprintf64 b 
+                (fun b -> bprintf b "get_bits64(") 
+                (fun b -> exp p b e)
+                (fun b -> bprintf b ",%s,%s)" n1 n2)
             | _ -> bprintf b "get_bits(%a,%s,%s)" (exp p) e n1 n2
       end
   | _ -> string b "TODO(\"exp\")";;
@@ -130,6 +182,9 @@ and inst_aux p k b = function
   | Coproc (e, s, es) ->
       bprintf b "if (!slv6_%s_%s(proc,%a)) return"
         p.xprog.finstr s (list_sep "," (exp p)) (e::es)
+  | Assign (Var "value", If_exp (BinOp (Var "R", "==", Num "1"), e1, e2)) -> 
+    (* CompCert does not handle an affectation containing such a value, we rewrite to an semantically equivalent one. For an example, see "SMMUL". *)
+    inst_aux p k b (If (BinOp (Var "R", "==", Num "1"), Assign (Var "value", e1), Some (Assign (Var "value", e2))))
   | Assign (Var d, Coproc_exp (e, s, es)) ->
       bprintf b "if (!slv6_%s_%s(proc,&%s,%a)) return"
         p.xprog.finstr s d (list_sep "," (exp p)) (e::es)
@@ -223,6 +278,9 @@ and affect (p: xprog) k b dst src =
           | _ ->
               bprintf b "set_StatusRegister(spsr_m(proc,%s),%a)"
                 (Gencxx.mode m) (exp p) src)
+    | Var (("accvalue" | "result") as v)
+    | Var ("value" as v) when p.xprog.fid.[0] = 'S' || p.xprog.fid = "UMAAL" -> 
+      bprintf64 b (fun b -> bprintf b "%a = " (exp p) (Var v)) (fun b -> exp p b src) (fun _ -> ())
     | Var v -> bprintf b "%a = %a" (exp p) (Var v) (exp p) src
     | Ast.Range (CPSR, Flag (s,_)) ->
         bprintf b "proc->cpsr.%s_flag = %a" s (exp p) src

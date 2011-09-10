@@ -31,8 +31,10 @@ sig
       (Util.StrMap.key * G.typ) list * (Util.StrMap.key * G.typ) list
   end
 
+  val type_of_var : string -> string
   val hex_of_bin : string -> string
   val binop : string -> string
+  val binop_64 : string -> string
   val to_signed : Ast.exp -> Ast.exp
   val func : string -> string
   val mode : Ast.mode -> string
