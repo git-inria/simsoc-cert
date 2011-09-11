@@ -7,6 +7,7 @@ include $(DIR)/Makefile.common
 
 CPPFLAGS := -I$(DIR)/tools/bin2elf
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
+#CC := ccomp -fstruct-assign -fno-longlong
 LDFLAGS :=
 LIBRARIES := #-lgcov
 
