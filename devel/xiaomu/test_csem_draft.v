@@ -911,16 +911,20 @@ Ltac and_eq_subst ae :=
          (let feq := fresh "eq" in destruct ae as [feq ae];
           rew_clean feq).
 
-Ltac inv_ecall_begin ev mm mm' :=
+Ltac inv_end ev mm mm' :=
+   unfold ev, mm, mm' in *; clear ev mm mm'; 
+   let ae := fresh "ae" in (intro ae; and_eq_subst ae).
+
+Ltac inv_ecall_begin arg_m ev mm mm' :=
   let e := fresh "expr" in
   let em := fresh "expr_match" in
-  match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?c] =>
+  match goal with [h : eval_expr _ ?env arg_m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?c] =>
     pose (e := Ecall a1 a2 a3); 
-    pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    pose (ev:=env); pose (mm:=arg_m); pose (mm':=m');
     assert 
       (em : match e with 
                       |Ecall a b c =>
-                        (a=a1)/\(b=a2)/\(c=a3)/\(env=ev)/\(m=mm)/\(m'=mm')
+                        (a=a1)/\(b=a2)/\(c=a3)/\(env=ev)/\(arg_m=mm)/\(m'=mm')
                       |_=> False
                     end)
       by repeat (split || reflexivity);
@@ -930,30 +934,26 @@ Ltac inv_ecall_begin ev mm mm' :=
   clear e
   end.
 
-Ltac inv_ecall_end ev mm mm' :=
-   unfold ev, mm, mm' in *; clear ev mm mm'; 
-   let ae := fresh "ae" in (intro ae; and_eq_subst ae).
-
-Ltac inv_ecall t1 m2 rf' t2 m3 rargs' 
+Ltac inv_ecall arg_m t1 m2 rf' t2 m3 rargs' 
          vf vargs0 targs tres fd t3 vres H H0 H1 H2 H3 H4 H5 H6 :=
   let ev:=fresh "ev" in 
   let mm:=fresh "mm" in 
   let mm':=fresh "mm'" in
-  inv_ecall_begin ev mm mm'; 
+  inv_ecall_begin arg_m ev mm mm'; 
   intros e0 m1 rf rargs ty t1 m2 rf' t2 m3 rargs' 
          vf vargs0 targs tres fd t3 m4 vres H H0 H1 H2 H3 H4 H5 H6;
-  inv_ecall_end ev mm mm'.
+  inv_end ev mm mm'.
 
-Ltac inv_evalof_begin ev mm mm' :=
+Ltac inv_evalof_begin arg_m ev mm mm' :=
   let e := fresh "expr" in
   let em := fresh "expr_match" in
-  match goal with [h : eval_expr _ ?env ?m _ (Evalof ?a1 ?a2) _ ?m' _ |- ?c ] =>
+  match goal with [h : eval_expr _ ?env arg_m _ (Evalof ?a1 ?a2) _ ?m' _ |- ?c ] =>
     pose (e := Evalof a1 a2); 
-    pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    pose (ev:=env); pose (mm:=arg_m); pose (mm':=m');
     assert 
       (em : match e with 
                     |Evalof a b => 
-                      (a=a1)/\(b=a2)/\(env=ev)/\(m=mm)/\(m'=mm')
+                      (a=a1)/\(b=a2)/\(env=ev)/\(arg_m=mm)/\(m'=mm')
                     |_ => False
                   end)
       by repeat (split || reflexivity);
@@ -963,28 +963,24 @@ Ltac inv_evalof_begin ev mm mm' :=
   clear e
   end.
 
-Ltac inv_evalof_end ev mm mm' :=
-   unfold ev, mm, mm' in *; clear ev mm mm'; 
-   let ae := fresh "ae" in (intro ae; and_eq_subst ae).
-
-Ltac inv_evalof t0 m'0 a' H :=
+Ltac inv_evalof arg_m t0 m'0 a' H :=
   let ev:=fresh "ev" in 
   let mm:=fresh "mm" in 
   let mm':=fresh "mm'" in
-  inv_evalof_begin ev mm mm'; 
+  inv_evalof_begin arg_m ev mm mm'; 
   intros e0 m1 a t0 m'0 a' ty H;
-  inv_ecall_end ev mm mm'.
+  inv_end ev mm mm'.
 
-Ltac inv_evar_begin ev mm mm' :=
+Ltac inv_evar_begin arg_m ev mm mm' :=
   let e := fresh "expr" in
   let em := fresh "expr_match" in
-  match goal with [h: eval_expr _ ?env ?m _ (Evar ?a1 ?a2) _ ?m' _ |- ?c] =>
+  match goal with [h: eval_expr _ ?env arg_m _ (Evar ?a1 ?a2) _ ?m' _ |- ?c] =>
     pose (e := Evar a1 a2); 
-    pose (ev:=env); pose (mm:=m); pose (mm':=m');
+    pose (ev:=env); pose (mm:=arg_m); pose (mm':=m');
     assert
       (em: match e with
                    |Evar a b => 
-                     (a=a1)/\(b=a2)/\(env=ev)/\(m=mm)/\(m'=mm')
+                     (a=a1)/\(b=a2)/\(env=ev)/\(arg_m=mm)/\(m'=mm')
                    |_ => False
                  end)
       by repeat (split||reflexivity);
@@ -993,21 +989,17 @@ Ltac inv_evar_begin ev mm mm' :=
   case_h h;
   clear e
   end.
-
-Ltac inv_evar_end ev mm mm' :=
-   unfold ev, mm, mm' in *; clear ev mm mm'; 
-   let ae := fresh "ae" in (intro ae; and_eq_subst ae).
   
-Ltac inv_evar :=
+Ltac inv_evar arg_m :=
   let ev:=fresh "ev" in 
   let mm:=fresh "mm" in 
   let mm':=fresh "mm'" in
-  inv_evar_begin ev mm mm';
+  inv_evar_begin arg_m ev mm mm';
   intros e0 m1 x ty;
-  inv_evar_end ev mm mm'. 
+  inv_end ev mm mm'. 
 
-Ltac inv_evalof_simplrv_begin :=
-  match goal with [h: eval_simple_rvalue _ _ _ (Evalof ?a1 ?a2) _ |- ?c] =>
+Ltac inv_evalof_simplrv_begin v :=
+  match goal with [h: eval_simple_rvalue _ _ _ (Evalof ?a1 ?a2) v |- ?c] =>
     let e := fresh "expr" in
     pose (e := Evalof a1 a2);
     assert
@@ -1025,16 +1017,16 @@ Ltac inv_evalof_simplrv_begin :=
 Ltac inv_evalof_simplrv_end :=
    let ae := fresh "ae" in (intro ae; and_eq_subst ae).
 
-Ltac inv_evalof_simplrv b0 ofs v0 H H0 H1 :=
-  inv_evalof_simplrv_begin;
+Ltac inv_evalof_simplrv v b0 ofs v0 H H0 H1 :=
+  inv_evalof_simplrv_begin v;
   intros b0 ofs l0 ty v0 H H0 H1;
   inv_evalof_simplrv_end. 
 
-Ltac inv_av_cons_begin ev :=
+Ltac inv_av_cons_begin arg_m ev :=
   let lst := fresh "lst" in
-  match goal with [av: alloc_variables ?env ?a2 ((?id,?ty) ::?t) ?a3 ?a4 |- ?c] => 
+  match goal with [av: alloc_variables ?env arg_m ((?id,?ty) ::?t) ?a3 ?a4 |- ?c] => 
     pose (lst := ((id,ty)::t)); pose (ev:=env);
-    change (alloc_variables ev a2 lst a3 a4) in av;
+    change (alloc_variables ev arg_m lst a3 a4) in av;
     assert
       (lm: match lst with
                     |(a,b)::c=>(a=id)/\(b=ty)/\(c=t)/\(ev=env)
@@ -1050,18 +1042,18 @@ Ltac inv_av_cons_end ev :=
    unfold ev in *; clear ev; 
    let ae := fresh "ae" in (intro ae; and_eq_subst ae).  
 
-Ltac inv_av_cons m m1 b1 m4 e2 H H0:=
+Ltac inv_av_cons arg_m m m1 b1 m4 e2 H H0:=
   let ev:=fresh "ev" in 
-  inv_av_cons_begin ev;
+  inv_av_cons_begin arg_m ev;
   intros e0 m id0 ty vars m1 b1 m4 e2 H H0;
   inv_av_cons_end ev.
 
-Ltac inv_av_nil_begin lnil ev ev' :=  
-  match goal with [av: alloc_variables ?env ?a2 ?lst ?env' ?a4 |- ?c] =>
+Ltac inv_av_nil_begin arg_m lnil ev ev' :=  
+  match goal with [av: alloc_variables ?env arg_m ?lst ?env' ?a4 |- ?c] =>
     pose (lnil:=lst); pose (ev:=env); pose (ev':=env');
-    change (alloc_variables ev a2 lnil ev' a4) in av;
+    change (alloc_variables ev arg_m lnil ev' a4) in av;
     assert (lm:match lnil with 
-                        |nil =>(nil = lst)/\(env=ev)/\(env'=ev')
+                        |nil =>(nil = lst)/\(ev=env)/\(ev'=env')
                         |_ =>False end) 
       by repeat (split||reflexivity);
     revert lm;
@@ -1072,14 +1064,14 @@ Ltac inv_av_nil_end lnil ev ev' :=
    unfold lnil, ev, ev' in *; clear lnil ev ev'; 
    let ae := fresh "ae" in (intro ae; and_eq_subst ae).
 
-Ltac inv_av_nil e0 m :=
+Ltac inv_av_nil arg_m e0 m :=
   let lnil:=fresh "lnil" in 
   let ev:=fresh "ev" in 
   let ev':=fresh "ev'" in 
-  inv_av_nil_begin lnil ev ev';
+  inv_av_nil_begin arg_m lnil ev ev';
   intros e0 m;
   inv_av_nil_end lnil ev ev'.  
-  
+
 Lemma same_nflag_assgnt' :
   forall e m0 m0' vargs m l b s d t m' v,
     alloc_variables empty_env m0 
@@ -1098,6 +1090,7 @@ Proof.
   unfold get_bit_reg in gb_expr.
 
   revert ev_rv.
+
 
 (** new thought *)
 (*
@@ -1143,43 +1136,46 @@ Ltac inv_ecall_begin ev mm mm' :=
 *)
 
 
-  info inv_ecall t1 m2 rf' t2 m3 rargs' vf vargs0 targs tres fd t3 vres
+  inv_ecall m t1 m2 rf' t2 m3 rargs' vf vargs0 targs tres fd t3 vres
             gb_expr explst ev_rv1 ev_simlst H_ Heqfindfd Heqt16 ev_funcall. clear H_.
   intro ev_rv.
-
-
 
 
   (*harmless inversion: no ordering changes, no new hyp*)
   inversion ev_rv; subst; clear ev_rv.
 
   revert ev_rv1.
-  inv_evalof t0 m'0 a' H.
+  inv_evalof m t0 m'0 a' H.
 (*intro ev_rv1.
 
   revert ev_rv1.*)
-  inv_evar.
+  inv_evar m.
   intro ev_rv1.
   clear t0 a'.
 
-  inv_evalof_simplrv b0 ofs v0 ev_simpl_lv Heqty Heqlvot.
+  inv_evalof_simplrv vf b0 ofs v0 ev_simpl_lv Heqty Heqlvot.
 
   assert (globenv: e!get_bit=None).
     simpl in av.
     
-    inv_av_cons ma_proc m_proc b_proc m_proc' e_proc Heqma_proc av.
-    inv_av_cons ma_s m_s b_s m_s' e_s Heqma_s av.
-    inv_av_cons ma_cond m_cond b_cond m_cond' e_cond Heqma_cond av.
-    inv_av_cons ma_d m_d b_d m_d' e_d Heqma_d av.
-    inv_av_cons ma_n m_n b_n m_n' e_n Heqma_n av.
-    inv_av_cons ma_so m_so b_so m_so' e_so Heqma_so av.
-    inv_av_cons ma_on m_on b_on m_on' e_on Heqma_on av.
+    inv_av_cons m0 ma_proc m_proc b_proc m_proc' e_proc Heqma_proc av.
+    inv_av_cons m_proc ma_s m_s b_s m_s' e_s Heqma_s av.
+    inv_av_cons m_s ma_cond m_cond b_cond m_cond' e_cond Heqma_cond av.
+    inv_av_cons m_cond ma_d m_d b_d m_d' e_d Heqma_d av.
+    inv_av_cons m_d ma_n m_n b_n m_n' e_n Heqma_n av.
+    inv_av_cons m_n ma_so m_so b_so m_so' e_so Heqma_so av.
+    inv_av_cons m_so ma_on m_on b_on m_on' e_on Heqma_on av.
 
-    (*inv_av_nil_begin lnil ev ev'.
-    intros e0 m_. clear m_..
+    inv_av_nil_begin m_on lnil ev ev'.
+    intros.
 
+    destruct lm as [feq ae]; clear feq.
+    destruct ae as [feq ae]; rewrite feq in *; clear feq.
+    rewrite <- ae in *; clear ae.
 
+    
 
+    (*
     simpl; reflexivity.
 
   match goal with [_: eval_simple_lvalue _ _ _ (Evar ?a1 ?a2) _ _ |- ?c] =>
