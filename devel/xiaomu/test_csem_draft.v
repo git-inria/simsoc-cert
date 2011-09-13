@@ -1093,6 +1093,38 @@ Proof.
 
 
 (** new thought *)
+ info 
+  match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?cl] =>
+    let ex := fresh "expr_call" in
+    pose (arg1 := a1);  
+    pose (arg2 := a2);  
+    pose (arg3 := a3);
+    pose (ex := Ecall arg1 arg2 arg3);
+    change (match ex with 
+                      |Ecall a b c => cl
+                      |_=> True
+                    end);
+    assert (ee : ex = Ecall arg1 arg2 arg3) by reflexivity; 
+    revert ee;
+    revert av bp psrel dfrel;
+  
+    change (Ecall a1 a2 a3) with ex in gb_expr;
+    case gb_expr; try (intros; exact I); clear gb_expr e m t m' gb';
+    intros e m rf rargs ty t1 m1 rf' t2 m2 rargs' vf vargs0 targs tres fd
+      t3 m3 vres;
+    intros gb_expr ev_exlst ev_simprv1 ev_simplst Heqtyrf Heqff Heqtyfd ev_funcall;
+    intros av bp pstrl dfrel Heqexpr ev_simprv;
+    injection Heqexpr; intros Heqty Heqrargs Heqrf;
+    unfold arg1, arg2, arg3 in Heqty, Heqrargs, Heqrf; 
+    clear arg1 arg2 arg3 Heqexpr expr_call;
+    rewrite Heqty in ev_simprv;
+    rewrite Heqrargs in ev_exlst;
+    rewrite Heqrf in gb_expr, Heqtyrf;
+    clear Heqty Heqrargs Heqrf
+  end.
+  
+
+  
 (*
   match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?cl] =>
     let e := fresh "expr" in
