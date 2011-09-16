@@ -1072,6 +1072,42 @@ Ltac inv_av_nil arg_m e0 m :=
   intros e0 m;
   inv_av_nil_end lnil ev ev'.  
 
+
+Definition inv_expr_ecall e m ex m' (ex':expr):=
+  match ex with
+    |Ecall a b c => 
+      forall (X:Prop), 
+      (forall g t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres,
+      eval_expr g e m RV a t1 m1 rf' -> 
+      eval_exprlist g e m1 b t2 m2 rargs' ->
+      eval_simple_rvalue g e m2 rf' vf ->
+      eval_simple_list g e m2 rargs' targs vargs ->
+      typeof a = Tfunction targs tres ->
+      Genv.find_funct g vf = Some fd ->
+      type_of_fundef fd = Tfunction targs tres ->
+      eval_funcall g m2 fd vargs t3 m' vres -> X) -> X
+    |_=> True
+  end.
+
+Definition inv_expr_ecall' g e m ex m' ex':=
+  match ex with
+    |Ecall a b c =>
+      forall (X:expr -> Prop),
+      (forall t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres ty,
+      eval_expr g e m RV a t1 m1 rf' -> 
+      eval_exprlist g e m1 b t2 m2 rargs' ->
+      eval_simple_rvalue g e m2 rf' vf ->
+      eval_simple_list g e m2 rargs' targs vargs ->
+      typeof a = Tfunction targs tres ->
+      Genv.find_funct g vf = Some fd ->
+      type_of_fundef fd = Tfunction targs tres ->
+      eval_funcall g m2 fd vargs t3 m' vres -> 
+      (*eval_expr g e m RV (Ecall a b c) (Events.Eapp t1 (Events.Eapp t2 t3)) m' 
+      (Eval vres c) *)
+      X (Eval vres ty)) -> X ex'
+    |_=> True
+  end.
+
 Lemma same_nflag_assgnt' :
   forall e m0 m0' vargs m l b s d t m' v,
     alloc_variables empty_env m0 
@@ -1089,11 +1125,43 @@ Proof.
 
   unfold get_bit_reg in gb_expr.
 
-  revert ev_rv.
-
+(*  revert ev_rv.
+*)
 
 (** new thought *)
- info 
+(** Using impredicative encoding in inversion tactic *)
+generalize 
+  (match gb_expr in (eval_expr _ e m _ ex _ m' ex')
+  return inv_expr_ecall' (Genv.globalenv prog_adc) e m ex m' ex' with
+     |eval_call _ _ rf rargs ty t1 m1 rf' t2 m2 rargs' vf vargs
+                      targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
+       (fun X k => k t1 m1 rf' t2 m2 rargs' vf vargs 
+      targs tres fd t3 vres ty H1 H2 H3 H4 H5 H6 H7 H8 )
+     |_=> I
+   end). clear gb_expr.
+intro k. red in k. revert ev_rv. apply k. clear k. 
+intros until ty. 
+intros gb_expr ev_explst ev_rv1 ev_simlst Heqty_gb Heqff Heqtyfd ev_funcall.
+intro ev_rv.
+
+
+(** Using impredicative encoding, 
+   but without considering the output of expression evaluation *)
+(*
+generalize 
+  (match gb_expr in (eval_expr _ e m _ ex _ m' ex')
+  return inv_expr_ecall e m ex m' ex' with
+     |eval_call e m rf rargs ty t1 m1 rf' t2 m2 rargs' vf vargs
+                      targs tres fd t3 m3 vres H1 H2 H3 H4 H5 H6 H7 H8 =>
+       (fun X k => k (Genv.globalenv prog_adc) t1 m1 rf' t2 m2 rargs' vf vargs 
+                     targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8)
+     |_=> I
+   end). clear gb_expr.
+intro k. apply k. clear k.
+*)
+
+(** Without impredicative encoding *)
+(* info 
   match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?cl] =>
     let ex := fresh "expr_call" in
     pose (arg1 := a1);  
@@ -1122,30 +1190,11 @@ Proof.
     rewrite Heqrf in gb_expr, Heqtyrf;
     clear Heqty Heqrargs Heqrf
   end.
-  
+*)  
 
-  
-(*
-  match goal with [h : eval_expr _ ?env ?m _ (Ecall ?a1 ?a2 ?a3) _ ?m' _|- ?cl] =>
-    let e := fresh "expr" in
-    pose (arg1 := a1);  
-    pose (arg2 := a2);  
-    pose (arg3 := a3);
-    change a1 with arg1 in h;  
-    change a2 with arg2 in h;  
-    change a3 with arg3 in h;  
-    pose (e := Ecall arg1 arg2 arg3);
-    change (match expr with 
-                      |Ecall a b c => cl
-                      |_=> True
-                    end)
-  end.
-revert expr.
-revert av bp psrel dfrel.
-case gb_expr; try (intros; exact I). clear gb_expr e m t m' gb'.
-*)
 (* *********************************************************************)
 (** old one *)
+(** With extra equalities introduced in inversion tactic *)
 (* 
 Ltac inv_ecall_begin ev mm mm' :=
   let e := fresh "expr" in
@@ -1167,11 +1216,11 @@ Ltac inv_ecall_begin ev mm mm' :=
   end.
 *)
 
-
+(*
   inv_ecall m t1 m2 rf' t2 m3 rargs' vf vargs0 targs tres fd t3 vres
             gb_expr explst ev_rv1 ev_simlst H_ Heqfindfd Heqt16 ev_funcall. clear H_.
   intro ev_rv.
-
+*)
 
   (*harmless inversion: no ordering changes, no new hyp*)
   inversion ev_rv; subst; clear ev_rv.
