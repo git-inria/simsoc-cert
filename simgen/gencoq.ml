@@ -276,7 +276,9 @@ let use_loc loc =
 
 (* add parentheses around complex expressions *)
 let rec pexp' par (loc: (string*string*int) list) nm sz b = function
-  | Var s as e -> 
+  | Fun (("(long)"(*|"(int)"|"(short)"*)), [Fun (((*"(long)"|"(int)"|*)"(short)"), [Var s as e])])
+  | Fun (("(long)"(*|"(int)"|"(short)"*)), [Var s as e])
+  | (Var s as e) -> 
     (if List.exists (fun (s',_,_) -> s'=s) loc then par (loc_exp loc nm "") 
      else exp' loc nm sz) b e
   | Fun (f, []) as e when depend_on_config f -> exp' loc nm sz b e 
@@ -352,6 +354,8 @@ and exp' loc nm sz b = function
   | Fun ("SignedSat"|"SignedDoesSat"|"UnsignedSat"|"UnsignedDoesSat" as f,
          [e1; e2]) when is_not_num e2 -> (* add a cast *)
       bprintf b "%a %a %a" fun_name f (pexp loc nm) e1 (nat_exp loc nm) e2
+
+  | Fun (("(long)" | "(int)" | "(short)"), [e]) -> exp' loc nm sz b e
 
   (* default printing of function calls *)
   | Fun (f, es) -> bprintf b "%a %a" fun_name f (list_sep " " (num_exp loc nm)) es
@@ -567,6 +571,7 @@ and inst_aux loc nm k b = function
           match v with
             | Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) -> Some (s, v, fun x -> x)
             | BinOp (Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) as e_fun, op, e) -> Some (s, e_fun, fun x -> BinOp (x, op, e))
+            | Fun (("(long)" | "(int)" | "(short)"), [Fun ("Read_Byte" | "Read_Long" | "Read_Word" as s, _) as e_fun]) -> Some (s, e_fun, fun x -> x)
             | _ -> None
         with
           | Some (s, e_fun, f) ->

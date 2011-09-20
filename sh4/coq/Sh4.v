@@ -81,6 +81,15 @@ Inductive instruction_set : Type := SH4 | Fixme_singleton1 (* COQFIX 8.3pl1 : If
 
 Definition inst_set (w : word) : option instruction_set := Some SH4.
 
+(* 2.2.4 page 35 *)
+Definition Tbit := 0%nat.
+Definition Sbit := 1%nat.
+Definition Qbit := 8%nat.
+Definition Mbit := 9%nat.
+Definition BLbit := 28%nat.
+Definition RBbit := 29%nat.
+Definition MDbit := 30%nat.
+
 (****************************************************************************)
 (** Exceptions *)
 (****************************************************************************)
