@@ -123,4 +123,9 @@ void set_reg_ssr(struct SLSH4_Processor *proc, uint32_t data) {
   set_bit_adr_1(&(proc->SSR.T), 0, data);
 }
 
+void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr) {
+  proc->delayed = true;
+  proc->slot_pc = addr;
+}
+
 END_SIMSOC_NAMESPACE

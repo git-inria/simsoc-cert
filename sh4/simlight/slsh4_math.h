@@ -20,7 +20,6 @@ static inline uint32_t get_bits(uint32_t x, size_t a, size_t b) {
 extern void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src);
 /* dst[a:b] = src, with a>b */
 
-extern void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr);
 extern uint32_t succ(uint32_t a);
 extern uint32_t pred(uint32_t a);
 extern uint32_t bool_of_word(uint32_t a);

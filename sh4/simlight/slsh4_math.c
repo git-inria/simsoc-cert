@@ -19,11 +19,6 @@ void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src) {
   *dst |= (src<<b)&mask;
 }
 
-void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr) {
-  proc->delayed = true;
-  proc->slot_pc = addr;
-}
-
 uint32_t succ(uint32_t n) {
   return n + 1;
 }

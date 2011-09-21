@@ -53,6 +53,8 @@ extern uint32_t reg_ssr(struct SLSH4_Processor *proc);
 
 extern void set_reg_ssr(struct SLSH4_Processor *proc, uint32_t data);
 
+extern void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr);
+
 static inline uint32_t *addr_of_reg(struct SLSH4_Processor *proc, uint8_t reg_id) {
   return addr_of_reg_m(proc,reg_id);
 }
