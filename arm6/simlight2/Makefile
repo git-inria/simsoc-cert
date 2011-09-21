@@ -3,7 +3,14 @@
 
 DIR := ../..
 
+
+
 include $(DIR)/Makefile.common
+
+default: simlight
+
+######################################################################
+# compilation of simlight
 
 CPPFLAGS := -I$(DIR)/tools/bin2elf
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
@@ -38,8 +45,6 @@ GENFILES_MO := slv6_iss_expanded.hot.c  slv6_iss_grouped.hot.c \
             slv6_iss_printers.hpp
 
 GENFILES := $(GENFILES_MO) slv6_iss.c
-
-default: simlight
 
 simlight: $(OBJECTS)
 	$(CC) $(LDFLAGS) $^ -o simlight $(LIBRARIES)
