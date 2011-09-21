@@ -224,11 +224,14 @@ let is_int64, bprintf64 =
       f2 b;
     end
 
-let add_proc_param f = 
-  match Str.str_match "\\(.+\\)_\\(.+\\)" f [ 1 ; 2 ] with
-    | Some [ s1 ; s2 ] when List.mem s1 [ "Delay" ; "Write" ; "Read" ] && List.mem s2 [ "Slot" ; "Byte" ; "Word" ; "Long" ] -> 
-      "proc, "
-    | _ -> ""
+let add_proc_param = 
+  function 
+    | "Delay_Slot" -> "proc, "
+    | f -> 
+      match Str.str_match "\\(.+\\)_\\(.+\\)" f [ 1 ; 2 ] with
+        | Some [ s1 ; s2 ] when List.mem s1 [ "Write" ; "Read" ] && List.mem s2 [ "Byte" ; "Word" ; "Long" ] -> 
+          "proc->mmu_ptr, "
+        | _ -> ""
 
 let rec exp p b = 
   let to_iu64 = 

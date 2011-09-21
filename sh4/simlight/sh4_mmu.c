@@ -79,3 +79,27 @@ void write_word(struct SLSH4_MMU *mmu, uint32_t addr, uint32_t data) {
   memcpy(mmu->mem+(addr-mmu->begin),tmp.bytes,4);
   DEBUG(printf("write %x to %x\n",tmp.word,addr));
 }
+
+uint8_t Read_Byte(struct SLSH4_MMU *mmu, uint32_t Addr) {
+  return read_byte(mmu, Addr);
+}
+
+uint16_t Read_Word(struct SLSH4_MMU *mmu, uint32_t Addr) {
+  return read_half(mmu, Addr);
+}
+
+uint32_t Read_Long(struct SLSH4_MMU *mmu, uint32_t Addr) {
+  return read_word(mmu, Addr);
+}
+
+uint8_t Write_Byte(struct SLSH4_MMU *mmu, uint32_t Addr, uint32_t Data) {
+  write_byte(mmu, Addr, (uint8_t)Data);
+}
+
+uint16_t Write_Word(struct SLSH4_MMU *mmu, uint32_t Addr, uint32_t Data) {
+  write_half(mmu, Addr, (uint16_t)Data);
+}
+
+uint32_t Write_Long(struct SLSH4_MMU *mmu, uint32_t Addr, uint32_t Data) {
+  write_word(mmu, Addr, (uint32_t)Data);
+}

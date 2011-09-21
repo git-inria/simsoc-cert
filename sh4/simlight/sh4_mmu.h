@@ -25,4 +25,12 @@ extern void write_byte(struct SLSH4_MMU*, uint32_t addr, uint8_t data);
 extern void write_half(struct SLSH4_MMU*, uint32_t addr, uint16_t data);
 extern void write_word(struct SLSH4_MMU*, uint32_t addr, uint32_t data);
 
+/* the following come from the SH manual */
+extern uint8_t Read_Byte(struct SLSH4_MMU*, uint32_t Addr);
+extern uint16_t Read_Word(struct SLSH4_MMU*, uint32_t Addr);
+extern uint32_t Read_Long(struct SLSH4_MMU*, uint32_t Addr);
+extern uint8_t Write_Byte(struct SLSH4_MMU*, uint32_t Addr, uint32_t Data);
+extern uint16_t Write_Word(struct SLSH4_MMU*, uint32_t Addr, uint32_t Data);
+extern uint32_t Write_Long(struct SLSH4_MMU*, uint32_t Addr, uint32_t Data);
+
 #endif /* SH4_MMU_H */

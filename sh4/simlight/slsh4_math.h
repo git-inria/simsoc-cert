@@ -20,12 +20,6 @@ static inline uint32_t get_bits(uint32_t x, size_t a, size_t b) {
 extern void set_field(uint32_t *dst, uint32_t a, uint32_t b, uint32_t src);
 /* dst[a:b] = src, with a>b */
 
-extern uint8_t Read_Byte(struct SLSH4_Processor *proc, uint32_t Addr);
-extern uint16_t Read_Word(struct SLSH4_Processor *proc, uint32_t Addr);
-extern uint32_t Read_Long(struct SLSH4_Processor *proc, uint32_t Addr);
-extern uint8_t Write_Byte(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data);
-extern uint16_t Write_Word(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data);
-extern uint32_t Write_Long(struct SLSH4_Processor *proc, uint32_t Addr, uint32_t Data);
 extern void Delay_Slot(struct SLSH4_Processor *proc, uint32_t addr);
 extern uint32_t succ(uint32_t a);
 extern uint32_t pred(uint32_t a);
