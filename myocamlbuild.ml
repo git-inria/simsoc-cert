@@ -154,6 +154,7 @@ let _ = dispatch & function
 
         ; "sh4/parsing", [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ]
         ; "sh4/coq/extraction", [ "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ] 
+        ; "sh4/simlight/extraction", l_compcert @ [ "coq/extraction" ]
         ; "sh4/test", l_compcert @ [ "sh4/coq" ; "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ; "sh4/coq/extraction" ; "sh4/test/extraction" ]
         ; "sh4/test/extraction", l_compcert @ [ "coq/extraction" ; "sh4/coq/extraction" ] ];
 

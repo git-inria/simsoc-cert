@@ -78,11 +78,11 @@ uint32_t reg_sr(struct SLSH4_Processor *proc) {
 }
 
 void set_bit_adr_1(bool * n, uint32_t nb, uint32_t data) {
-  *n = (data >> nb) & 0b1;
+  *n = (data >> nb) & 1; // syntax unsupported by CompCert : 0b1;
 }
 
 void set_bit_adr_4(char * n, uint32_t nb, uint32_t data) {
-  *n = (data >> nb) & 0b1111;
+  *n = (data >> nb) & 0xF; // syntax unsupported by CompCert : 0b1111;
 }
 
 void set_reg_sr(struct SLSH4_Processor *proc, uint32_t data) {

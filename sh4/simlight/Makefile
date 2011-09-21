@@ -68,8 +68,8 @@ clean::
 # extraction
 
 ocaml: extraction-libcoq extraction
-	$(SHOW) ocamlbuild arm6/simlight/extraction/all.cmo
-	$(HIDE) $(OCAMLBUILD) arm6/simlight/extraction/all.cmo
+	$(SHOW) ocamlbuild sh4/simlight/extraction/all.cmo
+	$(HIDE) $(OCAMLBUILD) sh4/simlight/extraction/all.cmo
 
 extraction.v: all.vo
 

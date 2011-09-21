@@ -128,7 +128,7 @@ Notation "`do a 'while' b" := (Sdowhile b a) (at level 19).
 Notation "'label' l `: s" := (Slabel l s) (at level 5).
 Notation "'for' ( s1 , e , s2 ) { s3 }" := (Sfor s1 e s2 s3) (at level 19).
 
-Notation "'return'" := (Sreturn).
+Notation "'return'" := (Sreturn) (at level 10).
 Notation "'goto'" := (Sgoto).
 Notation "'continue'" := (Scontinue).
 Notation "'break'" := (Sbreak).
