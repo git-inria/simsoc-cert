@@ -142,14 +142,16 @@ let _ = dispatch & function
       
       (**   - the SimSoC-Cert project : *)
       List.iter (fun (n, l) -> define_context n l)
-        [ "arm6/parsing", [ "simgen" ]
+        [ "coq/extraction", l_compcert
+        ; "simgen", l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]
+        ; "simgen/extraction", [ "compcert/extraction" ; "coq/extraction" ]
+
+        ; "arm6/parsing", [ "simgen" ]
         ; "arm6/coq/extraction", [ "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ] 
         ; "arm6/simlight/extraction", l_compcert @ [ "coq/extraction" ]
         ; "arm6/test", l_compcert @ [ "arm6/coq" ; "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ; "arm6/coq/extraction" ; "arm6/test/extraction" ]
         ; "arm6/test/extraction", l_compcert @ [ "coq/extraction" ; "arm6/coq/extraction" ]
-        ; "coq/extraction", l_compcert
-        ; "simgen", l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]
-        ; "simgen/extraction", [ "compcert/extraction" ; "coq/extraction" ]
+
         ; "sh4/parsing", [ "compcert/cfrontend" (* we just use the library [Cparser] which is virtually inside [cfrontend] *) ]
         ; "sh4/coq/extraction", [ "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ] 
         ; "sh4/test", l_compcert @ [ "sh4/coq" ; "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ; "sh4/coq/extraction" ; "sh4/test/extraction" ]
