@@ -16,17 +16,18 @@ CPPFLAGS := #-I$(DIR)/tools/bin2elf
 #CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 #CC := ccomp -fstruct-assign -fno-longlong
 
-SOURCES := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
+SOURCES_MO := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
 	slv6_mode.c slv6_status_register.c slv6_processor.c slv6_condition.c \
-	arm_not_implemented.c slv6_iss.c
+	arm_not_implemented.c
+
+SOURCES := $(SOURCES_MO) slv6_iss.c
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
-HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h arm_mmu.h \
-	arm_system_coproc.h \
-	int64_init.h int64_config.h int64_native.h int64_emul.h slv6_math.h \
-	slv6_mode.h slv6_status_register.h slv6_processor.h slv6_condition.h \
-	arm_not_implemented.h slv6_iss_c_prelude.h slv6_iss_h_prelude.h \
+HEADERS := $(DIR)/tools/bin2elf/elf.h \
+	int64_init.h int64_config.h int64_native.h int64_emul.h \
+	$(SOURCES_MO:%.c=%.h) \
+	slv6_iss_c_prelude.h slv6_iss_h_prelude.h \
 	slv6_iss.h
 
 simlight: $(OBJECTS)
