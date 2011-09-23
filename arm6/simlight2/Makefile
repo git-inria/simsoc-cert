@@ -3,7 +3,7 @@
 
 DIR := ../..
 
-
+COQ_INCLUDES := -I $(DIR)/coq
 
 include $(DIR)/Makefile.common
 
@@ -72,3 +72,43 @@ simlight.opt: FORCE
 clean::
 	rm -f $(OBJECTS) $(GENFILES) simlight simlight.opt *.gcda *.gcno
 	rm -rf simlight.opt.dSYM
+
+######################################################################
+# representation of simlight in Coq
+
+.PHONY: proof
+
+proof: libcoq all.vo
+
+all.vo: $(DIR)/coq/Cnotations.vo
+
+.PRECIOUS: all.v
+
+all.c: $(HEADERS) $(SOURCES) $(EXTRA_SOURCES) simlight.c
+	cat $+ | sed -e 's|#include "\(.*\)|//#include "\1|' -e 's|#include <elf.h>|//#include <elf.h>|' > $@
+
+clean::
+	rm -f all.c all.v all.glob all.vo
+
+######################################################################
+# extraction
+
+ocaml: extraction-libcoq extraction
+	$(SHOW) ocamlbuild arm6/simlight2/extraction/all.cmo
+	$(HIDE) $(OCAMLBUILD) arm6/simlight2/extraction/all.cmo
+
+extraction.v: all.vo
+
+######################################################################
+# dependency graph
+
+simlight.dep: FORCE
+	grep '#include ' $(HEADERS) $(SOURCES) $(EXTRA_SOURCES) simlight.c | sed -e 's|#include||' -e 's|["<>]||g' -e 's|\([^/]*\)/||g' > $@
+
+clean::
+	rm -f simlight.dep
+
+.PHONY: depend
+
+depend: simlight.ps
+	gv $< &

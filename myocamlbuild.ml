@@ -149,6 +149,7 @@ let _ = dispatch & function
         ; "arm6/parsing", [ "simgen" ]
         ; "arm6/coq/extraction", [ "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ] 
         ; "arm6/simlight/extraction", l_compcert @ [ "coq/extraction" ]
+        ; "arm6/simlight2/extraction", l_compcert @ [ "coq/extraction" ]
         ; "arm6/test", l_compcert @ [ "arm6/coq" ; "compcert/extraction" ; "coq/extraction" ; "simgen/extraction" ; "arm6/coq/extraction" ; "arm6/test/extraction" ]
         ; "arm6/test/extraction", l_compcert @ [ "coq/extraction" ; "arm6/coq/extraction" ]
 
