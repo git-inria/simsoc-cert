@@ -12,20 +12,24 @@ default: simlight
 ######################################################################
 # compilation of simlight
 
-CPPFLAGS := -I$(DIR)/tools/bin2elf
+CPPFLAGS := #-I$(DIR)/tools/bin2elf
 CFLAGS := -Wall -Wextra -Wno-unused -Werror -g #-fprofile-arcs -ftest-coverage
 #CC := ccomp -fstruct-assign -fno-longlong
 LDFLAGS :=
 LIBRARIES := #-lgcov
 
-SOURCES := slv6_iss.c common.c slv6_condition.c slv6_math.c \
-        arm_mmu.c slv6_mode.c slv6_processor.c slv6_status_register.c \
-        arm_system_coproc.c elf_loader.c arm_not_implemented.c \
-	slv6_iss_printers.c
+SOURCES_MO := common.c elf_loader.c arm_mmu.c arm_system_coproc.c slv6_math.c \
+	slv6_mode.c slv6_status_register.c arm_not_implemented.c \
+	slv6_processor.c slv6_condition.c
 
-HEADERS := int64_init.h int64_config.h int64_native.h int64_emul.h \
-        $(SOURCES:%.c=%.h) slv6_iss_h_prelude.h slv6_iss_c_prelude.h \
-        arm_not_implemented.h slv6_iss_expanded.h slv6_iss_grouped.h
+SOURCES := $(SOURCES_MO) slv6_iss.c slv6_iss_printers.c
+
+HEADERS := $(DIR)/tools/bin2elf/elf.h \
+	int64_init.h int64_config.h int64_native.h int64_emul.h \
+	$(SOURCES_MO:%.c=%.h) \
+	slv6_iss_c_prelude.h slv6_iss_h_prelude.h  \
+	slv6_iss.h slv6_iss_printers.h \
+	slv6_iss_expanded.h slv6_iss_grouped.h
 
 EXTRA_SOURCES := slv6_iss_arm_decode_exec.c slv6_iss_arm_decode_store.c \
               slv6_iss_thumb_decode_exec.c slv6_iss_thumb_decode_store.c \
