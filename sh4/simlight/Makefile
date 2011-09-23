@@ -16,16 +16,15 @@ CPPFLAGS := #-I$(DIR)/tools/bin2elf
 #CFLAGS := -Wall -Wextra -Wno-unused -Werror -g
 #CC := ccomp -fstruct-assign -fno-longlong
 
-SOURCES := common.c elf_loader.c sh4_mmu.c slsh4_math.c \
-	slsh4_processor.c \
-	slsh4_iss.c
+SOURCES_MO := common.c elf_loader.c sh4_mmu.c slsh4_math.c \
+	slsh4_status_register.c slsh4_processor.c
+
+SOURCES := $(SOURCES_MO) slsh4_iss.c
 
 OBJECTS := $(SOURCES:%.c=%.o) simlight.o
 
-HEADERS := common.h $(DIR)/tools/bin2elf/elf.h elf_loader.h sh4_mmu.h \
-	\
-	slsh4_math.h \
-	slsh4_status_register.h slsh4_processor.h \
+HEADERS := $(DIR)/tools/bin2elf/elf.h \
+	$(SOURCES_MO:%.c=%.h) \
 	slsh4_iss_c_prelude.h slsh4_iss_h_prelude.h \
 	slsh4_iss.h 
 
