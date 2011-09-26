@@ -817,6 +817,61 @@ Lemma get_rg_ok :
 Admitted.
 
 Set Implicit Arguments.
+
+Lemma alloc_diff_block' :
+  forall m e e' m' x y b_x tx b_y ty vlst,
+    alloc_variables e m ((x,tx)::(y,ty)::vlst) e' m'->
+    list_norepet (x::y::var_names vlst) ->
+    e' ! x = Some (b_x, tx) ->
+    e' ! y = Some (b_y, ty) ->
+    b_x <> b_y.
+Proof.
+  intros until vlst. intros av norepet getx gety.
+  inv av. inv H7.
+  apply Mem.valid_new_block in H6.
+  unfold Mem.valid_block in H6.
+  apply Mem.alloc_result in H8.
+  rewrite <- H8 in H6; clear H8.
+  apply Zlt_not_eq in H6.
+  induction vlst.
+    inv H9. 
+    assert (findy: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! y =
+           Some (b0, ty)).
+    apply PTree.gss. rewrite findy in gety. inversion gety.
+    assert (findx: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! x =
+           (PTree.set x (b1, tx) e) ! x).
+    apply PTree.gso.
+    inv norepet. unfold In in H2. intro exy. apply H2. left. symmetry. 
+    exact exy.
+    rewrite findx in getx.
+    rewrite PTree.gss in getx. inversion getx.
+    rewrite <- H0. rewrite <- H1.
+    exact H6. 
+(*
+    inv H9. inv H7. admit.
+    assert (findy: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! y =
+           Some (b0, ty)).
+    apply PTree.gss. 
+    rewrite PTree.gso in gety;
+      [idtac | 
+        inv norepet; inv H2; unfold In in H4; intro eqyid0; apply H4; 
+    left; symmetry; exact eqyid0;
+    rewrite findy in gety; inversion gety].
+    rewrite findy in gety. inversion gety.
+
+    assert (findx: (PTree.set y (b0, ty) (PTree.set x (b1, tx) e)) ! x =
+           (PTree.set x (b1, tx) e) ! x).
+    apply PTree.gso.
+    inv norepet. unfold In in H2. intro exy. apply H2. 
+    left. symmetry. exact exy.
+*)    
+
+ 
+    
+
+
+Admitted.
+
 Lemma alloc_diff_block :
   forall m e e' m' x y b_x tx b_y ty,
     alloc_variables e m ((x,tx)::(y,ty)::nil) e' m'->
@@ -851,20 +906,32 @@ Proof.
 Qed.
 
 Set Printing Depth 30.
-
+(*
+Lemma and_zdiv_1:
+  forall (x:word) (n:Z),
+    0 < n < Z_of_nat wordsize ->
+    (repr n) = x -> and (repr n) x / n = 1.
+Proof.
+  intros. rewrite <- H0. SearchAbout and. rewrite and_idem.
+  SearchAbout Zdiv. 
+*)
 Lemma same_getbit :
   forall x n ,
+    0 < n < Z_of_nat wordsize ->
     zero_ext 8 (and (shru x (repr n)) (repr 1)) = x [nat_of_Z n].
 Proof.
   intros.
-  SearchAbout (zero_ext).
   assert (0 < 8 < Z_of_nat wordsize).
   simpl. omega.
-  SearchAbout (zero_ext).
-  apply zero_ext_and with (x := (and (shru x (repr n)) (repr 1))) in H.
-  rewrite H.
-  
+  apply zero_ext_and with (x := (and (shru x (repr n)) (repr 1))) in H0.
+  rewrite H0.  
   unfold bit. unfold bits. unfold bits_val.
+  unfold masks. SearchAbout minus. 
+  rewrite minus_diag. Print masks_aux.
+  simpl masks_aux. 
+  SearchAbout repr. rewrite shru_div_two_p.
+
+(*
   induction n. 
   simpl nat_of_Z. 
   unfold masks. simpl masks_aux.
@@ -887,7 +954,8 @@ Proof.
   assert (8 = Z_of_nat 8).
   simpl; reflexivity. rewrite H0.
   rewrite <- two_power_nat_two_p.
-  SearchAbout shru. SearchAbout Zneg.
+  SearchAbout Zneg.
+*)
 Admitted.
 
 (* expirement on how to avoid using inversion *)
@@ -1072,7 +1140,7 @@ Ltac inv_av_nil arg_m e0 m :=
   intros e0 m;
   inv_av_nil_end lnil ev ev'.  
 
-
+(*
 Definition inv_expr_ecall e m ex m' (ex':expr):=
   match ex with
     |Ecall a b c => 
@@ -1088,6 +1156,7 @@ Definition inv_expr_ecall e m ex m' (ex':expr):=
       eval_funcall g m2 fd vargs t3 m' vres -> X) -> X
     |_=> True
   end.
+*)
 
 Definition inv_expr_ecall' g e m ex m' ex':=
   match ex with
@@ -1102,11 +1171,12 @@ Definition inv_expr_ecall' g e m ex m' ex':=
       Genv.find_funct g vf = Some fd ->
       type_of_fundef fd = Tfunction targs tres ->
       eval_funcall g m2 fd vargs t3 m' vres -> 
-      (*eval_expr g e m RV (Ecall a b c) (Events.Eapp t1 (Events.Eapp t2 t3)) m' 
-      (Eval vres c) *)
       X (Eval vres ty)) -> X ex'
     |_=> True
   end.
+
+
+
 
 Lemma same_nflag_assgnt' :
   forall e m0 m0' vargs m l b s d t m' v,
@@ -1222,6 +1292,8 @@ Ltac inv_ecall_begin ev mm mm' :=
   intro ev_rv.
 *)
 
+
+(*
   (*harmless inversion: no ordering changes, no new hyp*)
   inversion ev_rv; subst; clear ev_rv.
 
@@ -1255,7 +1327,7 @@ Ltac inv_ecall_begin ev mm mm' :=
     rewrite <- ae in *; clear ae.
 
     
-
+*)
     (*
     simpl; reflexivity.
 
@@ -1364,6 +1436,11 @@ Proof.
   inv get_bit_reg_exp.*) 
   inv H.
   inv H4. inv H8. inv H9. inv H5.
+  
+  (** HERE expand function reg *)
+
+
+
   apply get_rg_ok with e m2 t1 m1 a1' l b s d in H4;
     [idtac| exact psrel |exact dfrel].
   rewrite H4 in *. 
@@ -1372,7 +1449,9 @@ Proof.
 
   assert (e!get_bit=None).
     inv av. inv H9. inv H13. inv H14. inv H15. inv H17. inv H18. inv H19.
-    simpl. reflexivity. 
+    simpl. reflexivity.   
+  assert (wdsz:0<31<Z_of_nat wordsize). unfold wordsize. unfold Wordsize_32.wordsize.
+  simpl Z_of_nat. omega.
   inv H1.
     (*get_bit is in local env*)
     rewrite H in H5. discriminate H5.
@@ -1409,7 +1488,7 @@ Proof.
       eapply Mem.load_store_same in H18;[idtac|simpl; auto].
       rewrite H10 in H18.
       inv H18; inv H20. inv H14.
-      rewrite (same_getbit (Arm6_State.reg_content s d) 31). reflexivity.
+      rewrite (same_getbit (Arm6_State.reg_content s d) wdsz). reflexivity.
       left. apply (alloc_diff_block H2); assumption.
 
       (*cast has no change*)
@@ -1438,7 +1517,7 @@ Proof.
       eapply Mem.load_store_same in H18;[idtac|simpl; auto].
       rewrite H10 in H18.
       inv H18; inv H20. inv H14.
-      rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+      rewrite (same_getbit (Arm6_State.reg_content s d) wdsz); reflexivity.
       left. apply (alloc_diff_block H2); assumption.
 
       clear H1; clear H2.
@@ -1472,7 +1551,7 @@ Proof.
         rewrite H19 in H21; inv H21.
         unfold sem_shr in H20. simpl in H20. inv H20.
         inv H14. simpl.
-        rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+        rewrite (same_getbit (Arm6_State.reg_content s d) wdsz); reflexivity.
         left. apply (alloc_diff_block H2); assumption.
 
         (*cast has no change*)
@@ -1488,12 +1567,13 @@ Proof.
         rewrite H19 in H21; inv H21.
         unfold sem_shr in H20. simpl in H20. inv H20.
         inv H14. simpl.
-        rewrite (same_getbit (Arm6_State.reg_content s d) 31); reflexivity.
+        rewrite (same_getbit (Arm6_State.reg_content s d) wdsz); reflexivity.
         left. apply (alloc_diff_block H2); assumption.
 Qed.
           
 
 
+Unset Implicit Arguments.
 (* Assume that every function that ADC calls, executes correctly
    and the C proc and ARM state related after these function execution *)
 Axiom functions_behavior_ok:
@@ -1608,6 +1688,7 @@ Axiom set_regpc_ok:
     (fun rn => (add (add (Arm6_State.reg_content s0 n) so)
       (Arm6_State.cpsr s) [Cbit])) e (of_mem proc m) = (of_mem proc m').*)
 
+
 Lemma same_setregpc :
   forall e m l b s0 s t m' v d n so ,
     proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
@@ -1719,8 +1800,8 @@ Proof.
 Qed.
 
 Lemma same_reg_val :
-forall i0,
-(eq i0 (repr 15) = Util.zeq (mk_regnum i0) 15).
+forall x y,
+(eq x (repr y) = Util.zeq (mk_regnum x) y).
 Proof.
 Admitted.
 
@@ -1953,7 +2034,7 @@ Proof.
 Qed.
 
 (* Lemma on proc_state_relates holds after NZCV flag setting*)
-Definition nflag_assgnt:=
+(*Definition nflag_assgnt:=
   Eassign
   (Efield
     (Efield
@@ -1982,7 +2063,7 @@ Proof.
   inv H8. inv H5. inv H3. inv H13. inv H4. 
   eapply get_reg_ok in H5. subst.
   inv H19. inv H4. 
-Admitted.
+Admitted.*)
 
 Definition zflag_assgnt :=
   Eassign
@@ -2003,6 +2084,7 @@ Definition zflag_assgnt :=
       (Eval (Vint (repr 0)) T7) T7)
     (Eval (Vint (repr 1)) T7)
     (Eval (Vint (repr 0)) T7) T7) T4.
+
 Lemma same_zflag_assgnt :
   forall e m l b s d t m' v,
     proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
@@ -2018,6 +2100,7 @@ Proof.
   inv zf. inv H. simpl in H15.
   inv H15.
 Admitted.
+
 Definition cflag_assgnt:=
   Eassign
   (Efield
@@ -2044,6 +2127,7 @@ Definition cflag_assgnt:=
                   (Tpointer T3)) cpsr T6)
               C_flag T4) T4) Enil))) T4)
   T4.
+
 Lemma same_cflag_assgnt:
   forall m e l b s0 s n so t m' v,
     proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
@@ -2059,6 +2143,7 @@ Proof.
   inv cf. inv H. simpl in H15.
   inv H15.
 Admitted.
+
 Definition vflag_assgnt:=
   Eassign
   (Efield
@@ -2118,12 +2203,242 @@ Proof.
   inv H5. inv H6. simpl in *.
 Admitted.
 
+Lemma reg_S_not_changed :
+  forall e m vargs t m' v,
+    eval_funcall (Genv.globalenv prog_adc) m (Internal fun_internal_reg) 
+    vargs t m' v ->
+    param_val S m e = param_val S m' e.
+Proof.
+  intros until v. intro evfun.
+  inv evfun.
+
+
+Admitted.
+
+
+Lemma diff_block :
+  forall m1 ofs1 b1 m2 ofs2 b2 m3,
+    Mem.alloc m1 0 ofs1 = (m2, b1) ->
+    Mem.alloc m2 0 ofs2 = (m3, b2) ->
+    b1 < b2.
+Proof.
+  intros until m3. intros alc1 alc2.
+  apply Mem.valid_new_block in alc1. unfold Mem.valid_block in alc1.
+  apply Mem.alloc_result in alc2. rewrite <- alc2 in alc1. exact alc1.
+Qed.
+
+
+Lemma rn_ass_S_not_changed:
+  forall m0 m0' vargs m e v m', 
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
+    list_norepet 
+    (var_names fun_internal_ADC.(fn_params) ++ var_names fun_internal_ADC.(fn_vars)) ->
+    eval_expression (Genv.globalenv prog_adc) e m oldrn_assgnt Events.E0 m' v ->
+    param_val S m e = param_val S m' e.
+Proof.
+  intros until m'. intros av bp ln evex.
+  unfold param_val.
+  inv bp. inv H8. rewrite H5.
+  inv H11. inv H13. inv H15. inv H17. inv H19.
+  unfold store_value_of_type in *. simpl in H7, H10, H12, H14, H16, H18.
+
+  inv av. 
+  inv H19. inv H21. inv H22. inv H23. inv H24. inv H25. inv H26.
+  simpl in H4, H5, H6, H8, H9, H11.
+  inv H4. inv H5. inv H6. inv H8. inv H9. inv H11. 
+
+  assert (lt01:b0 < b1).
+  apply (diff_block m7 (sizeof (Tint I8 Unsigned)) b0) in H19;
+    [exact H19| exact H20].
+
+  assert (lt12:b1 < b2).
+  apply (diff_block m8 (sizeof (Tint I32 Signed)) b1) in H21;
+    [exact H21| exact H19].
+
+  assert (lt23:b2 < b3).
+  apply (diff_block m9 (sizeof (Tint I8 Unsigned)) b2) in H22;
+    [exact H22| exact H21].
+
+  assert (lt34:b3 < b4).
+  apply (diff_block m10 (sizeof (Tint I8 Unsigned)) b3) in H23;
+    [exact H23| exact H22].
+
+  assert (lt411:b4 < b11).
+  apply (diff_block m11 (sizeof (Tint I32 Unsigned)) b4) in H24;
+    [exact H24| exact H23].
+
+  generalize lt34; intro.
+  apply (Zlt_trans b2) in lt0;
+    [apply (Zlt_trans b1) in lt0; 
+      [apply (Zlt_trans b0) in lt0;[idtac|exact lt01] |exact lt12]|exact lt23].
+  
+  assert (load_value_of_type (Tint I8 Unsigned) m4 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m3 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint32 m3 b1 (signed w0) v2);
+    [exact H12 | left; apply Zlt_not_eq in lt01; exact lt01].
+    
+  assert (load_value_of_type (Tint I8 Unsigned) m5 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m4 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint8unsigned m4 b2 (signed w0) v3);
+    [exact H14|left; apply (Zlt_trans b0) in lt12;
+                       [apply Zlt_not_eq in lt12;exact lt12|exact lt01]].
+
+  assert (load_value_of_type (Tint I8 Unsigned) m6 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m5 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint8unsigned m5 b3 (signed w0) v4);
+    [exact H16|left; apply (Zlt_trans b1) in lt23;
+                       [apply (Zlt_trans b0) in lt23;
+                         [apply Zlt_not_eq in lt23;
+                           exact lt23|exact lt01]|exact lt12]].
+
+  assert (load_value_of_type (Tint I8 Unsigned) m b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m6 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint32 m6 b4 (signed w0) v5);
+    [exact H18|left;apply (Zlt_trans b2) in lt34;
+                      [apply (Zlt_trans b1) in lt34;
+                         [apply (Zlt_trans b0) in lt34;
+                            [apply Zlt_not_eq in lt34;
+                              exact lt34|exact lt01]|exact lt12]|exact lt23]].
+
+  rewrite <- H2 in H1; clear H2.
+  rewrite <- H1 in H0; clear H1.
+  rewrite <- H0 in H; clear H0.
+  
+  rename H24 into alc12, H17 into alc0, H20 into alc7, H19 into alc8, H21 into alc9,
+    H22 into alc10, H23 into alc11.
+  rename H7 into st0, H10 into st2, H12 into st3, H14 into st4, H16 into st5,
+    H18 into st6.
+  rename H into Heqmm3.
+  pose (e:=(PTree.set old_Rn (b11, Tint I32 Unsigned)
+              (PTree.set shifter_operand (b4, Tint I32 Unsigned)
+                 (PTree.set n (b3, Tint I8 Unsigned)
+                    (PTree.set d (b2, Tint I8 Unsigned)
+                       (PTree.set cond (b1, Tint I32 Signed)
+                          (PTree.set S (b0, Tint I8 Unsigned)
+                             (PTree.set proc (b, Tpointer typ_SLv6_Processor)
+                                empty_env)))))))).
+  fold e in evex.
+  
+  (* begin with assgn expr *)
+  inv evex. inv H. inv H0.
+  inv H5. inv H6. inv H10. inv H2. inv H10.
+  inv H3. inv H6. inv H3. inv H18. inv H3. inv H6. inv H14.
+  clear H15 H9.
+
+  (* reg is in loc env *)
+  assert (reg_not_loc: e!reg = None).
+  unfold e. simpl. reflexivity.
+  inv H5. inv H1. rewrite reg_not_loc in H9. discriminate H9. clear H3.
+
+  (* ofs is w0 *)
+  inv H5. clear H2. inv H6. inv H16.
+  destruct eq_dec; [idtac|discriminate H0]. clear e0. inv H0.
+
+  (*
+  (* open internal function reg *)
+  inv H21. inv H1. inv H20. inv H21.
+
+  (* nextblock is not change from Mem.store on memory *)
+  generalize alc12; intro.
+  apply Mem.valid_new_block in alc1. unfold Mem.valid_block in alc1.
+  apply Mem.nextblock_store in st0.
+  apply Mem.nextblock_store in st2.
+  apply Mem.nextblock_store in st3.
+  apply Mem.nextblock_store in st4.
+  apply Mem.nextblock_store in st5.
+  apply Mem.nextblock_store in st6.
+  rewrite <- st6 in st5. rewrite <- st5 in st4. rewrite <- st4 in st3. 
+  rewrite <- st3 in st2. rewrite <- st2 in st0.
+  rewrite <- st0 in alc1.
+
+  (* b0 < b6 *)
+  generalize H19; intros.
+  apply Mem.alloc_result in H19. rewrite <- H19 in alc1.
+  apply (Zlt_trans b4) in alc1; [idtac|exact lt411]. 
+  apply (Zlt_trans b0) in alc1; [idtac|exact lt0].
+
+  (* expand bind_parameters *)
+  inv H2. inv H23. inv H24. simpl in H16, H15.
+  inversion H16. rewrite <- H2 in *. clear b8 H16 H2.
+  inversion H15. rewrite H2 in *. clear b7 H15 H2.
+
+  (* between m15 and m17 *)  
+  assert (load_value_of_type (Tint I8 Unsigned) m17 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m15 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_alloc_unchanged m15 0 
+    (sizeof (Tpointer typ_SLv6_Processor)) m17 (Mem.nextblock m15));
+  [exact H1|unfold Mem.valid_block; exact alc1].
+  
+  (* between m17 and m1 *)
+  generalize H18; intro.
+  apply Mem.valid_new_block in H1. unfold Mem.valid_block in H1.
+  apply Mem.alloc_result in H18.
+  apply (Zlt_trans b0) in H1; [idtac|exact alc1].
+  assert (load_value_of_type (Tint I8 Unsigned) m1 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m17 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_alloc_unchanged m17 0 
+    (sizeof (Tint I8 Unsigned)) m1 b6);
+  [exact H2|unfold Mem.valid_block; exact H1].
+  rewrite <- H6 in H. clear H6.
+
+  (* between m1 and m18 *)
+  unfold store_value_of_type in H22, H21; simpl in H22, H21.
+  assert (load_value_of_type (Tint I8 Unsigned) m18 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m1 b0 w0). 
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint32 m1 ((Mem.nextblock m15)) (signed w0) v7);
+    [exact H22|left;apply Zlt_not_eq in alc1; exact alc1].
+  rewrite <- H6 in H. clear H6.
+
+  (* betwwen m18 and m13 *)
+  assert (load_value_of_type (Tint I8 Unsigned) m13 b0 w0 =
+  load_value_of_type (Tint I8 Unsigned) m18 b0 w0). 
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint8unsigned m18 b6 (signed w0) v8);
+    [exact H21|left; apply Zlt_not_eq in H1; rewrite <- H18 in H1; exact H1].
+  rewrite <- H6 in H. clear H6.
+
+  (* between m13 and m16 *)
+  pose (e0 := (PTree.set adc_compcert_fixed.reg_id (b6, Tint I8 Unsigned)
+            (PTree.set proc (Mem.nextblock m15, Tpointer typ_SLv6_Processor)
+               empty_env))).
+  (*fold e0 in H3.
+  inv H3. inv H15.*)
+  inv H3. fold e0 in H15. inv H15.  inv H3. inv H16.
+*)
+
+  apply (reg_S_not_changed e m15 vargs t3 m14 v6) in H21.
+  unfold param_val in H21. unfold e in H21; simpl in H21.
+  unfold store_value_of_type in H12; simpl in H12.
+
+  assert (Heqm'm14: load_value_of_type (Tint I8 Unsigned) m' b0 w0=
+  load_value_of_type (Tint I8 Unsigned) m14 b0 w0).
+  unfold load_value_of_type; simpl.
+  apply (Mem.load_store_other AST.Mint32 m14 b5 (signed ofs) v). exact H12.
+  left.
+  inv H7; [idtac|inv H2]. 
+  unfold e in H3; simpl in H3. inversion H3. rewrite <- H0 in *.
+  clear b5 H0.
+  apply (diff_block m11 (sizeof (Tint I32 Unsigned)) b4) in alc12;
+    [apply (Zlt_trans b0) in alc12; 
+      [apply Zlt_not_eq in alc12; exact alc12|exact lt0] |exact alc11].
+  
+  rewrite H21. rewrite Heqm'm14. reflexivity.
+Qed.
+
 Lemma rn_ass_params_not_changed:
   forall m e v m' i, 
     eval_expression (Genv.globalenv prog_adc) e m oldrn_assgnt Events.E0 m' v ->
     param_val i m e = param_val i m' e.
 Proof.
-Admitted.
 
 Lemma set_reg_params_not_changed:
   forall m e v m' i, 
@@ -2217,15 +2532,15 @@ Proof.
     [idtac | exact rn_assgnt];
   fold (S_proj m3 e) in sfrel; fold (sbit_func_related m3 e sbit) in sfrel.
   unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert.cond) in cfrel;
+  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert_fixed.cond) in cfrel;
     [idtac | exact rn_assgnt];
   fold (cond_proj m3 e) in cfrel; fold (cond_func_related m3 e cond) in cfrel.
   unfold d_func_related in dfrel; unfold d_proj in dfrel;
-  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert.d) in dfrel;
+  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert_fixed.d) in dfrel;
     [idtac | exact rn_assgnt];
   fold (d_proj m3 e) in dfrel; fold (d_func_related m3 e d) in dfrel.
   unfold n_func_related in nfrel; unfold n_proj in nfrel;
-  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert.n) in nfrel;
+  rewrite (rn_ass_params_not_changed m2 e v m3 adc_compcert_fixed.n) in nfrel;
     [idtac | exact rn_assgnt]; 
   fold (n_proj m3 e) in nfrel; fold (n_func_related m3 e n) in nfrel.
   unfold so_func_related in sofrel; unfold so_proj in sofrel;
@@ -2257,15 +2572,15 @@ Proof.
       [idtac | exact setreg];
     fold (S_proj m5 e) in sfrel; fold (sbit_func_related m5 e sbit) in sfrel.
     unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert.cond) in cfrel;
+    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert_fixed.cond) in cfrel;
       [idtac | exact setreg];
     fold (cond_proj m5 e) in cfrel; fold (cond_func_related m5 e cond) in cfrel.
     unfold d_func_related in dfrel; unfold d_proj in dfrel;
-    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert.d) in dfrel;
+    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert_fixed.d) in dfrel;
       [idtac | exact setreg];
     fold (d_proj m5 e) in dfrel; fold (d_func_related m5 e d) in dfrel.
     unfold n_func_related in nfrel; unfold n_proj in nfrel;
-    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert.n) in nfrel;
+    rewrite (set_reg_params_not_changed m4 e v0 m5 adc_compcert_fixed.n) in nfrel;
       [idtac | exact setreg]; 
     fold (n_proj m5 e) in nfrel; fold (n_func_related m5 e n) in nfrel.
     unfold so_func_related in sofrel; unfold so_proj in sofrel;
@@ -2348,15 +2663,15 @@ Proof.
           [idtac | exact unp];
         fold (S_proj mfin e) in sfrel; fold (sbit_func_related mfin e sbit) in sfrel.
         unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert.cond) in cfrel;
+        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert_fixed.cond) in cfrel;
           [idtac | exact unp];
         fold (cond_proj mfin e) in cfrel; fold (cond_func_related mfin e cond) in cfrel.
         unfold d_func_related in dfrel; unfold d_proj in dfrel;
-        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert.d) in dfrel;
+        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert_fixed.d) in dfrel;
           [idtac | exact unp];
         fold (d_proj mfin e) in dfrel; fold (d_func_related mfin e d) in dfrel.
         unfold n_func_related in nfrel; unfold n_proj in nfrel;
-        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert.n) in nfrel;
+        rewrite (unpred_params_not_changed m7 e v4 mfin adc_compcert_fixed.n) in nfrel;
           [idtac | exact unp]; 
         fold (n_proj mfin e) in nfrel; fold (n_func_related mfin e n) in nfrel.
         unfold so_func_related in sofrel; unfold so_proj in sofrel;
@@ -2411,15 +2726,15 @@ Proof.
           [idtac | exact nf];
         fold (S_proj m8 e) in sfrel; fold (sbit_func_related m8 e sbit) in sfrel.
         unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert.cond) in cfrel;
+        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert_fixed.cond) in cfrel;
           [idtac | exact nf];
         fold (cond_proj m8 e) in cfrel; fold (cond_func_related m8 e cond) in cfrel.
         unfold d_func_related in dfrel; unfold d_proj in dfrel;
-        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert.d) in dfrel;
+        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert_fixed.d) in dfrel;
           [idtac | exact nf];
         fold (d_proj m8 e) in dfrel; fold (d_func_related m8 e d) in dfrel.
         unfold n_func_related in nfrel; unfold n_proj in nfrel;
-        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert.n) in nfrel;
+        rewrite (nf_params_not_changed m7 e v4 m8 adc_compcert_fixed.n) in nfrel;
           [idtac | exact nf]; 
         fold (n_proj m8 e) in nfrel; fold (n_func_related m8 e n) in nfrel.
         unfold so_func_related in sofrel; unfold so_proj in sofrel;
@@ -2443,15 +2758,15 @@ Proof.
           [idtac | exact zf];
         fold (S_proj m9 e) in sfrel; fold (sbit_func_related m9 e sbit) in sfrel.
         unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert.cond) in cfrel;
+        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert_fixed.cond) in cfrel;
           [idtac | exact zf];
         fold (cond_proj m9 e) in cfrel; fold (cond_func_related m9 e cond) in cfrel.
         unfold d_func_related in dfrel; unfold d_proj in dfrel;
-        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert.d) in dfrel;
+        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert_fixed.d) in dfrel;
           [idtac | exact zf];
         fold (d_proj m9 e) in dfrel; fold (d_func_related m9 e d) in dfrel.
         unfold n_func_related in nfrel; unfold n_proj in nfrel;
-        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert.n) in nfrel;
+        rewrite (zf_params_not_changed m8 e v5 m9 adc_compcert_fixed.n) in nfrel;
           [idtac | exact zf]; 
         fold (n_proj m9 e) in nfrel; fold (n_func_related m9 e n) in nfrel.
         unfold so_func_related in sofrel; unfold so_proj in sofrel;
@@ -2476,15 +2791,15 @@ Proof.
           [idtac | exact cf];
         fold (S_proj m10 e) in sfrel; fold (sbit_func_related m10 e sbit) in sfrel.
         unfold cond_func_related in cfrel; unfold cond_proj in cfrel;
-        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert.cond) in cfrel;
+        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert_fixed.cond) in cfrel;
           [idtac | exact cf];
         fold (cond_proj m10 e) in cfrel; fold (cond_func_related m10 e cond) in cfrel.
         unfold d_func_related in dfrel; unfold d_proj in dfrel;
-        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert.d) in dfrel;
+        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert_fixed.d) in dfrel;
           [idtac | exact cf];
         fold (d_proj m10 e) in dfrel; fold (d_func_related m10 e d) in dfrel.
         unfold n_func_related in nfrel; unfold n_proj in nfrel;
-        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert.n) in nfrel;
+        rewrite (cf_params_not_changed m9 e v6 m10 adc_compcert_fixed.n) in nfrel;
           [idtac | exact cf]; 
         fold (n_proj m10 e) in nfrel; fold (n_func_related m10 e n) in nfrel.
         unfold so_func_related in sofrel; unfold so_proj in sofrel;
