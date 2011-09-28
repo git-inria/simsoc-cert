@@ -177,16 +177,30 @@ Module Rec.
       (_list _ _typ (sig_args x))
       (_option _ _typ (sig_res x)).
 
-    Definition _external_function {A IDENT SIGNATURE BOOL}
-      (_ident : _ -> IDENT) (_signature : _ -> SIGNATURE) (_bool : _ -> BOOL)
-      (f_mk : _ -> _ -> _ -> A)
-      x
+    Definition _memory_chunk {A}
+      :=
+      memory_chunk_rect (fun _ => A).
+
+    Definition _external_function {A IDENT MEMORY_CHUNK SIGNATURE Z TYP}
+      (_list : forall A, (A -> _) -> list A -> _)
+      (_ident : _ -> IDENT)
+      (_memory_chunk : _ -> MEMORY_CHUNK)
+      (_signature : _ -> SIGNATURE)
+      (_Z : _ -> Z)
+      (_typ : _ -> TYP)
+      f_external f_builtin f_vload f_vstore f_malloc f_free f_memcpy (f_annot : _ -> A -> _) f_annot_val
       := 
-      f_mk 
-      (_ident (ef_id x))
-      (_signature (ef_sig x))
-      (_bool (ef_inline x)).
-  
+      external_function_rect (fun _ => A)
+        (fun n s => f_external (_ident n) (_signature s))
+        (fun n s => f_builtin (_ident n) (_signature s))
+        (fun c => f_vload (_memory_chunk c))
+        (fun c => f_vstore (_memory_chunk c))
+        f_malloc
+        f_free
+        (fun sz al => f_memcpy (_Z sz) (_Z al))
+        (fun i l => f_annot (_ident i) (_list _ _typ l))
+        (fun i t => f_annot_val (_ident i) (_typ t)).
+
   End _AST.
 
   Module _Values.
@@ -480,9 +494,27 @@ Module Rec_weak.
       A ** 2 -> 
       _ := @_AST._signature _ _ _ A.
 
-    Definition _external_function {A} : _ -> _ -> _ ->
-      A ** 3 ->
-      _ := @_AST._external_function _ _ _ _.
+    Definition _memory_chunk {A} : 
+      A ** 0 ->
+      A ** 0 ->
+      A ** 0 ->
+      A ** 0 ->
+      A ** 0 ->
+      A ** 0 ->
+      A ** 0 ->
+      _ := @_AST._memory_chunk A.
+
+    Definition _external_function {A} : _ -> _ -> _ -> _ -> _ -> _ -> 
+      A ** 2 -> 
+      A ** 2 -> 
+      A ** 1 -> 
+      A ** 1 -> 
+      A ** 0 -> 
+      A ** 0 -> 
+      A ** 2 -> 
+      A ** 2 -> 
+      A ** 2 -> 
+      _ := @_AST._external_function _ _ _ _ _ _.
 
   End _AST.
 
@@ -928,9 +960,26 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
     Definition _signature := _AST._signature _list _option _typ
       {{ "sig_args" ; "sig_res" }}.
 
+    Definition _memory_chunk := _AST._memory_chunk
+      ! "Mint8signed"
+      ! "Mint8unsigned"
+      ! "Mint16signed"
+      ! "Mint16unsigned"
+      ! "Mint32"
+      ! "Mfloat32"
+      ! "Mfloat64".
+
     Definition _external_function :=
-      @_AST._external_function _ _ident _signature _bool
-      {{ "ef_id" ; "ef_sig" ; "ef_inline" }}.
+      @_AST._external_function _ _list _ident _memory_chunk _signature _Z _typ
+      ! "EF_external"
+      ! "EF_builtin"
+      ! "EF_vload"
+      ! "EF_vstore"
+      ! "EF_malloc"
+      ! "EF_free"
+      ! "EF_memcpy"
+      ! "EF_annot"
+      ! "EF_annot_val".
 
   End _AST.
 

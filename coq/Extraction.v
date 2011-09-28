@@ -82,7 +82,6 @@ Extract Constant Linearize.enumerate_aux => "Linearizeaux.enumerate_aux".
 Extraction Inline SimplExpr.ret SimplExpr.error SimplExpr.bind SimplExpr.bind2.
 
 (* Compiler *)
-Extract Constant Compiler.print_Csyntax => "PrintCsyntax.print_if".
 Extract Constant Compiler.print_Clight => "PrintClight.print_if".
 Extract Constant Compiler.print_Cminor => "PrintCminor.print_if".
 Extract Constant Compiler.print_RTL => "PrintRTL.print_rtl".
@@ -91,6 +90,7 @@ Extract Constant Compiler.print_RTL_castopt => "PrintRTL.print_castopt".
 Extract Constant Compiler.print_RTL_constprop => "PrintRTL.print_constprop".
 Extract Constant Compiler.print_RTL_cse => "PrintRTL.print_cse".
 Extract Constant Compiler.print_LTLin => "PrintLTLin.print_if".
+Extract Constant Compiler.print_Mach => "PrintMach.print_if".
 Extract Constant Compiler.print => "fun (f: 'a -> unit) (x: 'a) -> f x; x".
 (*Extraction Inline Compiler.apply_total Compiler.apply_partial.*)
 

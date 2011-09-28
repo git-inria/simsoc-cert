@@ -8,7 +8,7 @@ Prerequisites:
 
 * Coq 8.3pl2 available from http://coq.inria.fr/ .
 
-* The sources of CompCert 1.8.2 available from
+* The sources of CompCert 1.9 available from
   http://compcert.inria.fr/ .
 
 * All the prerequisites required for CompCert as described in
@@ -18,9 +18,10 @@ Prerequisites:
 * CompCert configured with target 'ia32-linux' and compiled with Coq
   8.3pl2 as described in /path/to/compcert/README.
 
-* For ARM tests, a binary called 'arm-elf-gcc' needs to be accessible
-  from the path. This binary can be found for example inside the
-  SimSoC project (see http://formes.asia/cms/software/simsoc).
+* For ARM or SH tests, a binary called 'arm-elf-gcc' or 'sh-elf-gcc'
+  needs to be accessible from the path. These binaries can be found
+  for example inside the SimSoC project
+  (see http://formes.asia/cms/software/simsoc).
 
 --------------------------------------------------------------------
 Configuration and compilation of CompCert:
@@ -53,8 +54,10 @@ Generation and compilation of simulators using Simgen:
 C simulators:
       cd arm6/simlight; make
       cd arm6/simlight2; make
+      cd sh4/simlight; make
 
-Read arm6/simlight/README and arm6/simlight2/README for more details.
+Read {arm6,sh4}/simlight/README and arm6/simlight2/README
+for more details.
 
 simlight2 is the optimized version of simlight used in SimSoC
 (http://formes.asia/cms/software/simsoc).
@@ -67,6 +70,13 @@ Coq simulators:
       cd arm6/coq; make
       cd sh4/coq; make
 
-OCaml simulators can be extracted from the Coq simulators:
+
+OCaml simulators can be extracted
+  - from the C simulators:
+      cd arm6/simlight; make ocaml
+      cd arm6/simlight2; make ocaml
+      cd sh4/simlight; make ocaml
+
+  - from the Coq simulators:
       cd arm6/coq; make ocaml
       cd sh4/coq; make ocaml

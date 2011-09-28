@@ -141,6 +141,20 @@ let signature b s =
     (coq_list typ) s.sig_args (option typ) s.sig_res;;
 
 (*****************************************************************************)
+(** printing function for [memory_chunk] *)
+
+let string_of_memory_chunk = function
+  | AST.Mint8signed -> "AST.Mint8signed"
+  | AST.Mint8unsigned -> "AST.Mint8unsigned"
+  | AST.Mint16signed -> "AST.Mint16signed"
+  | AST.Mint16unsigned -> "AST.Mint16unsigned"
+  | AST.Mint32 -> "AST.Mint32"
+  | AST.Mfloat32 -> "AST.Mfloat32"
+  | AST.Mfloat64 -> "AST.Mfloat64"
+
+let memory_chunk = using string_of_memory_chunk
+
+(*****************************************************************************)
 (** recursor on Tstruct or Tunion idents occuring in a [coq_type] *)
 
 let rec fold_type f x = function
@@ -540,9 +554,16 @@ let coq_function b f =
     coq_type f.fn_return params f.fn_params
     params f.fn_vars statement f.fn_body;;
 
-let external_function b ef =
-  bprintf b "{| ef_id := %a;\n     ef_sig := %a;\n     ef_inline := %a |}"
-    ident ef.ef_id signature ef.ef_sig bool ef.ef_inline;;
+let external_function b = function
+  | EF_external (name, sg) -> papp2 b "EF_external" ident name signature sg
+  | EF_builtin (name, sg) -> papp2 b "EF_builtin" ident name signature sg
+  | EF_vload chunk -> papp1 b "EF_vload" memory_chunk chunk
+  | EF_vstore chunk -> papp1 b "EF_vstore" memory_chunk chunk
+  | EF_malloc -> string b "EF_malloc"
+  | EF_free -> string b "EF_free"
+  | EF_memcpy (sz, al) -> papp2 b "EF_memcpy" coq_Z sz coq_Z al
+  | EF_annot (text, targs) -> papp2 b "EF_annot" ident text (coq_list typ) targs
+  | EF_annot_val (text, targ) -> papp2 b "EF_annot_val" ident text typ targ
 
 let fundef_internal id b = 
   bprintf b "Definition fun_internal_%a :=\n  %a.\n\n" ident id coq_function
