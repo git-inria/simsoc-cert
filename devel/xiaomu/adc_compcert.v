@@ -69,7 +69,7 @@ Definition OverflowFrom_add3 := 54.
 Definition CarryFrom_add3 := 55.
 Definition reg := 56.
 Definition get_bit := 57.
-Definition unpredicatable := 58.
+Definition unpredictable := 58.
 Definition spsr := 59.
 Definition copy_StatusRegister := 60.
 Definition CurrentModeHasSPSR := 61.
@@ -270,7 +270,7 @@ then (call (\set_reg_or_pc`:T10) E[\proc`:T3; \d`:T4; ((\old_Rn`:T1)+(\shifter_o
 `if (((\S`:T4)==(#1`:T9)`:T9)?(((\d`:T4)==(#15`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:(#0`:T9)`:T9)
 then `if (call (\CurrentModeHasSPSR`:T12) E[\proc`:T3] T4)
 then (call (\copy_StatusRegister`:T13) E[&((`*(\proc`:T3)`:T6)|cpsr`:T7)`:T8; (call (\spsr`:T14) E[\proc`:T3] T8)] T11)
-else (call (\unpredicatable`:T15) E[] T11)
+else (call (\unpredictable`:T15) E[] T11)
 else `if ((\S`:T4)==(#1`:T9)`:T9)
 then (((`*(\proc`:T3)`:T6)|cpsr`:T7)|N_flag`:T4) `= (call (\get_bit`:T16) E[(call (\reg`:T2) E[\proc`:T3; \d`:T4] T1); #31`:T9] T4)`:T4;;
 (((`*(\proc`:T3)`:T6)|cpsr`:T7)|Z_flag`:T4) `= (((call (\reg`:T2) E[\proc`:T3; \d`:T4] T1)==(#0`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:T4;;

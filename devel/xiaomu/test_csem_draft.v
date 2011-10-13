@@ -1416,7 +1416,7 @@ Qed.
    For the moment, we consider it as a function call with an 
    empty body *)
 Definition unpred :=
-  (Ecall (Evalof (Evar unpredicatable T15) T15) Enil T11).
+  (Ecall (Evalof (Evar unpredictable T15) T15) Enil T11).
 
 Lemma same_unpred :
   forall e m s t m' v,

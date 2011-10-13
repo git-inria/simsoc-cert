@@ -280,7 +280,7 @@ let rec exp_trans = function
         |"or"->coq_Eseqor (exp_trans e1) (exp_trans e2) int32
         |_->Ebinop (binop_trans str, exp_trans e1, exp_trans e2,int32))
   |Unpredictable_exp -> 
-     Ecall (Evalof(Evar(id "unpredicatable",
+     Ecall (Evalof(Evar(id "unpredictable",
                       Tfunction(Tnil,Tvoid)),Tfunction(Tnil,Tvoid)),Enil,
             Tvoid)
   |Memory (e,n) -> 
