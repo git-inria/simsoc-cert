@@ -3,7 +3,7 @@
 Require Import Globalenvs Memory.
 Require Import Csyntax Csem Cstrategy Coqlib Integers Values Maps Errors. 
 Require Import Arm6_State Arm6_Proc Arm6_SCC Bitvec Arm6.
-Require Import adc_compcert_fixed.
+Require Import adc_compcert.
 
 (* Some constants for ADC *)
 
@@ -385,7 +385,7 @@ Definition slv6_proc (m:Mem.mem) (e:env):option proc_mem:=
           |Some vm,Some vc,(*Some vfs,Some vis,Some vss,Some vabs,Some vus,*)
             Some vs,Some vsc =>
             Some(mk_pcm vm vc (*vfs vis vss vabs vus*) vs vsc 
-              (fld_v b o adc_compcert_fixed.id) 
+              (fld_v b o adc_compcert.id) 
               (fld_reg b o)
               (fld_v b o pc)
               (fld_v b o jump))
