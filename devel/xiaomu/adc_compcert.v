@@ -77,12 +77,12 @@ Definition set_reg_or_pc := 62.
 Definition ConditionPassed := 63.
 Definition ADC := 64.
 
-(* manually add *)
-Definition x := 66.
-Definition addr_of_reg_m := 73.
-Definition reg_id := 75.
-Definition m := 76.
-Definition reg_m := 77.
+(* manually add ident *)
+Definition addr_of_reg_m := 65.
+Definition m := 66.
+Definition reg_id := 67.
+Definition reg_m := 68.
+Definition x := 69.
 
 Close Scope positive_scope.
 
@@ -113,7 +113,7 @@ F[
   I_flag -: uint8; 
   F_flag -: uint8; 
   T_flag -: uint8; 
-  mode -: uint32; 
+  mode -: int32; 
   background -: uint32].
 
 Definition typ_SLv6_StatusRegister := Tstruct SLv6_StatusRegister typ_struct_SLv6_StatusRegister.
@@ -133,7 +133,7 @@ F[
   cpsr -: typ_SLv6_StatusRegister; 
   spsrs -: Tarray typ_SLv6_StatusRegister 5; 
   cp15 -: typ_SLv6_SystemCoproc; 
-  id -: int8; 
+  id -: uint32; 
   user_regs -: Tarray uint32 16; 
   fiq_regs -: Tarray uint32 7; 
   irq_regs -: Tarray uint32 2; 
@@ -151,25 +151,27 @@ Definition T1 := uint32.
 Definition T2 := Tfunction T[`*` typ_SLv6_Processor; uint8] uint32.
 Definition T3 := `*` typ_SLv6_Processor.
 Definition T4 := uint8.
-Definition T5 := Tfunction T[`*` typ_SLv6_StatusRegister; uint32] uint8.
+Definition T5 := Tfunction T[`*` typ_SLv6_StatusRegister; int32] int8.
 Definition T6 := typ_SLv6_Processor.
 Definition T7 := typ_SLv6_StatusRegister.
 Definition T8 := `*` typ_SLv6_StatusRegister.
 Definition T9 := int32.
-Definition T10 := Tfunction T[`*` typ_SLv6_Processor; uint8; uint32] void.
-Definition T11 := void.
-Definition T12 := Tfunction T[`*` typ_SLv6_Processor] uint8.
-Definition T13 := Tfunction T[`*` typ_SLv6_StatusRegister; `*` typ_SLv6_StatusRegister] void.
-Definition T14 := Tfunction T[`*` typ_SLv6_StatusRegister] (`*` typ_SLv6_StatusRegister).
-Definition T15 := Tfunction T[] void.
-Definition T16 := Tfunction T[uint32; uint32] uint8.
-Definition T17 := Tfunction T[uint32; uint32; uint32] uint8.
-Definition T18 := Tfunction T[uint32; uint32; uint8] uint8.
+Definition T10 := int8.
+Definition T11 := Tfunction T[`*` typ_SLv6_Processor; uint8; uint32] void.
+Definition T12 := void.
+Definition T13 := Tfunction T[`*` typ_SLv6_Processor] int8.
+Definition T14 := Tfunction T[`*` typ_SLv6_StatusRegister; `*` typ_SLv6_StatusRegister] void.
+Definition T15 := Tfunction T[`*` typ_SLv6_Processor] (`*` typ_SLv6_StatusRegister).
+Definition T16 := Tfunction T[] void.
+Definition T17 := Tfunction T[uint32; uint32] int8.
+Definition T18 := Tfunction T[uint32; uint32; uint32] int8.
+Definition T19 := Tfunction T[uint32; uint32; int8] int8.
 
-(* manually add *)
-Definition T19 := Tfunction T[`*` typ_SLv6_Processor; uint8; int32] uint32.
+(* manually add type definition *)
 Definition T20 := Tfunction T[`*` typ_SLv6_Processor; uint8; int32] (`*` uint32).
 Definition T21 := `*` uint32.
+Definition T22 := Tfunction T[`*` typ_SLv6_Processor; uint8; int32] uint32.
+
 
 (* global variables *)
 
@@ -183,23 +185,52 @@ Definition global_variables : list (prod ident (globvar type)) := [(gvars,gv_gva
 
 (* functions *)
 
-(* manually add ***********************************************************************************)
-Definition fun_internal_get_bit :=
-  {| fn_return := uint8;
+Definition fun_internal_ADC :=
+  {| fn_return := void;
      fn_params := [
-x -: uint32; 
-n -: uint32];
-     fn_vars := [];
+proc -: `*` typ_SLv6_Processor; 
+S -: int8; 
+cond -: int32; 
+d -: uint8; 
+n -: uint8; 
+shifter_operand -: uint32];
+     fn_vars := [
+old_Rn -: uint32];
      fn_body :=
-return (Some (((\x`:T1)>>(\n`:T1)`:T1)&(#1`:T9)`:T1)) |}.
-Definition fun_get_bit :=
-  (get_bit, Internal fun_internal_get_bit).
+($ old_Rn`:T1) `= (call (\reg`:T2) E[\proc`:T3; \n`:T4] T1)`:T1;;
+`if (call (\ConditionPassed`:T5) E[&((`*(\proc`:T3)`:T6)|cpsr`:T7)`:T8; \cond`:T9] T10)
+then (call (\set_reg_or_pc`:T11) E[\proc`:T3; \d`:T4; ((\old_Rn`:T1)+(\shifter_operand`:T1)`:T1)+(valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T10) T10)`:T10] T12);;
+`if (((\S`:T10)==(#1`:T9)`:T9)?(((\d`:T4)==(#15`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:(#0`:T9)`:T9)
+then `if (call (\CurrentModeHasSPSR`:T13) E[\proc`:T3] T10)
+then (call (\copy_StatusRegister`:T14) E[&((`*(\proc`:T3)`:T6)|cpsr`:T7)`:T8; (call (\spsr`:T15) E[\proc`:T3] T8)] T12)
+else (call (\unpredictable`:T16) E[] T12)
+else `if ((\S`:T10)==(#1`:T9)`:T9)
+then (((`*(\proc`:T3)`:T6)|cpsr`:T7)|N_flag`:T10) `= (call (\get_bit`:T17) E[(call (\reg`:T2) E[\proc`:T3; \d`:T4] T1); #31`:T9] T10)`:T10;;
+(((`*(\proc`:T3)`:T6)|cpsr`:T7)|Z_flag`:T10) `= (((call (\reg`:T2) E[\proc`:T3; \d`:T4] T1)==(#0`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:T10;;
+(((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T10) `= (call (\CarryFrom_add3`:T18) E[\old_Rn`:T1; \shifter_operand`:T1; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T10) T10)] T10)`:T10;;
+(((`*(\proc`:T3)`:T6)|cpsr`:T7)|V_flag`:T10) `= (call (\OverflowFrom_add3`:T19) E[\old_Rn`:T1; \shifter_operand`:T1; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T10) T10)] T10)`:T10
+else skip
+else skip |}.
+
+Definition fun_ADC :=
+  (ADC, Internal fun_internal_ADC).
+
+(* manually add functions *)
+Definition fun_ConditionPassed :=
+  (ConditionPassed, External
+  (EF_external ConditionPassed {| sig_args := [AST.Tint; AST.Tint]; sig_res := Some AST.Tint |})
+  T[`*` typ_SLv6_StatusRegister; int32]
+  int8).
+
+Definition fun_copy_StatusRegister :=
+  (copy_StatusRegister, External
+  (EF_external copy_StatusRegister {| sig_args := [AST.Tint; AST.Tint]; sig_res := None |})
+  T[`*` typ_SLv6_StatusRegister; `*` typ_SLv6_StatusRegister]
+  void).
 
 Definition fun_addr_of_reg_m :=
   (addr_of_reg_m, External
-  {| ef_id := addr_of_reg_m;
-     ef_sig := {| sig_args := [AST.Tint; AST.Tint; AST.Tint]; sig_res := Some AST.Tint |};
-     ef_inline := false |}
+  (EF_external addr_of_reg_m {| sig_args := [AST.Tint; AST.Tint; AST.Tint]; sig_res := Some AST.Tint |})
   T[`*` typ_SLv6_Processor; uint8; int32]
   (`*` uint32)).
 
@@ -223,21 +254,13 @@ proc -: `*` typ_SLv6_Processor;
 reg_id -: uint8];
      fn_vars := [];
      fn_body :=
-return (Some (call (\reg_m`:T19) E[\proc`:T3; \reg_id`:T4; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|mode`:T9) T9)] T1)) |}.
+return (Some (call (\reg_m`:T22) E[\proc`:T3; \reg_id`:T4; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|mode`:T9) T9)] T1)) |}.
 
 Definition fun_reg :=
   (reg, Internal fun_internal_reg).
 
-Definition fun_ConditionPassed :=
-  (ConditionPassed, External
-  {| ef_id := ConditionPassed;
-     ef_sig := {| sig_args := [AST.Tint; AST.Tint]; sig_res := Some AST.Tint |};
-     ef_inline := false |}
-  T[`*` typ_SLv6_StatusRegister; int32]
-  uint8).
-
 Definition fun_internal_CurrentModeHasSPSR :=
-  {| fn_return := uint8;
+  {| fn_return := int8;
      fn_params := [
 proc -: `*` typ_SLv6_Processor];
      fn_vars := [];
@@ -247,42 +270,22 @@ return (Some ((valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|mode`:T9) T9)<(#5`:T9)`:T9)
 Definition fun_CurrentModeHasSPSR :=
   (CurrentModeHasSPSR, Internal fun_internal_CurrentModeHasSPSR).
 
-(**************************************************************************************************)
-
-(* generated *)
-Definition fun_internal_ADC :=
-  {| fn_return := void;
+Definition fun_internal_get_bit :=
+  {| fn_return := int8;
      fn_params := [
-proc -: `*` typ_SLv6_Processor; 
-S -: uint8; 
-cond -: int32; 
-d -: uint8; 
-n -: uint8; 
-shifter_operand -: uint32];
-     fn_vars := [
-old_Rn -: uint32];
+x -: uint32; 
+n -: uint32];
+     fn_vars := [];
      fn_body :=
-($ old_Rn`:T1) `= (call (\reg`:T2) E[\proc`:T3; \n`:T4] T1)`:T1;;
-`if (call (\ConditionPassed`:T5) E[&((`*(\proc`:T3)`:T6)|cpsr`:T7)`:T8; \cond`:T9] T4)
-(*fix the trans *)
-then (call (\set_reg_or_pc`:T10) E[\proc`:T3; \d`:T4; ((\old_Rn`:T1)+(\shifter_operand`:T1)`:T1)+
-(valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T4) T9)`:T9] T11);;
-`if (((\S`:T4)==(#1`:T9)`:T9)?(((\d`:T4)==(#15`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:(#0`:T9)`:T9)
-then `if (call (\CurrentModeHasSPSR`:T12) E[\proc`:T3] T4)
-then (call (\copy_StatusRegister`:T13) E[&((`*(\proc`:T3)`:T6)|cpsr`:T7)`:T8; (call (\spsr`:T14) E[\proc`:T3] T8)] T11)
-else (call (\unpredictable`:T15) E[] T11)
-else `if ((\S`:T4)==(#1`:T9)`:T9)
-then (((`*(\proc`:T3)`:T6)|cpsr`:T7)|N_flag`:T4) `= (call (\get_bit`:T16) E[(call (\reg`:T2) E[\proc`:T3; \d`:T4] T1); #31`:T9] T4)`:T4;;
-(((`*(\proc`:T3)`:T6)|cpsr`:T7)|Z_flag`:T4) `= (((call (\reg`:T2) E[\proc`:T3; \d`:T4] T1)==(#0`:T9)`:T9)?(#1`:T9)`:(#0`:T9)`:T9)`:T4;;
-(((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T4) `= (call (\CarryFrom_add3`:T17) E[\old_Rn`:T1; \shifter_operand`:T1; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T4) T4)] T4)`:T4;;
-(((`*(\proc`:T3)`:T6)|cpsr`:T7)|V_flag`:T4) `= (call (\OverflowFrom_add3`:T18) E[\old_Rn`:T1; \shifter_operand`:T1; (valof (((`*(\proc`:T3)`:T6)|cpsr`:T7)|C_flag`:T4) T4)] T4)`:T4
-else skip
-else skip |}.
+return (Some (((\x`:T1)>>(\n`:T1)`:T1)&(#1`:T9)`:T1)) |}.
 
-Definition fun_ADC :=
-  (ADC, Internal fun_internal_ADC).
+Definition fun_get_bit :=
+  (get_bit, Internal fun_internal_get_bit).
 
-Definition functions : list (prod ident fundef) := [fun_ADC].
+(* manually changed functions list *)
+(*Definition functions : list (prod ident fundef) := [fun_ADC].*)
+Definition functions : list (prod ident fundef) :=
+  [fun_ConditionPassed; fun_copy_StatusRegister; fun_addr_of_reg_m; fun_reg_m; fun_reg; fun_CurrentModeHasSPSR; fun_get_bit; fun_ADC].
 
 (* program *)
 
@@ -290,14 +293,3 @@ Definition p :=
   {| prog_funct := functions;
      prog_main := main;
      prog_vars := global_variables |}.
-
-(* manually changed *)
-Definition prog_adc_funs := 
-  cons fun_addr_of_reg_m (cons fun_reg_m (cons fun_reg (cons fun_get_bit 
-    (cons fun_ConditionPassed (cons fun_CurrentModeHasSPSR functions))))).
-
-Definition prog_adc :=
-  {|
-    AST.prog_funct := prog_adc_funs;
-    AST.prog_main := main;
-    AST.prog_vars := global_variables |}.
