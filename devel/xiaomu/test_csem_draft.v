@@ -154,6 +154,21 @@ Ltac blocks_lt b1 b2 :=
           [blocks_lt bx b2|exact alc2]
     end
   end.
+
+Ltac blocks_lt' b1 b2 :=
+  match goal with
+    |[lt1: b1 < b2 |- ?c] => idtac
+    |[lt1: b1 < ?bx |- ?c] =>
+      match goal with
+        |[lt2: bx < b2 |- ?c] => 
+          apply (Zlt_trans b1) in lt2;
+            [clear lt1|exact lt1]
+        |[lt2: bx <?bxx |-?c]=>
+          try apply (Zlt_trans b1) in lt2;
+            [clear lt1;blocks_lt' b1 b2|exact lt1]
+      end
+  end.
+
 Ltac blocks_neq b1 b2 :=
   match goal with
     |[lt1: b1 < b2 |- ?c] => apply Zlt_not_eq in lt1
@@ -291,9 +306,10 @@ Ltac inv_bind_params m' :=
     (inv_bind_params m'|| idtac)
   end.
 
-Ltac rrw_block :=  
+Ltac rrw_block :=
+  let Heq := fresh "Heq" in
   match goal with [eq:Some ?l = Some (?b,?t)|-?c] => 
-    injection eq;intro H;rewrite<-H in *;clear H eq b end.
+    injection eq;intro Heq;rewrite<-Heq in *;clear Heq eq b end.
 
 (* The loaded value from block b is not changed between m1, m2.
    From m1 to m2, we consider all the storage in memory. 
@@ -506,11 +522,14 @@ Definition inv_expr_ecall e m ex m' (ex':expr):=
   end.
 *)
 
+(* Auxiliary functions for inversion on type eval_expr *)
+(* Constructor eval_call *)
+
 Definition inv_expr_ecall' g e m ex m' ex':=
   match ex with
-    |Ecall a b c =>
+    |Ecall a b c as ecall =>
       forall (X:expr -> Prop),
-      (forall rf t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres ty,
+      (forall rf t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres,
       eval_expr g e m RV a t1 m1 rf' -> 
       eval_exprlist g e m1 b t2 m2 rargs' ->
       eval_simple_rvalue g e m2 rf' vf ->
@@ -520,8 +539,167 @@ Definition inv_expr_ecall' g e m ex m' ex':=
       Genv.find_funct g vf = Some fd ->
       type_of_fundef fd = Tfunction targs tres ->
       eval_funcall g m2 fd vargs t3 m' vres -> 
-      X (Eval vres ty)) -> X ex'
+      X (Eval vres (typeof ecall))) -> X ex'
     |_=> True
+  end.
+
+(* Constructor eval_valof *)
+Definition inv_expr_valof g e m ex m' ex' :=
+  match ex with
+    |Evalof b c as evalof=>
+      forall (X:expr->Prop),
+        (forall t a',
+          eval_expr g e m LV b t m' a'->X (Evalof a' (typeof evalof)))->
+          X ex'
+    |_=>True
+  end.
+
+(* General inversion tactic on eval_expr from m to m' *)
+Ltac inv_eval_expr m m' :=
+  let f:=fresh "f" in
+  let nexp:=fresh "nexp" in
+  let a_:=fresh "a" in
+  let a'_:=fresh "a'" in
+  (*ev_funcall*)
+  let rf_:=fresh "rf" in
+  let t1_:=fresh "t" in
+  let t2_:=fresh "t" in
+  let t3_:=fresh "t" in
+  let m1_:=fresh "m" in
+  let m2_:=fresh "m" in
+  let rf'_:= fresh "rf'" in
+  let rargs'_:=fresh "rargs'" in
+  let vf_:=fresh "vf" in
+  let vargs_:=fresh "vargs" in
+  let targs_:=fresh "targs" in
+  let tres_:=fresh "tres" in
+  let fd_:=fresh "fd" in
+  let vres_:=fresh "vres" in
+  let ty_:=fresh "ty" in
+  let ev_ex:=fresh "ev_ex" in
+  let ev_elst:=fresh "ev_eslst" in
+  let esr1:=fresh "esr" in
+  let esr2:=fresh "esr" in
+  let Heqcf:=fresh "Heqcf" in
+  let eslst:=fresh "eslst" in
+  let Heqff:=fresh "Heqff" in
+  let Heqtf:=fresh "Heqtf" in
+  let ev_funcall:=fresh "ev_funcall" in
+  match goal with
+    |[ee:eval_expr ?ge ?e m RV (Econdition ?a1 ?a2 ?a3 ?ty) ?t ?m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1: eval_expr ge e m RV a1 ?t1 ?mcond ?a1'|-?cl1]=>
+          inv_eval_expr m mcond
+      end
+    |[ee:eval_expr ?ge ?e m RV (Eval ?v ?ty) ?et m' ?a'|-?cl]=>
+      inv ee
+    |[ee:eval_expr ?ge ?e m LV (Evar ?x ?ty) ?et m' ?a'|-?cl]=>
+      inv ee
+    |[ee:eval_expr ?ge ?e m RV (Ebinop ?op ?a1 ?a2 ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1:eval_expr ?ge ?e m ?k a1 ?t1 ?mbo ?a1'|-?cl1]=>
+          inv_eval_expr m mbo;inv_eval_expr mbo m'
+      end
+    |[ee:eval_expr ?ge ?e m RV (Evalof ?a ?ty) ?t m' ?a'|-?cl]=>
+      generalize
+        (match ee in (eval_expr _ e m _ ex _ m' ex')
+           return inv_expr_valof (Genv.globalenv prog_adc) e m ex m' ex' with
+           |eval_valof _ _ a t _ a' ty H1 =>
+             (fun X k => k t a' H1)
+           |_=> I
+         end);clear ee;
+        intro k; red in k;simpl in k;
+        pose(nexp:=a');change a' with nexp in k; 
+          match goal with
+            |[es:context c [a']|-?cl]=>revert es
+            |_=>idtac
+          end;
+          unfold nexp in k;clear nexp;apply k;clear k;
+          intros t1_ a_;intro ev_ex;intro esr1;
+      (*inv ee;*)inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m LV (Efield ?a ?f ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m LV (Ederef ?a ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Eaddrof ?a ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Eunop ?op ?a ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Ecast ?a ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Esizeof ?ty' ?ty) ?t m ?a'|-?cl]=>
+      inv ee
+    |[ee:eval_expr ?ge ?e m RV (Eassign ?l ?r ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1:eval_expr ge e m LV l ?t1 ?masgn1 ?l'|-?cl]=>
+          inv_eval_expr m masgn1;
+          match goal with
+            |[ee2:eval_expr ge e masgn1 RV r ?t2 ?masgn2 ?r'|-?cl]=>
+              inv_eval_expr masgn1 masgn2
+          end
+      end
+    |[ee:eval_expr ?ge ?e m RV (Eassignop ?op ?l ?r ?tyres ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1:eval_expr ge e m LV l ?t1 ?masgnop1 ?l'|-?cl]=>
+          inv_eval_expr m masgnop1;
+          match goal with
+            |[ee2:eval_expr ge e masgnop1 RV r ?t2 ?masgnop2 ?r'|-?cl]=>
+              inv_eval_expr masgnop1 masgnop2
+          end
+      end
+    |[ee:eval_expr ?ge ?e m RV (Epostincr ?id ?l ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1:eval_expr ge e m LV l t ?mpi ?l'|-?cl]=>
+          inv_eval_expr m mpi
+      end
+    |[ee:eval_expr ?ge ?e m RV (Ecomma ?r1 ?r2 ?ty) ?t m' ?a'|-?cl]=>
+      inv ee;
+      match goal with
+        |[ee1:eval_expr ge e m RV r1 ?t1 ?mcom ?r1'|-?cl]=>
+          inv_eval_expr m mcom; inv_eval_expr mcom m'
+      end
+    |[ee:eval_expr ?ge ?e m RV (Ecall ?rf ?rargs ?ty) ?t m' ?a'|-?cl]=>
+      generalize 
+        (match ee in (eval_expr _ e m _ ex _ m' ex')
+           return inv_expr_ecall' (Genv.globalenv prog_adc) e m ex m' ex' with
+           |eval_call _ _ rf rargs typ t1 m1 rf' t2 m2 rargs' vf vargs
+             targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
+             (fun X k => k rf t1 m1 rf' t2 m2 rargs' vf vargs 
+               targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8 )
+           |_=> I
+         end);clear ee;
+        intro k;red in k;simpl in k;
+        pose(nexp:=a');fold nexp in k;
+        match goal with
+          |[es:context [a']|-?cl]=>revert es
+        end;
+        unfold nexp in k;clear nexp;apply k;clear k;
+        intros rf_ t1_ m1_ rf'_ t2_ m2_ rargs'_ vf_ vargs_ targs_ tres_ fd_ t3_ 
+          vres_;
+        intros ev_ex ev_elst esr1 eslst Heqcf Heqff Heqtf 
+          ev_funcall esr2;
+      match goal with
+        |[ee1:eval_expr ge e m RV rf ?t1 ?mc1 ?rf'|-?cl]=>
+          inv_eval_expr m mc1;
+          match goal with
+            |[eel:eval_exprlist ge e mc1 ?rargs ?t2 ?mc2 ?rargs'|-?cl]=>
+              inv_eval_expr mc1 mc2
+          end
+      end
+    |[eel:eval_exprlist ?ge ?e m (Econs ?a1 ?al) ?t m' ?rargs'|-?cl]=>
+      inv eel;
+      match goal with
+        |[eel1:eval_expr ge e m RV a1 ?t1 ?ml1 ?a1'|-?cl]=>
+          inv_eval_expr m ml1; inv_eval_expr ml1 m'
+      end
+    |[eel:eval_exprlist ?ge ?e m Enil ?t m' ?al'|-?cl]=>
+      inv eel
+    |_=> pose(f:=0)
   end.
 
 
@@ -542,6 +720,7 @@ Proof.
 
   unfold get_rd_bit31 in gb_expr.
 
+
 (*  revert ev_rv.
 *)
 
@@ -553,13 +732,23 @@ generalize
      |eval_call _ _ rf rargs ty t1 m1 rf' t2 m2 rargs' vf vargs
                       targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
        (fun X k => k rf t1 m1 rf' t2 m2 rargs' vf vargs 
-      targs tres fd t3 vres ty H1 H2 H3 H4 H5 H6 H7 H8 )
+      targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8 )
      |_=> I
    end). clear gb_expr.
-intro k. red in k. revert ev_rv. apply k. clear k. 
-intros until ty. 
-intros gb_expr ev_explst ev_rv1 ev_simlst Heqty_gb Heqff Heqtyfd ev_funcall.
+intro k. red in k. simpl in k. revert ev_rv. apply k. clear k. 
+intros until vres. 
+intros gb_expr ev_explst ev_rv1 ev_simlst Heqty_gb Heqff Heqtyfd ev_funcall. 
 intro ev_rv.
+
+generalize 
+  (match gb_expr in (eval_expr _ e m _ ex _ m' ex')
+     return inv_expr_valof (Genv.globalenv prog_adc) e m ex m' ex' with
+     |eval_valof _ _ a t _ a' ty H1 =>
+       (fun X k => k t a' H1)
+     |_=> I
+   end). clear gb_expr.
+intro k. red in k. simpl in k. revert ev_rv1. apply k. clear k.
+intros until a'. intros gb_expr. intro ev_rv1.
 
 
 (** Using impredicative encoding, 
@@ -943,7 +1132,8 @@ Axiom funct_unpredictable:
 Axiom get_reg_ok :
   forall e id m t m' r,
     eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m' r ->
-    eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m r/\m=m'. 
+    eval_expr (Genv.globalenv prog_adc) e m RV (reg_id id) t m r/\m=m'.
+
 
 Definition oldrn_assgnt := 
   Eassign (Evar old_Rn T1) (reg_id n) T1.
@@ -963,10 +1153,12 @@ Lemma oldrn_assgnt_ok:
   proc_state_related (of_mem proc m') e (Ok tt (mk_semstate l b s)).
 Proof.
   intros until v. intros psrel rn_as.
+  
   inv rn_as. inv H. inv H4.
   eapply get_reg_ok in H5. inv H5.
   simpl in *.
   eapply set_oldrn_ok in H11.
+  
   rewrite <- H11. exact psrel.
 Qed.
 
@@ -1199,109 +1391,14 @@ Proof.
   inv H14. inv H4. inv H5. inv H13. inv H4. inv H17. inv H15. inv H4.
   inv H19. inv H4. inv H18. inv H4. inv H15. inv H13. inv H4. inv H5.
   inv H14. inv H0.
-  (*inv H15.
-  inv H4. inv H14. inv H19. inv H4. inv H18. inv H4. inv H14.
-  inv H13. inv H4. inv H5.
-  apply (functions_behavior_ok e l b s vf fd m2 vargs t3 m' vres l0 b0
-    (Arm6_State.set_reg s d
-      (add (add (Arm6_State.reg_content s0 n) so)
-        (Arm6_State.cpsr s) [Cbit])))
-    in psrel;
-    [apply psrel|exact H11|exact H16].*)
 Admitted.
 
+
 (* Lemmas on if S==1 *)
+
 Definition is_S_set :=
   Ebinop Oeq (Evalof (Evar S T10) T10)
     (Eval (Vint (repr 1)) T9) T9.
-
-
-
-Ltac inv_eval_expr m m' :=
-  let f:=fresh "f" in
-  match goal with
-    |[ee:eval_expr ?ge ?e m RV (Econdition ?a1 ?a2 ?a3 ?ty) ?t ?m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1: eval_expr ge e m RV a1 ?t1 ?mcond ?a1'|-?cl1]=>
-          inv_eval_expr m mcond
-      end
-    |[ee:eval_expr ?ge ?e m RV (Eval ?v ?ty) ?et m' ?a'|-?cl]=>
-      inv ee
-    |[ee:eval_expr ?ge ?e m LV (Evar ?x ?ty) ?et m' ?a'|-?cl]=>
-      inv ee
-    |[ee:eval_expr ?ge ?e m RV (Ebinop ?op ?a1 ?a2 ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ?ge ?e m ?k a1 ?t1 ?mbo ?a1'|-?cl1]=>
-          inv_eval_expr m mbo;inv_eval_expr mbo m'
-      end
-    |[ee:eval_expr ?ge ?e m RV (Evalof ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m LV (Efield ?a ?f ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m LV (Ederef ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m RV (Eaddrof ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m RV (Eunop ?op ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m RV (Ecast ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
-    |[ee:eval_expr ?ge ?e m RV (Esizeof ?ty' ?ty) ?t m ?a'|-?cl]=>
-      inv ee
-    |[ee:eval_expr ?ge ?e m RV (Eassign ?l ?r ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ge e m LV l ?t1 ?masgn1 ?l'|-?cl]=>
-          inv_eval_expr m masgn1;
-          match goal with
-            |[ee2:eval_expr ge e masgn1 RV r ?t2 ?masgn2 ?r'|-?cl]=>
-              inv_eval_expr masgn1 masgn2
-          end
-      end
-    |[ee:eval_expr ?ge ?e m RV (Eassignop ?op ?l ?r ?tyres ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ge e m LV l ?t1 ?masgnop1 ?l'|-?cl]=>
-          inv_eval_expr m masgnop1;
-          match goal with
-            |[ee2:eval_expr ge e masgnop1 RV r ?t2 ?masgnop2 ?r'|-?cl]=>
-              inv_eval_expr masgnop1 masgnop2
-          end
-      end
-    |[ee:eval_expr ?ge ?e m RV (Epostincr ?id ?l ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ge e m LV l t ?mpi ?l'|-?cl]=>
-          inv_eval_expr m mpi
-      end
-    |[ee:eval_expr ?ge ?e m RV (Ecomma ?r1 ?r2 ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ge e m RV r1 ?t1 ?mcom ?r1'|-?cl]=>
-          inv_eval_expr m mcom; inv_eval_expr mcom m'
-      end
-    |[ee:eval_expr ?ge ?e m RV (Ecall ?rf ?rargs ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ge e m RV rf ?t1 ?mc1 ?rf'|-?cl]=>
-          inv_eval_expr m mc1;
-          match goal with
-            |[eel:eval_exprlist ge e mc1 ?rargs ?t2 ?mc2 ?rargs'|-?cl]=>
-              inv_eval_expr mc1 mc2
-          end
-      end
-    |[eel:eval_exprlist ?ge ?e m (Econs ?a1 ?al) ?t m' ?rargs'|-?cl]=>
-      inv eel;
-      match goal with
-        |[eel1:eval_expr ge e m RV a1 ?t1 ?ml1 ?a1'|-?cl]=>
-          inv_eval_expr m ml1; inv_eval_expr ml1 m'
-      end
-    |[eel:eval_exprlist ?ge ?e m Enil ?t m' ?al'|-?cl]=>
-      inv eel
-    |_=> pose(f:=0)
-  end.
 
 Lemma no_effect_is_S_set :
   forall e m t m' v,
@@ -1309,7 +1406,7 @@ Lemma no_effect_is_S_set :
     m = m'.
 Proof.
   intros until v. intros is_s. 
-  inv is_s. unfold is_S_set in H.
+  inv is_s. unfold is_S_set in H.  
   inv_eval_expr m m'.
   reflexivity.
 Qed.
@@ -1343,22 +1440,22 @@ Proof.
   inv_eval_expr m m'.
   (* params of binop eq *)
   (* esr_binop in m' *)
-  inv H0. simpl in H7.
+  inv esr. simpl in H6.
   (* S *)
   (* esr_valof in m' *)
-  inv H5. clear H2.
+  inv H4. clear H2.
   (* esl_var_local in m' *)
-  inv H1;[simpl in H5;injection H5;intro;rewrite<-H in *;clear b7 H H5
+  inv H1;[simpl in H4;injection H4;intro Heq;rewrite<-Heq in *;clear b7 Heq H4
     |discriminate].
   (* v6 is the value of S in m' *)
-  unfold T10 in H4;rewrite H4.
+  unfold T10 in H7;simpl in H7;rewrite H7.
   (* esr_rval in m' *)
-  inv H6.
+  inv H5.
   (* v1 is either Vint of Vptr *)
   destruct v1;
     [discriminate
-      |unfold sem_cmp in H7;simpl in H7;
-        injection H7;intro;rewrite<-H in *;clear H H7 v
+      |unfold sem_cmp in H6;simpl in H6;
+        injection H6;intro Heq;rewrite<-Heq in *;clear Heq H6 v
       |discriminate
       |discriminate].
   unfold varg_proj.
@@ -1368,8 +1465,6 @@ Proof.
   simpl in bv;injection bv;intro;rewrite<-H;clear H bv b;
   reflexivity.
 Qed.
-
-
 
 (* Lemmas on if (((S == 1) && (d == 15)))*)
 Definition is_S_set_and_is_pc :=
@@ -1424,24 +1519,87 @@ Lemma S_pc_bool :
 Proof.
 Admitted.
 
+(*Ltac inv_eval_simple m ex :=
+  match goal with
+    |[eslst:eval_simple_list ?ge ?e m (Econs ?r ?rl) ?tylst ?vlst|-?cl]=>
+      inv eslst;inv_eval_simple m r;inv_eval_simple m rl
+    |[eslst:eval_simple_list ?ge ?e m Enil ?t ?rl|-?cl]=>
+      inv eslst
+    |[esl:eval_simple_lvalue ?ge ?e m (Eloc ?b1 ?ofs1 ?ty) ?b2 ?ofs2|-?cl]=>
+      inv esl
+    |[esl:eval_simple_lvalue ?ge ?e m (Evar ?x ?ty) ?b ?ofs|-?cl]=>
+      inv esl;[try discriminate|try discriminate]
+    |[esl:eval_simple_lvalue ?ge ?e m (Ederef ?r ?ty) ?b ?ofs|-?cl]=>
+      inv esl;inv_eval_simple r m
+    |[esl:eval_simple_lvalue ?ge ?e m (Efield ?l ?f ?ty) ?b ?ofs|-?cl]=>
+      inv esl;inv_eval_simple l m
+    |[esr:eval_simple_rvalue ?ge ?e m (Eval ?vres ?ty) ?v|-?cl]=>
+      inv esr
+    |[esr:eval_simple_rvalue ?ge ?e m (Evalof ?l ?ty) ?v|-?cl]=>
+      inv esr;inv_eval_simple m l
+    |[esr:eval_simple_rvalue ?ge ?e m (Eaddrof ?l ?ty) ?v|-?cl]=>
+      inv esr;inv_eval_simple m l
+    |[esr:eval_simple_rvalue ?ge ?e m (Eunop ?op ?r1 ?ty) ?v|-?cl]=>
+      inv esr;inv_eval_simple m r1
+    |[esr:eval_simple_rvalue ?ge ?e m (Ebinop ?op ?r1 ?r2 ?ty) ?v|-?cl]=>
+      inv esr;inv_eval_simple m r1;inv_eval_simple m r2
+    |[esr:eval_simple_rvalue ?ge ?e m (Ecast ?r1 ?ty) ?v|-?cl]=>
+      inv esr;inv_eval_simple m r1
+    |[esr:eval_simple_rvalue ?ge ?e m (Esizeof ?ty1 ?ty) ?v|-?cl]=>
+      inv esr
+  end.
+*)
+Ltac inv_eval_simple m ex :=
+  match goal with
+    |[eslst:eval_simple_list ?ge ?e m ex ?tylst ?vlst|-?cl]=>
+      match ex with
+        |Econs ?r ?rl=>inv eslst;inv_eval_simple m r;inv_eval_simple m rl
+        |Enil=>inv eslst
+      end
+    |[esl:eval_simple_lvalue ?ge ?e m ex ?b ?ofs|-?cl]=>
+      match ex with
+        |Eloc ?b1 ?ofs1 ?ty=>inv esl
+        |Evar ?x ?ty=>inv esl;[try discriminate|try discriminate]
+        |Ederef ?r ?ty=>inv esl;inv_eval_simple m r
+        |Efield ?l ?f ?ty=>inv esl;inv_eval_simple m l
+      end
+    |[esr:eval_simple_rvalue ?ge ?e m ex ?v|-?cl]=>
+      match ex with
+        |Eval ?vres ?ty=>inv esr
+        |Evalof ?l ?ty=>inv esr;inv_eval_simple m l
+        |Eaddrof ?l ?ty=>inv esr;inv_eval_simple m l
+        |Eunop ?op ?r1 ?ty=>inv esr;inv_eval_simple m r1
+        |Ebinop ?op ?r1 ?r2 ?ty=>
+          inv esr;inv_eval_simple m r1;inv_eval_simple m r2
+        |Ecast ?r1 ?ty=>inv esr;inv_eval_simple m r1
+        |Esizeof ?ty1 ?ty=>inv esr
+      end
+  end.
+
+
 (* Lemmas on if CurrentModeHasSPSR *)
 Definition hasSPSR :=
   Ecall (Evalof (Evar CurrentModeHasSPSR T13) T13)
   (Econs (Evalof (Evar proc T3) T3) Enil) T10.
 
-Lemma if_hasSPSR_ok :
-  forall m0 e m0' m t m' v,
+
+Lemma if_hasSPSR_ok' :
+  forall m0 e m0' m t m' v id ty,
     alloc_variables empty_env m0 
       (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    Mem.nextblock m0' < Mem.nextblock m ->
     eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
-    m = m'.
+    In (id,ty) (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars))->
+    param_val id m e=param_val id m' e.
 Proof.
-  intros until v. intros av ee.
+  intros until ty. intros av mn ee inlst.
   inv ee. unfold hasSPSR in H.
   (* eval_expr between m and m' *)
+
   inv_eval_expr m m'.
-  inv_alloc_vars e.
+
   (* alloc_vars *)
+  inv_alloc_vars e.
   pose (e:=(PTree.set old_Rn (b6, Tint I32 Unsigned)
             (PTree.set shifter_operand (b5, Tint I32 Unsigned)
                (PTree.set n (b4, Tint I8 Unsigned)
@@ -1450,60 +1608,312 @@ Proof.
                         (PTree.set S (b0, Tint I8 Signed)
                            (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
                               empty_env))))))));
-  fold e in H0, H6, H7.
-  (* v is vres *)
-  inv H0.
-  (* esr_valof in m2, find vf *)
-  inv H6.
-  (* esl_var_global in m2 CurrentModeHasSPSR is in global env*)
-  inv H1;[discriminate|idtac].
+  fold e in esr0, esr1, esr; fold e.
+  (* esr in m', v is vres *)
+  inv_eval_simple m' (Eval vres T10).
+  (* esr in m3, find vf is CurrentModeHasSPSR *)
+  inv_eval_simple m2 ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
   (* find block b *)
   unfold Genv.find_symbol in H5;simpl in H5.
-  injection H5;intro;rewrite<-H in *;clear H b H5 H10 H2.
+  injection H5;intro;rewrite<-H in *;clear H b H5 H8 H2.
   unfold load_value_of_type in H4;simpl in H4;
     injection H4;intro;rewrite<-H in *;clear H vf H4.
   (* fd is in block -6, and it is CurrentModeHasSPSR *)
-  rewrite Genv.find_funct_find_funct_ptr in H11.
-  unfold Genv.find_funct_ptr in H11;unfold ZMap.get in H11;simpl in H11.
-  unfold ZMap.set in H11;simpl in H11. 
-  repeat (rewrite PMap.gso in H11;[idtac|simpl;congruence]).
-  rewrite PMap.gss in H11.
-  injection H11;intro;rewrite<-H in *;clear H H11 fd.
-Ltac inv_eval_simple m :=
-  match goal with
-    |[eslst:eval_simple_list ?ge ?e m (Econs ?r ?rl) ?ty ?v|-?cl]=>
-      inv eslst;
-      match goal with
-        |[esr:eval_simple_rvalue ge e m r ?v'|-?cl]=>
-          inv_eval_simple esr;
-          match goal with
-            |[eslst':eval_simple_list ge e m ?elst ?ty ?v|-?cl]=>
-              inv_eval_simple m
-          end
-      end
-    |[eslst:eval_simple_list ?ge ?e m Enil ?t ?rl|-?cl]=>
-      inv eslst
-    |[esr:eval_simple_rvalue ?ge ?e m (Eval ?v ?ty) ?v|-?cl]=>
-      inv esr
-    |[esr:eval_simple_rvalue ?ge ?e m (Evalof ?l ?ty) ?v|-?cl]=>
-      inv esr;
-      match goal with
-        |[esl:eval_simple_lvalue ge e m ?l ?b ?ofs|-?cl]=>
-          inv_eval_simple m
-      end
-    |[esl:eval_simple_lvalue ?ge ?e m (Evar ?x ?ty) ?b ?ofs|-?cl]=>
-      inv esl
-    |[esr:eval_simple_rvalue ?ge ?e m (Evalof ?l ?ty) ?v|-?cl]=>
-      inv esr;
-      match goal with
-        |[esl:eval_simple_lvalue ge e m l ?b ?ofs|-?cl]=>
-          inv_eval_simple m
-      end
-    |_=>pose(f:=0)
-  end.
-inv_eval_simple m3.
-Admitted.
+  rewrite Genv.find_funct_find_funct_ptr in Heqff.
+  unfold Genv.find_funct_ptr in Heqff;unfold ZMap.get in Heqff;simpl in Heqff.
+  unfold ZMap.set in Heqff;simpl in Heqff. 
+  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
+  rewrite PMap.gss in Heqff.
+  injection Heqff;intro;rewrite<-H in *;clear H Heqff fd.
+  (* pass variable proc to eval_function *)
+  inv_eval_simple m2 (Econs (Evalof (Evar proc T3) T3) Enil).
+  (* type of ty*)
+  injection Heqtf;intros Htres Hty;rewrite<-Htres in *;rewrite<-Hty in *;
+    clear Heqtf Hty Htres ty0 tres H5 Heqcf.
+  (* cast v' into v0 *)
+  simpl in H2;unfold sem_cast in H2;simpl in H2.
+  (* eval_funcall from m3 to m' *)
+  inv ev_funcall.
+  (* exec_stmt from m9 to m10 *)
+  inv H5. simpl in H6.
+  (* eval_expression from m9 to m10 *)
+  inv H12.
+  (* eval_expr from m9 t m10 *)
+  inv_eval_expr m9 m10.
+  (* free_list from m10 to m' *)
+  inv_alloc_vars e0.
+  simpl in alc6, alc5.
+  (* Mem.free from m10 to m'*)
+  assert(Mem.free m10 b7 0 4 = Some m').
+  simpl in H10;rewrite<-H10;
+  destruct (Mem.free m10 b7 0 4); reflexivity.
+  (* the parameter list *)
+  unfold In in inlst;simpl in inlst.
+  (*b=b1*)
+  simpl in H9;injection H9;intro eq;rewrite<-eq in *;clear H9 eq b.
+  (* b6<b7 *)
+  generalize alc6 alc5;intros alc6' alc5'.
+  apply Mem.alloc_result in alc6';
+  apply Mem.valid_new_block in alc5';
+  unfold Mem.valid_block in alc5';
+  rewrite<-alc6' in mn;
+  apply (Zlt_trans b6) in mn;[idtac|exact alc5'];
+  clear alc6' alc5'.
 
+  (* case on parameters *)
+  destruct inlst as [param|[param|[param|[param|[param|[param|[param|inlst]]]]]]];
+  try
+  (injection param;intros Hptp Hpid;rewrite<-Hpid;clear Hptp Hpid param id0 ty;
+  (* simplify in goal *)
+  unfold param_val;simpl;
+  unfold load_value_of_type in *;simpl in H8 |-*);
+  (* bind parameters from m8 to m10 *)
+  inv_bind_params m10; repeat rrw_block;
+  unfold store_value_of_type in str;simpl in str.
+
+  (* param proc *)
+  (* load b1 from m2 is v' *)
+  rewrite H8.
+  
+  (* stores between m8 and m10 do not change value in b1 *)
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b1 (0 mod modulus) in str;
+    [idtac|left;blocks_lt b1 b6;blocks_neq b1 b7;exact mn].
+  (* load the same value in b1 from m10 to m' *)
+  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
+    [idtac|exact H|left;blocks_lt b1 b6;blocks_neq b1 b7;exact mn].
+  (* load same value in b1 from m2 and m8*)
+  rewrite Mem.load_alloc_other with
+    m2 0 4 m8 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
+    [rewrite str;reflexivity|exact alc6|exact H8].
+  (*
+  (* b1<>b7*)
+  assert(Hneqb17:b1<>b7).
+  (* b1<b6 *)
+  blocks_lt b1 b6.
+  (* b1 <> b7*)
+  blocks_neq b1 b7.
+  exact mn.
+  (* load the same value in b1 from m10 to m' *)
+  assert
+    (ld10':Mem.load AST.Mint32 m' b1 (0 mod modulus)
+      =Mem.load AST.Mint32 m10 b1 (0 mod modulus)).
+  apply Mem.load_free with b7 0 4;
+    [exact H|left;exact Hneqb17].
+  (* stores between m8 and m10 do not change value in b1 *)
+  inv_bind_params m10; repeat rrw_block.
+  unfold store_value_of_type in str;simpl in str.
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b1 (0 mod modulus) in str;
+  [idtac|left;exact Hneqb17].
+  rewrite str in ld10';clear str.
+  (* load same value in b1 from m3 and m8*)
+  simpl in alc6;
+  apply Mem.load_alloc_other with 
+    m2 0 4 m8 b7 AST.Mint32 b1 (0 mod modulus) v' in alc6;[idtac|exact H8].
+  (* load same value in b1 from m8 to m' *)
+  rewrite alc6 in ld10';clear alc6.
+  rewrite ld10';reflexivity.*)
+
+  (* param S *)
+  (* stores between m8 and m10 do not change value in b0 *)
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint8signed b0 (0 mod modulus) 
+    in str;
+    [idtac|left;blocks_lt b0 b6;blocks_neq b0 b7;exact mn].
+  (* load the same value in b0 from m10 to m' *)
+  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint8signed b0 (0 mod modulus);
+    [idtac|exact H|left;blocks_lt b0 b6;blocks_neq b0 b7;exact mn].
+  (* load same value in b0 from m2 and m8*)
+  rewrite Mem.load_alloc_unchanged with
+    m2 0 4 m8 b7 AST.Mint8signed b0 (0 mod modulus) in str;
+    [rewrite str;reflexivity|exact alc6
+      |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
+        rewrite<-alc6;blocks_lt b0 b6;blocks_lt' b0 b7;exact mn].
+  (*
+  (* b0<b7*)
+  assert(Hltb07:b0<b7).
+  blocks_lt b0 b6;blocks_lt' b0 b7. exact mn.
+  generalize Hltb07;intro Hneqb07;apply Zlt_not_eq in Hneqb07.
+  (* load the same value in b0 from m10 to m' *)
+  assert
+    (ld10':Mem.load AST.Mint8signed m' b0 (0 mod modulus)
+      =Mem.load AST.Mint8signed m10 b0 (0 mod modulus)).
+  apply Mem.load_free with b7 0 4;
+    [exact H|left;exact Hneqb07].
+  (* stores between m8 and m10 do not change value in b0 *)
+  inv_bind_params m10; repeat rrw_block.
+  unfold store_value_of_type in str;simpl in str.
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint8signed b0 (0 mod modulus) 
+    in str;
+  [idtac|left;exact Hneqb07].
+  rewrite str in ld10';clear str.
+  (* load same value in b0 from m3 and m8*)
+  simpl in alc6;
+  apply Mem.load_alloc_unchanged with 
+    m2 0 4 m8 b7 AST.Mint8signed b0 (0 mod modulus) in alc6;
+    [rewrite alc6 in ld10';clear alc6;rewrite ld10';reflexivity
+      |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
+        rewrite<-alc6;exact Hltb07].*)
+
+  (* param cond *)
+  (* stores between m8 and m10 do not change value in b2 *)
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b2 (0 mod modulus) 
+    in str;
+    [idtac|left;blocks_lt b2 b6;blocks_neq b2 b7;exact mn].
+  (* load the same value in b2 from m10 to m' *)
+  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b2 (0 mod modulus);
+    [idtac|exact H|left;blocks_lt b2 b6;blocks_neq b2 b7;exact mn].
+  (* load same value in b2 from m2 and m8*)
+  rewrite Mem.load_alloc_unchanged with
+    m2 0 4 m8 b7 AST.Mint32 b2 (0 mod modulus) in str;
+    [rewrite str;reflexivity|exact alc6
+      |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
+        rewrite<-alc6;blocks_lt b2 b6;blocks_lt' b2 b7;exact mn].
+  (*
+  (* b2<b7*)
+  assert(Hltb27:b2<b7).
+  blocks_lt b2 b6;blocks_lt' b2 b7;exact mn.
+  generalize Hltb27;intro Hneqb27;apply Zlt_not_eq in Hneqb27.
+  (* load the same value in b2 from m10 to m' *)
+  assert
+    (ld10':Mem.load AST.Mint32 m' b2 (0 mod modulus)
+      =Mem.load AST.Mint32 m10 b2 (0 mod modulus)).
+  apply Mem.load_free with b7 0 4;[exact H|left;exact Hneqb27].
+  (* stores between m8 and m10 do not change value in b2 *)
+  inv_bind_params m10; repeat rrw_block.
+  unfold store_value_of_type in str;simpl in str.
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b2 (0 mod modulus) 
+    in str;
+  [idtac|left;exact Hneqb27].
+  rewrite str in ld10';clear str.
+  (* load same value in b0 from m3 and m8*)
+  simpl in alc6;
+  apply Mem.load_alloc_unchanged with 
+    m2 0 4 m8 b7 AST.Mint32 b2 (0 mod modulus) in alc6;
+    [rewrite alc6 in ld10';clear alc6;rewrite ld10';reflexivity
+      |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
+        rewrite<-alc6;exact Hltb27].*)
+  
+  (* parameter d *)
+  admit.
+  (* parameter n *)
+  admit.
+  (* parameter shifter_operand *)
+  admit.
+  (* local variable old_Rn *)
+  admit.
+  (* parameter list is nil *)
+  contradiction.
+Qed.
+
+Lemma if_hasSPSR_ok'' :
+  forall m0 e m0' m t m' v,
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    Mem.nextblock m0' < Mem.nextblock m ->
+    eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
+    (exists i, param_val i m e=param_val i m' e).
+Proof.
+  intros until v. intros av mn ee.
+  inv ee. unfold hasSPSR in H.
+  (* eval_expr between m and m' *)
+  inv_eval_expr m m'.
+  (* alloc_vars *)
+  inv_alloc_vars e.
+  pose (e:=(PTree.set old_Rn (b6, Tint I32 Unsigned)
+            (PTree.set shifter_operand (b5, Tint I32 Unsigned)
+               (PTree.set n (b4, Tint I8 Unsigned)
+                  (PTree.set d (b3, Tint I8 Unsigned)
+                     (PTree.set cond (b2, Tint I32 Signed)
+                        (PTree.set S (b0, Tint I8 Signed)
+                           (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+                              empty_env))))))));
+  fold e in esr0, esr1, esr; fold e.
+  (* esr in m', v is vres *)
+  inv_eval_simple m' (Eval vres T10).
+  (* esr in m3, find vf is CurrentModeHasSPSR *)
+  inv_eval_simple m2 ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
+  (* find block b *)
+  unfold Genv.find_symbol in H5;simpl in H5.
+  injection H5;intro;rewrite<-H in *;clear H b H5 H8 H2.
+  unfold load_value_of_type in H4;simpl in H4;
+    injection H4;intro;rewrite<-H in *;clear H vf H4.
+  (* fd is in block -6, and it is CurrentModeHasSPSR *)
+  rewrite Genv.find_funct_find_funct_ptr in Heqff.
+  unfold Genv.find_funct_ptr in Heqff;unfold ZMap.get in Heqff;simpl in Heqff.
+  unfold ZMap.set in Heqff;simpl in Heqff.
+  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
+  rewrite PMap.gss in Heqff.
+  injection Heqff;intro;rewrite<-H in *;clear H Heqff fd.
+  (* pass variable proc to eval_function *)
+  inv_eval_simple m2 (Econs (Evalof (Evar proc T3) T3) Enil).
+  (* type of ty*)
+  injection Heqtf;intros Htres Hty;rewrite<-Htres in *;rewrite<-Hty in *;
+    clear Heqtf Hty Htres ty tres Heqcf.
+  (* cast v' into v0 *)
+  simpl in H2;unfold sem_cast in H2;simpl in H2.
+  (* eval_funcall from m3 to m' *)
+  inv ev_funcall.
+  (* exec_stmt from m9 to m10 *)
+  inv H6. simpl in H7.
+  (* eval_expression from m9 to m10 *)
+  inv H13.
+  (* eval_expr from m9 t m10 *)
+  inv_eval_expr m9 m10.
+  (* free_list from m10 to m' *)
+  inv_alloc_vars e0.
+  (* Mem.free from m10 to m'*)
+  assert(Mem.free m10 b7 0 4 = Some m').
+  simpl in H11;rewrite<-H11;
+  destruct (Mem.free m10 b7 0 4); reflexivity.
+  (* example proc *)
+  exists proc.
+  (* simplify in goal *)
+  unfold param_val. rewrite H9.
+  unfold load_value_of_type in *;simpl in H8 |-*.
+  rewrite H8.
+  (* bind parameters *)
+  inv_bind_params m10;rrw_block.
+  unfold store_value_of_type in str;simpl in str.
+  (* b = b1 *)
+  simpl in H9;injection H9;intro Heq;rewrite<-Heq in *;clear H9 Heq b.
+  (* b1<>b7*)
+  assert(Hneqb17:b1<>b7).
+  (* b1<b6 *)
+  blocks_lt b1 b6.
+  (* b6<b7 *)
+  apply Mem.alloc_result in alc6;
+  apply Mem.valid_new_block in alc5;
+  unfold Mem.valid_block in alc5;
+  rewrite<-alc6 in mn.
+  apply (Zlt_trans b6) in mn;[idtac|exact alc5].
+  (* b1 <> b7*)
+  blocks_neq b1 b7.
+  exact mn.
+  (* stores between m8 and m10 do not change value in b1 *)
+  apply Mem.load_store_other with 
+    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b1 (0 mod modulus) in str;
+    [idtac|left;exact Hneqb17].
+  (* load the same value in b1 from m10 to m' *)
+  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
+    [idtac|exact H|left;exact Hneqb17].
+  (* load same value in b1 from m2 and m8*)
+  rewrite Mem.load_alloc_other with
+    m2 0 4 m8 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
+    [rewrite str;reflexivity|exact alc6|exact H8].
+Qed.
+
+Lemma if_hasSPSR_ok :
+  forall e m t m' v,
+    eval_expression (Genv.globalenv prog_adc) e m hasSPSR t m' v ->
+    m = m'.
+Proof.
+Admitted.
+  
 
 Lemma hasSPSR_true' :
   forall m0 m0' e m vargs t m' v l b s,
@@ -1894,8 +2304,7 @@ Lemma reg_mem_not_changed:
 Proof.
   intros until v. intro ef.
   inv ef.
-
-  
+Admitted. 
 
 
 Lemma rn_ass_S_not_changed:
@@ -2340,7 +2749,7 @@ Proof.
           rename H5 into hasspsr, H8 into spsr_b, H9 into main_p, H4 into evs;
           generalize hasspsr;intro hasspsr1;
             simpl in spsr_b;
-            apply Events.Eapp_E0_inv in evs; destruct evs; subst;
+            apply Events.Eapp_E0_inv in evs; destruct evs; subst.
             apply if_hasSPSR_ok in hasspsr;
             rewrite hasspsr in *;clear hasspsr.
           (* two cases on the boolean value of CurrentModeHasSPSR *)
