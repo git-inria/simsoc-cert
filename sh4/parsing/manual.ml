@@ -70,7 +70,7 @@ type decoder =
 
 type raw_c_code = 
     { init : string list (* WARNING [init] is unused *)
-    ; code : Cparser.Cabs.definition list (** representation of the C pseudocode, natural order : first element in the list = first line *) }
+    ; code : Cparser.Cabs.definition list option (** representation of the C pseudocode, natural order : first element in the list = first line *) }
 
 type 'a instruction = 
     { explanation_desc : string list (** information present in the part "description" *) 
