@@ -193,8 +193,9 @@ void undefined_operation(void);
 /*void write_back(unsigned long);*/", p [ 155 ]
         ; Add_line_aft "union {
     int ASID, VPN, PPN, SZ, SH, PR, WT, C, D, V, SA, TC;
-  } TLB_MMUCR_URC /* FIXME existence */; unsigned long PTEH, PTEL, PTEA;", p [ 175 ]
-        ; Add_line_aft "unsigned long SSR, SPC, DBR, SGR, R0_BANK, R1_BANK, R2_BANK, R3_BANK, R4_BANK, R5_BANK, R6_BANK, R7_BANK, TRA, SR_MD, SR_BL, SR_RB, EXPEVT, H_00000100; /* FIXME existence */", p [ 176 ] ]
+  } TLB_MMUCR_URC; unsigned long PTEH, PTEL, PTEA;", p [ 175 ] (* FIXME existence *)
+        ; Add_line_aft "unsigned long SSR, SPC, DBR, SGR, R0_BANK, R1_BANK, R2_BANK, R3_BANK, R4_BANK, R5_BANK, R6_BANK, R7_BANK, TRA, SR_MD, SR_BL, SR_RB, EXPEVT, H_00000100;", p [ 176 ] (* FIXME existence *)
+        ; Add_line_aft "float FPUL;", p [ 178 ] (* TODO move this to gcc *) ]
       ; [ Add_line_aft "int i;", p [ 463 ] ] 
         
       ; [ Replace_first (Re "\\( +\\)\\(.+\\)\\( +\\)\\(.+\\)\\( +\\)\\(.+\\)", "\\1\\2\\3\\4\\5nat_of_word(\\6)"), p [ 251 ]
