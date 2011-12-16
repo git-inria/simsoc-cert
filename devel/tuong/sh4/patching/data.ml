@@ -82,7 +82,7 @@ struct
 
       ; [ Add_line_aft "int data_type_of_2(int n1, int n2) {
   return 0 ;
-}", p [ 1999 ] (* FIXME écrire la fonction *)
+}", p [ 2039 ] (* FIXME écrire la fonction *)
         ; Replace_first (S "f", "f_2"), p [ 2004 ] ]
 
       ; [ Add_char_end ";", p [ 2219 ; 2633 ; 3060 ] ]
