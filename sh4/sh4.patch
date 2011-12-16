@@ -1,5 +1,5 @@
 --- sh4.txt	2011-12-13 22:50:38.948268594 -0800
-+++ sh4inst.txt	2011-12-16 09:28:24.053386773 -0800
++++ sh4inst.txt	2011-12-16 11:03:28.031752747 -0800
 @@ -9153,45 +9153,65 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
@@ -158,7 +158,7 @@
                  if(sign_of(n) == 0) return(PINF);
                  else                       return(NINF);
           }
-@@ -9316,28 +9348,124 @@
+@@ -9316,18 +9348,114 @@
           else                                return(sNaN);
       }
  }
@@ -204,10 +204,10 @@
 +}
 +
 +  void check_single_exception(float *dst, float result)
-   {
-   union {
-         float f;
-         int l;
++  {
++  union {
++        float f;
++        int l;
 +  }     tmp;
 +  float abs;
 +        if(result < 0.0)        tmp.l = 0xff800000; /* – infinity */
@@ -270,14 +270,12 @@
 +}
 +
 +void normal_faddsub(int m, int n, int type)
-+  {
+   {
 +  int dst_d /* FIXME do we have to declare dst_d ? */;
-+  union {
-+        float f;
-+        int l;
-   }     dstf,srcf;
    union {
-         long d;
+         float f;
+         int l;
+@@ -9337,7 +9465,7 @@
          int l[2];
    }     dstd,srcd;
    union {                      /* “long double” format:      */
@@ -718,13 +716,10 @@
  
  
                                          Rev. 6.00 Sep 13, 2006 page 259 of 424
-@@ -11588,37 +11620,12 @@
- an exception has occurred. When an exception occurs, correct exception information is reflected in
- FPSCR.cause and FPSCR.flag, and FPUL is not updated. Appropriate processing should therefore
- be performed by software.
--
--Operation
--
+@@ -11591,34 +11623,9 @@
+ 
+ Operation
+ 
 -    void FCNVDS(int m, float *FPUL){
 -            case((FPSCR.PR){
 -                 0:    undefined_operation();            /* reserved */
@@ -753,9 +748,6 @@
 -                                 else fpu_exception_trap();   break;
 -        }
 -  }
-+
-+Operation
-+
 +int data_type_of_2(int n1, int n2) {
 +  return 0 ; /* FIXME écrire la fonction */
 +}
@@ -803,10 +795,17 @@
  
  
  Rev. 6.00 Sep 13, 2006 page 262 of 424
-@@ -11685,34 +11717,9 @@
+@@ -11678,41 +11710,16 @@
+ 1       FCNVSD FPUL, DRn          (double) FPUL → DRn     1111nnn010101101 2             —
  
- Operation
  
+-Description
+-
+-When FPSCR.PR = 1: This instruction converts the single-precision floating-point number in
+-FPUL to a double-precision floating-point number, and stores the result in DRn.
+-
+-Operation
+-
 -    void FCNVSD(int n, float *FPUL){
 -            pc += 2;
 -            clear_cause();
@@ -826,11 +825,16 @@
 -                 qNaN    :            qnan(n);          break;
 -                 sNaN    :            invalid(n);                break;
 -            }
--
++Description
+ 
 -Rev. 6.00 Sep 13, 2006 page 264 of 424
 -REJ09B0318-0600
 -                                                              Section 9 Instruction Descriptions
--
++When FPSCR.PR = 1: This instruction converts the single-precision floating-point number in
++FPUL to a double-precision floating-point number, and stores the result in DRn.
++
++Operation
+ 
 -  }
    int fpul_type(int *FPUL)
    {
@@ -1494,7 +1498,7 @@
  
  
  Rev. 6.00 Sep 13, 2006 page 300 of 424
-@@ -13084,31 +13112,16 @@
+@@ -13084,42 +13112,14 @@
      #define P_INT_DOUBLE_RANGE 0x41e0000000000000
  
  
@@ -1520,8 +1524,20 @@
 -               PINF:        ftrc_invalid(0);    break;
 -               NINF:        ftrc_invalid(1);    break;
 -               }
+-        }
+-  }
+-  int ftrc_signle_type_of(int m)
 +  void ftrc_invalid(int sign, int *FPUL)
-+  {
+   {
+-        if(sign_of(m) == 0){
+-              if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
+-              else if(FR_HEX[m] > P_INT_SINGLE_RANGE)
+-                            return(PINF);      /* out of range,+INF */
+-              else          return(NORM);      /* +0,+NORM            */
+-        } else {
+-              if((FR_HEX[m] & 0x7fffffff) > N_INT_SINGLE_RANGE)
+-                            return(NINF);   /* out of range ,+INF,NaN*/
+-              else          return(NORM);    /* -0,-NORM                   */
 +        set_V();
 +         if((FPSCR & ENABLE_V) == 0){
 +                 if(sign == 0)             *FPUL = 0x7fffffff;
@@ -1529,15 +1545,25 @@
          }
 +        else fpu_exception_trap();
    }
--  int ftrc_signle_type_of(int m)
-+  int ftrc_single_type_of(int m)
+   int ftrc_double_type_of(int m)
    {
-         if(sign_of(m) == 0){
-               if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
-@@ -13135,21 +13148,36 @@
+@@ -13135,21 +13135,49 @@
                              return(NINF);      /* out of range ,+INF,NaN*/
                else          return(NORM);      /* -0,-NORM                  */
          }
++  }
++  int ftrc_single_type_of(int m)
++  {
++        if(sign_of(m) == 0){
++              if(FR_HEX[m] > 0x7f800000)         return(NINF);    /* NaN */
++              else if(FR_HEX[m] > P_INT_SINGLE_RANGE)
++                            return(PINF);      /* out of range,+INF */
++              else          return(NORM);      /* +0,+NORM            */
++        } else {
++              if((FR_HEX[m] & 0x7fffffff) > N_INT_SINGLE_RANGE)
++                            return(NINF);   /* out of range ,+INF,NaN*/
++              else          return(NORM);    /* -0,-NORM                   */
++        }
 +  }
 +    void FTRC(int m, int *FPUL)
 +    {
