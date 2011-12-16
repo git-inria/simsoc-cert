@@ -65,7 +65,8 @@ struct
         ; Replace_all ("–=", "-="), [ R (6713, 151) ]
         ; Replace_first (S "H'", "H_"), p [ 7302 ] ]
 
-      ; [ add_int_type, p [ 6103 ; 6269 ] ] ]
+      ; [ add_int_type, p [ 6103 ; 6269 ]
+        ; Replace_first (S "d, n", "int d, int n"), p [ 4746 ] ] ]
   end
 
   module Body_float : PATCH =
