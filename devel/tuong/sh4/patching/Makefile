@@ -11,7 +11,7 @@ default: $(TARGETS)
 
 $(TARGETS): FORCE
 	$(SHOW) ocamlbuild devel/tuong/sh4/patching/$@
-	$(HIDE) $(OCAMLBUILD) -package batteries devel/tuong/sh4/patching/$@.d.byte devel/tuong/sh4/patching/$@.native
+	$(HIDE) $(OCAMLBUILD) -use-ocamlfind devel/tuong/sh4/patching/$@.d.byte devel/tuong/sh4/patching/$@.native
 
 clean::
 	rm -f $(TARGETS)
