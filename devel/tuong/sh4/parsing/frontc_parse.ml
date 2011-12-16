@@ -24,21 +24,20 @@ end
 
 module C_parse : C_PARSE = 
 struct
+  let option_of_parsing_result f = 
+    match try f stderr with _ -> PARSING_ERROR with
+    | PARSING_ERROR -> None
+    | PARSING_OK l -> Some l
+
   let c_of_file fic : Cabs.definition list option = 
-    match parse_file fic stderr with
-      | PARSING_ERROR -> None
-      | PARSING_OK l -> Some l
+    option_of_parsing_result (parse_file fic)
 
-  let c_of_program_ c_of_file suf str = 
-    let fic = Filename.temp_file "test" suf in
-    let oc = open_out fic in
-    let () = Printf.fprintf oc "%s\n" str in
+  let c_of_program str = 
+    let ic, oc = Unix.pipe () in
+    let oc = Unix.out_channel_of_descr oc in
+    let () = output_string oc str in
     let () = close_out oc in
-    let v = c_of_file fic in
-    let () = Unix.unlink fic in
-    v
-
-  let c_of_program = c_of_program_ c_of_file ""
+    option_of_parsing_result (parse_channel (Unix.in_channel_of_descr ic))
 
   let list_of_ic ic = 
     let rec aux l = 
@@ -56,6 +55,14 @@ struct
     l
 
   let preprocess = 
+    let c_of_program_ c_of_file suf str = 
+      let fic = Filename.temp_file "test" suf in
+      let oc = open_out fic in
+      let () = Printf.fprintf oc "%s\n" str in
+      let () = close_out oc in
+      let v = c_of_file fic in
+      let () = Unix.unlink fic in
+      v in
     c_of_program_ (fun fic -> 
       let ic = Unix.open_process_in (Printf.sprintf "gcc -E -U__GNUC__ %s" fic) in
       let l = list_of_ic ic in
