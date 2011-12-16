@@ -1,2 +1,2 @@
-<*.{byte,native}>: use_str, package(FrontC)
-<*.ml>: package(FrontC)
+<*.{byte,native}>: package(batteries), package(FrontC)
+<*.ml>: package(batteries), package(FrontC)

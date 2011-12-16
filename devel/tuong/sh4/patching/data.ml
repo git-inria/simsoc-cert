@@ -206,6 +206,8 @@ void undefined_operation(void);
         ; comment_first "long", p [ 340 ; 410 ] (* "long double" compcert unsupported *) ] (* add conv type *) ]
   end
 
+  let fundef_order = [ "sign_of" ; "zero" ; "data_type_of" ; "register_copy" ; "set_V" ; "set_O" ; "set_U" ; "set_I" ; "qnan" ; "invalid" ; "inf" ; "check_single_exception" ; "check_double_exception" ; "normal_faddsub" ; "normal_fmul" ; "check_product_infinity" ; "check_negative_infinity" ; "check_positive_infinity" ; "check_product_invalid" ; "fipr" ; "clear_cause" ; "set_E" ; "set_Z" ; "dz" ] (** ENHANCEMENT generate this list automatically by repetitively running compcert and parsing its error messages to get the dependency *)
+
   module Body_float =
   struct
     let main = 

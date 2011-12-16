@@ -16,6 +16,7 @@ open Pdf_page
 open Sh4_section
 module C_parse = Frontc_parse.C_parse
 open Frontc_manual
+open BatMap
 
 let display_dec = false
 let display_c = true
@@ -49,8 +50,31 @@ let preprocess_parse_c : string list manual -> raw_c_code manual = fun m ->
 
   { entete = mk_code l ; section = List.map2 (fun l i -> { i with c_code = mk_code l }) ll m.section }
 
+let arrange_order = true
+
 let parse_c : string list manual -> raw_c_code manual = fun m -> 
-  { entete = mk_code m.entete ; section = List.map (fun i -> { i with c_code = mk_code i.c_code }) m.section }
+  { entete = 
+      (let v = mk_code m.entete in
+       if arrange_order then
+         let l_fundef, l_other = BatList.partition (function Cabs.FUNDEF _ -> true | _ -> false) (let Some l = v.code in l) in
+         let map_s, _ = List.fold_left (fun (map_s, pos) s -> String_map.add s pos map_s, succ pos) (String_map.empty, 0) Data.Semantic_compcert.fundef_order in
+         { v with code = 
+             Some (BatList.flatten [ l_other 
+                                   ; BatList.map snd (IntMap.bindings (List.fold_left (fun map_i -> function Cabs.FUNDEF ((_, _, (n, _, _, _)), _) as x -> IntMap.add (String_map.find n map_s) x map_i) IntMap.empty l_fundef)) ]) }
+       else
+         v)
+  ; section = BatList.map
+      (fun i -> 
+        let v = mk_code i.c_code in 
+        { i with c_code = 
+            if arrange_order then
+              let Some l = v.code in 
+              let l_maj, l_min = 
+                BatList.partition (function Cabs.FUNDEF ((_, _, (n, _, _, _)), _) -> Str.l_match [ Str.regexp "[A-Z_0-9]+", n ]) l in
+              { v with code = Some (BatList.flatten [ List.rev l_min ; l_maj ]) }
+            else
+              v }
+  ) m.section }
 
 (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
 (* Remark : we can replace the "Assert_failure" by a "[]" *)
@@ -291,13 +315,14 @@ let _ =
   let manual = manual_of_in_channel (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) in
 
   if List.exists ((=) Print_pc) l then
+    let f = function None -> assert false | Some x -> x in
     begin
-      List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
+      Cprint.print_defs (f manual.entete.code);
       
       List.iter (fun sec -> 
         begin
           Printf.printf "/* 9.%d */\n" sec.position;
-          Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
+          Cprint.print_defs (f sec.c_code.code);
 (*          Check.decoder_title sec;*)
         end;
       ) manual.section;
