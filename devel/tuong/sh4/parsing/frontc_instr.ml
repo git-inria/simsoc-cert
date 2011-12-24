@@ -25,7 +25,7 @@ let mk_code l =
   { init = l
   ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
 
-let preprocess_parse_c : string list manual -> raw_c_code manual = fun m -> 
+let preprocess_parse_c : string list manual -> bool -> raw_c_code manual = fun m _ -> 
   (** the preprocessing [C_parse.preprocess] function needs to receive a single C file (for replacing all directive variable for example), that is why we concatenate the header and all the instructions *)
   let (pos, code), l_pos =
     List.fold_left (fun ((pos, acc_s), l_pos) l -> 
@@ -50,9 +50,7 @@ let preprocess_parse_c : string list manual -> raw_c_code manual = fun m ->
 
   { entete = mk_code l ; section = List.map2 (fun l i -> { i with c_code = mk_code l }) ll m.section }
 
-let arrange_order = true
-
-let parse_c : string list manual -> raw_c_code manual = fun m -> 
+let parse_c : string list manual -> bool -> raw_c_code manual = fun m arrange_order -> 
   { entete = 
       (let v = mk_code m.entete in
        if arrange_order then
@@ -256,6 +254,7 @@ type argument =
   | File of string (* filename *)
   | Print_pc
   | Print_dec
+  | No_arrange_order
 
 module type ARG = 
 sig
@@ -289,6 +288,8 @@ struct
            " Display this list of options"
          ; "-f", String (fun s -> push (File s)),
            " File to input from"
+         ; "-no_permute", Unit (fun _ -> push No_arrange_order),
+           " Keep the same order as the manual. By default, the order is such that the pseudocode is CompCert well compiled."
          ; "-print_pseudocode", Unit (fun _ -> push Print_pc),
            " Display the C code" 
          ; "-print_decoder", Unit (fun _ -> push Print_dec),
@@ -312,7 +313,7 @@ end
 
 let _ = 
   let l = Arg.parse () in
-  let manual = manual_of_in_channel (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) in
+  let manual = manual_of_in_channel (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) (not (List.exists ((=) No_arrange_order) l)) in
 
   if List.exists ((=) Print_pc) l then
     let f = function None -> assert false | Some x -> x in
