@@ -178,7 +178,7 @@ let inst_of_cabs : Cabs.definition -> E.inst option =
     | C.UNARY (op, e) -> E.Fun (s_of_unary_operator op, [ e_of_expression e ])
     | C.BINARY (op, e1, e2) -> E.BinOp (e_of_expression e1, s_of_binary_operator op, e_of_expression e2)
 
-    | C.CONSTANT (C.CONST_INT s) -> if String.length s >= 3 && s.[0] = '0' then match s.[1] with 'x' -> E.Hex s | 'b' -> E.Bin s | _ -> E.Num s else E.Num s 
+    | C.CONSTANT (C.CONST_INT s | C.CONST_STRING s) -> if String.length s >= 3 && s.[0] = '0' then match s.[1] with 'x' -> E.Hex s | 'b' -> E.Bin s | _ -> E.Num s else E.Num s 
     | C.CONSTANT (C.CONST_FLOAT "0.0") -> E.Float_zero
 
     | C.CAST ((C.SpecType C.Tunsigned :: _, C.JUSTBASE), C.SINGLE_INIT e) -> e_of_expression e
