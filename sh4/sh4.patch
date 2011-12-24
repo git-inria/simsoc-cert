@@ -1,6 +1,6 @@
---- sh4.txt	2011-12-13 22:50:38.948268594 -0800
-+++ sh4inst.txt	2011-12-16 11:03:28.031752747 -0800
-@@ -9153,45 +9153,65 @@
+--- sh4.txt	2011-12-23 19:51:48.624097566 +0100
++++ sh4inst.txt2	2011-12-24 04:44:32.094284262 +0100
+@@ -9153,45 +9153,67 @@
                                                              Rev. 6.00 Sep 13, 2006 page 193 of 424
                                                                                   REJ09B0318-0600
  Section 9 Instruction Descriptions
@@ -19,6 +19,8 @@
 +void store_quad(int, int);
 +void undefined_operation(void);
 +/*void write_back(unsigned long);*/
++int bool_of_word(int);
++int nat_of_word(int);
  
    unsigned char          Read_Byte(unsigned long Addr);
    unsigned short Read_Word(unsigned long Addr);
@@ -86,7 +88,7 @@
    #define Q ((*(struct SR0 *)(&SR)).Q0)
    #define S ((*(struct SR0 *)(&SR)).S0)
  
-@@ -9201,14 +9221,14 @@
+@@ -9201,14 +9223,14 @@
                                                                 Section 9 Instruction Descriptions
  
  #define T ((*(struct SR0 *)(&SR)).T0)
@@ -105,7 +107,7 @@
  #define PZERO                0
  #define NZERO                1
  #define DENORM               2
-@@ -9248,12 +9268,14 @@
+@@ -9248,12 +9270,14 @@
    #define FLAG              0x0000007C    /* FPSCR(bit6-2) */
  
  
@@ -123,7 +125,7 @@
    #define FR                frf.f[ FPSCR_FR]
    #define DR                frf.d[ FPSCR_FR]
    #define XF_HEX            frf.l[~FPSCR_FR]
-@@ -9273,6 +9295,16 @@
+@@ -9273,6 +9297,16 @@
    {
            return(FR_HEX[n]>>31);
    }
@@ -140,7 +142,7 @@
    int data_type_of(int n) {
    int abs;
          abs = FR_HEX[n] & 0x7fffffff;
-@@ -9300,7 +9332,7 @@
+@@ -9300,7 +9334,7 @@
       else {       /* Double-precision */
           if(abs < 0x00100000){
                  if((FPSCR_DN == 1) ||
@@ -149,7 +151,7 @@
                        if(sign_of(n) == 0)       {zero(n, 0); return(PZERO);}
                        else                      {zero(n, 1); return(NZERO);}
                }
-@@ -9308,7 +9340,7 @@
+@@ -9308,7 +9342,7 @@
           }
           else if(abs < 0x7ff00000) return(NORM);
           else if((abs == 0x7ff00000) &&
@@ -158,7 +160,7 @@
                  if(sign_of(n) == 0) return(PINF);
                  else                       return(NINF);
           }
-@@ -9316,18 +9348,114 @@
+@@ -9316,18 +9350,114 @@
           else                                return(sNaN);
       }
  }
@@ -275,7 +277,7 @@
    union {
          float f;
          int l;
-@@ -9337,7 +9465,7 @@
+@@ -9337,7 +9467,7 @@
          int l[2];
    }     dstd,srcd;
    union {                      /* “long double” format:      */
@@ -284,7 +286,7 @@
          int l[4];              /*    15-bit exponent    */
    }     dstx;                  /*    112-bit mantissa */
          if(FPSCR_PR == 0) {
-@@ -9382,16 +9510,16 @@
+@@ -9382,16 +9512,16 @@
                }
            }
            if((dstx.l[2] & 0x0fffffff) || dstx.l[3]) set_I();
@@ -305,7 +307,7 @@
  {
  union {
       float f;
-@@ -9407,7 +9535,7 @@
+@@ -9407,7 +9537,7 @@
                                                                          REJ09B0318-0600
  Section 9 Instruction Descriptions
  
@@ -314,7 +316,7 @@
          int l[4];
    }     tmpx;
          if(FPSCR_PR == 0) {
-@@ -9424,14 +9552,50 @@
+@@ -9424,14 +9554,50 @@
                tmpx.x *= DR[m>>1]; /* Precise creation */
                tmpd.d *= DR[m>>1]; /* Round to nearest */
                if(tmpd.d != tmpx.x) set_I();
@@ -367,7 +369,7 @@
    {
    union {
          double d;
-@@ -9456,11 +9620,12 @@
+@@ -9456,11 +9622,12 @@
             (data_type_of(m+2) == qNaN) || (data_type_of(n+2) == qNaN) ||
           (data_type_of(m+3) == qNaN) || (data_type_of(n+3) == qNaN))
  qnan(n+3);
@@ -384,7 +386,7 @@
             for(i=0;i<4;i++) {
                   /* If FPSCR_DN == 1, zeroize */
                   if        (data_type_of(m+i) == PZERO)                 FR[m+i] = +0.0;
-@@ -9489,161 +9654,30 @@
+@@ -9489,161 +9656,30 @@
                                                                                   REJ09B0318-0600
  Section 9 Instruction Descriptions
  
@@ -548,7 +550,7 @@
  
  
  
-@@ -10662,7 +10696,7 @@
+@@ -10662,7 +10698,7 @@
  Section 9 Instruction Descriptions
  
         LL=temp&0x000000FF;
@@ -557,7 +559,7 @@
         if (HH==0) T=1;
         else T=0;
         PC+=2;
-@@ -10674,8 +10708,8 @@
+@@ -10674,8 +10710,8 @@
         long imm;
  
  
@@ -568,7 +570,7 @@
         if (R[0]==imm) T=1;
         else T=0;
         PC+=2;
-@@ -11031,13 +11065,13 @@
+@@ -11031,13 +11067,13 @@
  
  
             if (fnLmL<0) {
@@ -586,7 +588,7 @@
             }
  
  
-@@ -11099,7 +11133,7 @@
+@@ -11099,7 +11135,7 @@
         temp3=RmH*RnH;
  
  
@@ -595,7 +597,7 @@
         Res1=temp1+temp2;
  
  
-@@ -11311,9 +11345,9 @@
+@@ -11311,9 +11347,9 @@
  Operation
  
      void FABS (int n){
@@ -608,7 +610,7 @@
      /* Same operation is performed regardless of precision. */
  
  Possible Exceptions:
-@@ -11351,9 +11385,9 @@
+@@ -11351,9 +11387,9 @@
  
  Operation
  
@@ -621,7 +623,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -11363,7 +11397,7 @@
+@@ -11363,7 +11399,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
@@ -630,7 +632,7 @@
                     case PZERO:
  
  
-@@ -11451,29 +11485,12 @@
+@@ -11451,29 +11487,12 @@
  
  Operation
  
@@ -666,7 +668,7 @@
    {
          if((data_type_of(m) == sNaN) ||
              (data_type_of(n) == sNaN))                 return(INVALID);
-@@ -11504,24 +11521,39 @@
+@@ -11504,24 +11523,39 @@
                if(FR[n] == FR[m])                 return(EQ);
                else if(FR[n] > FR[m])             return(GT);
                else                               return(LT);
@@ -716,7 +718,7 @@
  
  
                                          Rev. 6.00 Sep 13, 2006 page 259 of 424
-@@ -11591,34 +11623,9 @@
+@@ -11591,34 +11625,9 @@
  
  Operation
  
@@ -754,7 +756,7 @@
    void normal_fcnvds(int m, float *FPUL)
    {
    int sign;
-@@ -11632,13 +11639,38 @@
+@@ -11632,13 +11641,38 @@
            int l[2];
    }       dstd;
            dstd.d = DR[m>>1];
@@ -795,7 +797,7 @@
  
  
  Rev. 6.00 Sep 13, 2006 page 262 of 424
-@@ -11678,41 +11710,16 @@
+@@ -11678,41 +11712,16 @@
  1       FCNVSD FPUL, DRn          (double) FPUL → DRn     1111nnn010101101 2             —
  
  
@@ -843,7 +845,7 @@
          abs = *FPUL & 0x7fffffff;
          if(abs < 0x00800000){
                if((FPSCR_DN == 1) || (abs == 0x00000000)){
-@@ -11730,6 +11737,31 @@
+@@ -11730,6 +11739,31 @@
          else                              return(sNaN);
    }
  
@@ -875,7 +877,7 @@
  FCNVSD Special Cases
  
          FRn            +NORM      –NORM       +0    –0       +INF     –INF     qNaN     sNaN
-@@ -11772,10 +11804,46 @@
+@@ -11772,10 +11806,46 @@
  therefore be performed by software.
  
  Operation
@@ -924,7 +926,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -11816,54 +11884,15 @@
+@@ -11816,54 +11886,15 @@
                 case DENORM: set_E(); break;
                 case PINF:
                 case NINF: invalid(n);           break;
@@ -980,7 +982,7 @@
  
  Rev. 6.00 Sep 13, 2006 page 268 of 424
  REJ09B0318-0600
-@@ -11954,10 +11983,10 @@
+@@ -11954,10 +11985,10 @@
  
  Operation
  
@@ -993,7 +995,7 @@
                clear_cause();
                fipr(m,n);
           }
-@@ -11996,7 +12025,7 @@
+@@ -11996,7 +12027,7 @@
      void FLDI0(int n)
      {
           FR[n] = 0x00000000;
@@ -1002,7 +1004,7 @@
      }
  
  Possible Exceptions:
-@@ -12014,9 +12043,9 @@
+@@ -12014,9 +12045,9 @@
           1.0 Load
  
                                                                             Execution
@@ -1015,7 +1017,7 @@
  
  
  Description
-@@ -12028,7 +12057,7 @@
+@@ -12028,7 +12059,7 @@
    void FLDI1(int n)
    {
           FR[n] = 0x3F800000;
@@ -1024,7 +1026,7 @@
    }
  
  Possible Exceptions:
-@@ -12057,10 +12086,10 @@
+@@ -12057,10 +12088,10 @@
  
  Operation
  
@@ -1038,7 +1040,7 @@
    }
  
  Possible Exceptions:
-@@ -12112,9 +12141,9 @@
+@@ -12112,9 +12143,9 @@
          double d;
          int l[2];
    }     tmp;
@@ -1050,7 +1052,7 @@
                FR[n] = *FPUL; /* convert from integer to float */
                tmp.d = *FPUL;
                if(tmp.l[1] & 0x1fffffff) inexact();
-@@ -12157,9 +12186,43 @@
+@@ -12157,9 +12188,43 @@
  
  Operation
  
@@ -1096,7 +1098,7 @@
              clear_cause();
              if(FPSCR_PR == 1) undefined_operation();
              else if((data_type_of(0) == sNaN) ||
-@@ -12169,7 +12232,7 @@
+@@ -12169,7 +12234,7 @@
                       (data_type_of(m) == qNaN)) qnan(n);
              else if((data_type_of(0) == DENORM) ||
                       (data_type_of(m) == DENORM)) set_E();
@@ -1105,7 +1107,7 @@
                  case NORM: switch (data_type_of(m)){
                  case PZERO:
  
-@@ -12202,7 +12265,7 @@
+@@ -12202,7 +12267,7 @@
                case PZERO:
                case NZERO:
                case NORM:       normal_fmac(m,n);       break;
@@ -1114,7 +1116,7 @@
          case PZERO:
          case NZERO: switch (data_type_of(m)){
                case PINF:
-@@ -12230,52 +12293,16 @@
+@@ -12230,52 +12295,16 @@
            default: switch (data_type_of(n)){
            case DENORM: set_E();        break;
            case qNaN:        qnan(n);    break;
@@ -1168,7 +1170,7 @@
  
  Rev. 6.00 Sep 13, 2006 page 280 of 424
  REJ09B0318-0600
-@@ -12392,30 +12419,30 @@
+@@ -12392,30 +12421,30 @@
  
  Operation
  
@@ -1209,7 +1211,7 @@
    }
  
  
-@@ -12423,41 +12450,41 @@
+@@ -12423,41 +12452,41 @@
  REJ09B0318-0600
                                                  Section 9 Instruction Descriptions
  
@@ -1264,7 +1266,7 @@
  
                                            Rev. 6.00 Sep 13, 2006 page 285 of 424
                                                                 REJ09B0318-0600
-@@ -12465,17 +12492,17 @@
+@@ -12465,17 +12494,17 @@
  
    {
          load_quad(R[0] + R[m],DR[n>>1]);
@@ -1287,7 +1289,7 @@
    }
  
  Possible Exceptions:
-@@ -12533,56 +12560,56 @@
+@@ -12533,56 +12562,56 @@
  
  Operation
  
@@ -1362,7 +1364,7 @@
    }
  
  Possible Exceptions:
-@@ -12623,9 +12650,9 @@
+@@ -12623,9 +12652,9 @@
  
  Operation
  
@@ -1374,7 +1376,7 @@
                   clear_cause();
                   if((data_type_of(m) == sNaN) ||
                       (data_type_of(n) == sNaN)) invalid(n);
-@@ -12633,7 +12660,7 @@
+@@ -12633,7 +12662,7 @@
                             (data_type_of(n) == qNaN)) qnan(n);
                   else if((data_type_of(m) == DENORM) ||
                             (data_type_of(n) == DENORM)) set_E();
@@ -1383,7 +1385,7 @@
                       case NORM: switch (data_type_of(n)){
                             case PZERO:
                             case NZERO: zero(n,sign_of(m)^sign_of(n));               break;
-@@ -12657,7 +12684,7 @@
+@@ -12657,7 +12686,7 @@
                  case NINF : switch (data_type_of(n)){
                        case PZERO:
                        case NZERO: invalid(n);         break;
@@ -1392,7 +1394,7 @@
             }          break;
             }
    }
-@@ -12718,7 +12745,7 @@
+@@ -12718,7 +12747,7 @@
  
      void FNEG (int n){
             FR[n] = -FR[n];
@@ -1401,7 +1403,7 @@
      }
  
  
-@@ -12838,28 +12865,13 @@
+@@ -12838,28 +12867,13 @@
  
  Operation
  
@@ -1431,7 +1433,7 @@
  void normal_fsqrt(int n)
  {
  union {
-@@ -12871,7 +12883,7 @@
+@@ -12871,7 +12885,7 @@
        int l[2];
  }     dstd,tmpd;
  union {
@@ -1440,7 +1442,7 @@
        int l[4];
  }     tmpx;
        if(FPSCR_PR == 0) {
-@@ -12904,6 +12916,22 @@
+@@ -12904,6 +12918,22 @@
              }
    }
  
@@ -1463,7 +1465,7 @@
  FSQRT Special Cases
  
        FRn           +NORM    –NORM         +0        –0     +INF     –INF     qNaN     sNaN
-@@ -12939,10 +12967,10 @@
+@@ -12939,10 +12969,10 @@
  
  Operation
  
@@ -1477,7 +1479,7 @@
    }
  
  Possible Exceptions:
-@@ -12981,9 +13009,9 @@
+@@ -12981,9 +13011,9 @@
  
  Operation
  
@@ -1489,7 +1491,7 @@
           clear_cause();
           if((data_type_of(m) == sNaN) ||
                (data_type_of(n) == sNaN)) invalid(n);
-@@ -12993,7 +13021,7 @@
+@@ -12993,7 +13023,7 @@
                     (data_type_of(n) == DENORM)) set_E();
           else switch (data_type_of(m)){
                case NORM: switch (data_type_of(n)){
@@ -1498,7 +1500,7 @@
  
  
  Rev. 6.00 Sep 13, 2006 page 300 of 424
-@@ -13084,42 +13112,14 @@
+@@ -13084,42 +13114,14 @@
      #define P_INT_DOUBLE_RANGE 0x41e0000000000000
  
  
@@ -1547,7 +1549,7 @@
    }
    int ftrc_double_type_of(int m)
    {
-@@ -13135,21 +13135,49 @@
+@@ -13135,21 +13137,49 @@
                              return(NINF);      /* out of range ,+INF,NaN*/
                else          return(NORM);      /* -0,-NORM                  */
          }
@@ -1607,7 +1609,7 @@
  
  FTRC Special Cases
  
-@@ -13235,7 +13263,7 @@
+@@ -13235,7 +13265,7 @@
    {
    float saved_vec[4],result_vec[4];
    int saved_fpscr;
@@ -1616,7 +1618,7 @@
             if(FPSCR_PR == 0) {
                   PC += 2;
                   clear_cause();
-@@ -13244,7 +13272,7 @@
+@@ -13244,7 +13274,7 @@
                   dst = 12 - n;                    /* select other vector than FVn */
                   for(i=0;i<4;i++)saved_vec [i] = FR[dst+i];
                   for(i=0;i<4;i++){
@@ -1625,7 +1627,7 @@
                         fipr(n,dst);
                         saved_fpscr |= FPSCR & (CAUSE|FLAG) ;
                         result_vec [i] = FR[dst+3];
-@@ -13468,7 +13496,7 @@
+@@ -13468,7 +13498,7 @@
  
          LDCSSR(int m)             /* LDC Rm,SSR : Privileged */
          {
@@ -1634,7 +1636,7 @@
              PC+=2;
                                                          Rev. 6.00 Sep 13, 2006 page 313 of 424
                                                                               REJ09B0318-0600
-@@ -13552,7 +13580,7 @@
+@@ -13552,7 +13582,7 @@
  }
  
  
@@ -1643,7 +1645,7 @@
                    /* n=0–7 */
  {
      Rn_BANK=Read_Long(R[m]);
-@@ -13600,14 +13628,14 @@
+@@ -13600,14 +13630,14 @@
    #define FPSCR_MASK 0x003FFFFF
  
  
@@ -1662,7 +1664,7 @@
           R[m]+=4;
           PC+=2;
    }
-@@ -13759,19 +13787,19 @@
+@@ -13759,19 +13789,19 @@
  
    LDTLB( )       /*LDTLB */
    {
@@ -1694,7 +1696,7 @@
  
  
          PC+=2;
-@@ -13819,7 +13847,7 @@
+@@ -13819,7 +13849,7 @@
  
  Operation
  
@@ -1703,7 +1705,7 @@
    {
          unsigned long RnL,RnH,RmL,RmH,Res0,Res1,Res2;
          unsigned long temp0,temp1,temp2,temp3;
-@@ -13873,11 +13901,11 @@
+@@ -13873,11 +13903,11 @@
  
  
    if(fnLmL<0){
@@ -1719,7 +1721,7 @@
    }
    if(S==1){
         Res0=MACL+Res0;
-@@ -13887,7 +13915,7 @@
+@@ -13887,7 +13917,7 @@
                                                  Section 9 Instruction Descriptions
  
      if (MACL>Res0) Res2++;
@@ -1728,7 +1730,7 @@
      else Res2+=MACH|0xFFFF0000;
             Res2+=MACH&0x00007FFF;
  
-@@ -14152,7 +14180,7 @@
+@@ -14152,7 +14182,7 @@
  
  
    MOVLL(long m, long n) /* MOV.L @Rm,Rn */
@@ -1737,7 +1739,7 @@
          R[n]=Read_Long(R[m]);
          PC+=2;
    }
-@@ -14343,7 +14371,7 @@
+@@ -14343,7 +14373,7 @@
   }
  
  
@@ -1746,7 +1748,7 @@
   {
          unsigned int disp;
  
-@@ -14576,7 +14604,7 @@
+@@ -14576,7 +14606,7 @@
  
  Operation
  
@@ -1755,7 +1757,7 @@
   {
         long disp;
         disp=(0x0000000F & (long)d);
-@@ -14730,9 +14758,7 @@
+@@ -14730,9 +14760,7 @@
  
    MOVCAL(int n)             /*MOVCA.L      R0,@Rn */
           {
@@ -1766,7 +1768,7 @@
               Write_Long(R[n], R[0]);
               PC+=2;
           }
-@@ -14877,7 +14903,7 @@
+@@ -14877,7 +14905,7 @@
  
    MULU(long m, long n) /* MULU Rm,Rn                 */
    {
@@ -1775,7 +1777,7 @@
           (unsigned long)(unsigned short)R[m];
            PC+=2;
    }
-@@ -15021,7 +15047,7 @@
+@@ -15021,7 +15049,7 @@
  
    NOT(long m, long n) /* NOT Rm,Rn */
    {
@@ -1784,7 +1786,7 @@
                PC+=2;
    }
  
-@@ -15099,7 +15125,7 @@
+@@ -15099,7 +15127,7 @@
  
    OCBP(int n)               /* OCBP @Rn */
    {
@@ -1793,7 +1795,7 @@
        invalidate_operand_cache_block(R[n]);
        PC+=2;
    }
-@@ -15140,7 +15166,7 @@
+@@ -15140,7 +15168,7 @@
  
    OCBWB(int n)               /* OCBWB @Rn */
           {
@@ -1802,7 +1804,7 @@
               PC+=2;
           }
  
-@@ -15700,7 +15726,7 @@
+@@ -15700,7 +15728,7 @@
  
  Operation
  
@@ -1811,7 +1813,7 @@
    {
               int sgn=R[m] & 0x80000000;
               if (sgn==0)
-@@ -15712,7 +15738,7 @@
+@@ -15712,7 +15740,7 @@
                                   R[n] = 0xFFFFFFFF;
              }
              else
@@ -1820,7 +1822,7 @@
              PC+=2;
    }
  
-@@ -15866,7 +15892,7 @@
+@@ -15866,7 +15894,7 @@
  
  Operation
  
@@ -1829,7 +1831,7 @@
    {
           int sgn = R[m] & 0x80000000;
           if (sgn == 0)
-@@ -15874,7 +15900,7 @@
+@@ -15874,7 +15902,7 @@
           else if ((R[m] & 0x1F) == 0)
                       R[n] = 0;
           else
@@ -1838,7 +1840,7 @@
           PC+=2;
    }
  
-@@ -16310,7 +16336,7 @@
+@@ -16310,7 +16338,7 @@
  
    STCMSR(int n)          /* STC.L SR,@-Rn : Privileged */
          {
@@ -1847,7 +1849,7 @@
                Write_Long(R[n],SR);
                PC+=2;
          }
-@@ -16323,7 +16349,7 @@
+@@ -16323,7 +16351,7 @@
                                                 Section 9 Instruction Descriptions
  
       {
@@ -1856,7 +1858,7 @@
           Write_Long(R[n],GBR);
           PC+=2;
       }
-@@ -16331,7 +16357,7 @@
+@@ -16331,7 +16359,7 @@
  
  STCMVBR(int n)      /* STC.L VBR,@-Rn : Privileged */
       {
@@ -1865,7 +1867,7 @@
           Write_Long(R[n],VBR);
           PC+=2;
       }
-@@ -16339,7 +16365,7 @@
+@@ -16339,7 +16367,7 @@
  
  STCMSSR(int n)      /* STC.L SSR,@-Rn : Privileged */
       {
@@ -1874,7 +1876,7 @@
           Write_Long(R[n],SSR);
           PC+=2;
       }
-@@ -16347,7 +16373,7 @@
+@@ -16347,7 +16375,7 @@
  
  STCMSPC(int n)      /* STC.L SPC,@-Rn : Privileged */
       {
@@ -1883,7 +1885,7 @@
           Write_Long(R[n],SPC);
           PC+=2;
       }
-@@ -16355,7 +16381,7 @@
+@@ -16355,7 +16383,7 @@
  
  STCMSGR(int n)      /* STC.L SGR,@-Rn : Privileged */
       {
@@ -1892,7 +1894,7 @@
           Write_Long(R[n],SGR);
           PC+=2;
       }
-@@ -16368,7 +16394,7 @@
+@@ -16368,7 +16396,7 @@
  Section 9 Instruction Descriptions
  
          {
@@ -1901,7 +1903,7 @@
                Write_Long(R[n],DBR);
                PC+=2;
          }
-@@ -16377,7 +16403,7 @@
+@@ -16377,7 +16405,7 @@
    STCMRm_BANK(int n)             /* STC.L Rm_BANK,@-Rn : Privileged */
                                   /* m=0–7 */
          {
@@ -1910,7 +1912,7 @@
                Write_Long(R[n],Rm_BANK);
                PC+=2;
          }
-@@ -16444,7 +16470,7 @@
+@@ -16444,7 +16472,7 @@
  
    STSMMACH(int n)           /* STS.L MACH,@-Rn */
    {
@@ -1919,7 +1921,7 @@
        Write_Long(R[n],MACH);
        PC+=2;
    }
-@@ -16452,7 +16478,7 @@
+@@ -16452,7 +16480,7 @@
  
    STSMMACL(int n)           /* STS.L MACL,@-Rn */
    {
@@ -1928,7 +1930,7 @@
        Write_Long(R[n],MACL);
        PC+=2;
    }
-@@ -16460,7 +16486,7 @@
+@@ -16460,7 +16488,7 @@
  
    STSMPR(int n)          /* STS.L PR,@-Rn */
    {
@@ -1937,7 +1939,7 @@
        Write_Long(R[n],PR);
        PC+=2;
    }
-@@ -16510,18 +16536,18 @@
+@@ -16510,18 +16538,18 @@
  
  Operation
  
@@ -1961,7 +1963,7 @@
    {
          R[n]=FPSCR&0x003FFFFF;
          PC+=2;
-@@ -16529,7 +16555,7 @@
+@@ -16529,7 +16557,7 @@
    STS_RESTORE(int       n)   /* STS.L FPSCR,@-Rn       */
    {
          R[n]-=4;
@@ -1970,7 +1972,7 @@
          PC+=2;
    }
  
-@@ -16894,12 +16920,12 @@
+@@ -16894,12 +16922,12 @@
         TRA=imm<<2;
         SSR=SR;
         SPC=PC+2;
@@ -1988,7 +1990,7 @@
   }
  
  
-@@ -17786,4 +17812,4 @@
+@@ -17786,4 +17814,4 @@
  
  
  1753, Shimonumabe, Nakahara-ku, Kawasaki-shi, Kanagawa 211-8668 Japan   REJ09B0318-0600

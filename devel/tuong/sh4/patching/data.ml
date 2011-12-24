@@ -191,7 +191,9 @@ float sqrt(float);
 void store_int(int, int);
 void store_quad(int, int);
 void undefined_operation(void);
-/*void write_back(unsigned long);*/", p [ 155 ]
+/*void write_back(unsigned long);*/
+int bool_of_word(int);
+int nat_of_word(int);", p [ 155 ]
         ; Add_line_aft "union {
     int ASID, VPN, PPN, SZ, SH, PR, WT, C, D, V, SA, TC;
   } TLB_MMUCR_URC; unsigned long PTEH, PTEL, PTEA;", p [ 175 ] (* FIXME existence *)
