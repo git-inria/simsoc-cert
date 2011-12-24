@@ -141,7 +141,8 @@ struct
 
       (* fpul *)
       ; [ comment_first ", int *FPUL", p [ 4003 ; 4008 ; 6913 ; 6918 ]
-        ; Replace_first (S "*FPUL", "FPUL"), p [ 4005 ; 4010 ; 6915 ; 6921 ] ]
+        ; Replace_first (S "*FPUL", "FPUL"), p [ 4005 ; 4010 ; 6915 ; 6921 ; 2113 ; 2116 ]
+        ; Replace_first (S "FPUL", "int_of_float(*FPUL)"), p [ 2098 ] ]
 
       ; [ Replace_all ("TLB[MMUCR. URC] ", "TLB_MMUCR_URC"), [ R (4162, 13) ] ]
 
@@ -193,7 +194,8 @@ void store_quad(int, int);
 void undefined_operation(void);
 /*void write_back(unsigned long);*/
 int bool_of_word(int);
-int nat_of_word(int);", p [ 155 ]
+int nat_of_word(int);
+int int_of_float(float);", p [ 155 ]
         ; Add_line_aft "union {
     int ASID, VPN, PPN, SZ, SH, PR, WT, C, D, V, SA, TC;
   } TLB_MMUCR_URC; unsigned long PTEH, PTEL, PTEA;", p [ 175 ] (* FIXME existence *)
