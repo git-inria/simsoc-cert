@@ -34,8 +34,9 @@ pdftotext: sh4.pdf
 ###########################################################################
 # patch application
 
-sh4inst.txt: sh4.txt sh4.patch
+sh4inst.txt: sh4.txt sh4.patch #$(DIR)/devel/tuong/sh4/patching/preproc_pseudo
 	patch $+ -o $@
+#	$(DIR)/devel/tuong/sh4/patching/preproc_pseudo $+ -o $@
 
 clean::
 	rm -f sh4inst.txt
@@ -55,6 +56,9 @@ patch-inst: sh4.txt sh4inst.txt
 
 sh4.dat: sh4inst.txt parsing/instr
 	parsing/instr < $< > $@
+
+#$(DIR)/devel/tuong/sh4/patching/preproc_pseudo: FORCE
+#	$(MAKE) -C $(DIR)/devel/tuong/sh4/patching preproc_pseudo
 
 parsing/instr: FORCE
 	$(MAKE) -C parsing instr
