@@ -195,7 +195,8 @@ void undefined_operation(void);
 /*void write_back(unsigned long);*/
 int bool_of_word(int);
 int nat_of_word(int);
-int int_of_float(float);", p [ 155 ]
+int int_of_float(float);
+int int64_of_string(char *);", p [ 155 ]
         ; Add_line_aft "union {
     int ASID, VPN, PPN, SZ, SH, PR, WT, C, D, V, SA, TC;
   } TLB_MMUCR_URC; unsigned long PTEH, PTEL, PTEA;", p [ 175 ] (* FIXME existence *)
@@ -212,7 +213,18 @@ int int_of_float(float);", p [ 155 ]
 
   let fundef_order = [ "sign_of" ; "zero" ; "data_type_of" ; "register_copy" ; "set_V" ; "set_O" ; "set_U" ; "set_I" ; "qnan" ; "invalid" ; "inf" ; "check_single_exception" ; "check_double_exception" ; "normal_faddsub" ; "normal_fmul" ; "check_product_infinity" ; "check_negative_infinity" ; "check_positive_infinity" ; "check_product_invalid" ; "fipr" ; "clear_cause" ; "set_E" ; "set_Z" ; "dz" ] (** ENHANCEMENT generate this list automatically by repetitively running compcert and parsing its error messages to get the dependency *)
 
-  module Body_float =
+  module Body : PATCH =
+  struct
+    let main = BatList.flatten 
+      [ BatList.map (fun (nb, pos) -> 
+          Replace_first (S nb, Printf.sprintf "int64_of_string(\"%s\")" nb), p [ pos ] )
+          [ "0xc1e0000000200000", 3483
+          ; "0x7fffffffffffffff", 3483 
+          ; "0x41e0000000000000", 3484 
+          ; "0x7fffffffffffffff", 3534 ] (* Unsupported feature: 'long long' integer literal *) ]
+  end
+
+  module Body_float : PATCH =
   struct
     let main = 
       [ Replace_first (S "FPSCR.PR", "FPSCR_PR"), p [ 1995 ; 2517 ; 3491 ] 
@@ -225,7 +237,7 @@ let patch_head_nooffset =
   BatList.flatten [ Syntax.Header_float.main ; Semantic_gcc.Header_float.main ; Semantic_compcert.Header_float.main ]
 
 let patch_nooffset =
-  BatList.flatten [ Syntax.Body.main ; Semantic_gcc.Body.main ; Syntax.Body_float.main ; Semantic_gcc.Body_float.main ; Semantic_compcert.Body_float.main ]
+  BatList.flatten [ Syntax.Body.main ; Semantic_gcc.Body.main ; Semantic_compcert.Body.main ; Syntax.Body_float.main ; Semantic_gcc.Body_float.main ; Semantic_compcert.Body_float.main ]
 
 let patch = 
   let offset = 9000 in
@@ -242,6 +254,7 @@ let patch =
          
        ; offset_body, [ Syntax.Body.main
                       ; Semantic_gcc.Body.main
+                      ; Semantic_compcert.Body.main
                         
                       ; Syntax.Body_float.main
                       ; Semantic_gcc.Body_float.main
