@@ -11,7 +11,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-open Util
+open Pervasive
 open Pdf_page
 open Sh4_section
 open C_parse

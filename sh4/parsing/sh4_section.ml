@@ -11,7 +11,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-open Util
+open Pervasive
 open Pdf_page
 
 let importation_error = "We encounter an unknown string to import from the manual. It means that the manual of SH4 you give in input is different from the usual one we take, because until now it has been tested succesfully without failures."

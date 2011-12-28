@@ -11,7 +11,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-open Util
+open Pervasive
 open Frontc
 
 module type C_PARSE = 
