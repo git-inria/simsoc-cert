@@ -11,19 +11,14 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-open Pervasive
+open Shparsing.Pervasive
+open Shparsing.Manual
 open Frontc
-
-module type C_PARSE = 
-sig
-  val c_of_file : string (* filename *) -> Cabs.definition list option (* None : parsing failure *)
-  val c_of_program : string (* program written in C language *) -> Cabs.definition list option
-  val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
-  val expand_line_space : string list (* program written in C language *) -> string list (* program written in C language *) (** suppress every directive line indicating the current position and replace by the adequate number of white line instead *)
-end
 
 module C_parse : C_PARSE = 
 struct
+  type t = Cabs.definition list
+
   let option_of_parsing_result f = 
     match try f stderr with _ -> PARSING_ERROR with
     | PARSING_ERROR -> None
@@ -84,4 +79,35 @@ struct
             aux pos1 acc
           | _ -> 
             succ pos1, s :: acc) (1, []) l)
+
+  type raw_c_code = t option
+
+  let mk_code f arrange_order l = 
+    let v = c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) in
+    if arrange_order then
+      Some (BatList.flatten (f (fun f -> BatList.partition f (let Some l = v in l))))
+    else
+      v
+
+  open BatMap
+
+  let organize_header =
+    mk_code (fun partition -> 
+      let l_fundef, l_other = partition (function Cabs.FUNDEF _ -> true | _ -> false) in
+      let map_s, _ = List.fold_left (fun (map_s, pos) s -> StringMap.add s pos map_s, succ pos) (StringMap.empty, 0) Data.Semantic_compcert.fundef_order in
+      [ l_other 
+      ; BatList.map snd (IntMap.bindings (List.fold_left (fun map_i -> function Cabs.FUNDEF ((_, _, (n, _, _, _)), _) as x -> IntMap.add (StringMap.find n map_s) x map_i) IntMap.empty l_fundef)) ])
+
+  let organize_body = 
+    mk_code (fun partition -> 
+      let l_maj, l_min = partition (function Cabs.FUNDEF ((_, _, (n, _, _, _)), _) -> Str.l_match [ Str.regexp "[A-Z_0-9]+", n ]) in
+      [ List.rev l_min ; l_maj ])
+
+  let print oc = function
+    | None -> assert false
+    | Some x -> 
+      let _ = Cprint.out := oc in
+      Cprint.print_defs x
+
+  let get_code t = t
 end
