@@ -119,7 +119,3 @@ let list_of_string_01nmid s =
              () in
          i) :: l) (n + i) in
   aux [] 0
-
-
-module String_map = Map.Make (struct type t = string let compare = compare end)
-module Int_set = Set.Make (struct type t = int let compare = compare end)
