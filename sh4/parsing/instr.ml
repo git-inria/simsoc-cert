@@ -70,6 +70,41 @@ let structure_line =
     | _ -> assert false in
   aux []
 
+(** Simplify a string (only formed with : 0, 1, n, m, i, d) into a list composed of the character and the number of occurences it appears after *)
+let list_of_string_01nmid s = 
+  let lg = String.length s in
+  let () = match lg with 16 | 32 -> () | _ -> failwith (string_of_int lg) in
+  let rec aux l n = 
+    if n = lg then
+      l
+    else
+      let rec aux2 i = 
+        if n + i = lg then
+          i
+        else if s.[n] = s.[n + i] then
+          aux2 (succ i)
+        else
+          i in
+      let i = aux2 1 in
+      aux (((match s.[n] with 
+        | '0' -> I_0
+        | '1' -> I_1
+        | 'n' -> I_n
+        | 'm' -> I_m
+        | 'i' -> I_i
+        | 'd' -> I_d
+        | _ -> assert false (* by definition of [Str.matched_group], we can prove that this case is never reached *)
+      ), let () = 
+           if not (match s.[n] with '0' | '1' -> true | _ -> false) then
+             match i with
+                 2 | 3 (* present in floating-point instruction (from 9.25 include to 9.46 include) *) | 4 | 8 | 12 -> ()
+               | _ -> failwith (Printf.sprintf "%c %d" s.[n] i)
+           else
+             () in
+         i) :: l) (n + i) in
+  aux [] 0
+
+
 let manual_of_in_channel o_file = 
   let module S = SH4_section in
 
