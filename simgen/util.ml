@@ -148,19 +148,6 @@ let list_of_map m =
   List.sort (fun (s1,_) (s2,_) -> Pervasives.compare s1 s2)
     (StrMap.fold (fun s t l -> (s,t)::l) m []);;
 
-module Str = 
-struct 
-  include Str
-
-  let l_match = List.for_all (fun (r, x) -> Str.string_match r x 0)
-
-  let str_match r s l = 
-    if Str.string_match (Str.regexp r) s 0 then
-      Some (List.map (fun i -> Str.matched_group i s) l)
-    else 
-      None
-end
-
 (*****************************************************************************)
 (** functions on options *)
 (*****************************************************************************)

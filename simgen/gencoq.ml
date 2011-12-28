@@ -8,6 +8,7 @@ Coq code generator for processor instructions.
 open Ast;;
 open Printf;;
 open Util;;
+open Shparsing.Pervasive
 
 let comment f b x = bprintf b "(*%a*)" f x;;
 

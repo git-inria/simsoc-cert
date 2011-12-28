@@ -38,5 +38,3 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 - ast: merge Index and Flag ?
 
 - parser: reduce the number of conflicts in the grammar ?
-
-- util.ml: factor the Str module with the same in sh4/parsing/util.ml

@@ -10,6 +10,7 @@ open Printf;;
 open Util;;
 open Dec;;
 open Dec.Sh4;;
+open Shparsing.Pervasive
 
 let num = string;;
 
