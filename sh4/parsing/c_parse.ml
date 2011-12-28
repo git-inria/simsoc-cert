@@ -73,4 +73,20 @@ struct
             aux pos1 acc
           | _ -> 
             succ pos1, s :: acc) (1, []) l)
+
+  type raw_c_code = 
+    { init : string list (* WARNING [init] is unused *)
+    ; code : t option (** representation of the C pseudocode, natural order : first element in the list = first line *) }
+
+  let mk_code l = 
+    { init = l
+    ; code = c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
+
+  let organize_header = function true -> failwith "this is unimplemented" | _ -> mk_code
+
+  let organize_body = organize_header
+
+  let print oc l = List.iter (Printf.fprintf oc "%s\n") l.init
+
+  let get_code t = t.code
 end

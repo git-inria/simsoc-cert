@@ -16,13 +16,17 @@ sig
   type t
 
   val c_of_file : string (* filename *) -> t option (* None : parsing failure *)
-  val c_of_program : string (* program written in C language *) -> t option
+  val c_of_program : string (* program written in C language *) -> t option (* None : parsing failure *)
   val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
   val expand_line_space : string list (* program written in C language *) -> string list (* program written in C language *) (** suppress every directive line indicating the current position and replace by the adequate number of white line instead *)
-end
 
-module M (C : C_PARSE) = 
-struct
+  type raw_c_code
+
+  val organize_header : bool -> string list (* program written in C language *) -> raw_c_code
+  val organize_body : bool -> string list (* program written in C language *) -> raw_c_code
+  val print : out_channel -> raw_c_code -> unit
+  val get_code : raw_c_code -> t option (* None : parsing failure *)
+end
 
 module States = struct
   type t = 
@@ -81,10 +85,6 @@ type decoder =
     ; dec_title_long : string
     ; dec_other : string * string * string list }
 
-type raw_c_code = 
-    { init : string list (* WARNING [init] is unused *)
-    ; code : C.t option (** representation of the C pseudocode, natural order : first element in the list = first line *) }
-
 type 'a instruction = 
     { explanation_desc : string list (** information present in the part "description" *) 
     ; explanation_other : string list (** information eventually present after the C code *)
@@ -97,5 +97,3 @@ type 'a instruction =
 type 'a manual = 
     { entete : 'a (** piece of C code present at the beginning of section 9 *) 
     ; section : 'a instruction list }
-
-end

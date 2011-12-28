@@ -18,17 +18,12 @@ open Manual
 
 module I (C_parse : C_PARSE) = 
 struct
-  module M = M (C_parse)
-  open M
 
 let display_dec = false
 let display_c = true
 
-let mk_code l = 
-  { init = l
-  ; code = C_parse.c_of_program (List.fold_left (Printf.sprintf "%s%s\n") "" l) }
 
-let preprocess_parse_c : string list manual -> raw_c_code manual = fun m -> 
+let preprocess_parse_c : string list manual -> bool -> C_parse.raw_c_code manual = fun m arrange_order -> 
   (** the preprocessing [C_parse.preprocess] function needs to receive a single C file (for replacing all directive variable for example), that is why we concatenate the header and all the instructions *)
   let (pos, code), l_pos =
     List.fold_left (fun ((pos, acc_s), l_pos) l -> 
@@ -51,10 +46,10 @@ let preprocess_parse_c : string list manual -> raw_c_code manual = fun m ->
       (pos, (l_pos, [], [])) 
       (C_parse.expand_line_space (C_parse.preprocess code)) in
 
-  { entete = mk_code l ; section = List.map2 (fun l i -> { i with c_code = mk_code l }) ll m.section }
+  { entete = C_parse.organize_header arrange_order l ; section = List.map2 (fun l i -> { i with c_code = C_parse.organize_body arrange_order l }) ll m.section }
 
-let parse_c : string list manual -> raw_c_code manual = fun m -> 
-  { entete = mk_code m.entete ; section = List.map (fun i -> { i with c_code = mk_code i.c_code }) m.section }
+let parse_c : string list manual -> bool -> C_parse.raw_c_code manual = fun m arrange_order -> 
+  { entete = C_parse.organize_header arrange_order m.entete ; section = List.map (fun i -> { i with c_code = C_parse.organize_body arrange_order i.c_code }) m.section }
 
 (** We regroup a line written into a multi-lines into a single block. Heuristic used : we consider as a member of a previous line, any line beginning with a space. *)
 (* Remark : we can replace the "Assert_failure" by a "[]" *)
@@ -265,12 +260,17 @@ let manual_of_in_channel o_file =
                ; explanation_other = l 
                ; decoder = decoder } :: l_section) in
 
-  (*preprocess_parse_c*) parse_c { entete = S.c_code t ; section = aux t [] }
+  let code = { entete = S.c_code t ; section = aux t [] } in
+  function 
+    | true -> preprocess_parse_c code
+    | false -> parse_c code 
 
 type argument = 
   | File of string (* filename *)
   | Print_pc
   | Print_dec
+  | Arrange_order
+  | Preprocess
 
 module type ARG = 
 sig
@@ -304,6 +304,10 @@ struct
            " Display this list of options"
          ; "-f", String (fun s -> push (File s)),
            " File to input from"
+         ; "-permute_order", Unit (fun _ -> push Arrange_order),
+           " Change order such that CompCert compiles correctly the pseudocode. By default, the order is the same as the manual."
+         ; "-preprocess", Unit (fun _ -> push Preprocess),
+           " Analyze lines beginning with '#'. By default, there is no preprocessing on the pseudocode."
          ; "-print_pseudocode", Unit (fun _ -> push Print_pc),
            " Display the C code" 
          ; "-print_decoder", Unit (fun _ -> push Print_dec),
@@ -327,16 +331,20 @@ end
 
 let _ = 
   let l = Arg.parse () in
-  let manual = manual_of_in_channel (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) in
+  let manual = 
+    manual_of_in_channel 
+      (match try Some (List.find (function File _ -> true | _ -> false) l) with _ -> None with Some (File s) -> Some s | _ -> None) 
+      (List.exists ((=) Preprocess) l) 
+      (List.exists ((=) Arrange_order) l) in
 
   if List.exists ((=) Print_pc) l then
     begin
-      List.iter (fun s -> Printf.printf "%s\n" s) manual.entete.init;
+      C_parse.print stdout manual.entete;
       
       List.iter (fun sec -> 
         begin
           Printf.printf "/* 9.%d */\n" sec.position;
-          Printf.printf "%s\n%!" (List.fold_left (Printf.sprintf "%s%s\n") "" sec.c_code.init);
+          C_parse.print stdout sec.c_code;
 (*          Check.decoder_title sec;*)
         end;
       ) manual.section;

@@ -6,8 +6,7 @@ See the COPYRIGHTS and LICENSE files.
 *)
 
 open Shparsing.C_parse
-module M = Shparsing.Manual.M (C_parse)
-open M
+open Shparsing.Manual
 open Cparser
 
 module C = Cabs
@@ -286,12 +285,12 @@ let is_not_float_mmu = function
   | 53 (* mmu *) -> false 
   | _ -> true
 
-let program_of_manual : raw_c_code manual -> E.program = 
+let program_of_manual : C_parse.raw_c_code manual -> E.program = 
   fun m ->
     { E.header = List.fold_left (fun xs -> function
       | None -> xs
       | Some x -> x :: xs) []
-        (List.rev_map inst_of_cabs (match m.entete.code with None -> assert false (* FIXME floating instruction *) | Some l -> l))
+        (List.rev_map inst_of_cabs (match C_parse.get_code m.entete with None -> assert false (* FIXME floating instruction *) | Some l -> l))
 
     ; E.body =
         List.fold_left (fun xs -> function
@@ -313,16 +312,16 @@ let program_of_manual : raw_c_code manual -> E.program =
                       }
                 
                     | _ -> assert false 
-                   ) (match inst.c_code.code with None -> assert false | Some l -> l))
+                   ) (match C_parse.get_code inst.c_code with None -> assert false | Some l -> l))
 
               | _ -> 
-                let () = ignore ( List.map inst_of_cabs (match inst.c_code.code with None -> assert false | Some l -> l) ) in
+                let () = ignore ( List.map inst_of_cabs (match C_parse.get_code inst.c_code with None -> assert false | Some l -> l) ) in
             (* FIXME floating instruction *) 
                 None
            ) m.section) }
 
 
-let maplist_of_manual : raw_c_code manual -> Codetype.maplist =
+let maplist_of_manual : C_parse.raw_c_code manual -> Codetype.maplist =
   fun m -> 
     List.flatten (List.map (fun i -> 
       if i.decoder.dec_title = Menu then
@@ -337,7 +336,7 @@ let maplist_of_manual : raw_c_code manual -> Codetype.maplist =
                  | I_m -> fun i -> Codetype.Range ("m", nb, i)
                  | I_i -> fun i -> Codetype.Range ("i", nb, i)
                  | I_d -> fun i -> Codetype.Range ("d", nb, i)))
-              ) [||] d.inst_code)) :: acc_l, succ pos | _ -> assert false) | _ -> assert false) ([], 0) i.decoder.dec_tab (match i.c_code.code with None -> assert false | Some l -> l) in
+              ) [||] d.inst_code)) :: acc_l, succ pos | _ -> assert false) | _ -> assert false) ([], 0) i.decoder.dec_tab (match C_parse.get_code i.c_code with None -> assert false | Some l -> l) in
         List.rev l
       else
         []) m.section)
