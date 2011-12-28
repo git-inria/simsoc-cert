@@ -5,7 +5,7 @@ DIR := ../../../..
 
 include $(DIR)/Makefile.common
 
-TARGETS := frontc_instr
+TARGETS := instr
 
 default: $(TARGETS)
 

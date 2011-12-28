@@ -11,7 +11,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-open Frontc_parse
+open C_parse
 open Shparsing.Instr_init
 
 module I = I (C_parse)
