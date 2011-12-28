@@ -1,4 +1,4 @@
-<*.{byte,native}>: use_str, use_Cparser
+<*.{byte,native}>: use_str, use_unix, use_Cparser
 
 <*.ml>: warn_A, warn_error_A
 

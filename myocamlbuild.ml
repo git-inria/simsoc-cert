@@ -143,7 +143,7 @@ let _ = dispatch & function
       (**   - the SimSoC-Cert project : *)
       List.iter (fun (n, l) -> define_context n l)
         [ "coq/extraction", l_compcert
-        ; "simgen", l_compcert @ [ "simgen/extraction" ; "sh4/parsing" ]
+        ; "simgen", l_compcert @ [ "simgen/extraction" ]
         ; "simgen/extraction", [ "compcert/extraction" ; "coq/extraction" ]
 
         ; "arm6/parsing", [ "simgen" ]

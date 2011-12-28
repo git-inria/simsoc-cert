@@ -1,1 +1,2 @@
 <*.{byte,native}>: use_str, use_unix, use_Cparser
+<*.cmx>: for-pack(Shparsing)
