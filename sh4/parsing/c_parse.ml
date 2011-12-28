@@ -13,17 +13,12 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 open Pervasive
 open Cparser
+open Manual
 
-module type C_PARSE = 
-sig
-  val c_of_file : string (* filename *) -> Cabs.definition list option (* None : parsing failure *)
-  val c_of_program : string (* program written in C language *) -> Cabs.definition list option
-  val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
-  val expand_line_space : string list (* program written in C language *) -> string list (* program written in C language *) (** suppress every directive line indicating the current position and replace by the adequate number of white line instead *)
-end
-
-module C_parse : C_PARSE = 
+module C_parse : C_PARSE with type t = Cabs.definition list = 
 struct
+  type t = Cabs.definition list
+
   let c_of_file fic : Cabs.definition list option = 
     let ic = open_in_bin fic in
     let v = try Some (Parser.file Lexer.initial (Lexer.init "#" ic)) with _ -> None in

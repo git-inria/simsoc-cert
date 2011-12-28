@@ -5,7 +5,9 @@ See the COPYRIGHTS and LICENSE files.
    Convert C used in the SH4 manual to pseudocode.
 *)
 
-open Shparsing.Manual
+open Shparsing.C_parse
+module M = Shparsing.Manual.M (C_parse)
+open M
 open Cparser
 
 module C = Cabs
