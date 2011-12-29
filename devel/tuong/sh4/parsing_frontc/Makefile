@@ -11,7 +11,7 @@ default: $(TARGETS)
 
 $(TARGETS): FORCE
 	$(SHOW) ocamlbuild devel/tuong/sh4/parsing_frontc/$@
-	$(HIDE) $(OCAMLBUILD) -use-ocamlfind devel/tuong/sh4/parsing/$@.d.byte devel/tuong/sh4/parsing_frontc/$@.native
+	$(HIDE) $(OCAMLBUILD) -use-ocamlfind devel/tuong/sh4/parsing_frontc/$@.d.byte devel/tuong/sh4/parsing_frontc/$@.native
 
 clean::
 	rm -f $(TARGETS)
