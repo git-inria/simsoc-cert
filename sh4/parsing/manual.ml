@@ -11,23 +11,6 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 
 *)
 
-module type C_PARSE = 
-sig
-  type t
-
-  val c_of_file : string (* filename *) -> t option (* None : parsing failure *)
-  val c_of_program : string (* program written in C language *) -> t option (* None : parsing failure *)
-  val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
-  val expand_line_space : string list (* program written in C language *) -> string list (* program written in C language *) (** suppress every directive line indicating the current position and replace by the adequate number of white line instead *)
-
-  type raw_c_code
-
-  val organize_header : bool -> string list (* program written in C language *) -> raw_c_code
-  val organize_body : bool -> string list (* program written in C language *) -> raw_c_code
-  val print : out_channel -> raw_c_code -> unit
-  val get_code : raw_c_code -> t option (* None : parsing failure *)
-end
-
 module States = struct
   type t = 
     | Tiret
@@ -97,3 +80,21 @@ type 'a instruction =
 type 'a manual = 
     { entete : 'a (** piece of C code present at the beginning of section 9 *) 
     ; section : 'a instruction list }
+
+module type C_PARSE = 
+sig
+  type t
+
+  val c_of_file : string (* filename *) -> t option (* None : parsing failure *)
+  val c_of_program : string (* program written in C language *) -> t option (* None : parsing failure *)
+  val preprocess : string (* program written in C language *) -> string list (* program written in C language *)
+  val expand_line_space : string list (* program written in C language *) -> string list (* program written in C language *) (** suppress every directive line indicating the current position and replace by the adequate number of white line instead *)
+
+  type raw_c_code
+
+  val organize_header : bool -> string list (* program written in C language *) -> raw_c_code
+  val organize_body : bool -> string list (* program written in C language *) -> raw_c_code
+  val print : out_channel -> raw_c_code -> unit
+  val get_code : raw_c_code -> t option (* None : parsing failure *)
+  val parse_whole : string list (* program written in C language *) -> int * int list -> string list manual -> bool (* true : arrange order *) -> raw_c_code manual
+end

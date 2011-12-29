@@ -89,4 +89,25 @@ struct
   let print oc l = List.iter (Printf.fprintf oc "%s\n") l.init
 
   let get_code t = t.code
+
+  let parse_whole l (pos, l_pos) m = 
+    let _, (_, l, ll) =
+      List.fold_left 
+	(fun (pos, (l_pos, acc_l, acc_ll)) s -> 
+          pred pos, 
+          match l_pos with
+            | [] -> 
+              [], s :: acc_l, acc_ll
+            | x :: xs -> 
+              if pos = x then
+		xs, [s], acc_l :: acc_ll
+              else
+		l_pos, s :: acc_l, acc_ll) 
+	(pos, (l_pos, [], [])) 
+	l in
+
+    fun arrange_order -> 
+      { entete = organize_header arrange_order l
+      ; section = List.map2 (fun l i -> { i with c_code = organize_body arrange_order l }) ll m.section }
+
 end

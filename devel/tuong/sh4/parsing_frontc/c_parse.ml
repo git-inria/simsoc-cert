@@ -110,4 +110,6 @@ struct
       Cprint.print_defs x
 
   let get_code t = t
+
+  let parse_whole _ = failwith "this is unimplemented"
 end

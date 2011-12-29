@@ -23,7 +23,7 @@ let display_dec = false
 let display_c = true
 
 
-let preprocess_parse_c : string list manual -> bool -> C_parse.raw_c_code manual = fun m arrange_order -> 
+let preprocess_parse_c : string list manual -> bool -> C_parse.raw_c_code manual = fun m -> 
   (** the preprocessing [C_parse.preprocess] function needs to receive a single C file (for replacing all directive variable for example), that is why we concatenate the header and all the instructions *)
   let (pos, code), l_pos =
     List.fold_left (fun ((pos, acc_s), l_pos) l -> 
@@ -31,22 +31,7 @@ let preprocess_parse_c : string list manual -> bool -> C_parse.raw_c_code manual
         (pos, acc_s) l, pos :: l_pos) ((0, ""), [])
       (m.entete :: List.map (fun i -> i.c_code) m.section) in
 
-  let _, (_, l, ll) =
-    List.fold_left 
-      (fun (pos, (l_pos, acc_l, acc_ll)) s -> 
-        pred pos, 
-        match l_pos with
-          | [] -> 
-            [], s :: acc_l, acc_ll
-          | x :: xs -> 
-            if pos = x then
-              xs, [s], acc_l :: acc_ll
-            else
-              l_pos, s :: acc_l, acc_ll) 
-      (pos, (l_pos, [], [])) 
-      (C_parse.expand_line_space (C_parse.preprocess code)) in
-
-  { entete = C_parse.organize_header arrange_order l ; section = List.map2 (fun l i -> { i with c_code = C_parse.organize_body arrange_order l }) ll m.section }
+  C_parse.parse_whole (C_parse.expand_line_space (C_parse.preprocess code)) (pos, l_pos) m
 
 let parse_c : string list manual -> bool -> C_parse.raw_c_code manual = fun m arrange_order -> 
   { entete = C_parse.organize_header arrange_order m.entete ; section = List.map (fun i -> { i with c_code = C_parse.organize_body arrange_order i.c_code }) m.section }
