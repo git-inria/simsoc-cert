@@ -77,7 +77,7 @@ Inductive memory : Type :=
 
 Definition proc_mode_of_word (w : word) : option proc_mode := Some usr.
 
-Inductive instruction_set : Type := SH4 | Fixme_singleton1 (* COQFIX 8.3pl1 : If this type contains a single constructor, the OCaml extracted code is not well-typed *) .
+Inductive instruction_set : Set := SH4 (* COQBUG #843 : If the declaration has type [Prop], the OCaml extracted code is not well-typed *).
 
 Definition inst_set (w : word) : option instruction_set := Some SH4.
 
@@ -94,8 +94,8 @@ Definition MDbit := 30%nat.
 (** Exceptions *)
 (****************************************************************************)
 
-Inductive exception : Type :=
-  UndIns | Fixme_singleton2 (* COQFIX 8.3pl1 : If this type contains a single constructor, the OCaml extracted code is not well-typed *) .
+Inductive exception : Set :=
+  UndIns (* COQBUG #843 : If the declaration has type [Prop], the OCaml extracted code is not well-typed *).
 
 (****************************************************************************)
 (* Exception priorities *)
@@ -104,7 +104,6 @@ Inductive exception : Type :=
 Definition priority (e : exception) : BinInt.Z :=
   match e with
     | UndIns => 7 (* lowest *)
-    | _ => 0 (* COQFIX 8.3pl1 : see above "If this type contains a single constructor, the OCaml extracted code is not well-typed" *)
   end.
 
 (*WARNING: by using this function, exceptions are always sorted from
