@@ -59,10 +59,11 @@ html: $(VFILES) $(DIR)/tools/coqdoc/createIndex
 
 graphdep: graph.pdf
 
-%.pdf: %.dep build-dependot
+%.pdf: %.dep
 	cat $< | $(DEPENDOT) | dot -Tpdf > $@
 
-graph.dep: $(VFILES)
+graph.dep: $(GENFILES) Makefile.coq
+	$(MAKECOQ) $(VFILES:%=%.d)
 	cat $(VFILES:%=%.d) | sed -e 's/ .*glob:/:/' -e 's,\.\./,,g' -e 's,\./,,g' -e 's,/,__,g' > $@
 
 clean::
