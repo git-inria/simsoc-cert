@@ -827,7 +827,7 @@ Lemma no_effect_is_S_set_and_is_pc :
 Proof.
   intros until v. intros ee.
   inv ee. unfold is_S_set_and_is_pc in H.
-  (*
+  
   generalize
     (match H in (eval_expr _ e m _ ex _ m' ex')
        return inv_expr_condition (Genv.globalenv prog_adc) e m ex m' ex' with
@@ -835,9 +835,10 @@ Proof.
          (fun X k => k t1 mi a1' v1 t2 a' v' b v  H1 H2 H3 H4 H5 H6)
        |_=> I
      end). clear H.
-  intro k. red in k. revert H0. apply k. clear k.*)
-  inv_condition m m'.
-  intros until v0. intros ee1 esr1 bv ee2 esr2 sc esr0.
+  intro k. red in k. revert H0. apply k. clear k.
+  
+  (*inv_condition m m'.*)
+  intros until v0. intros ee1 esr1 bv ee2 esr2 sc esr3.
   inv_binop m m'0. intros until a2'. intros ee11 ee12 esr1.
   inv_valof m m'1. intros until a'1. intros ee11 esr1.
   inv_var m m'1.
@@ -857,6 +858,25 @@ Proof.
     inv_val m m'. intros esr1 esr2.
     reflexivity.
 Qed.
+
+(*
+Inductive tm : Type :=
+  | tm_const : nat -> tm
+  | tm_plus : tm -> tm -> tm.
+
+Inductive eval : tm -> tm -> Prop :=
+  | E_Const : forall n,
+      eval (tm_const n) (tm_const n)
+  | E_Plus : forall t1 t2 n1 n2,
+      eval t1 (tm_const n1) ->
+      eval t2 (tm_const n2) ->
+      eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
+
+Variable C:Prop.
+Lemma test_step:eval (tm_plus (tm_const 0) (tm_const 3))
+                (tm_const (plus 1 3))->C.
+(*intro. inversion H. inv H3. inv H4. inversion H2.*)
+*)
 
 
 (* Example on Ebinop *)
@@ -928,8 +948,8 @@ Proof.
   
   inv rn_as.
   unfold oldrn_assgnt in H.
-  inv_assign m m'.
-  (*
+(*  inv_assign m m'.*)
+
   generalize
     (match H in (eval_expr _ e m _ ex _ m' ex')
        return inv_expr_assign (Genv.globalenv prog_adc) e m ex m' ex' with
@@ -938,7 +958,7 @@ Proof.
        |_=>I
      end).
   clear H. intro k. red in k.
-  revert H0. apply k. clear k.*)
+  revert H0. apply k. clear k.
   intros until v'.
   intros ee1 ee2 esl esr sc svot eqt1 esr0.
   inv_var m m1.
@@ -1015,7 +1035,7 @@ intros until vres.
 intros gb_expr ev_explst ev_rv1 ev_simlst Heqty_gb Heqff Heqtyfd ev_funcall. 
 intro ev_rv.
 (* inversion on eval_expr with Evalof *)
-info
+
 generalize 
   (match gb_expr in (eval_expr _ e m _ ex _ m' ex')
      return inv_expr_valof (Genv.globalenv prog_adc) e m ex m' ex' with
@@ -1026,13 +1046,14 @@ generalize
 intro k. red in k. revert ev_rv1. apply k. clear k.
 intros until a'. intros gb_expr. intro ev_rv1.
 (* inversion on eval_expr with Evar *)
-info
+
 generalize
   (match gb_expr in (eval_expr _ _ m _ ex _ m' ex')
      return inv_expr_var ex ex' m m' with
      |eval_var _ _ _ _ => (fun X k => k)
      |_=> I
-   end). clear gb_expr. intro k. red in k.
+   end). clear gb_expr. intro k.
+ red in k.
 revert ev_explst. revert ev_rv1.
 apply k. clear k.
 intro ev_rv1. intro ev_explst.
@@ -1241,3 +1262,133 @@ match goal with [ |- ?concl] => change ((fun _ _ _ => concl)
   unfold get_bit_reg in get_bit.*)
 
 Admitted.
+
+(* small examples *)
+Inductive tm : Type :=
+  | tm_const : nat -> tm
+  | tm_plus : tm -> tm -> tm.
+
+Inductive ex0 : tm -> Prop :=
+  | t0 : ex0 (tm_const 0)
+  | tx : forall t1 t2, ex0 t1 -> ex0 t2 ->
+         ex0 (tm_plus t1 t2).
+
+Lemma test_ex0 : ex0 (tm_const 1) -> False.
+intro. info inversion H.
+Qed.
+Lemma test_ex0': ex0 (tm_const 1) -> False.
+intro.
+pose (aux x:= match x with tm_const 1 => False |_ => True end).
+change (aux (tm_const 1)). case H. clear H.
+simpl. trivial.
+simpl. trivial.
+Qed.
+
+Inductive eval : tm -> tm -> Prop :=
+  | E_Const : forall n,
+      eval (tm_const n) (tm_const n)
+  | E_Plus : forall t1 t2 n1 n2,
+      eval t1 (tm_const n1) ->
+      eval t2 (tm_const n2) ->
+      eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
+
+Variable Q : tm -> Prop. 
+Inductive eval': tm -> tm -> Prop :=
+  | E_C : forall n,
+      eval' (tm_const n) (tm_const n)
+  | E_Plus1 : forall t1 t2 n1 n2,
+      eval' t1 (tm_const n1) ->
+      eval' t2 (tm_const n2) ->
+      eval' (tm_plus t1 t2) (tm_const (plus n1 n2))
+  | E_Plus2 : forall t1 t2 n2,
+      Q t1 ->
+      eval' t2 (tm_const n2) ->
+      eval' (tm_plus t1 t2) (tm_const n2).
+
+Lemma test_ev'1:forall t,eval' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
+Proof.
+intros. inversion H. subst.
+  inversion H2. subst. inversion H4. subst.
+  simpl. reflexivity.
+  inversion H4. subst.
+  reflexivity.
+Qed.
+
+Definition aux_plus' t t' :=
+  match t with
+    |tm_plus t1 t2 =>
+      forall (X:tm -> Prop),
+        (forall n1 n2, 
+          eval' t1 (tm_const n1) ->
+          eval' t2 (tm_const n2) ->
+          X (tm_const (plus n1 n2)))
+          ->
+          (forall n2,
+            Q t1 ->
+            eval' t2 (tm_const n2) ->
+            X (tm_const n2))-> X t'
+    |_=>True
+  end.
+
+Lemma test_ev'2:forall t,eval' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
+Proof.
+intros.
+generalize
+  (match H in (eval' t t')
+     return aux_plus' t t' with
+     |E_Plus1 _ _ n1 n2 H1 H2 => (fun X k1 k2=> k1 n1 n2 H1 H2)
+     |E_Plus2 _ _ n2 H1 H2 => (fun X k1 k2=> k2 n2 H1 H2)
+     |_=> I
+   end).
+clear H. intro k. red in k.
+apply k. clear k.
+Admitted.
+
+(*
+Lemma test_ev1: eval (tm_plus (tm_const 1) (tm_const 0)) (tm_const (plus 1 1)) -> False.
+intro. inversion H. subst. inversion H3. subst. inversion H4. subst.
+info discriminate.
+Qed.
+*)
+
+Definition aux_const t t' :=
+  match t with
+    |tm_const tc => forall (X:tm -> Prop), X (tm_const tc) -> X t'
+    |_ => True
+  end.
+Definition aux_plus t t' :=
+  match t with
+    |tm_plus t1 t2 => forall (X:tm -> Prop),
+      (forall n1 n2, eval t1 (tm_const n1) ->
+                     eval t2 (tm_const n2) ->
+                     X (tm_const (plus n1 n2))) -> X t'
+    |_ => True
+  end.
+
+(*
+Lemma test_ev2: eval (tm_plus (tm_const 1) (tm_const 0)) (tm_const 0)->False.
+intro. 
+pose (aux x:= match x with tm_plus (tm_const 1) (tm_const 0) => False |_=> True end).
+change (aux (tm_plus (tm_const 1) (tm_const 0))).
+case H. clear H.
+simpl.*)
+
+Variable P : tm -> Prop.
+Lemma test_ev1': forall t,P t -> eval (tm_plus (tm_const 1) (tm_const 0)) t -> t=tm_const 1%nat.
+(*intros. inversion H. subst. inversion H2. subst. inversion H4. subst. simpl. reflexivity.
+Qed.*)
+intros t H0 H.
+generalize
+  (match H in (eval t t')
+  return aux_plus t t' with
+  |E_Plus _ _ n1 n2 H1 H2 => (fun X k => k n1 n2 H1 H2)
+  |_=>I
+   end).
+clear H.
+intro k. red in k. revert H0. apply k. clear k. intros.
+Admitted.
+
+
+
+
+
