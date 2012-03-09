@@ -1352,9 +1352,9 @@ Qed.
 *)
 
 Definition aux_const t t' :=
-  match t with
-    |tm_const tc => forall (X:tm -> Prop), X (tm_const tc) -> X t'
-    |_ => True
+  match t, t' with
+    |tm_const tc, tm_const tc' => forall (X:nat -> Prop), X tc -> X tc'
+    |_ ,_=> True
   end.
 Definition aux_plus t t' :=
   match t with
@@ -1386,7 +1386,24 @@ generalize
    end).
 clear H.
 intro k. red in k. revert H0. apply k. clear k. intros.
-Admitted.
+generalize
+  (match H in (eval t t')
+     return aux_const t t' with
+     |E_Const n => (fun X k => k)
+     |_=>I
+   end).
+clear H.
+intro k. red in k. apply k. clear k.
+generalize
+  (match H0 in (eval t t')
+     return aux_const t t' with
+     |E_Const n => (fun X k => k)
+     |_=>I
+   end).
+clear H0.
+intro k. red in k. apply k. clear k.
+simpl. reflexivity.
+Qed.
 
 
 
