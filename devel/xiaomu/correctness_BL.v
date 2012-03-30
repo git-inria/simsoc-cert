@@ -39,7 +39,9 @@ Lemma no_effect_condpass :
 Admitted.
 
 Lemma condpass_bool :
-  forall e m t m' v cond s b,
+  forall m0 e m0' m t m' v cond s b,
+    alloc_variables empty_env m0 
+      (fun_internal_B.(fn_params) ++ fun_internal_B.(fn_vars)) e m0' ->
     eval_expression (Genv.globalenv prog_bl) e m condpass t m' v ->
     bool_val v T7 = Some b ->
     Arm6_Functions.State.ConditionPassed s cond = b.
@@ -212,8 +214,9 @@ Lemma si24_not_change_set_pc_rw :
     si24_func_related m' e si24.
 Admitted.
 
-Theorem rel_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
-  alloc_variables empty_env m0 (fun_internal_B.(fn_params) ++ fun_internal_B.(fn_vars)) e m1 ->
+Theorem correctness_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
+  alloc_variables empty_env m0 
+  (fun_internal_B.(fn_params) ++ fun_internal_B.(fn_vars)) e m1 ->
   bind_parameters e m1 fun_internal_B.(fn_params) vargs m2 ->
 (* TODO: valid_access needs to be more precise *)
   (forall m ch b ofs, Mem.valid_access m ch b ofs Readable) ->
@@ -221,8 +224,10 @@ Theorem rel_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
   lbit_func_related m2 e L ->
   cond_func_related m2 e cond ->
   si24_func_related m2 e si24 ->
-  exec_stmt (Genv.globalenv prog_bl) e m2 fun_internal_B.(fn_body) Events.E0 mfin out ->
-  proc_state_related (of_mem proc mfin) e (S.B_step L cond si24 (mk_semstate nil true s)).
+  exec_stmt (Genv.globalenv prog_bl) e m2 fun_internal_B.(fn_body) 
+  Events.E0 mfin out ->
+  proc_state_related (of_mem proc mfin) e 
+  (S.B_step L cond si24 (mk_semstate nil true s)).
 Proof.
 
   intros until si24. intros av bp memvld psrel lfrel cfrel sfrel exst.
@@ -238,9 +243,9 @@ Proof.
   rewrite cp in *. clear cp m2.
 
   (* condpass has the same value in both side *)
-  apply condpass_bool with e m3 t1 m3 v1 cond s b in cp';
-    [idtac|exact cp_bool].
-  
+  generalize av;intros av'.
+  apply condpass_bool with m0 e m1 m3 t1 m3 v1 cond s b in av';
+    [idtac|exact cp'|exact cp_bool].  
 
   (* case on the boolean value of condpass *)
   destruct b.
@@ -323,7 +328,7 @@ Proof.
       (* unfold Coq side B_step *)
       unfold S.B_step. unfold _get_st. unfold bind_s.
       unfold bind;simpl.
-      rewrite cp';simpl.
+      rewrite av';simpl.
       rewrite booll;simpl.
       unfold block. unfold fold_left. unfold _get_bo. unfold bind_s. unfold next.
       unfold bind. simpl. unfold _Arm_State.set_reg.
@@ -351,7 +356,7 @@ Proof.
       (* unfold Coq side B_step *)
       unfold S.B_step. unfold _get_st. unfold bind_s.
       unfold bind;simpl.
-      rewrite cp';simpl.
+      rewrite av';simpl.
       rewrite booll;simpl.
       unfold block. unfold fold_left. unfold _get_bo. unfold bind_s. unfold next.
       unfold bind. simpl. unfold _Arm_State.set_reg.
@@ -361,6 +366,6 @@ Proof.
     inv exst.
     unfold S.B_step. unfold _get_st. unfold bind_s.
     unfold bind;simpl.
-    rewrite cp';simpl.
+    rewrite av';simpl.
     exact psrel.
 Qed.
