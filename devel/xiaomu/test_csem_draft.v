@@ -37,7 +37,6 @@ Definition prog_adc := adc_compcert.p.
 (* Return the memory model which only relates to this ident *)
 Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
 
-(*exp get_bit*)
 (*Print fun_internal_ADC.*)
 
 Definition reg_id id :=
@@ -461,33 +460,58 @@ Definition condpass :=
         T7) T8) (Econs (Evalof (Evar cond T9) T9) Enil))
   T10.
 
-Axiom no_effect_condpass :
-  forall e m m' t v,
-    eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->    
-    m = m'.
-(*
-Lemma mem_effect_condpass :
+Lemma no_effect_condpass :
   forall m0 e m0' m m' t v,
     alloc_variables empty_env m0 
       (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
-    Mem.nextblock m0' < Mem.nextblock m ->
     eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->
-    param_val proc m e = param_val proc m e.
+    m = m'.
 Proof.
-  intros. inv H1. unfold condpass in H2. 
+  intros. inv H0. unfold condpass in H1. 
   (* mem state between m and m' *)
   inv_eval_expr m m'.
   (* v = Eval vres T10 *)
   inv esr0.
   (* vf = the value of conditionPassed *)
-  inv esr1. 
+  inv esr1. rename H2 into esl, H5 into lvot. clear H3.
+  
+  inv_alloc_vars e. 
+  pose (e:=
+    (PTree.set old_Rn (b6, Tint I32 Unsigned)
+      (PTree.set shifter_operand (b5, Tint I32 Unsigned)
+        (PTree.set n (b4, Tint I8 Unsigned)
+          (PTree.set d (b3, Tint I8 Unsigned)
+            (PTree.set cond (b2, Tint I32 Signed)
+              (PTree.set S (b0, Tint I8 Signed)
+                (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+                  empty_env)))))))).
+  fold e in esr2,esl |-* .
+
+  inv esl; try discriminate.
+  rename H1 into not_exists, H2 into find_symbol. clear H5.
+
+  unfold Genv.find_symbol in find_symbol.
+  simpl in find_symbol.
+  injection find_symbol. intro. subst. clear find_symbol.
+  
+  unfold load_value_of_type in lvot. simpl in lvot.
+  injection lvot. intro. subst. clear lvot.
+
   erewrite Genv.find_funct_find_funct_ptr in Heqff.
   unfold Genv.find_funct_ptr in Heqff;unfold ZMap.get in Heqff;simpl in Heqff.
-  unfold ZMap.set in Heqff;simpl in Heqff. 
+  unfold ZMap.set in Heqff;simpl in Heqff.
+
   repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
   rewrite PMap.gss in Heqff.
-  injection Heqff;intro;rewrite<-H in *;clear H Heqff fd.
-*)
+  injection Heqff.
+  intro. subst. clear Heqff. clear Heqtf.
+
+  inv ev_funcall. rename H7 into excall.
+  inv excall.
+
+  reflexivity.
+Qed.
+  
 
 (* try with external function ConditionPassed, failed *)
 (*
@@ -1939,14 +1963,15 @@ Proof.
     [clear rn_assgnt | exact rn_assgnt];
   fold (bits_proj m3 e shifter_operand) in sofrel;
   fold (so_func_related m3 e so) in sofrel.
-  (* ConditionPassed, from m3 to m4, m3 = m4 *)
+  (* ConditionPassed, from m3 to m4, m3 = m4 m0 e m0' m m' t v,*)
   inv main_p;
   rename H5 into condpass, H8 into cp_b, H9 into main_p, H4 into evs;
   generalize condpass;intro condpass';
       simpl in cp_b;
       apply Events.Eapp_E0_inv in evs; destruct evs; subst;
-      apply no_effect_condpass in condpass0;
-      rewrite condpass0 in *;clear condpass0.
+      apply no_effect_condpass with m0 _ m1 _ _ _ _ in condpass0;
+        [rewrite condpass0 in *;clear condpass0
+          |exact al].
       (* ConditionPassed(&proc->cpsr, cond) has the same value as 
          Arm6_Functions.State.ConditionPassed s cond, in m4 *)
       apply (condpass_bool m0 m1 e m4 Events.E0 m4 v1 cond s) in cp_b;
