@@ -5,6 +5,7 @@ Require Import adc_compcert.
 Require Import projection.
 Require Import my_inversion.
 Require Import my_tactic.
+Require Import common_functions.
 
 Require Import Arm6_Simul.
 Import I.
@@ -54,7 +55,7 @@ Definition get_rd_bit31 :=
 Lemma same_reg_d :
   forall e m t m' a' l b st d,
     proc_state_related m e (Ok tt (mk_semstate l b st)) ->
-    d_func_related m e d ->    
+    d_func_related m e d ->
     eval_expr (Genv.globalenv prog_adc) e m RV 
               (reg_id adc_compcert.d) t m' a' ->
     a'= (Eval (Vint (Arm6_State.reg_content st d)) T1).
@@ -429,9 +430,278 @@ Definition oldrn_assgnt :=
 
 (* Assum the assignment of old_Rn has no effect on the part of memory
    where located proc*)
+
+Lemma store_other_block :
+  forall m0 e m0' vargs m t m' v,
+    (forall mm b lo hi, Mem.range_perm mm b lo hi Freeable) ->
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0'->
+    bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
+    eval_expression (Genv.globalenv prog_adc) e m oldrn_assgnt t m' v ->
+    param_val proc m e = param_val proc m' e.
+Proof.
+  intros until v. intros freeable av bp ee.
+  unfold oldrn_assgnt in ee. unfold reg_id in ee.
+  
+  inv ee. rename H into ee, H0 into esrv.
+
+  inv_eval_expr m m'.
+  clear Heqtf.
+
+  (* v = v1 *)
+  inv esrv.
+  
+  (* v0 = vres *)
+  inv esr1.
+  (* vf = func reg*)
+  inv esr0. rename H1 into esl1, H4 into lvot. clear H2.
+  
+  (* open e *)
+  inv_alloc_vars e.
+  pose (e:=
+    PTree.set old_Rn (b7, Tint I32 Unsigned)
+      (PTree.set shifter_operand (b6, Tint I32 Unsigned)
+        (PTree.set n (b5, Tint I8 Unsigned)
+          (PTree.set d (b4, Tint I8 Unsigned)
+            (PTree.set cond (b3, Tint I32 Signed)
+              (PTree.set S (b2, Tint I8 Signed)
+                (PTree.set proc
+                  (b1, Tpointer typ_SLv6_Processor) empty_env))))))).
+  fold e in esl, eslst, esl1, bp |-*.
+
+  (* func reg is in globenv *)
+  inv esl1; try discriminate.
+  rename H1 into not_exist, H2 into findsym, H5 into tog.
+
+  (* find ident reg in globenv*)
+  unfold Genv.find_symbol in findsym. simpl in findsym.
+  injection findsym;intro Heqb0;rewrite<-Heqb0 in *;clear b0 Heqb0 findsym.
+  
+  (* vf = Vptr -5 w0 *)
+  unfold load_value_of_type in lvot;simpl in lvot.
+  injection lvot;intro Heqvf;rewrite<-Heqvf in *;clear vf lvot Heqvf.
+    
+  (* find reg function in globenv*)
+  erewrite Genv.find_funct_find_funct_ptr in Heqff.
+
+  unfold Genv.find_funct_ptr in Heqff.
+  unfold ZMap.get in Heqff;simpl in Heqff.
+  unfold ZMap.set in Heqff;simpl in Heqff.
+  
+  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
+  rewrite PMap.gss in Heqff.
+
+  injection Heqff;intro Heqfd;rewrite<-Heqfd in *;clear fd Heqfd Heqff.
+  
+  (* eval function reg from m4 to m2 *)
+  inv ev_funcall.
+  rename H0 into norep, H1 into av, H2 into bp1, H3 into es, H4 into or, H6 into fl.
+  
+  inv es. rename H2 into ee. simpl in or0.
+  inv ee. rename H into ee, H0 into esrv1.
+
+  inv_eval_expr m15 m16.
+
+  (* v1 = vres *)
+  inv esr0.
+
+  (* expand e0 *)
+  inv_alloc_vars e0.
+  pose (e0:=
+    (PTree.set adc_compcert.reg_id (b8, Tint I8 Unsigned)
+      (PTree.set proc (b0, Tpointer typ_SLv6_Processor) empty_env))).
+  fold e0 in bp, fl, esr, eslst0.
+  
+  (* find internal function fd *)
+  inv esr. rename H1 into eslb0, H4 into lvot. clear H2.
+  inv eslb0; try discriminate.
+  rename H1 into ne_reg_m, H2 into fs. clear H5.
+  
+  (* find th block reg_m in globalenv *)
+  unfold Genv.find_symbol in fs. simpl in fs.
+  injection fs; intros; subst. clear fs.
+  unfold load_value_of_type in lvot;simpl in lvot.
+  injection lvot;intros;subst;clear lvot.
+  
+  (* find the body of reg_m *)
+  erewrite Genv.find_funct_find_funct_ptr in Heqff.
+
+  unfold Genv.find_funct_ptr in Heqff.
+  unfold ZMap.get in Heqff;simpl in Heqff.
+  unfold ZMap.set in Heqff;simpl in Heqff.
+  
+  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
+  rewrite PMap.gss in Heqff.
+
+  injection Heqff;intros;subst;clear Heqff.
+
+  (* expand reg_m *)
+  inv ev_funcall.
+  rename H0 into norep2, H1 into av, H2 into bp2, H3 into es,
+    H4 into orv, H6 into fl2.
+
+  inv es. rename H2 into ee. simpl in orv.
+  inv ee. rename H into ee, H0 into esrv2.
+
+  inv_eval_expr m24 m25.
+
+  (* v2 = (Vptr b9 ofs0) *)
+  inv esr0. rename H1 into eslb9, H4 into lvot. clear H2.
+  inv eslb9. rename H3 into esrvres. 
+  inv esrvres.
+
+  (* expand e1 *)
+  inv_alloc_vars e1.
+  pose (e1:=
+    (PTree.set adc_compcert.m (b12, Tint I32 Signed)
+      (PTree.set adc_compcert.reg_id (b11, Tint I8 Unsigned)
+        (PTree.set proc (b10, Tpointer typ_SLv6_Processor)
+          empty_env)))).
+  fold e1 in bp2,fl2,esr,eslst1.
+
+  (* find addr_of_reg_m in env *)
+  inv esr. rename H1 into eslb9, H4 into lvot1. clear H2.
+  inv eslb9; try discriminate.
+  rename H1 into ne_addr, H2 into fs. clear H5.
+  
+  (* find addr_of_reg_m in globalenv *)
+  unfold Genv.find_symbol in fs; simpl in fs.
+  injection fs;intros;subst;clear fs.
+  unfold load_value_of_type in lvot1;simpl in lvot1.
+  injection lvot1;intros;subst;clear lvot1.
+  
+  (* find the body of addr_of_reg_m *)
+  erewrite Genv.find_funct_find_funct_ptr in Heqff.
+
+  unfold Genv.find_funct_ptr in Heqff.
+  unfold ZMap.get in Heqff;simpl in Heqff.
+  unfold ZMap.set in Heqff;simpl in Heqff.
+  
+  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
+  rewrite PMap.gss in Heqff.
+
+  injection Heqff;intros;subst;clear Heqff.
+
+  (* external function has no change on mem *)
+  apply mem_not_changed_ef in ev_funcall.
+  rewrite <- ev_funcall in *. clear ev_funcall m25.
+  simpl in Heqtf1.
+  
+  (* free_list of e1 from m24 to m16*)
+  unfold blocks_of_env in fl2.
+  simpl in fl2.
+
+  case_eq (Mem.free m24 b12 0 4);
+  [intros m25 free24; rewrite free24 in fl2
+    |intros free24;rewrite free24 in fl2;discriminate].
+
+  case_eq ( Mem.free m25 b10 0 4);
+  [clear m26;intros m26 free25;rewrite free25 in fl2
+    |intros free25;rewrite free25 in fl2;discriminate].
+
+  case_eq ( Mem.free m26 b11 0 1);
+  [clear m27;intros m27 free26;rewrite free26 in fl2
+    |intros free26;rewrite free26 in fl2;discriminate].
+
+  injection fl2;intros;subst;clear fl2.
+
+  (* unfold the goal *)
+  unfold param_val; simpl.
+  unfold load_value_of_type; simpl.
+
+  (* find b1 in m *)
+  inv eslst. rename H1 into esrproc, H2 into scv'. 
+  inv esrproc. rename H1 into eslproc, H4 into lvotv';clear H2.
+  inv eslproc;try discriminate.
+  rename H3 into existproc.
+  simpl in existproc;injection existproc;intro Heqb1;rewrite<-Heqb1 in *;
+    clear existproc Heqb1 b13.
+  unfold load_value_of_type in lvotv';simpl in lvotv'.
+  
+  (* allocation in internal function reg *)
+  generalize alc6;intros alc6'.
+  apply Mem.load_alloc_unchanged with _ _ _ _ _
+    AST.Mint32 b1 (0 mod modulus) in alc6'.
+  rewrite<-alc6';clear alc6'.
+  generalize alc7;intros alc7'.
+  apply Mem.load_alloc_unchanged with _ _ _ _ _
+    AST.Mint32 b1 (0 mod modulus) in alc7'.
+  rewrite<-alc7';clear alc7'.
+  
+  (* initialization in internal function reg *)
+  inv_bind_params m15.
+  repeat rrw_block.
+  unfold store_value_of_type in str, str0;simpl in str, str0.
+  admit.
+
+  (* *)
+
+  inv_bind_params m15.
+  unfold store_value_of_type in str,str0;simpl in str,str0.
+  repeat rrw_block.
+  apply Mem.nextblock_store in str;
+  apply Mem.nextblock_store in str0.
+
+(*HERE*)
+
+(*
+  unfold Mem.valid_block.
+  generalize alc6;intros alc6'.
+  apply Mem.nextblock_alloc in alc6'.
+  rewrite alc6'. clear alc6'.
+
+  apply Mem.alloc_result in alc6. rewrite<-alc6.
+  blocks_lt b1 b7.
+
+  (* b1 < Zsucc b7 *)
+  unfold Mem.valid_block.
+
+  inv_bind_params m.
+  unfold store_value_of_type in str,str0,str1,str2,str3,str4;
+  simpl in str,str0,str1,str2,str3,str4.
+  repeat rrw_block.
+  apply Mem.nextblock_store in str;
+  apply Mem.nextblock_store in str0;
+  apply Mem.nextblock_store in str1;
+  apply Mem.nextblock_store in str2; 
+  apply Mem.nextblock_store in str3; 
+  apply Mem.nextblock_store in str4.
+  rewrite str4;clear str4;
+  rewrite str3;clear str3;
+  rewrite str2;clear str2;
+  rewrite str1;clear str1;
+  rewrite str0;clear str0;
+  rewrite str;clear str.
+  clear m30 m33 m34 m35 m36 v4 v5 v6 v7 v8 v9.
+  
+  generalize alc5;intros alc5'.
+  apply Mem.nextblock_alloc in alc5.
+  rewrite alc5;clear alc5.
+  generalize alc5';intros alc5.
+  apply Mem.alloc_result in alc5'.
+  rewrite<-alc5';clear alc5'.
+  blocks_lt b1 b7; blocks_lt' b1 b7.
+  omega.
+*)
+  (*
+  Transparent Mem.free.
+  unfold Mem.free in fl2.
+  destruct (Mem.range_perm_dec m24 b12 0 4 Freeable);
+    [idtac|apply n in freeable;tauto].
+  destruct (Mem.range_perm_dec (Mem.unchecked_free m24 b12 0 4) b10 0 4 Freeable);
+    [idtac|apply n in freeable;tauto].
+  destruct (Mem.range_perm_dec
+              (Mem.unchecked_free (Mem.unchecked_free m24 b12 0 4) b10 0 4)
+                b11 0 1 Freeable);
+    [idtac|apply n in freeable;tauto].
+  *)
+Admitted.
+
+
+
 Axiom set_oldrn_ok:
   forall m m' v oldrn_blk ofs,
-    store_value_of_type T1 m oldrn_blk ofs v = Some m'->
+    store_value_of_type T1 m oldrn_blk ofs v = Some m' ->
     of_mem proc m = of_mem proc m'.
 
 Lemma oldrn_assgnt_ok:
@@ -473,7 +743,7 @@ Proof.
   (* v = Eval vres T10 *)
   inv esr0.
   (* vf = the value of conditionPassed *)
-  inv esr1. rename H2 into esl, H5 into lvot. clear H3.
+  inv esr. rename H2 into esl, H5 into lvot. clear H3.
   
   inv_alloc_vars e. 
   pose (e:=
@@ -485,7 +755,7 @@ Proof.
               (PTree.set S (b0, Tint I8 Signed)
                 (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
                   empty_env)))))))).
-  fold e in esr2,esl |-* .
+  fold e in eslst,esl |-* .
 
   inv esl; try discriminate.
   rename H1 into not_exists, H2 into find_symbol. clear H5.
@@ -716,6 +986,30 @@ Definition set_regpc :=
                   T6) cpsr T7) C_flag T10) T10)
           T10) Enil))) T12.
 
+Definition add_old_Rn_so_Cf :=
+  Ebinop Oadd
+  (Ebinop Oadd
+    (Evalof (Evar old_Rn T1) T1)
+    (Evalof (Evar shifter_operand T1) T1)
+    T1)
+  (Evalof
+    (Efield
+      (Efield
+        (Ederef
+          (Evalof (Evar proc T3) T3)
+          T6) cpsr T7) C_flag T10) T10) T10.
+
+Lemma same_result_add_old_Rn_so_Cf :
+  forall ge e m v s0 n so s,
+    proc_state_related m e (Ok tt (mk_semstate nil true s)) ->
+    n_func_related m e n ->
+    so_func_related m e so ->
+    eval_simple_rvalue ge e m add_old_Rn_so_Cf (Vint v) ->
+    v = add (add (Arm6_State.reg_content s0 n) so)
+    ((Arm6_State.cpsr s)[Cbit]).
+Proof.
+Admitted.
+
 Lemma same_setregpc :
   forall e m l b s0 s t m' v d n so ,
     proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
@@ -774,7 +1068,8 @@ Proof.
                   empty_env))))))));
   fold e in ee;simpl.
   (* eval_expression is_S_set from m to m' *)
-  inv ee. unfold is_S_set in H.
+  inv ee. rename H into ee, H0 into esr. 
+  unfold is_S_set in ee.
   (* eval_expr from m to m' *)
   inv_eval_expr m m'.
   (* params of binop eq *)
@@ -890,11 +1185,11 @@ Proof.
                         (PTree.set S (b0, Tint I8 Signed)
                            (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
                               empty_env))))))));
-  fold e in esr0, esr1, esr; fold e.
+  fold e in esr0, eslst, esr|-*.
   (* esr in m', v is vres *)
   inv_eval_simple m' (Eval vres T10).
   (* esr in m3, find vf is CurrentModeHasSPSR *)
-  inv_eval_simple m2 ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
+  inv_eval_simple m ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
   (* find block b *)
   unfold Genv.find_symbol in H5;simpl in H5.
   injection H5;intro;rewrite<-H in *;clear H b H5 H8 H2.
@@ -908,7 +1203,7 @@ Proof.
   rewrite PMap.gss in Heqff.
   injection Heqff;intro;rewrite<-H in *;clear H Heqff fd.
   (* pass variable proc to eval_function *)
-  inv_eval_simple m2 (Econs (Evalof (Evar proc T3) T3) Enil).
+  inv_eval_simple m (Econs (Evalof (Evar proc T3) T3) Enil).
   (* type of ty*)
   injection Heqtf;intros Htres Hty;rewrite<-Htres in *;rewrite<-Hty in *;
     clear Heqtf Hty Htres ty0 tres H5 Heqcf.
@@ -918,17 +1213,17 @@ Proof.
   inv ev_funcall.
   (* exec_stmt from m9 to m10 *)
   inv H5. simpl in H6.
-  (* eval_expression from m9 to m10 *)
+  (* eval_expression from m12 to m13 *)
   inv H12.
   (* eval_expr from m9 t m10 *)
-  inv_eval_expr m9 m10.
+  inv_eval_expr m12 m13.
   (* free_list from m10 to m' *)
   inv_alloc_vars e0.
   simpl in alc6, alc5.
   (* Mem.free from m10 to m'*)
-  assert(Mem.free m10 b7 0 4 = Some m').
-  simpl in H10;rewrite<-H10;
-  destruct (Mem.free m10 b7 0 4); reflexivity.
+  assert(Mem.free m12 b7 0 4 = Some m').
+  simpl in H10;rewrite<-H10.
+  destruct (Mem.free m12 b7 0 4); reflexivity.
   (* the parameter list *)
   unfold In in inlst;simpl in inlst.
   (*b=b1*)
@@ -950,7 +1245,7 @@ Proof.
   unfold param_val;simpl;
   unfold load_value_of_type in *;simpl in H8 |-*);
   (* bind parameters from m8 to m10 *)
-  inv_bind_params m10; repeat rrw_block;
+  inv_bind_params m12; repeat rrw_block;
   unfold store_value_of_type in str;simpl in str.
 
   (* param proc *)
@@ -959,14 +1254,14 @@ Proof.
   
   (* stores between m8 and m10 do not change value in b1 *)
   apply Mem.load_store_other with 
-    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b1 (0 mod modulus) in str;
+    AST.Mint32 m11 b7 (0 mod modulus) v0 m12 AST.Mint32 b1 (0 mod modulus) in str;
     [idtac|left;blocks_lt b1 b6;blocks_neq b1 b7;exact mn].
   (* load the same value in b1 from m10 to m' *)
-  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
+  rewrite Mem.load_free with m12 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
     [idtac|exact H|left;blocks_lt b1 b6;blocks_neq b1 b7;exact mn].
   (* load same value in b1 from m2 and m8*)
   rewrite Mem.load_alloc_other with
-    m2 0 4 m8 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
+    m 0 4 m11 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
     [rewrite str;reflexivity|exact alc6|exact H8].
   (*
   (* b1<>b7*)
@@ -1000,15 +1295,15 @@ Proof.
   (* param S *)
   (* stores between m8 and m10 do not change value in b0 *)
   apply Mem.load_store_other with 
-    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint8signed b0 (0 mod modulus) 
+    AST.Mint32 m11 b7 (0 mod modulus) v0 m12 AST.Mint8signed b0 (0 mod modulus) 
     in str;
     [idtac|left;blocks_lt b0 b6;blocks_neq b0 b7;exact mn].
   (* load the same value in b0 from m10 to m' *)
-  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint8signed b0 (0 mod modulus);
+  rewrite Mem.load_free with m12 b7 0 4 m' AST.Mint8signed b0 (0 mod modulus);
     [idtac|exact H|left;blocks_lt b0 b6;blocks_neq b0 b7;exact mn].
   (* load same value in b0 from m2 and m8*)
   rewrite Mem.load_alloc_unchanged with
-    m2 0 4 m8 b7 AST.Mint8signed b0 (0 mod modulus) in str;
+    m 0 4 m11 b7 AST.Mint8signed b0 (0 mod modulus) in str;
     [rewrite str;reflexivity|exact alc6
       |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
         rewrite<-alc6;blocks_lt b0 b6;blocks_lt' b0 b7;exact mn].
@@ -1042,15 +1337,15 @@ Proof.
   (* param cond *)
   (* stores between m8 and m10 do not change value in b2 *)
   apply Mem.load_store_other with 
-    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b2 (0 mod modulus) 
+    AST.Mint32 m11 b7 (0 mod modulus) v0 m12 AST.Mint32 b2 (0 mod modulus) 
     in str;
     [idtac|left;blocks_lt b2 b6;blocks_neq b2 b7;exact mn].
   (* load the same value in b2 from m10 to m' *)
-  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b2 (0 mod modulus);
+  rewrite Mem.load_free with m12 b7 0 4 m' AST.Mint32 b2 (0 mod modulus);
     [idtac|exact H|left;blocks_lt b2 b6;blocks_neq b2 b7;exact mn].
   (* load same value in b2 from m2 and m8*)
   rewrite Mem.load_alloc_unchanged with
-    m2 0 4 m8 b7 AST.Mint32 b2 (0 mod modulus) in str;
+    m 0 4 m11 b7 AST.Mint32 b2 (0 mod modulus) in str;
     [rewrite str;reflexivity|exact alc6
       |unfold Mem.valid_block;apply Mem.alloc_result in alc6;
         rewrite<-alc6;blocks_lt b2 b6;blocks_lt' b2 b7;exact mn].
@@ -1114,11 +1409,11 @@ Proof.
                         (PTree.set S (b0, Tint I8 Signed)
                            (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
                               empty_env))))))));
-  fold e in esr0, esr1, esr; fold e.
+  fold e in esr0, eslst, esr; fold e.
   (* esr in m', v is vres *)
   inv_eval_simple m' (Eval vres T10).
   (* esr in m3, find vf is CurrentModeHasSPSR *)
-  inv_eval_simple m2 ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
+  inv_eval_simple m ((Evalof (Evar CurrentModeHasSPSR T13) T13)).
   (* find block b *)
   unfold Genv.find_symbol in H5;simpl in H5.
   injection H5;intro;rewrite<-H in *;clear H b H5 H8 H2.
@@ -1132,7 +1427,7 @@ Proof.
   rewrite PMap.gss in Heqff.
   injection Heqff;intro;rewrite<-H in *;clear H Heqff fd.
   (* pass variable proc to eval_function *)
-  inv_eval_simple m2 (Econs (Evalof (Evar proc T3) T3) Enil).
+  inv_eval_simple m (Econs (Evalof (Evar proc T3) T3) Enil).
   (* type of ty*)
   injection Heqtf;intros Htres Hty;rewrite<-Htres in *;rewrite<-Hty in *;
     clear Heqtf Hty Htres ty tres Heqcf.
@@ -1145,13 +1440,13 @@ Proof.
   (* eval_expression from m9 to m10 *)
   inv H13.
   (* eval_expr from m9 t m10 *)
-  inv_eval_expr m9 m10.
+  inv_eval_expr m12 m13.
   (* free_list from m10 to m' *)
   inv_alloc_vars e0.
   (* Mem.free from m10 to m'*)
-  assert(Mem.free m10 b7 0 4 = Some m').
+  assert(Mem.free m12 b7 0 4 = Some m').
   simpl in H11;rewrite<-H11;
-  destruct (Mem.free m10 b7 0 4); reflexivity.
+  destruct (Mem.free m12 b7 0 4); reflexivity.
   (* example proc *)
   exists proc.
   (* simplify in goal *)
@@ -1159,7 +1454,7 @@ Proof.
   unfold load_value_of_type in *;simpl in H8 |-*.
   rewrite H8.
   (* bind parameters *)
-  inv_bind_params m10;rrw_block.
+  inv_bind_params m12;rrw_block.
   unfold store_value_of_type in str;simpl in str.
   (* b = b1 *)
   simpl in H9;injection H9;intro Heq;rewrite<-Heq in *;clear H9 Heq b.
@@ -1178,14 +1473,14 @@ Proof.
   exact mn.
   (* stores between m8 and m10 do not change value in b1 *)
   apply Mem.load_store_other with 
-    AST.Mint32 m8 b7 (0 mod modulus) v0 m10 AST.Mint32 b1 (0 mod modulus) in str;
+    AST.Mint32 m11 b7 (0 mod modulus) v0 m12 AST.Mint32 b1 (0 mod modulus) in str;
     [idtac|left;exact Hneqb17].
   (* load the same value in b1 from m10 to m' *)
-  rewrite Mem.load_free with m10 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
+  rewrite Mem.load_free with m12 b7 0 4 m' AST.Mint32 b1 (0 mod modulus);
     [idtac|exact H|left;exact Hneqb17].
   (* load same value in b1 from m2 and m8*)
   rewrite Mem.load_alloc_other with
-    m2 0 4 m8 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
+    m 0 4 m11 b7 AST.Mint32 b1 (0 mod modulus) v' in str;
     [rewrite str;reflexivity|exact alc6|exact H8].
 Qed.
 
