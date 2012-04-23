@@ -136,10 +136,10 @@ Definition set_reg_aoni:=
 Lemma set_reg_aoni_ok :
   forall e m t m' a' l b s, 
     proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
-    eval_expr (Genv.globalenv prog_bl) e m RV set_reg_aoni t m' a'-> 
-    proc_state_related (of_mem proc m') e 
-    (Ok tt (mk_semstate l b 
-      (Arm6_State.set_reg s LR (Arm6_State.address_of_next_instruction s)))).
+    eval_expr (Genv.globalenv prog_bl) e m RV set_reg_aoni t m' a'->
+    (forall l b,proc_state_related (of_mem proc m') e
+      (Ok tt (mk_semstate l b 
+        (Arm6_State.set_reg s LR (Arm6_State.address_of_next_instruction s))))).
 Admitted.
 
 Definition set_pc_rw_x :=
