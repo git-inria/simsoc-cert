@@ -30,6 +30,14 @@ See /path/to/compcert/README.
 
 Target to use: ia32-linux.
 
+Warning: 
+  The generation of C simulators in arm6/simlight, 
+  arm6/simlight2, and sh4/simlight (described below) could fail
+  on a 64 bits computer, because the target above is
+  set to 'ia32-linux' and CompCert calls 'gcc -m32' which fails.
+
+  In this case, install the package 'libc6-dev-i386'.
+
 --------------------------------------------------------------------
 Configuration of SimSoC-Cert:
 
