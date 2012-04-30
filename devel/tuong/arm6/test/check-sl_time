@@ -7,28 +7,38 @@ set -e # exit on error
 #set -x # verbose
 
 function SIMLIGHT () {
-  echo ${1:0:$(expr ${#1} - 6)}
+  echo ${1:0:$(expr ${#1} - 4)}
   ocaml unix.cma /dev/stdin << ML
+
+  let dir_sl = "../simlight/"
+  let four = 4.
   module Sys = struct include Sys let command s = let f = Unix.gettimeofday () in let _ = Sys.command s in Unix.gettimeofday () -. f end
-  let rec aux s n acc = if n = 0 then acc else aux s (pred n) (List.map2 (fun acc s -> acc +. Sys.command (s "$@")) acc s);;
+  let rec aux s n acc = if n = 0 then acc else aux s (pred n) (List.map2 (fun acc s -> acc +. Sys.command (s "$@")) acc s)
   let run s = 
     let run n = aux s n (List.map (fun _ -> 0.) s) in
 
     let rec aux nb acc = 
-      let d = 4. in
-      if List.hd acc > d || List.hd (List.tl acc) > d then
+      if List.exists (fun e -> e > four) acc then
         nb, acc
       else
         aux (succ nb) (List.map2 (+.) acc (run 1)) in
         
     aux 0 (run 1)
-  ;;
-  let nb, a = run (List.map (fun fic -> 
-    if Sys.file_exists fic then
-      Printf.sprintf "%s -d -i %s" fic
-    else
-      failwith (Printf.sprintf "the simulator %s does not exist" fic)) [ "../simlight/simlight_comp" ; "../simlight/simlight_gcc" ]) in
-  Printf.printf "%d %s\n%!" nb (List.fold_left (fun acc f -> Printf.sprintf "%s %.03f%!" acc f) "" a);;
+
+  let _ =
+    let nb, a = run (List.map (fun fic -> 
+      let fic = dir_sl ^ fic in
+      if Sys.file_exists fic then
+        Printf.sprintf "%s -d -i %s" fic
+      else
+        failwith (Printf.sprintf "the simulator %s does not exist" fic))
+          [ "simlight_comp"
+          ; "simlight_gccO0"
+          ; "simlight_gccO1"
+          ; "simlight_gccO2"
+          ; "simlight_gccO3" ]) in
+    Printf.printf "%d %s\n%!" nb (List.fold_left (fun acc f -> Printf.sprintf "%s %.05f%!" acc f) "" a)
+
 ML
 }
 
@@ -37,6 +47,12 @@ ML
 SIMLIGHT sum_iterative_a.elf -r0=903
 SIMLIGHT sum_recursive_a.elf -r0=903
 SIMLIGHT sum_direct_a.elf -r0=903
+SIMLIGHT endian_a.elf -r0=0x7
+SIMLIGHT multiply_a.elf -r0=0xf
+SIMLIGHT simsoc_new1_a.elf -r0=0xff
+SIMLIGHT test_mem_a.elf -r0=0x3
+SIMLIGHT sorting_a.elf -r0=0x3f
+
 SIMLIGHT arm_blx2_a.elf -r0=0x3
 SIMLIGHT arm_cflag_a.elf -r0=0xf
 SIMLIGHT arm_dpi_a.elf -r0=0x7ffff
@@ -48,12 +64,28 @@ SIMLIGHT arm_mrs_a.elf -r0=0x7ffff
 SIMLIGHT arm_msr_a.elf -r0=0x1ffff
 SIMLIGHT arm_multiple_a.elf -r0=0x1ff
 SIMLIGHT arm_swi_a.elf -r0=0x3
-SIMLIGHT endian_a.elf -r0=0x7
-SIMLIGHT multiply_a.elf -r0=0xf
-SIMLIGHT simsoc_new1_a.elf -r0=0xff
-SIMLIGHT test_mem_a.elf -r0=0x3
-SIMLIGHT sorting_a.elf -r0=0x3f
+
 SIMLIGHT arm_v6_SADD_a.elf -r0=0x1ffffff
 SIMLIGHT arm_v6_QADD_a.elf -r0=0x7ffff
 SIMLIGHT arm_v6_QSUB_a.elf -r0=0x3fffffff
 SIMLIGHT arm_v6_REV_a.elf -r0=15
+SIMLIGHT arm_v6_a.elf -r0=0xffff
+SIMLIGHT arm_v6_SSAT_a.elf -r0=0xfff
+SIMLIGHT arm_v6_SSUB_a.elf -r0=0xfffff
+SIMLIGHT arm_v6_SXTA_a.elf -r0=0x7fff
+SIMLIGHT arm_v6_SXTB_a.elf -r0=0x7fff
+SIMLIGHT arm_v6_SHADD_a.elf -r0=0x3f
+SIMLIGHT arm_v6_SHSUB_a.elf -r0=0x3f
+SIMLIGHT arm_v6_SML_a.elf -r0=0xff
+SIMLIGHT arm_v6_SMM_a.elf -r0=0x3f
+SIMLIGHT arm_v6_SMU_a.elf -r0=0xfffffff
+SIMLIGHT arm_v6_UA_a.elf -r0=0x1ffffff 
+SIMLIGHT arm_v6_UQADD_a.elf -r0=0x7ffff  
+SIMLIGHT arm_v6_USUB_a.elf -r0=0xfffff  
+SIMLIGHT arm_v6_UXTA_a.elf -r0=0x7fff 
+SIMLIGHT arm_v6_UXTB_a.elf -r0=0x7fff 
+SIMLIGHT arm_v6_UMAAL_a.elf -r0=0xff
+SIMLIGHT arm_v6_UH_a.elf -r0=0x3ffff
+SIMLIGHT arm_v6_UQSUB_a.elf -r0=0x3fffffff
+SIMLIGHT arm_v6_USAD_a.elf -r0=0xff       
+#SIMLIGHT arm_v6_USAT_a.elf -r0=0xfff 
