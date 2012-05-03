@@ -50,12 +50,6 @@ Definition condpass :=
       (Econs (Evalof (Evar bl_compcert.cond T6) T6) Enil)) T7.
 
 Lemma no_effect_condpass :
-  forall e m m' t v,
-    eval_expression (Genv.globalenv prog_bl) e m condpass t m' v ->    
-    m = m'.
-Admitted.
-
-Lemma no_effect_condpass' :
   forall m0 e m0' m m' t v,
     alloc_variables empty_env m0 
       (fun_internal_B.(fn_params) ++ fun_internal_B.(fn_vars)) e m0' ->    
@@ -303,8 +297,9 @@ Proof.
   (* condpass doesn't change mem, m2 = m3 *)
   generalize cp; intro cp'.
 
-  eapply no_effect_condpass in cp.
-  rewrite cp in *. clear cp m2.
+  eapply no_effect_condpass in cp;
+    [rewrite cp in *;clear cp m2
+      |apply av].
 
   (* condpass has the same value in both side *)
   generalize av;intros av'.
