@@ -21,8 +21,6 @@ Definition d_func_related (m:Mem.mem) (e:env) (d:regnum):Prop:=
 
 Definition prog_mrs := mrs_compcert.p.
 
-(* Return the memory model which only relates to this ident *)
-Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
 
 Definition condpass :=
   Ecall (Evalof (Evar ConditionPassed T1) T1)
@@ -31,10 +29,53 @@ Definition condpass :=
       (Efield (Ederef (Evalof (Evar proc T2) T2) T3) cpsr T4)
       T5) (Econs (Evalof (Evar mrs_compcert.cond T6) T6) Enil)) T7.
 
+(* A common proof on ConditionPass. It is nearly used in every instruction.
+   Proofing its property in every instruction is a redundent work. It is
+   neccessary to find a way to have a prove in common *)
+(* Can't continue because of two reasons.
+   First, ARM AST to CompcertC AST code generation doesn't consider the
+   contents of function calls, if needed, we have to 'borrow' them from 
+   C to CompcertC code generation.
+   Second, ConditionPass is an external function. No concrete value will be returned,
+   only the type. 
+   The same as functions related to set_reg, them will call addr_of_reg, which
+   is also a external function *)
+
 Lemma no_effect_condpass :
   forall e m t m' v,
     eval_expression (Genv.globalenv prog_mrs) e m condpass t m' v->
     m = m'.
+Proof.
+(*
+  intros until v. intros ee.
+  inv ee. rename H into ee, H0 into esrv.
+  unfold condpass in ee.
+  inv_call m m'. intros until vres.
+  intros ee_val eelst esrvf eslst cf ff tof ef esrv.
+  inv_valof m m1. intros until a'0. intros ee_var esrvf.
+  inv_var m m1.
+  inv_cons m m2. intros until al'. intros ee_addr eelst eslst.
+  inv_addrof m m0. intros until a'1. intros ee_fld eslst.
+  inv_field m m0. intros until a'2. intros ee_der eslst.
+  inv_deref m m0. intros until a'3. intros ee_valof eslst.
+  inv_valof m m0. intros until a'4. intros ee_var eslst.
+  inv_var m m0.
+  inv_cons m m2. intros until al'0. intros ee_valof eelst eslst.
+  inv_valof m m3. intros until a'5. intros ee_var eslst.
+  inv_var m m3.
+  inv_nil m m2. intros eslst.
+
+  (* function fd can be found *)
+  unfold Genv.find_funct in ff.
+  destruct vf; try discriminate.
+  destruct (eq_dec i w0); try discriminate.
+  rewrite e0 in *; clear i e0.
+
+  (* the body of fd is stored in pointer (Vptr b w0)*)
+  inv esrvf. rename H1 into esl, H4 into lvot. clear H2.
+  inv esl; try discriminate.
+  (*Continue*)
+*)
 Admitted.
 
 Lemma condpass_bool :
@@ -137,9 +178,9 @@ Definition set_reg_pc_cpsr :=
 
 Lemma setregpc_spsr_ok :
   forall m e l b s t m' v d,
-    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s))->
+    proc_state_related m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_mrs) e m set_reg_pc_spsr t m' v ->
-    proc_state_related (of_mem proc m') e 
+    proc_state_related m' e 
     (match Arm6_State.mode s with
        | usr =>
          unpredictable Arm6_Message.EmptyMessage
@@ -155,9 +196,9 @@ Admitted.
 
 Lemma setregpc_cpsr_ok :
   forall m e l b s t m' v b' d,
-    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s))->
+    proc_state_related m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_mrs) e m set_reg_pc_cpsr t m' v ->
-    proc_state_related (of_mem proc m') e
+    proc_state_related m' e
     (Ok tt (mk_semstate l b'
       (Arm6_State.set_reg s d (Arm6_State.cpsr s)))).
 Admitted.
@@ -189,13 +230,13 @@ Theorem correctness_MSR : forall e m0 m1 m2 mfin vargs s out rbit cond d,
   alloc_variables empty_env m0 
   (fun_internal_MRS.(fn_params)++fun_internal_MRS.(fn_vars)) e m1->
   bind_parameters e m1 fun_internal_MRS.(fn_params) vargs m2->
-  proc_state_related (of_mem proc m2) e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
   rbit_func_related m2 e rbit ->
   cond_func_related m2 e cond ->
   d_func_related m2 e d ->
   exec_stmt (Genv.globalenv prog_mrs) e m2 fun_internal_MRS.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related (of_mem proc mfin) e 
+  proc_state_related mfin e 
   (S.MRS_step rbit cond d (mk_semstate nil true s)).
 Proof.
   intros until d;intros av bp psrel rfrel cfrel dfrel exst.
