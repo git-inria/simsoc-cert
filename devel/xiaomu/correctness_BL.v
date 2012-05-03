@@ -10,8 +10,25 @@ Import Arm6_Functions.Semantics.
 
 Require Import my_inversion.
 Require Import my_tactic.
+Require Import common_functions.
 
-Definition prog_bl := bl_compcert.p.
+Set Implicit Arguments.
+
+Definition fun_ConditionPassed :=
+  common_functions.fun_ConditionPassed 
+  bl_compcert.N_flag bl_compcert.Z_flag bl_compcert.C_flag bl_compcert.V_flag
+  bl_compcert.Q_flag bl_compcert.J_flag 
+  bl_compcert.GE0 bl_compcert.GE1 bl_compcert.GE2 bl_compcert.GE3 
+  bl_compcert.E_flag bl_compcert.A_flag bl_compcert.I_flag bl_compcert.F_flag
+  bl_compcert.T_flag 
+  bl_compcert.mode bl_compcert.background bl_compcert.SLv6_StatusRegister
+  bl_compcert.ConditionPassed.
+
+Definition bl_functions :=
+  fun_ConditionPassed :: bl_compcert.functions.
+
+Definition prog_bl :=
+  AST.mkprogram bl_functions bl_compcert.main bl_compcert.global_variables.
 
 Definition lbit_func_related (m:Mem.mem) (e:env) (lbit:bool):Prop:=
   bit_proj m e L = lbit.
@@ -37,6 +54,41 @@ Lemma no_effect_condpass :
     eval_expression (Genv.globalenv prog_bl) e m condpass t m' v ->    
     m = m'.
 Admitted.
+
+Lemma no_effect_condpass' :
+  forall m0 e m0' m m' t v,
+    alloc_variables empty_env m0 
+      (fun_internal_B.(fn_params) ++ fun_internal_B.(fn_vars)) e m0' ->    
+    eval_expression (Genv.globalenv prog_bl) e m condpass t m' v ->    
+    m = m'.
+Proof.
+  intros until v;intros av ee.
+  unfold condpass in ee.
+  inv ee. rename H into ee, H0 into esrv.
+  inv_eval_expr m m'.
+  (* vres=v  *)
+  inv esr0.
+  (* vf is the value of ConditionPassed *)
+  inv esr. rename H1 into esl,H4 into lvotvf. clear H2.
+  (* e *)
+  inv_alloc_vars e.
+  pose (e:=PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
+               (PTree.set cond (b2, Tint I32 Signed)
+                  (PTree.set L (b0, Tint I8 Signed)
+                     (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+                        empty_env)))).
+  fold e in eslst, esl.
+
+  inv esl.
+  (* ConditionPassed is not in local env *)
+  discriminate.
+  (* ConditionPassed is in global env *)
+  rename H1 into notine,H2 into fs,H5 into tog.
+
+  find_func.
+  eapply mem_not_changed_ef in ev_funcall.
+  exact ev_funcall.
+Qed.
 
 Lemma condpass_bool :
   forall m0 e m0' m t m' v cond s b,
@@ -83,7 +135,7 @@ Proof.
     (PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
       (PTree.set cond (b2, Tint I32 Signed)
         (PTree.set L (b0, Tint I8 Signed)
-          (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+          (PTree.set proc (b1, Tpointer bl_compcert.typ_SLv6_Processor)
             empty_env)))));
   fold e in ee_L, lfr;simpl in lfr.
 
@@ -132,12 +184,13 @@ Definition set_reg_aoni:=
             T9)
           (Econs (Evalof (Evar proc T2) T2) Enil) T10)
         Enil))) T11.
+  
 
 Lemma set_reg_aoni_ok :
   forall e m t m' a' l b s, 
-    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
     eval_expr (Genv.globalenv prog_bl) e m RV set_reg_aoni t m' a'->
-    (forall l b,proc_state_related (of_mem proc m') e
+    (forall l b,proc_state_related m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s LR (Arm6_State.address_of_next_instruction s))))).
 Admitted.
@@ -161,10 +214,10 @@ Definition set_pc_rw_x :=
 
 Lemma set_pc_rw_x_ok :
   forall e m t m' a' l b s si24,
-    proc_state_related (of_mem proc m) e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
     si24_func_related m e si24 ->
     eval_expr (Genv.globalenv prog_bl) e m RV set_pc_rw_x t m' a' ->
-    proc_state_related (of_mem proc m') e 
+    proc_state_related m' e 
     (Ok tt 
       (mk_semstate l false
       (Arm6_State.set_reg s PC (add (Arm6_State.reg_content s PC) 
@@ -220,13 +273,13 @@ Theorem correctness_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
   bind_parameters e m1 fun_internal_B.(fn_params) vargs m2 ->
 (* TODO: valid_access needs to be more precise *)
   (forall m ch b ofs, Mem.valid_access m ch b ofs Readable) ->
-  proc_state_related (of_mem proc m2) e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
   lbit_func_related m2 e L ->
   cond_func_related m2 e cond ->
   si24_func_related m2 e si24 ->
   exec_stmt (Genv.globalenv prog_bl) e m2 fun_internal_B.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related (of_mem proc mfin) e 
+  proc_state_related mfin e 
   (S.B_step L cond si24 (mk_semstate nil true s)).
 Proof.
 
@@ -237,15 +290,26 @@ Proof.
   
   rename H5 into cp, H8 into cp_bool, H9 into exst, H4 into trc.
   simpl in cp_bool.
+
+  (* evalutate e *)
+  (*
+  inv_alloc_vars e.
+  pose (e:=(PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
+        (PTree.set bl_compcert.cond (b2, Tint I32 Signed)
+           (PTree.set bl_compcert.L (b0, Tint I8 Signed)
+              (PTree.set proc (b1, Tpointer typ_SLv6_Processor) empty_env)))));
+  fold e in bp,psrel,lfrel,cfrel,sfrel,cp,exst|-*.
+  *)
   (* condpass doesn't change mem, m2 = m3 *)
   generalize cp; intro cp'.
+
   eapply no_effect_condpass in cp.
   rewrite cp in *. clear cp m2.
 
   (* condpass has the same value in both side *)
   generalize av;intros av'.
   apply condpass_bool with m0 e m1 m3 t1 m3 v1 cond s b in av';
-    [idtac|exact cp'|exact cp_bool].  
+    [idtac|exact cp'|exact cp_bool].
 
   (* case on the boolean value of condpass *)
   destruct b.
@@ -294,7 +358,7 @@ Proof.
       inv_valof m3 m5. intros until a'2. intros ee_var esrvf.
       inv_var m3 m5.
       *)
-      apply set_reg_aoni_ok with e m3 t4 m2 a'1 nil true s in psrel;
+      apply set_reg_aoni_ok with e m3 t4 m2 a'1 nil true s nil true in psrel;
         [idtac|exact ee_set_reg].
 
       apply L_not_change_set_reg_aoni with e m3 t4 m2 a'1 L in lfrel;

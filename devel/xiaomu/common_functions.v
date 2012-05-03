@@ -48,7 +48,7 @@ Variable T_flag : positive.
 Variable mode : positive.
 Variable background : positive.
 
-Definition typ_struct_SLv6_StatusRegister := 
+Definition cf_typ_struct_SLv6_StatusRegister := 
   Cnotations.fcons (N_flag, Tint I8 Unsigned)
   (Cnotations.fcons (Z_flag, Tint I8 Unsigned)
     (Cnotations.fcons (C_flag, Tint I8 Unsigned)
@@ -75,15 +75,15 @@ Definition typ_struct_SLv6_StatusRegister :=
 
 Variable SLv6_StatusRegister : positive.
 
-Definition typ_SLv6_StatusRegister :=
-  Tstruct SLv6_StatusRegister typ_struct_SLv6_StatusRegister.
+Definition cf_typ_SLv6_StatusRegister :=
+  Tstruct SLv6_StatusRegister cf_typ_struct_SLv6_StatusRegister.
 
 Variable begin : positive.
 Variable size : positive.
 Variable _end : positive.
 Variable mem : positive.
 
-Definition typ_struct_SLv6_MMU :=
+Definition cf_typ_struct_SLv6_MMU :=
   Cnotations.fcons (begin, Tint I32 Unsigned)
   (Cnotations.fcons (size, Tint I32 Unsigned)
     (Cnotations.fcons (_end, Tint I32 Unsigned)
@@ -91,7 +91,7 @@ Definition typ_struct_SLv6_MMU :=
 
 Variable SLv6_MMU : positive.
 
-Definition typ_SLv6_MMU := Tstruct SLv6_MMU typ_struct_SLv6_MMU.
+Definition cf_typ_SLv6_MMU := Tstruct SLv6_MMU cf_typ_struct_SLv6_MMU.
 
 Variable mmu_ptr : positive.
 Variable cpsr : positive.
@@ -111,21 +111,21 @@ Variable ee_bit : positive.
 Variable u_bit : positive.
 Variable v_bit : positive.
 
-Definition typ_struct_SLv6_SystemCoproc :=
+Definition cf_typ_struct_SLv6_SystemCoproc :=
   Cnotations.fcons (ee_bit, Tint I8 Unsigned)
   (Cnotations.fcons (u_bit, Tint I8 Unsigned)
     (Cnotations.fcons (v_bit, Tint I8 Unsigned) Fnil)).
 
 Variable SLv6_SystemCoproc : positive.
 
-Definition typ_SLv6_SystemCoproc :=
-  Tstruct SLv6_SystemCoproc typ_struct_SLv6_SystemCoproc.
+Definition cf_typ_SLv6_SystemCoproc :=
+  Tstruct SLv6_SystemCoproc cf_typ_struct_SLv6_SystemCoproc.
 
-Definition typ_struct_SLv6_Processor :=
-  Cnotations.fcons (mmu_ptr, Tpointer typ_SLv6_MMU)
-  (Cnotations.fcons (cpsr, typ_SLv6_StatusRegister)
-    (Cnotations.fcons (spsrs, Tarray typ_SLv6_StatusRegister 5)
-      (Cnotations.fcons (cp15, typ_SLv6_SystemCoproc)
+Definition cf_typ_struct_SLv6_Processor :=
+  Cnotations.fcons (mmu_ptr, Tpointer cf_typ_SLv6_MMU)
+  (Cnotations.fcons (cpsr, cf_typ_SLv6_StatusRegister)
+    (Cnotations.fcons (spsrs, Tarray cf_typ_SLv6_StatusRegister 5)
+      (Cnotations.fcons (cp15, cf_typ_SLv6_SystemCoproc)
         (Cnotations.fcons (id, Tint I32 Unsigned)
           (Cnotations.fcons (user_regs, Tarray (Tint I32 Unsigned) 16)
             (Cnotations.fcons (fiq_regs, Tarray (Tint I32 Unsigned) 7)
@@ -144,42 +144,42 @@ Definition typ_struct_SLv6_Processor :=
 
 Variable SLv6_Processor : positive.
 
-Definition typ_SLv6_Processor := 
-  Tstruct SLv6_Processor typ_struct_SLv6_Processor.
+Definition cf_typ_SLv6_Processor := 
+  Tstruct SLv6_Processor cf_typ_struct_SLv6_Processor.
 
-Definition T1 :=
+Definition cf_T1 :=
   Tfunction
-  (Tcons (Tpointer typ_SLv6_StatusRegister) 
+  (Tcons (Tpointer cf_typ_SLv6_StatusRegister) 
     (Tcons (Tint I32 Signed) Tnil))
   (Tint I8 Signed).
 
-Definition T2 := Tpointer typ_SLv6_Processor.
+Definition cf_T2 := Tpointer cf_typ_SLv6_Processor.
 
-Definition T3 := typ_SLv6_Processor.
+Definition cf_T3 := cf_typ_SLv6_Processor.
 
-Definition T4 := typ_SLv6_StatusRegister.
+Definition cf_T4 := cf_typ_SLv6_StatusRegister.
 
-Definition T5 := Tpointer typ_SLv6_StatusRegister.
+Definition cf_T5 := Tpointer cf_typ_SLv6_StatusRegister.
 
-Definition T6 := Tint I32 Signed.
+Definition cf_T6 := Tint I32 Signed.
 
-Definition T7 := Tint I8 Signed.
+Definition cf_T7 := Tint I8 Signed.
   
-Definition T8 := Tint I32 Unsigned.
+Definition cf_T8 := Tint I32 Unsigned.
 
-Definition T9 := Tint I8 Unsigned.
+Definition cf_T9 := Tint I8 Unsigned.
 
-Definition T10 :=
+Definition cf_T10 :=
   Tfunction
-  (Tcons (Tpointer typ_SLv6_Processor)
+  (Tcons (Tpointer cf_typ_SLv6_Processor)
     (Tcons (Tint I8 Unsigned) Tnil)) (Tint I32 Unsigned).
 
-Definition T11 :=
+Definition cf_T11 :=
   Tfunction
-  (Tcons (Tpointer typ_SLv6_Processor)
+  (Tcons (Tpointer cf_typ_SLv6_Processor)
     (Tcons (Tint I8 Unsigned) (Tcons (Tint I32 Unsigned) Tnil))) Tvoid.
 
-Definition T12 := Tvoid.
+Definition cf_T12 := Tvoid.
 
 Variable proc : positive.
 Variable cond :positive.
@@ -188,23 +188,21 @@ Variable shifter_operand :positive.
 
 (* ConditionPassed *)
 
-(*
 Definition condpass :=
-  Ecall (Evalof (Evar ConditionPassed T1) T1)
+  Ecall (Evalof (Evar ConditionPassed cf_T1) cf_T1)
   (Econs
     (Eaddrof
-      (Efield (Ederef (Evalof (Evar proc T2) T2) T3) cpsr T4)
-      T5)
-    (Econs (Evalof (Evar cond T6) T6) Enil)) T7.
+      (Efield (Ederef (Evalof (Evar proc cf_T2) cf_T2) cf_T3) cpsr cf_T4)
+      cf_T5)
+    (Econs (Evalof (Evar cond cf_T6) cf_T6) Enil)) cf_T7.
 
 Definition fun_ConditionPassed :=
   (ConditionPassed, External
     (AST.EF_external ConditionPassed 
       {| AST.sig_args := AST.Tint :: AST.Tint :: nil; 
         AST.sig_res := Some AST.Tint |})
-    (Tcons (Tpointer typ_SLv6_StatusRegister) (Tcons (Tint I32 Signed) Tnil))
-    T7).
-*)
+    (Tcons (Tpointer cf_typ_SLv6_StatusRegister) (Tcons (Tint I32 Signed) Tnil))
+    cf_T7).
 
 Lemma no_effect_condpass :
   forall ge m vargs t m' v,
@@ -214,7 +212,7 @@ Lemma no_effect_condpass :
         {|
           AST.sig_args := AST.Tint :: AST.Tint :: nil;
           AST.sig_res := Some AST.Tint |})
-      (Tcons (Tpointer typ_SLv6_StatusRegister)
+      (Tcons (Tpointer cf_typ_SLv6_StatusRegister)
         (Tcons (Tint I32 Signed) Tnil)) 
       (Tint I8 Signed)) vargs t m' v ->
     m = m'.
@@ -225,15 +223,28 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma condpass_bool :
+  forall e m l b s cond t m' v bv,
+    e!ConditionPassed = None ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    cond_func_related m e cond ->
+    eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->
+    bool_val v cf_T4 = Some b ->
+    Arm6_Functions.State.ConditionPassed s cond = bv.
+Proof.
+Admitted.
+
+
+
 (* reg *)
 
 Variable reg : positive.
 
 Definition reg_r id :=
-  Ecall (Evalof (Evar reg T10) T10)
-  (Econs (Evalof (Evar proc T2) T2)
+  Ecall (Evalof (Evar reg cf_T10) cf_T10)
+  (Econs (Evalof (Evar proc cf_T2) cf_T2)
     (Econs 
-      (Evalof (Evar id T9) T9) Enil)) T8.
+      (Evalof (Evar id cf_T9) cf_T9) Enil)) cf_T8.
 
 Lemma same_result_reg_content :
   forall m e l b st rg r ge v,
@@ -262,23 +273,23 @@ Variable set_reg_or_pc : positive.
 Definition add_old_Rn_so_Cf := 
   (Ebinop Oadd
     (Ebinop Oadd
-      (Evalof (Evar old_Rn T8) T8)
-      (Evalof (Evar shifter_operand T8) T8)
-      T8)
+      (Evalof (Evar old_Rn cf_T8) cf_T8)
+      (Evalof (Evar shifter_operand cf_T8) cf_T8)
+      cf_T8)
     (Evalof
       (Efield
         (Efield
           (Ederef
-            (Evalof (Evar proc T2) T2)
-            T6) cpsr T9) C_flag T7) T7)
-    T7).
+            (Evalof (Evar proc cf_T2) cf_T2)
+            cf_T6) cpsr cf_T9) C_flag cf_T7) cf_T7)
+    cf_T7).
 *)
 
 Definition set_regpc src :=
-  Ecall (Evalof (Evar set_reg_or_pc T11) T11)
-  (Econs (Evalof (Evar proc T2) T2)
-    (Econs (Evalof (Evar d T9) T9)
-      (Econs src Enil))) T12.
+  Ecall (Evalof (Evar set_reg_or_pc cf_T11) cf_T11)
+  (Econs (Evalof (Evar proc cf_T2) cf_T2)
+    (Econs (Evalof (Evar d cf_T9) cf_T9)
+      (Econs src Enil))) cf_T12.
 
 Lemma same_set_reg_or_pc :
   forall e m l b s rd ge src t m' a' v,
@@ -297,10 +308,10 @@ Admitted.
 Variable set_reg : positive.
 
 Definition set_reg_number nm src :=
-  Ecall (Evalof (Evar set_reg T11) T11)
-  (Econs (Evalof (Evar proc T2) T2)
-    (Econs (Eval (Vint (repr nm)) T6)
-      (Econs src Enil))) T12.
+  Ecall (Evalof (Evar set_reg cf_T11) cf_T11)
+  (Econs (Evalof (Evar proc cf_T2) cf_T2)
+    (Econs (Eval (Vint (repr nm)) cf_T6)
+      (Econs src Enil))) cf_T12.
 
 Lemma same_set_reg_number :
   forall m e l b s ge rg src t m' a' v,
@@ -314,10 +325,10 @@ Proof.
 Admitted.
 
 Definition set_reg_ref r src :=
-  Ecall (Evalof (Evar set_reg T11) T11)
-  (Econs (Evalof (Evar proc T2) T2)
-    (Econs (Evalof (Evar r T9) T9)
-      (Econs src Enil))) T12.
+  Ecall (Evalof (Evar set_reg cf_T11) cf_T11)
+  (Econs (Evalof (Evar proc cf_T2) cf_T2)
+    (Econs (Evalof (Evar r cf_T9) cf_T9)
+      (Econs src Enil))) cf_T12.
 
 Lemma same_set_reg_ref :
   forall m e l b s ge rg r src t m' a' v,
@@ -335,16 +346,16 @@ Admitted.
 
 Variable set_pc_raw :positive.
 
-Definition T13 :=
+Definition cf_T13 :=
   Tfunction
-  (Tcons (Tpointer typ_SLv6_Processor)
+  (Tcons (Tpointer cf_typ_SLv6_Processor)
     (Tcons (Tint I32 Unsigned) Tnil)) Tvoid.
   
 
 Definition set_pc_raw_src src :=
-  Ecall (Evalof (Evar set_pc_raw T13) T13)
-  (Econs (Evalof (Evar proc T2) T2)
-    (Econs src Enil)) T12.
+  Ecall (Evalof (Evar set_pc_raw cf_T13) cf_T13)
+  (Econs (Evalof (Evar proc cf_T2) cf_T2)
+    (Econs src Enil)) cf_T12.
 
 Lemma same_set_pc_raw :
   forall m e l b s ge t m' a' src v,
@@ -446,3 +457,4 @@ Lemma find_f :
     load_value_of_type t m b w0 = Some vf ->
     Genv.find_funct ge vf = Some fd
 *)
+
