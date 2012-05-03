@@ -84,7 +84,7 @@ Ltac inv_field m m':=
        end);clear ee;
     intro k; red in k;
     pose(ne:=ex');change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=>revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=>revert h end||idtac);
     unfold ne in k;clear ne;
     apply k; clear k
   end.
@@ -104,13 +104,13 @@ Ltac inv_valof m m' :=
     generalize
       (match ee in (eval_expr _ e m _ ex _ m' ex')
          return inv_expr_valof g e m ex m' ex' with
-         |eval_valof _ _ a t _ a' ty H1 =>
+         |eval_valof _ _ _ t _ a' _ H1 =>
            (fun X k => k t a' H1)
          |_=>I
        end);clear ee;
     intro k; red in k;
     pose (ne:=ex'); change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=>revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=>revert h end||idtac);
     unfold ne in k; clear ne;
     apply k; clear k
   end.
@@ -126,7 +126,7 @@ Definition inv_expr_deref g e m ex m' ex' :=
   end.
 
 Ltac inv_deref m m':=
-  match goal with [ee:eval_expr ?g ?e m  ?lv (Ederef ?a ?ty) ?t m' ?ex'|-?cl]=>
+  match goal with [ee:eval_expr ?g ?e m ?lv (Ederef ?a ?ty) ?t m' ?ex'|-?cl]=>
     generalize
       (match ee in (eval_expr _ e m _ ex _ m' ex')
          return inv_expr_deref g e m ex m' ex' with
@@ -136,7 +136,7 @@ Ltac inv_deref m m':=
        end); clear ee;
     intro k; red in k;
     pose (ne:=ex');change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=>revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=>revert h end||idtac);
     unfold ne in k ;clear ne;
     apply k;clear k
 end.
@@ -162,7 +162,7 @@ Ltac inv_addrof m m' :=
        end); clear ee;
     intro k; red in k;
     pose(ne:=ex');change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=>revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=>revert h end||idtac);
     unfold ne in k;clear ne;
     apply k; clear k
   end.
@@ -175,6 +175,22 @@ Definition inv_expr_eunop g e m ex m' ex' :=
         (forall t a',
           eval_expr g e m RV b t m' a' -> X(Eunop a a' c))-> X ex'
     |_=> True
+  end.
+
+Ltac inv_unop m m' :=
+  match goal with
+    [ee:eval_expr ?g ?e m ?rv (Eunop ?op ?a ?ty) ?t m' ?ex'|-?cl]=>
+    generalize
+      (match ee in (eval_expr _ e m _ ex _ m' ex')
+         return inv_expr_eunop g e m ex m' ex' with
+         |eval_unop _ _ _ _ t _ a' _ H=>(fun X k=> k a t a' ty H)
+         |_=> I
+       end); clear ee;
+      intro k; red in k;
+      pose(ne:=ex');change ex' with ne in k;
+      repeat(match goal with [h:context [ex']|-?cl]=>revert h end||idtac);
+      unfold ne in k;clear ne;
+      apply k; clear k
   end.
 
 (* Constructor eval_binop *)
@@ -195,17 +211,16 @@ Ltac inv_binop m m'' :=
     generalize
       (match ee in (eval_expr _ e m _ ex _ m'' ex')
          return inv_expr_binop g e m ex m'' ex' with
-         |eval_binop _ _ _ t1 m' a1' _ t2 m'' a2' _ _ H1 H2 =>
+         |eval_binop _ _ _ t1 m' a1' _ t2 _ a2' _ _ H1 H2 =>
            (fun X k => k t1 m' a1' t2 a2' H1 H2)
          |_=>I
        end); clear ee;
     intro k; red in k;
     pose (ne:=a');change a' with ne in k;
-    match goal with [h:context [a']|-?cl]=>revert h end;
+    repeat(match goal with [h:context [a']|-?cl]=>revert h end||idtac);
     unfold ne in k; clear ne;
     apply k; clear k
   end.
-    
 
 (* Constructor eval_condition *)
 Definition inv_expr_condition g e m ex m'' ex':=
@@ -235,7 +250,7 @@ Ltac inv_condition m m' :=
      end); clear ee;
     intro k; red in k;
     pose (ne:=ex');change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=> revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=> revert h end||idtac);
     unfold ne in k;clear ne;
     apply k; clear k
   end.
@@ -278,7 +293,7 @@ Ltac inv_assign m m' :=
        end);clear ee;
     intro k; red in k;
     pose(ne:=ex');change ex' with ne in k;
-    match goal with [h:context [ex']|-?cl]=> revert h end;
+    repeat(match goal with [h:context [ex']|-?cl]=> revert h end||idtac);
     unfold ne in k;clear ne;
     apply k; clear k
   end.
@@ -289,12 +304,12 @@ Definition inv_expr_ecall g e m ex m' ex':=
   match ex with
     |Ecall a b c =>
       forall (X:expr -> Prop),
-      (forall rf t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres,
+      (forall t1 m1 rf' t2 m2 rargs' vf vargs targs tres fd t3 vres,
       eval_expr g e m RV a t1 m1 rf' -> 
       eval_exprlist g e m1 b t2 m2 rargs' ->
       eval_simple_rvalue g e m2 rf' vf ->
       eval_simple_list g e m2 rargs' targs vargs ->
-      classify_fun (typeof rf) = fun_case_f targs tres->
+      classify_fun (typeof a) = fun_case_f targs tres->
       (*typeof a = Tfunction targs tres ->*)
       Genv.find_funct g vf = Some fd ->
       type_of_fundef fd = Tfunction targs tres ->
@@ -309,16 +324,67 @@ Ltac inv_call m m' :=
       generalize 
         (match ee in (eval_expr _ e m _ ex _ m' ex')
            return inv_expr_ecall ge e m ex m' ex' with
-           |eval_call _ _ rf rargs typ t1 m1 rf' t2 m2 rargs' vf vargs
+           |eval_call _ _ _ _ _ t1 m1 rf' t2 m2 rargs' vf vargs
              targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
-             (fun X k => k rf t1 m1 rf' t2 m2 rargs' vf vargs 
+             (fun X k => k t1 m1 rf' t2 m2 rargs' vf vargs 
                targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8 )
            |_=> I
          end);clear ee;
         intro k;red in k;simpl in k;
         pose(nexp:=a');fold nexp in k;
-        match goal with |[es:context [a']|-?cl]=>revert es end;
+        repeat(match goal with |[es:context [a']|-?cl]=>revert es end||idtac);
         unfold nexp in k;clear nexp;apply k;clear k
+  end.
+
+Definition inv_exprlist_nil m exl m' exl' :=
+  match exl with
+    |Enil =>
+      forall (X:exprlist->Mem.mem->Prop),
+        X Enil m -> X exl' m'
+    |_=> True
+  end.
+
+Ltac inv_nil m m' :=
+  match goal with 
+    |[eel:eval_exprlist ?ge ?e m Enil ?t m' ?exl'|-?cl]=>
+      generalize 
+        (match eel in (eval_exprlist _ _ m exl _ m' exl')
+           return inv_exprlist_nil m exl m' exl' with
+           |eval_nil _ _ => (fun X k => k)
+           |_=> I
+         end);clear eel;
+        intro k; red in k; simpl in k;
+          pose(nm:=m');pose(nlst:=exl');fold nm in k;fold nlst in k;
+          repeat(match goal with|[h:context[m']|-?cl]=>revert h end||idtac);
+          repeat(match goal with|[h:context[exl']|-?cl]=>revert h end||idtac);
+          unfold nm, nlst in k;clear nm nlst;apply k;clear k
+  end.
+
+Definition inv_exprlist_cons g e m exl m' exl' :=
+  match exl with
+    |Econs a1 al =>
+      forall (X:exprlist->Prop),
+        (forall t1 m1 a1' t2 al',
+        eval_expr g e m RV a1 t1 m1 a1'->
+        eval_exprlist g e m1 al t2 m' al'->
+        X (Econs a1' al'))-> X exl'
+    |_=>True
+  end.
+
+Ltac inv_cons m m' :=
+  match goal with
+    |[eel:eval_exprlist ?ge ?e m (Econs ?a1 ?al) ?t m' ?exl'|-?cl]=>
+      generalize
+        (match eel in (eval_exprlist _ e m exl _ m' exl')
+           return inv_exprlist_cons ge e m exl m' exl' with
+           |eval_cons _ _ _ _ t1 m1 a1' t2 m' al' H1 H2 => 
+             (fun X k => k t1 m1 a1' t2 al' H1 H2)
+           |_=> I
+         end);clear eel;
+        intro k;red in k;simpl in k;
+        pose(nlst:=exl');fold nlst in k;
+        repeat(match goal with|[h:context[exl']|-?cl]=>revert h end||idtac);
+            unfold nlst in k;clear nlst;apply k;clear k
   end.
 
 (* General inversion tactic on eval_expr from m to m' *)
@@ -352,104 +418,104 @@ Ltac inv_eval_expr m m' :=
   let Heqff:=fresh "Heqff" in
   let Heqtf:=fresh "Heqtf" in
   let ev_funcall:=fresh "ev_funcall" in
+  (* ev_condition *)
+  let a1_:=fresh "a" in
+  let a2_:=fresh "a" in
+  let v1_:=fresh "v" in
+  let v2_:=fresh "v" in
+  let v3_:=fresh "v" in
+  let b_:=fresh "b" in
+  let ev_ex1 := fresh "ev_ex" in
+  let ev_ex2 := fresh "ev_ex" in
+  let bv := fresh "bv" in
+  let semcast:=fresh "semcast" in
+  (* assignment *)
+  let ofs_ := fresh "ofs" in
+  let esl := fresh "esl" in
+  let svot := fresh "svot" in
+  (* exprlist *)
+  let alst := fresh "alst" in
   match goal with
-    |[ee:eval_expr ?ge ?e m RV (Econdition ?a1 ?a2 ?a3 ?ty) ?t ?m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
-        |[ee1: eval_expr ge e m RV a1 ?t1 ?mcond ?a1'|-?cl1]=>
-          inv_eval_expr m mcond
-      end
     |[ee:eval_expr ?ge ?e m RV (Eval ?v ?ty) ?et m' ?a'|-?cl]=>
-      inv ee
+      inv_val m m'; try intros
     |[ee:eval_expr ?ge ?e m LV (Evar ?x ?ty) ?et m' ?a'|-?cl]=>
-      inv ee
-    |[ee:eval_expr ?ge ?e m RV (Ebinop ?op ?a1 ?a2 ?ty) ?t m' ?a'|-?cl]=>
-      (*generalize
-        (match ee in (eval_expr _ e m _ ex _ m' ex')
-         return inv_expr_binop (Genv.globalenv prog_adc) e m ex m' ex' with
-         |eval_binop _ _ a1 t1 m' a1' a2 t2 _ a2' op ty H1 H2 =>
-           (fun X k => k t1 m' a1' t2 a2' H1 H2)
-         |_=>I
-         end);
-      intro k;red in k;simpl in k;
-      pose(nexp:=a');change a' with nexp in k; 
-      match goal with
-        |[es:context c [a']|-?cl]=>revert es
-        |_=>idtac
-      end;
-      unfold nexp in k;clear nexp;apply k;clear k;
-      intros ;intro ev_ex;intro esr1;*)
-    
-(*  generalize
-      (match H0 in (eval_expr _ e m _ ex _ m' ex')
-         return inv_expr_binop (Genv.globalenv prog_adc) e m ex m' ex' with
-         |eval_binop _ _ a1 t1 m' a1' a2 t2 _ a2' op ty H1 H2 =>
-           (fun X k => k t1 m' a1' t2 a2' H1 H2)
-         |_=>I
-       end). intro k. red in k. simpl in k. revert H5. apply k.
-    intros until a2'. intros expr_a1 expr_a2 esr.*)
-
-
-      inv ee;
-      match goal with
-        |[ee1:eval_expr ?ge ?e m ?k a1 ?t1 ?mbo ?a1'|-?cl1]=>
-          inv_eval_expr m mbo;inv_eval_expr mbo m'
-      end
-    |[ee:eval_expr ?ge ?e m RV (Evalof ?a ?ty) ?t m' ?a'|-?cl]=>
-      generalize
-        (match ee in (eval_expr _ e m _ ex _ m' ex')
-           return inv_expr_valof ge e m ex m' ex' with
-           |eval_valof _ _ a t _ a' ty H1 =>
-             (fun X k => k t a' H1)
-           |_=> I
-         end);clear ee;
-        intro k; red in k;simpl in k;
-        pose(nexp:=a');change a' with nexp in k; 
-          match goal with
-            |[es:context c [a']|-?cl]=>revert es
-            |_=>idtac
-          end;
-          unfold nexp in k;clear nexp;apply k;clear k;
-          intros t1_ a_;intro ev_ex;intro esr1;
-      (*inv ee;*)inv_eval_expr m m'
+      inv_var m m'; try intros
     |[ee:eval_expr ?ge ?e m LV (Efield ?a ?f ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
+      inv_field m m'; intros t1_ a1_ ev_ex1; try intros;
+      inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Evalof ?a ?ty) ?t m' ?a'|-?cl]=>
+      inv_valof m m';
+      intros t1_ a_ ev_ex;try intros;
+      inv_eval_expr m m'
     |[ee:eval_expr ?ge ?e m LV (Ederef ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
+      inv_deref m m'; intros t2_ a2_ ev_ex1; try intros;
+      inv_eval_expr m m'
     |[ee:eval_expr ?ge ?e m RV (Eaddrof ?a ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;inv_eval_expr m m'
+      inv_addrof m m'; intros t1_ a1_; intros ev_ex1; try intros;
+      inv_eval_expr m m'
     |[ee:eval_expr ?ge ?e m RV (Eunop ?op ?a ?ty) ?t m' ?a'|-?cl]=>
       inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Ebinop ?op ?a1 ?a2 ?ty) ?t m' ?a'|-?cl]=>
+      inv_binop m m'; intros t1_ m1_ a1_ t2_ a2_ ev_ex1 ev_ex2;
+      try intros;
+      try
+      (match goal with
+        |[ee1:eval_expr ?ge ?e m ?k a1 ?t1 ?mbo ?a1'|-?cl1]=>
+          (*if the inversion before may give a equality saying that
+             m = m?, and m will be replaced by m?. So the order will
+             be, invert the hypothesis related to the lase memory 
+             state first, then step backward *)          
+          inv_eval_expr mbo m';
+          inv_eval_expr m mbo
+      end)
     |[ee:eval_expr ?ge ?e m RV (Ecast ?a ?ty) ?t m' ?a'|-?cl]=>
       inv ee;inv_eval_expr m m'
+    |[ee:eval_expr ?ge ?e m RV (Econdition ?a1 ?a2 ?a3 ?ty) ?t m' ?a'|-?cl]=>
+      inv_condition m m';
+      intros t1_ m1_ a1_ v1_ t2_ a2_ v2_ b_ v3_;
+      intros ev_ex1 esr1 bv ev_ex2 esr2 semcast;
+      try intros;
+      try
+      (match goal with
+        |[ee1: eval_expr ge e m RV a1 ?t1 ?mcond ?a1'|-?cl1]=>
+          inv_eval_expr m mcond
+      end)
     |[ee:eval_expr ?ge ?e m RV (Esizeof ?ty' ?ty) ?t m ?a'|-?cl]=>
       inv ee
     |[ee:eval_expr ?ge ?e m RV (Eassign ?l ?r ?ty) ?t m' ?a'|-?cl]=>
-      inv ee;
-      match goal with
+      inv_assign m m';
+      intros t1_ m1_ a1_ t2_ m2_ a2_ b_ ofs_ v1_ v2_ ;
+      intros ev_ex1 ev_ex2 esl esr1 semcast svot Heqtf;
+      try intros;
+      try
+      (match goal with
         |[ee1:eval_expr ge e m LV l ?t1 ?masgn1 ?l'|-?cl]=>
-          inv_eval_expr m masgn1;
-          match goal with
+          try
+          (match goal with
             |[ee2:eval_expr ge e masgn1 RV r ?t2 ?masgn2 ?r'|-?cl]=>
-              inv_eval_expr masgn1 masgn2
-          end
-      end
+              inv_eval_expr masgn1 masgn2;
+              inv_eval_expr m masgn1
+          end)
+      end)
     |[ee:eval_expr ?ge ?e m RV (Eassignop ?op ?l ?r ?tyres ?ty) ?t m' ?a'|-?cl]=>
       inv ee;
-      match goal with
+      try
+      (match goal with
         |[ee1:eval_expr ge e m LV l ?t1 ?masgnop1 ?l'|-?cl]=>
-          inv_eval_expr m masgnop1;
-          match goal with
+          try
+          (match goal with
             |[ee2:eval_expr ge e masgnop1 RV r ?t2 ?masgnop2 ?r'|-?cl]=>
-              inv_eval_expr masgnop1 masgnop2
-          end
-      end
+              inv_eval_expr masgnop1 masgnop2;
+              inv_eval_expr m masgnop1
+          end)
+      end)
     |[ee:eval_expr ?ge ?e m RV (Epostincr ?id ?l ?ty) ?t m' ?a'|-?cl]=>
       inv ee;
-      match goal with
+      try
+      (match goal with
         |[ee1:eval_expr ge e m LV l t ?mpi ?l'|-?cl]=>
           inv_eval_expr m mpi
-      end
+      end)
     |[ee:eval_expr ?ge ?e m RV (Ecomma ?r1 ?r2 ?ty) ?t m' ?a'|-?cl]=>
       inv ee;
       match goal with
@@ -457,41 +523,32 @@ Ltac inv_eval_expr m m' :=
           inv_eval_expr m mcom; inv_eval_expr mcom m'
       end
     |[ee:eval_expr ?ge ?e m RV (Ecall ?rf ?rargs ?ty) ?t m' ?a'|-?cl]=>
-      generalize 
-        (match ee in (eval_expr _ e m _ ex _ m' ex')
-           return inv_expr_ecall ge e m ex m' ex' with
-           |eval_call _ _ rf rargs typ t1 m1 rf' t2 m2 rargs' vf vargs
-             targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
-             (fun X k => k rf t1 m1 rf' t2 m2 rargs' vf vargs 
-               targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8 )
-           |_=> I
-         end);clear ee;
-        intro k;red in k;simpl in k;
-        pose(nexp:=a');fold nexp in k;
-        match goal with
-          |[es:context [a']|-?cl]=>revert es
-        end;
-        unfold nexp in k;clear nexp;apply k;clear k;
-        intros rf_ t1_ m1_ rf'_ t2_ m2_ rargs'_ vf_ vargs_ targs_ tres_ fd_ t3_ 
+      inv_call m m';
+        intros t1_ m1_ rf'_ t2_ m2_ rargs'_ vf_ vargs_ targs_ tres_ fd_ t3_ 
           vres_;
         intros ev_ex ev_elst esr1 eslst Heqcf Heqff Heqtf 
           ev_funcall esr2;
-      match goal with
+      try
+      (match goal with
         |[ee1:eval_expr ge e m RV rf ?t1 ?mc1 ?rf'|-?cl]=>
-          inv_eval_expr m mc1;
-          match goal with
+          try
+          (match goal with
             |[eel:eval_exprlist ge e mc1 ?rargs ?t2 ?mc2 ?rargs'|-?cl]=>
-              inv_eval_expr mc1 mc2
-          end
-      end
+              inv_eval_expr mc1 mc2;
+              inv_eval_expr m mc1
+          end)
+      end)
     |[eel:eval_exprlist ?ge ?e m (Econs ?a1 ?al) ?t m' ?rargs'|-?cl]=>
-      inv eel;
-      match goal with
+      inv_cons m m'; intros t1_ m1_ a1_ t2_ alst ev_ex1 ev_elst;
+      try intros;
+      try
+      (match goal with
         |[eel1:eval_expr ge e m RV a1 ?t1 ?ml1 ?a1'|-?cl]=>
-          inv_eval_expr m ml1; inv_eval_expr ml1 m'
-      end
+          inv_eval_expr ml1 m';
+          inv_eval_expr m ml1
+      end)
     |[eel:eval_exprlist ?ge ?e m Enil ?t m' ?al'|-?cl]=>
-      inv eel
+      inv_nil m m'
     |_=> pose(f:=0)
   end.
 
@@ -788,6 +845,8 @@ Ltac inv_av_nil arg_m e0 m :=
 
 (* Example lemma to test my_inversion *)
 
+Section Test_inv.
+
 (* Functional relation between the C memory module which contains the other ADC parameters, 
    and the COQ specification of ADC parameters *)
 Definition sbit_func_related (m:Mem.mem) (e:env) (sbit:bool):Prop:=
@@ -820,6 +879,7 @@ Definition is_S_set_and_is_pc :=
     (Eval (Vint (repr 0)) T9) T9)
   (Eval (Vint (repr 0)) T9) T9.
 
+
 Lemma no_effect_is_S_set_and_is_pc :
   forall e m t m' v,
     eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
@@ -827,56 +887,51 @@ Lemma no_effect_is_S_set_and_is_pc :
 Proof.
   intros until v. intros ee.
   inv ee. unfold is_S_set_and_is_pc in H.
-  
+  rename H into ee, H0 into esrv.
+  (*
   generalize
-    (match H in (eval_expr _ e m _ ex _ m' ex')
+    (match ee in (eval_expr _ e m _ ex _ m' ex')
        return inv_expr_condition (Genv.globalenv prog_adc) e m ex m' ex' with
        |eval_condition _ _ _ _ _ _ t1 mi a1' v1 t2 _ a' v' b v H1 H2 H3 H4 H5 H6=>
          (fun X k => k t1 mi a1' v1 t2 a' v' b v  H1 H2 H3 H4 H5 H6)
+       |eval_var _ _ _ _ => I
        |_=> I
-     end). clear H.
+     end). clear ee.
+
   intro k. red in k. revert H0. apply k. clear k.
+  *)
   
-  (*inv_condition m m'.*)
+  inv_eval_expr m m'.
+
+  (*inv_condition m m'.
   intros until v0. intros ee1 esr1 bv ee2 esr2 sc esr3.
   inv_binop m m'0. intros until a2'. intros ee11 ee12 esr1.
   inv_valof m m'1. intros until a'1. intros ee11 esr1.
   inv_var m m'1.
+  inv_val m m'0. intros ee2 esr.*)
 
-  inv_val m m'0. intros ee2 esr.
   destruct b.
-    inv_condition m m'. intros until v3. intros ee1 esr1 bv1 ee2 esr2 sc1 esr01.
-    inv_binop m m'2. intros until a2'0. intros ee11 ee12 esr1.
-    inv_valof m m'3. intros until a'3. intros ee1 esr1.
-    inv_var m m'3.
-    inv_val m m'2. intros ee1 esr1.
+  
+    inv_eval_expr m m'.
+    (*inv_condition m m'. intros until v4. intros ee1 esr1 bv1 ee2 esr2 sc1 esr01.
+    inv_binop m m'0. intros until a2'. intros ee11 ee12 esr1.
+    inv_val m'1 m'0. intros ee1 esr1.
+    inv_valof m m'1. intros until a'1. intros ee2 esr1.
+    inv_var m m'1. *)
     destruct b.
-      inv_val m m'. intros esr3 esr4 esr5.
+
+      inv_eval_expr m m'.
+      (*inv_val m m'. intros esr3 esr4 esr5.*)
       reflexivity.
-      inv_val m m'. intros esr2 esr3 esr4.
+      inv_eval_expr m m'.
+      (*inv_val m m'. intros esr2 esr3 esr4.*)
       reflexivity.
-    inv_val m m'. intros esr1 esr2.
+
+    inv_eval_expr m m'.
+    (*inv_val m m'. intros esr1 esr2.*)
     reflexivity.
 Qed.
 
-(*
-Inductive tm : Type :=
-  | tm_const : nat -> tm
-  | tm_plus : tm -> tm -> tm.
-
-Inductive eval : tm -> tm -> Prop :=
-  | E_Const : forall n,
-      eval (tm_const n) (tm_const n)
-  | E_Plus : forall t1 t2 n1 n2,
-      eval t1 (tm_const n1) ->
-      eval t2 (tm_const n2) ->
-      eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
-
-Variable C:Prop.
-Lemma test_step:eval (tm_plus (tm_const 0) (tm_const 3))
-                (tm_const (plus 1 3))->C.
-(*intro. inversion H. inv H3. inv H4. inversion H2.*)
-*)
 
 
 (* Example on Ebinop *)
@@ -890,7 +945,8 @@ Lemma no_effect_is_S_set :
     m = m'.
 Proof.
   intros until v. intros is_s. 
-  inv is_s. unfold is_S_set in H.
+  inv is_s. rename H into ee, H0 into esrv. 
+  unfold is_S_set in ee.
 (*
   generalize 
     (match H in (eval_expr _ e m _ ex _ m'' ex')
@@ -903,10 +959,15 @@ Proof.
   intros until a2'. intros ee1 ee2 esr.
   inv_val m'0 m'.
 *)
-inv_binop m m'. intros until a2'. intros ee1 ee2 esr.
+
+inv_eval_expr m m'.
+
+
+(*inv_binop m m'. intros until a2'. intros ee1 ee2 esr.
 inv_valof m m'0. intros until a'0. intros ee esr.
 inv_val m'0 m'. intros esr.
-inv_var m m'0.
+inv_var m m'0.*)
+
 reflexivity.
 Qed.
 
@@ -924,13 +985,10 @@ Definition oldrn_assgnt :=
 (* Assume the assignment of old_Rn has no effect on the part of memory
    where located proc*)
 
-(* Return the memory model which only relates to this ident *)
-Parameter of_mem : AST.ident -> Mem.mem -> Mem.mem.
-
 Axiom set_oldrn_ok:
   forall m m' v oldrn_blk ofs,
     store_value_of_type T1 m oldrn_blk ofs v = Some m'->
-    of_mem adc_compcert.proc m = of_mem adc_compcert.proc m'.
+    m = m'.
 
 Axiom get_reg_ok :
   forall e id m t m' r,
@@ -939,17 +997,17 @@ Axiom get_reg_ok :
 
 Lemma oldrn_assgnt_ok:
  forall e m l b s t m' v,
-  proc_state_related (of_mem adc_compcert.proc m) e (Ok tt (mk_semstate l b s)) ->
+  proc_state_related m e (Ok tt (mk_semstate l b s)) ->
   eval_expression (Genv.globalenv prog_adc) e m
     oldrn_assgnt t m' v ->
-  proc_state_related (of_mem adc_compcert.proc m') e (Ok tt (mk_semstate l b s)).
+  proc_state_related m' e (Ok tt (mk_semstate l b s)).
 Proof.
   intros until v. intros psrel rn_as.
   
   inv rn_as.
-  unfold oldrn_assgnt in H.
-(*  inv_assign m m'.*)
-
+  unfold oldrn_assgnt in H. rename H into ee, H0 into esrv.
+  
+  (*
   generalize
     (match H in (eval_expr _ e m _ ex _ m' ex')
        return inv_expr_assign (Genv.globalenv prog_adc) e m ex m' ex' with
@@ -958,31 +1016,40 @@ Proof.
        |_=>I
      end).
   clear H. intro k. red in k.
-  revert H0. apply k. clear k.
+  revert H0. apply k. clear k.*)
+
+  (*inv_assign m m'.
   intros until v'.
   intros ee1 ee2 esl esr sc svot eqt1 esr0.
-  inv_var m m1.
-  eapply get_reg_ok in ee2.
-  destruct ee2. rewrite<-H0 in *. clear m2 H0.
+  inv_var m m1.*)
+
+  inv_eval_expr m m'.
+
+  eapply get_reg_ok in ev_ex1.
+  destruct ev_ex1. rewrite<-H0 in *. clear m1 H0.
   eapply set_oldrn_ok in svot.  
   rewrite <- svot. exact psrel.
 Qed.
 
+Definition g:=(Genv.globalenv prog_adc).
+
 (* Example on Eaddrof Efield *)
 Lemma addrof_mem_effect:
   forall e m t m' a' v,
-    eval_expr (Genv.globalenv prog_adc) e m RV
+    eval_expr (*(Genv.globalenv prog_adc)*)g e m RV
     (Eaddrof(Efield(Ederef(Evalof (Evar adc_compcert.proc T3) T3) T6) adc_compcert.cpsr T7) T8) t m' a' ->
-    eval_simple_rvalue (Genv.globalenv prog_adc) e m' a' v->
+    eval_simple_rvalue (*(Genv.globalenv prog_adc)*) g e m' a' v->
     m = m'.
 Proof.
   intros.
-  inv_addrof m m'. intros until a'0. intros ee esr.
-  inv_field m m'.
-  intros until a'1. intros ee esr.
+
+  inv_eval_expr m m'.
+
+  (*inv_addrof m m'. intros until a'0. intros ee esr.
+  inv_field m m'.  intros until a'1. intros ee esr.
   inv_deref m m'. intros until a'2. intros ee esr.
   inv_valof m m'. intros until a'3. intros ee esr.
-  inv_var m m'.
+  inv_var m m'.*)
   reflexivity.
 Qed.
   
@@ -994,6 +1061,32 @@ Definition get_rd_bit31 :=
   (Econs (reg_id d)
     (Econs (Eval (Vint (repr 31)) T9)
       Enil)) T10.
+
+
+Lemma same_get_reg_tst :
+  forall e m0 m0' vargs m l b s d t m' v,
+    alloc_variables empty_env m0 
+      (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
+    bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    d_func_related m e d ->
+    eval_expression (Genv.globalenv prog_adc) e m get_rd_bit31  t m' v->
+    v = Vint ((Arm6_State.reg_content s d) [n31]).
+Proof.
+  intros until v. intros av bp psrel dfrel get_bit.
+  
+  inversion get_bit as [env m1 gb t1 m1' gb' v1 gb_expr ev_rv Heqenv Heqm
+    Heqexp Heqt Heqm' Heqv]; clear get_bit; subst.
+  unfold get_rd_bit31 in gb_expr.
+
+  inv_eval_expr m m'.
+
+  unfold reg_id in ev_ex1.
+
+
+  inv_eval_expr m m3.
+Admitted. 
+
 
 Lemma same_get_reg' :
   forall e m0 m0' vargs m l b s d t m' v,
@@ -1026,7 +1119,7 @@ generalize
   return inv_expr_ecall (Genv.globalenv prog_adc) e m ex m' ex' with
      |eval_call _ _ rf rargs ty t1 m1 rf' t2 m2 rargs' vf vargs
                       targs tres fd t3 _ vres H1 H2 H3 H4 H5 H6 H7 H8 =>
-       (fun X k => k rf t1 m1 rf' t2 m2 rargs' vf vargs 
+       (fun X k => k t1 m1 rf' t2 m2 rargs' vf vargs 
       targs tres fd t3 vres H1 H2 H3 H4 H5 H6 H7 H8 )
      |_=> I
    end). clear gb_expr.
@@ -1263,7 +1356,32 @@ match goal with [ |- ?concl] => change ((fun _ _ _ => concl)
 
 Admitted.
 
+
+End Test_inv.
+
+
+
 (* small examples *)
+
+(*
+Inductive tm : Type :=
+  | tm_const : nat -> tm
+  | tm_plus : tm -> tm -> tm.
+
+Inductive eval : tm -> tm -> Prop :=
+  | E_Const : forall n,
+      eval (tm_const n) (tm_const n)
+  | E_Plus : forall t1 t2 n1 n2,
+      eval t1 (tm_const n1) ->
+      eval t2 (tm_const n2) ->
+      eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
+
+Variable C:Prop.
+Lemma test_step:eval (tm_plus (tm_const 0) (tm_const 3))
+                (tm_const (plus 1 3))->C.
+(*intro. inversion H. inv H3. inv H4. inversion H2.*)
+*)
+
 Inductive tm : Type :=
   | tm_const : nat -> tm
   | tm_plus : tm -> tm -> tm.
@@ -1274,7 +1392,7 @@ Inductive ex0 : tm -> Prop :=
          ex0 (tm_plus t1 t2).
 
 Lemma test_ex0 : ex0 (tm_const 1) -> False.
-intro. info inversion H.
+intro. inversion H.
 Qed.
 Lemma test_ex0': ex0 (tm_const 1) -> False.
 intro.
@@ -1292,7 +1410,9 @@ Inductive eval : tm -> tm -> Prop :=
       eval t2 (tm_const n2) ->
       eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
 
-Variable Q : tm -> Prop. 
+
+Variable Q : tm -> Prop.
+
 Inductive eval': tm -> tm -> Prop :=
   | E_C : forall n,
       eval' (tm_const n) (tm_const n)
@@ -1374,6 +1494,7 @@ case H. clear H.
 simpl.*)
 
 Variable P : tm -> Prop.
+
 Lemma test_ev1': forall t,P t -> eval (tm_plus (tm_const 1) (tm_const 0)) t -> t=tm_const 1%nat.
 (*intros. inversion H. subst. inversion H2. subst. inversion H4. subst. simpl. reflexivity.
 Qed.*)
@@ -1404,8 +1525,3 @@ clear H0.
 intro k. red in k. apply k. clear k.
 simpl. reflexivity.
 Qed.
-
-
-
-
-
