@@ -168,17 +168,26 @@ Proof.
       [simpl in bv;discriminate|reflexivity].
 Qed.
 
+Definition aoni :=
+  (Ecall (Evalof (Evar address_of_next_instruction T9) T9)
+    (Econs (Evalof (Evar proc T2) T2) Enil) T10).
+
 Definition set_reg_aoni:=
   Ecall (Evalof (Evar bl_compcert.set_reg T8) T8)
   (Econs (Evalof (Evar proc T2) T2)
     (Econs (Eval (Vint (repr 14)) T6)
-      (Econs
-        (Ecall
-          (Evalof (Evar address_of_next_instruction T9)
-            T9)
-          (Econs (Evalof (Evar proc T2) T2) Enil) T10)
-        Enil))) T11.
-  
+      (Econs aoni        
+        Enil))) T11.  
+
+Lemma same_aoni :
+  forall m e l b s ge v,
+    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    eval_simple_rvalue ge e m aoni (Vint v) ->
+    v = Arm6_State.address_of_next_instruction s.
+Proof.
+Admitted.
+
+
 
 Lemma set_reg_aoni_ok :
   forall e m t m' a' l b s, 
@@ -187,6 +196,7 @@ Lemma set_reg_aoni_ok :
     (forall l b,proc_state_related m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s LR (Arm6_State.address_of_next_instruction s))))).
+Proof.
 Admitted.
 
 Definition set_pc_rw_x :=
