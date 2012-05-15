@@ -440,13 +440,155 @@ Proof.
    apply (Mem.load_free m b lo hi m').
    admit. left. 
 *)
-    
 
 (* Equivalence of arithmetic definitions *)
+
+
 Lemma eq_getbit :
+  forall x n ,
+    (and (shru x (repr (Z_of_nat n))) (repr 1)) = x [n].
+Proof.
+  intros.
+  unfold shru.
+  induction n.
+
+  simpl Z_of_nat.
+  rewrite unsigned_repr;
+    [idtac
+      |unfold max_unsigned;unfold modulus;unfold two_power_nat;
+       unfold shift_nat;simpl iter_nat;omega].
+  unfold bit. unfold bits. unfold bits_val. unfold masks.
+  simpl masks_aux.
+  assert (eqm (Z_of_bits wordsize (bits_of_Z wordsize (unsigned x)) 0)
+              (unsigned x)) by (apply Z_of_bits_of_Z).
+  apply eqm_small_eq in H;
+    [idtac|apply Z_of_bits_range|apply unsigned_range].
+  rewrite H.
+  rewrite repr_unsigned.
+  unfold two_power_nat. unfold shift_nat. simpl iter_nat.
+  rewrite Zdiv_1_r.
+  rewrite repr_unsigned.
+  apply and_commut.
+  
+  unfold unsigned.
+Admitted.
+
+
+
+Lemma eq_getbit' :
   forall x n ,
     0 < n < Z_of_nat wordsize ->
     sign_ext 8 (and (shru x (repr n)) (repr 1)) = x [nat_of_Z n].
+Proof.
+  intros x n intval_n.
+  rewrite sign_ext_shr_shl;
+  [idtac
+    |unfold wordsize;unfold Wordsize_32.wordsize;simpl;omega].
+  rewrite shr_div_two_p.
+  rewrite shl_mul_two_p.
+  rewrite shru_div_two_p.
+  unfold two_p. simpl.
+
+  unfold bit. unfold bits.
+  unfold bits_val.
+  unfold mask. unfold masks.
+  rewrite minus_diag. simpl masks_aux.
+
+  unfold mul.
+  rewrite unsigned_repr;
+    [idtac
+      |unfold max_unsigned;unfold modulus;
+       unfold wordsize;unfold Wordsize_32.wordsize;
+       unfold two_power_pos;simpl;unfold shift_pos,shift_nat;
+       simpl iter_pos;simpl iter_nat;
+       change (Zpos (4294967296 - 1)) with (Zpos 4294967295);
+       omega].
+
+  case_eq n;intros.
+
+  rewrite Zmod_0_l.
+  unfold two_power_nat. unfold shift_nat. simpl iter_nat.
+  rewrite Zdiv_1_r. rewrite Zdiv_1_r.
+  rewrite repr_unsigned.
+  rewrite signed_repr;[idtac|omega].
+  rewrite Z_div_mult;[idtac|omega].
+  unfold unsigned.
+  rewrite and_commut. reflexivity.
+  
+  case_eq (Zpos p mod modulus);intros.
+
+  rewrite Zdiv_1_r.
+  unfold unsigned.
+  (*HERE*)
+   
+
+
+  unfold and at 1. unfold bitwise_binop.
+  rewrite unsigned_repr;[idtac|apply Z_of_bits_range_2].
+  rewrite signed_repr;
+    [idtac|admit].
+  (*assert 
+    (0 <=
+      Z_of_bits wordsize
+      (fun i : Z =>
+        bits_of_Z wordsize (unsigned x) i &&
+        bits_of_Z wordsize (unsigned (repr 1)) i) 0 <=
+      max_unsigned) by (apply Z_of_bits_range_2).
+  destruct H1.
+  assert (min_signed < 0) by (apply min_signed_neg).
+  apply conj.
+  apply Zle_trans with 0. omega.
+  unfold two_power_pos. unfold shift_pos. simpl iter_pos. omega.
+  unfold two_power_pos. unfold shift_pos. simpl iter_pos. 
+  assert (max_signed < max_unsigned) by (apply max_signed_unsigned).
+  assert (max_signed <= max_unsigned * 16777216).
+  unfold max_signed, max_unsigned. unfold half_modulus, modulus.
+  unfold two_power_nat;unfold shift_nat;simpl iter_nat.
+  lazy;intro;discriminate.
+  assert (Z_of_bits wordsize
+         (fun i : Z =>
+          bits_of_Z wordsize (unsigned x) i &&
+          bits_of_Z wordsize (unsigned (repr 1)) i) 0 * 16777216 <= 
+         max_unsigned * 16777216).
+  omega.*)
+  rewrite Z_div_mult;
+    [idtac|unfold two_power_pos;unfold shift_pos;
+      simpl iter_pos;omega].
+  change 
+    (repr
+      (Z_of_bits wordsize
+        (fun i : Z =>
+          bits_of_Z wordsize (unsigned x) i &&
+          bits_of_Z wordsize (unsigned (repr 1)) i) 0)) with
+    (and x (repr 1)).
+  simpl nat_of_Z.
+  rewrite <- two_power_pos_nat.
+  unfold two_power_pos. unfold shift_pos.
+  unfold modulus in H0. unfold two_power_nat in H0.
+  unfold shift_nat in H0. simpl iter_nat in H0.
+  
+
+
+  rewrite<-Zmod'_correct in H0.
+  
+
+
+
+
+  
+
+
+
+  
+(*  unfold two_power_pos. unfold shift_pos. simpl iter_pos.
+  unfold repr at 3.
+  unfold modulus. unfold wordsize. unfold Wordsize_32.wordsize.
+  unfold two_power_nat at 2. unfold shift_nat. simpl iter_nat.
+*)  
+  
+
+  
+
 Admitted.
 
 (* Finding a function in globalenv *)
