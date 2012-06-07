@@ -107,7 +107,7 @@ Definition reg_proj (m:Mem.mem) (e:env) (id:AST.ident):regnum:=
 
 (* bits parameter projection*)
 Definition bits_proj (m:Mem.mem) (e:env) (id:AST.ident):word:=
-  varg_proj (param_val shifter_operand m e).
+  varg_proj (param_val id m e).
 
 
 Definition find_field (ofs:int) (m:Mem.mem) (e:env)
