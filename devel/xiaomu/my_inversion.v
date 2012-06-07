@@ -1386,6 +1386,109 @@ Inductive tm : Type :=
   | tm_const : nat -> tm
   | tm_plus : tm -> tm -> tm.
 
+(* Try : Different type of input output *)
+
+Inductive val : Type :=
+  | nval  : nat -> val
+  | bval  : bool -> val.
+
+Inductive eval : tm -> val -> Prop :=
+  | E_Const : forall n,
+      eval (tm_const n) (nval n)
+  | E_Plus : forall t1 t2 n1 n2,
+      eval t1 (nval n1) ->
+      eval t2 (nval n2) ->
+      eval (tm_plus t1 t2) (nval (plus n1 n2)).
+
+
+Definition aux_const_1_2 t v :=
+  match t, v with
+    | tm_const tc, nval n => forall (X:nat -> Prop), X tc -> X n
+    | _ ,_ => True
+  end.
+Definition aux_const_1 t v :=
+  match t with
+    | tm_const n => forall (X: val -> Prop),  X (nval n) -> X v
+    | _  => True
+  end.
+Definition aux_const_2 t v :=
+  match v with
+    | nval n => forall (X: tm -> Prop),  X (tm_const n) -> X t
+    | _  => True
+  end.
+
+Definition TRUE : Type := forall T: Type, T -> T. 
+Definition II : TRUE := fun T t => t. 
+
+Definition aux_plus_1 t v :=
+  match t with
+    | tm_plus t1 t2 => forall (X:val -> Prop),
+      (forall n1 n2, eval t1 (nval n1) ->
+                     eval t2 (nval n2) ->
+                     X (nval (plus n1 n2))) -> X v
+    | _ => True
+  end.
+
+(*
+Lemma test_ev2: eval (tm_plus (tm_const 1) (tm_const 0)) (nval 0)->False.
+intro. 
+pose (aux x:= match x with tm_plus (tm_const 1) (tm_const 0) => False |_=> True end).
+change (aux (tm_plus (tm_const 1) (tm_const 0))).
+case H; clear H; simpl.
+  trivial.
+*)
+
+
+Variable P : val -> Prop.
+
+Lemma test_evc1': 
+  forall v ,P v -> 
+  eval (tm_const 1) v -> v = nval 1.
+intros v p e.
+generalize
+  (match e in (eval t v) return aux_const_1 t v with
+     | E_Const n => (fun X k => k)
+     | _ => I
+   end);
+clear e. intro k; red in k. apply k. reflexivity.
+Qed.
+
+Lemma test_ev1': 
+  forall v ,P v -> 
+  eval (tm_plus (tm_const 1) (tm_const 0)) v -> v = nval 1.
+(*intros. inversion H. subst. inversion H2. subst. inversion H4. subst. simpl. reflexivity.
+Qed.*)
+intros v p e.
+generalize
+  (match e in (eval t v) return aux_plus_1 t v with
+     | E_Plus _ _ n1 n2 H1 H2 => (fun X k => k n1 n2 H1 H2)
+     | _ => I
+   end);
+clear e.
+intro k; red in k. revert p. apply k; clear k. intros n1 n2 e1 e2 p.
+generalize
+  (match e1 in (eval t v) return aux_const_1_2 t v with
+     | E_Const n => (fun X k => k )
+     | _ => I
+   end);
+clear e1. 
+intro k; red in k. apply k. clear k. 
+generalize
+  (match e2 in (eval t v)
+     return aux_const_1_2 t v with
+     |E_Const n => (fun X k => k)
+     |_=>I
+   end).
+clear e2.
+intro k. red in k. apply k. clear k.
+simpl. reflexivity.
+Qed.
+
+(* End of try *) (* Sucseed *)
+
+(* Old example : Same type of input output *)
+
+(*
 Inductive ex0 : tm -> Prop :=
   | t0 : ex0 (tm_const 0)
   | tx : forall t1 t2, ex0 t1 -> ex0 t2 ->
@@ -1525,3 +1628,5 @@ clear H0.
 intro k. red in k. apply k. clear k.
 simpl. reflexivity.
 Qed.
+
+*)
