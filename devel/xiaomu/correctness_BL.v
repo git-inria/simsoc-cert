@@ -180,14 +180,13 @@ Definition set_reg_aoni:=
         Enil))) T11.  
 
 Lemma same_aoni :
-  forall m e l b s ge v,
+  forall m e l b s ge t m' a' v,
     proc_state_related m e (Ok tt (mk_semstate l b s)) ->
-    eval_simple_rvalue ge e m aoni (Vint v) ->
+    eval_expr ge e m RV set_reg_aoni t m' a' ->
+    eval_simple_rvalue ge e m' a' (Vint v) ->
     v = Arm6_State.address_of_next_instruction s.
 Proof.
 Admitted.
-
-
 
 Lemma set_reg_aoni_ok :
   forall e m t m' a' l b s, 
@@ -363,7 +362,8 @@ Proof.
       inv_valof m3 m5. intros until a'2. intros ee_var esrvf.
       inv_var m3 m5.
       *)
-      apply set_reg_aoni_ok with e m3 t4 m2 a'1 nil true s nil true in psrel;
+      
+      apply set_reg_aoni_ok with _ _ t4 m2 a'1 nil true _ nil true in psrel;
         [idtac|exact ee_set_reg].
 
       apply L_not_change_set_reg_aoni with e m3 t4 m2 a'1 L in lfrel;
