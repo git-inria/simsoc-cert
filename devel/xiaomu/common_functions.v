@@ -387,6 +387,41 @@ Proof.
   reflexivity.
 Qed.
 
+(* When there is a storage on memory block b changes the value of b,
+   the projection variable in formal value changed to the equivalent value*)
+
+(* For variable has just one bit *)
+Lemma same_new_bit :
+  forall m e idb b (v':bool) m',
+    (*bit_proj m e idb = v ->*)
+    e!idb=Some(b,Tint I8 Unsigned) ->
+    Mem.store AST.Mint8unsigned m b 0 (Vint v') = Some m' ->
+    bit_proj m' e idb = v'.
+Proof.
+  intros until m'. intros ex ms.
+  unfold bit_proj. unfold param_val.
+  rewrite ex.
+  unfold load_value_of_type;simpl.
+  rewrite Mem.load_store_same with _ m _ _ (Vint v') _;
+    [simpl|apply ms|simpl;apply I].
+  destruct v';unfold zero_ext;simpl;lazy;reflexivity.
+Qed.
+  
+(* For variable is a word *)
+Lemma same_new_bits :
+  forall m e idb b v' m',
+    e!idb=Some(b,Tint I32 Unsigned) ->
+    Mem.store AST.Mint32 m b 0 (Vint v') = Some m' ->
+    bits_proj m' e idb = v'.
+Proof.
+  intros until m'. intros ex ms.
+  unfold bits_proj. unfold param_val.
+  rewrite ex.
+  unfold load_value_of_type;simpl.
+  rewrite Mem.load_store_same with _ m _ _ (Vint v') _;
+    [simpl;reflexivity|apply ms|simpl;apply I].
+Qed.
+
 
 (* Calling to an internal function, from memory state m to m'. 
    alloc_variables m to m1;
@@ -443,6 +478,13 @@ Proof.
 
 (* Equivalence of arithmetic definitions *)
 
+Lemma int_range :
+  forall (i:word),
+    0 <= intval i.
+Proof.
+  intros. destruct i.
+  simpl. destruct intrange0. exact H.
+Qed.
 
 Lemma eq_getbit :
   forall x n ,
@@ -473,7 +515,21 @@ Proof.
   unfold unsigned.
 Admitted.
 
-
+Lemma mult_gt :
+  forall x,
+    0<=x -> 0<= x* 16777216.
+  intros. omega.
+Qed.
+ 
+Lemma bsoz_range :
+  forall x i,
+    bits_of_Z wordsize (repr x) i <= repr 1.
+Proof.
+  intros.
+  case_eq (bits_of_Z wordsize (repr x) i).
+  intros. simpl. omega.
+  intros. simpl. lazy. intros. discriminate.
+Qed.
 
 Lemma eq_getbit' :
   forall x n ,
@@ -491,7 +547,7 @@ Proof.
 
   unfold bit. unfold bits.
   unfold bits_val.
-  unfold mask. unfold masks.
+  unfold masks.
   rewrite minus_diag. simpl masks_aux.
 
   unfold mul.
@@ -503,9 +559,9 @@ Proof.
        simpl iter_pos;simpl iter_nat;
        change (Zpos (4294967296 - 1)) with (Zpos 4294967295);
        omega].
-
+  
   case_eq n;intros.
-
+  (* n is 0 *)
   rewrite Zmod_0_l.
   unfold two_power_nat. unfold shift_nat. simpl iter_nat.
   rewrite Zdiv_1_r. rewrite Zdiv_1_r.
@@ -515,42 +571,48 @@ Proof.
   unfold unsigned.
   rewrite and_commut. reflexivity.
   
+  (* n is positive *)
+
+  
+
+
+
   case_eq (Zpos p mod modulus);intros.
 
-  rewrite Zdiv_1_r.
-  unfold unsigned.
-  (*HERE*)
-   
+  
+    (* n mod modulus is 0 *)
+    rewrite Zdiv_1_r.
+    unfold unsigned.
+    simpl nat_of_Z.
+
+    unfold and at 1;unfold bitwise_binop at 1.
+    apply eqm_samerepr. eapply eqm_trans. 2: apply Z_of_bits_of_Z.
+    apply eqm_refl2. (*apply Z_of_bits_exten.*)
 
 
-  unfold and at 1. unfold bitwise_binop.
-  rewrite unsigned_repr;[idtac|apply Z_of_bits_range_2].
-  rewrite signed_repr;
-    [idtac|admit].
-  (*assert 
-    (0 <=
-      Z_of_bits wordsize
-      (fun i : Z =>
-        bits_of_Z wordsize (unsigned x) i &&
-        bits_of_Z wordsize (unsigned (repr 1)) i) 0 <=
-      max_unsigned) by (apply Z_of_bits_range_2).
-  destruct H1.
-  assert (min_signed < 0) by (apply min_signed_neg).
-  apply conj.
-  apply Zle_trans with 0. omega.
-  unfold two_power_pos. unfold shift_pos. simpl iter_pos. omega.
-  unfold two_power_pos. unfold shift_pos. simpl iter_pos. 
-  assert (max_signed < max_unsigned) by (apply max_signed_unsigned).
-  assert (max_signed <= max_unsigned * 16777216).
-  unfold max_signed, max_unsigned. unfold half_modulus, modulus.
-  unfold two_power_nat;unfold shift_nat;simpl iter_nat.
-  lazy;intro;discriminate.
-  assert (Z_of_bits wordsize
-         (fun i : Z =>
-          bits_of_Z wordsize (unsigned x) i &&
-          bits_of_Z wordsize (unsigned (repr 1)) i) 0 * 16777216 <= 
-         max_unsigned * 16777216).
-  omega.*)
+(*
+    unfold and at 1. unfold bitwise_binop.
+    rewrite unsigned_repr;[idtac|apply Z_of_bits_range_2].
+    unfold unsigned. 
+    rewrite signed_repr.  
+    admit.
+    assert 
+      (0 <= Z_of_bits wordsize
+        (fun i : Z =>
+          bits_of_Z wordsize (repr x) i && bits_of_Z wordsize (repr 1) i) 0
+        <= max_unsigned) by (apply Z_of_bits_range_2).
+    destruct H1.
+    assert (min_signed < 0) by (apply min_signed_neg).
+    apply conj.
+    apply Zle_trans with 0. omega.
+    unfold two_power_pos. unfold shift_pos. simpl iter_pos. omega.
+    unfold two_power_pos. unfold shift_pos. simpl iter_pos.
+    unfold wordsize;unfold Wordsize_32.wordsize.
+*)  
+
+(*HERE*)
+  
+(*
   rewrite Z_div_mult;
     [idtac|unfold two_power_pos;unfold shift_pos;
       simpl iter_pos;omega].
@@ -570,7 +632,7 @@ Proof.
 
 
   rewrite<-Zmod'_correct in H0.
-  
+*)  
 
 
 
