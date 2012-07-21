@@ -136,7 +136,7 @@ struct
   module Body : PATCH =
   struct
     let main = BatList.flatten
-      [ [ Replace_all ("&&", "&"), p [ 1065 ]
+      [ [ Replace_all ("&&", "&"), p [ 1065 ] (* Sh4_Inst.v is not Coq well typed otherwise *)
         ; Replace_all ("(long i)", "i"), [ R (1077, 2) ] ]
 
       (* fpul *)
