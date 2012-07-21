@@ -1,0 +1,77 @@
+GNU gdb (GDB) 7.0.1
+Copyright (C) 2009 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "--host=x86_64-unknown-linux-gnu --target=sh-elf".
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>...
+Reading symbols from /home/f/a/f/simsoc-cert/sh4/test/a.out...done.
+(gdb) target sim
+Connected to the simulator.
+(gdb) load
+Loading section .init, size 0x36 vma 0x1000
+Loading section .text, size 0x2140 vma 0x1040
+Loading section .fini, size 0x2a vma 0x3180
+Loading section .rodata, size 0x24 vma 0x31ac
+Loading section .eh_frame, size 0x6c0 vma 0x31d0
+Loading section .ctors, size 0x8 vma 0x3910
+Loading section .dtors, size 0x8 vma 0x3918
+Loading section .jcr, size 0x4 vma 0x3920
+Loading section .data, size 0x83c vma 0x3924
+Loading section .got, size 0xc vma 0x4160
+Loading section .stack, size 0x4 vma 0x300000
+Start address 0x1040
+Transfer rate: 100128 bits in <1 sec.
+(gdb) start
+Temporary breakpoint 1 at 0x1824
+Starting program: /home/f/a/f/simsoc-cert/sh4/test/a.out 
+
+Temporary breakpoint 1, 0x00001824 in main ()
+(gdb) info registers
+r0             0x1820	6176
+r1             0x0	0
+r2             0x0	0
+r3             0x0	0
+r4             0x1	1
+r5             0x2fffd8	3145688
+r6             0x2fffac	3145644
+r7             0x0	0
+r8             0xffffffff	-1
+r9             0x2fffd4	3145684
+r10            0x1d60	7520
+r11            0x1	1
+r12            0x2fffd8	3145688
+r13            0x0	0
+r14            0x2fffa8	3145640
+r15            0x2fffa8	3145640
+pc             0x1824	6180
+pr             0x1c80	7296
+gbr            0x0	0
+mach           0x0	0
+macl           0x0	0
+r0b0           0x0	0
+r1b0           0x600000f1	1610612977
+r2b0           0x416c	16748
+r3b0           0xc0000	786432
+r4b0           0x40000	262144
+r5b0           0x0	0
+r6b0           0x0	0
+r7b0           0x0	0
+r0b1           0x1820	6176
+r1b1           0x0	0
+r2b1           0x0	0
+r3b1           0x0	0
+r4b1           0x1	1
+r5b1           0x2fffd8	3145688
+r6b1           0x2fffac	3145644
+r7b1           0x0	0
+(gdb) x 0x2fffa8
+0x2fffa8:	0x002fffe4
+(gdb) quit
+A debugging session is active.
+
+	Inferior 1 [process 42000] will be killed.
+
+Quit anyway? (y or n) 
