@@ -1,5 +1,5 @@
 #include <inttypes.h>
 
 void main(){
-  uint64_t x = 0;
+  int64_t x = 0;
 }
