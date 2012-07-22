@@ -7,7 +7,7 @@ include $(DIR)/Makefile.common
 
 default: sh4.dat
 
-SUBDIRS := parsing coq test
+SUBDIRS := parsing simlight coq elf2coq test
 
 clean::
 	@for d in $(SUBDIRS); do make -C $$d $@; done
