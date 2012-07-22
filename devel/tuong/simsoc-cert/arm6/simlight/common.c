@@ -1,1 +1,0 @@
-../../../../../arm6/simlight/common.c

@@ -1,1 +1,0 @@
-../../../../../arm6/coq/Makefile
