@@ -32,8 +32,7 @@ config Makefile.coq:
 # cleaning
 
 clean::
-	$(MAKECOQ) clean
-	rm -f Makefile.coq
+	if [ -f Makefile.coq ] ; then $(MAKECOQ) clean && rm -f Makefile.coq ; fi
 
 #############################################################################
 # coqtags
