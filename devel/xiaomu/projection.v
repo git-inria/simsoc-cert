@@ -3,15 +3,13 @@
 Require Import Globalenvs Memory.
 Require Import Csyntax Csem Cstrategy Coqlib Integers Values Maps Errors. 
 Require Import Arm6_State Arm6_Proc Arm6_SCC Bitvec Arm6.
-Require Import adc_compcert.
+(*Require Import adc_compcert.*)
+Require Import type_slv6_proc.
 
-(* Some constants for ADC *)
+Section proj.
 
 (* Initial local environment, an empty PTree contents var location & type*)
 Definition env0 := (PTree.empty (block * type)).
-
-(* Initialize the memory with program p defined in adc_compcert*)
-Definition mem0 := Genv.init_mem p. 
 
 (* If an option val is Some integer then return the integer value else return zero*)
 Definition load_val (v : option val):word:=
@@ -56,6 +54,8 @@ Definition id_ofs:int:=ofs_of_fld id typ_struct_SLv6_Processor.
 
 Definition jump_ofs:int:=ofs_of_fld jump typ_struct_SLv6_Processor.
 
+Variable proc : positive.
+
 Definition proc_loc (m:Mem.mem) (e:env):option val:=
   match e!proc with
     |Some(b,_)=>
@@ -93,6 +93,8 @@ Definition varg_proj (v:val):int:=
 Definition bit_proj (m:Mem.mem) (e:env) (id:AST.ident):bool:=
   eq (varg_proj (param_val id m e)) w1.
 
+Variable cond : positive.
+
 (* condition parameter projection *)
 Definition cond_proj (m:Mem.mem) (e:env):opcode:= 
   let c:=condition (varg_proj (param_val cond m e)) in
@@ -108,7 +110,6 @@ Definition reg_proj (m:Mem.mem) (e:env) (id:AST.ident):regnum:=
 (* bits parameter projection*)
 Definition bits_proj (m:Mem.mem) (e:env) (id:AST.ident):word:=
   varg_proj (param_val id m e).
-
 
 Definition find_field (ofs:int) (m:Mem.mem) (e:env)
   :option val:=
@@ -164,7 +165,7 @@ Definition find_mem (m:Mem.mem) (e:env):option val:=
   match find_mmu m e with
     |Some(Vptr bm om)=>
       match 
-        (load_value_of_type (Tpointer(Tint I8 Unsigned)) m bm (add om mem_ofs)) with
+        (load_value_of_type (Tpointer(Tint I8 Signed)) m bm (add om mem_ofs)) with
         |Some(Vptr b o) as v=>v
         |_=>None
       end
@@ -208,21 +209,21 @@ Definition sr_proj (m:Mem.mem) (b:block) (ofs:int) :word:=
   let load_val_of id tp :=
     load_val (load_value_of_type tp m b 
       (add ofs (ofs_of_fld id fld_sr))) in
-  let nflag := load_val_of N_flag (Tint I8 Unsigned) in
-  let zflag := load_val_of Z_flag (Tint I8 Unsigned) in
-  let cflag := load_val_of C_flag (Tint I8 Unsigned) in
-  let vflag := load_val_of V_flag (Tint I8 Unsigned) in
-  let qflag := load_val_of Q_flag (Tint I8 Unsigned) in
-  let jflag := load_val_of J_flag (Tint I8 Unsigned) in
-  let ge0 := load_val_of GE0 (Tint I8 Unsigned) in
-  let ge1 := load_val_of GE1 (Tint I8 Unsigned) in
-  let ge2 := load_val_of GE2 (Tint I8 Unsigned) in
-  let ge3 := load_val_of GE3 (Tint I8 Unsigned) in
-  let eflag := load_val_of E_flag (Tint I8 Unsigned) in
-  let aflag := load_val_of A_flag (Tint I8 Unsigned) in
-  let iflag :=  load_val_of I_flag (Tint I8 Unsigned) in
-  let fflag := load_val_of F_flag (Tint I8 Unsigned) in
-  let tflag := load_val_of T_flag (Tint I8 Unsigned) in
+  let nflag := load_val_of N_flag (Tint I8 Signed) in
+  let zflag := load_val_of Z_flag (Tint I8 Signed) in
+  let cflag := load_val_of C_flag (Tint I8 Signed) in
+  let vflag := load_val_of V_flag (Tint I8 Signed) in
+  let qflag := load_val_of Q_flag (Tint I8 Signed) in
+  let jflag := load_val_of J_flag (Tint I8 Signed) in
+  let ge0 := load_val_of GE0 (Tint I8 Signed) in
+  let ge1 := load_val_of GE1 (Tint I8 Signed) in
+  let ge2 := load_val_of GE2 (Tint I8 Signed) in
+  let ge3 := load_val_of GE3 (Tint I8 Signed) in
+  let eflag := load_val_of E_flag (Tint I8 Signed) in
+  let aflag := load_val_of A_flag (Tint I8 Signed) in
+  let iflag :=  load_val_of I_flag (Tint I8 Signed) in
+  let fflag := load_val_of F_flag (Tint I8 Signed) in
+  let tflag := load_val_of T_flag (Tint I8 Signed) in
   let md := load_val_of mode (Tint I32 Unsigned) in
 (* according to P49,
    Implementations must read reversed bits as 0 and ignore writes to them.
@@ -320,7 +321,7 @@ Definition mem_proj (m:Mem.mem) (e:env) (ad:address):word:=
   match find_mem m e with
     |Some(Vptr b ofs)=>
       load_val (load_value_of_type 
-        (Tint I8 Unsigned) m b (add ofs (word_of_address ad)))
+        (Tint I8 Signed) m b (add ofs (word_of_address ad)))
     |_=>Int.zero
   end.
 
@@ -335,7 +336,7 @@ Definition screg_proj (m:Mem.mem) (e:env) (r:regnum):word:=
   match find_cp15 m e with
     |Some(Vptr b ofs)=>
       let regbit id:=
-        load_val (load_value_of_type (Tint I8 Unsigned) m b
+        load_val (load_value_of_type (Tint I8 Signed) m b
         (add ofs (ofs_of_fld id fld_sc))) in
         let ee := regbit ee_bit in
         let u := regbit u_bit in
@@ -348,7 +349,7 @@ Definition screg_proj' (m:Mem.mem) (e:env) (r:regnum):option word:=
   match find_cp15 m e with
     |Some(Vptr b ofs)=>
       let regbit id:=
-        load_val (load_value_of_type (Tint I8 Unsigned) m b
+        load_val (load_value_of_type (Tint I8 Signed) m b
         (add ofs (ofs_of_fld id fld_sc))) in
         let ee := regbit ee_bit in
         let u := regbit u_bit in
@@ -363,7 +364,6 @@ Definition proc_proj (m:Mem.mem) (e:env):Arm6_State.state:=
   Arm6_State.mk_state 
   (Arm6_Proc.mk_state (cpsr_proj m e) (spsr_proj m e) (regs_proj m e) nil (mode_proj m e))
   (Arm6_SCC.mk_state (screg_proj m e) (mem_proj m e)).
-
 
 
 
@@ -397,3 +397,5 @@ Inductive proc_state_related : Mem.mem -> env -> @result unit -> Prop :=
    and the COQ specification of Arm6 state *)
 (*Definition proc_state_func_related (m:Mem.mem) (e:env) (s:Arm6_State.state) :Prop:=
   proc_proj m e = s.*)
+
+End proj.

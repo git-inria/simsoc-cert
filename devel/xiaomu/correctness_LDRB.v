@@ -10,14 +10,25 @@ Import Arm6_Functions.Semantics.
 
 Require Import my_inversion.
 Require Import my_tactic.
+Require Import common_functions.
 
-Definition prog_ldrb := ldrb_compcert.p.
+
+(* Add function CondictionPassed into global environment. *)
+Definition fun_ConditionPassed :=
+  common_functions.fun_ConditionPassed ldrb_compcert.ConditionPassed.
+
+Definition ldrb_functions :=
+  fun_ConditionPassed :: ldrb_compcert.functions.
+
+(* Re-new the program of BL *)
+Definition prog_ldrb :=
+  AST.mkprogram ldrb_functions ldrb_compcert.main ldrb_compcert.global_variables.
 
 Definition ad_func_related (m:Mem.mem) (e:env) (addr:word):Prop:=
   bits_proj m e address = addr.
 
 Definition cond_func_related (m:Mem.mem) (e:env) (cond:opcode):Prop:=
-  cond_proj m e = cond.
+  cond_proj ldrb_compcert.cond m e = cond.
 
 Definition d_func_related (m:Mem.mem) (e:env) (d:regnum):Prop:=
   reg_proj m e ldrb_compcert.d = d.
@@ -56,9 +67,9 @@ Definition set_reg_pc_addr :=
 
 Lemma setregpc_addr_ok :
   forall m e l b s t m' v b' d addr,
-    proc_state_related m e (Ok tt (mk_semstate l b s))->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_ldrb) e m set_reg_pc_addr t m' v->
-    proc_state_related m' e 
+    proc_state_related proc m' e 
     (Ok tt (mk_semstate l b'
     (Arm6_State.set_reg s d 
       (Arm6_SCC.mem (scc s) (address_of_word addr))
@@ -69,13 +80,13 @@ Theorem correctness_ldrb: forall e m0 m1 m2 mfin vargs s out addr cond d,
   alloc_variables empty_env m0 
   (fun_internal_LDRB.(fn_params) ++ fun_internal_LDRB.(fn_vars)) e m1 ->
   bind_parameters e m1 fun_internal_LDRB.(fn_params) vargs m2->
-  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related proc m2 e (Ok tt (mk_semstate nil true s)) ->
   ad_func_related m2 e addr ->
   cond_func_related m2 e cond ->
   d_func_related m2 e d ->
   exec_stmt (Genv.globalenv prog_ldrb) e m2 fun_internal_LDRB.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related mfin e (S.LDRB_step addr cond d (mk_semstate nil true s)).
+  proc_state_related proc mfin e (S.LDRB_step addr cond d (mk_semstate nil true s)).
 Proof.
   intros until d. intros av bp psrel afrel cfrel dfrel exst.
 

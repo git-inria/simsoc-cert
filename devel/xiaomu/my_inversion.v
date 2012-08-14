@@ -462,8 +462,8 @@ Ltac inv_eval_expr m m' :=
       (match goal with
         |[ee1:eval_expr ?ge ?e m ?k a1 ?t1 ?mbo ?a1'|-?cl1]=>
           (*if the inversion before may give a equality saying that
-             m = m?, and m will be replaced by m?. So the order will
-             be, invert the hypothesis related to the lase memory 
+             m = mx, and m will be replaced by mx. So the order will
+             be, invert the hypothesis related to the last memory 
              state first, then step backward *)          
           inv_eval_expr mbo m';
           inv_eval_expr m mbo
@@ -853,7 +853,7 @@ Definition sbit_func_related (m:Mem.mem) (e:env) (sbit:bool):Prop:=
   bit_proj m e S = sbit.
 
 Definition cond_func_related (m:Mem.mem) (e:env) (cond:opcode):Prop:=
-  cond_proj m e = cond.
+  cond_proj adc_compcert.cond m e = cond.
 
 Definition d_func_related (m:Mem.mem) (e:env) (d:regnum):Prop:=
   reg_proj m e adc_compcert.d = d.
@@ -997,10 +997,10 @@ Axiom get_reg_ok :
 
 Lemma oldrn_assgnt_ok:
  forall e m l b s t m' v,
-  proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+  proc_state_related adc_compcert.proc m e (Ok tt (mk_semstate l b s)) ->
   eval_expression (Genv.globalenv prog_adc) e m
     oldrn_assgnt t m' v ->
-  proc_state_related m' e (Ok tt (mk_semstate l b s)).
+  proc_state_related adc_compcert.proc m' e (Ok tt (mk_semstate l b s)).
 Proof.
   intros until v. intros psrel rn_as.
   
@@ -1068,7 +1068,7 @@ Lemma same_get_reg_tst :
     alloc_variables empty_env m0 
       (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
     bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related adc_compcert.proc m e (Ok tt (mk_semstate l b s)) ->
     d_func_related m e d ->
     eval_expression (Genv.globalenv prog_adc) e m get_rd_bit31  t m' v->
     v = Vint ((Arm6_State.reg_content s d) [n31]).
@@ -1093,7 +1093,7 @@ Lemma same_get_reg' :
     alloc_variables empty_env m0 
       (fun_internal_ADC.(fn_params) ++ fun_internal_ADC.(fn_vars)) e m0' ->
     bind_parameters e m0' fun_internal_ADC.(fn_params) vargs m ->
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related adc_compcert.proc m e (Ok tt (mk_semstate l b s)) ->
     d_func_related m e d ->
     eval_expression (Genv.globalenv prog_adc) e m get_rd_bit31  t m' v->
     v = Vint ((Arm6_State.reg_content s d) [n31]).
@@ -1400,6 +1400,10 @@ Inductive eval : tm -> val -> Prop :=
       eval t2 (nval n2) ->
       eval (tm_plus t1 t2) (nval (plus n1 n2)).
 
+Derive Inversion leminveval_c with (forall (n:nat) (v:val), eval (tm_const n) v) 
+  Sort Prop.
+
+Derive Inversion leminveval_p with (forall t1 t2 v, eval (tm_plus t1 t2) v).
 
 Definition aux_const_1_2 t v :=
   match t, v with
@@ -1438,8 +1442,36 @@ case H; clear H; simpl.
   trivial.
 *)
 
-
 Variable P : val -> Prop.
+
+
+Definition aux_plus_ab t :=
+  match t with
+    | tm_plus t1 t2 => forall (X: Prop),
+      (forall n1 n2, eval t1 (nval n1) ->
+                     eval t2 (nval n2) ->
+                     X ) -> X
+    | _ => True
+  end.
+
+Lemma test_ev1'_ab: 
+  forall v ,P v -> 
+  eval (tm_plus (tm_const 1) (tm_const 0)) v -> v = nval 1.
+(*intros. inversion H. subst. inversion H2. subst. inversion H4. subst. simpl. reflexivity.
+Qed.*)
+intros v p e. 
+Print leminveval_p.
+
+info inversion e using (leminveval_p (tm_const 1) (tm_const 0) v).
+intros.
+generalize
+  (match e in (eval t v) return aux_plus_ab t with
+     | E_Plus _ _ n1 n2 H1 H2 => (fun X k => k n1 n2 H1 H2)
+     | _ => I
+   end);
+clear e.
+intro k; red in k. revert p. apply k; clear k. intros n0 n3 e1 e2 p.
+Admitted.
 
 Lemma test_evc1': 
   forall v ,P v -> 
@@ -1466,13 +1498,14 @@ generalize
    end);
 clear e.
 intro k; red in k. revert p. apply k; clear k. intros n1 n2 e1 e2 p.
+
 generalize
   (match e1 in (eval t v) return aux_const_1_2 t v with
      | E_Const n => (fun X k => k )
      | _ => I
    end);
 clear e1. 
-intro k; red in k. apply k. clear k. 
+intro k; red in k. apply k. clear k.
 generalize
   (match e2 in (eval t v)
      return aux_const_1_2 t v with
@@ -1488,7 +1521,6 @@ Qed.
 
 (* Old example : Same type of input output *)
 
-(*
 Inductive ex0 : tm -> Prop :=
   | t0 : ex0 (tm_const 0)
   | tx : forall t1 t2, ex0 t1 -> ex0 t2 ->
@@ -1505,30 +1537,30 @@ simpl. trivial.
 simpl. trivial.
 Qed.
 
-Inductive eval : tm -> tm -> Prop :=
-  | E_Const : forall n,
-      eval (tm_const n) (tm_const n)
-  | E_Plus : forall t1 t2 n1 n2,
-      eval t1 (tm_const n1) ->
-      eval t2 (tm_const n2) ->
-      eval (tm_plus t1 t2) (tm_const (plus n1 n2)).
+Inductive eval_tt : tm -> tm -> Prop :=
+  | E_Const_tt : forall n,
+      eval_tt (tm_const n) (tm_const n)
+  | E_Plus_tt : forall t1 t2 n1 n2,
+      eval_tt t1 (tm_const n1) ->
+      eval_tt t2 (tm_const n2) ->
+      eval_tt (tm_plus t1 t2) (tm_const (plus n1 n2)).
 
 
 Variable Q : tm -> Prop.
 
-Inductive eval': tm -> tm -> Prop :=
+Inductive eval_tt': tm -> tm -> Prop :=
   | E_C : forall n,
-      eval' (tm_const n) (tm_const n)
+      eval_tt' (tm_const n) (tm_const n)
   | E_Plus1 : forall t1 t2 n1 n2,
-      eval' t1 (tm_const n1) ->
-      eval' t2 (tm_const n2) ->
-      eval' (tm_plus t1 t2) (tm_const (plus n1 n2))
+      eval_tt' t1 (tm_const n1) ->
+      eval_tt' t2 (tm_const n2) ->
+      eval_tt' (tm_plus t1 t2) (tm_const (plus n1 n2))
   | E_Plus2 : forall t1 t2 n2,
       Q t1 ->
-      eval' t2 (tm_const n2) ->
-      eval' (tm_plus t1 t2) (tm_const n2).
+      eval_tt' t2 (tm_const n2) ->
+      eval_tt' (tm_plus t1 t2) (tm_const n2).
 
-Lemma test_ev'1:forall t,eval' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
+Lemma test_ev'1:forall t,eval_tt' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
 Proof.
 intros. inversion H. subst.
   inversion H2. subst. inversion H4. subst.
@@ -1542,22 +1574,22 @@ Definition aux_plus' t t' :=
     |tm_plus t1 t2 =>
       forall (X:tm -> Prop),
         (forall n1 n2, 
-          eval' t1 (tm_const n1) ->
-          eval' t2 (tm_const n2) ->
+          eval_tt' t1 (tm_const n1) ->
+          eval_tt' t2 (tm_const n2) ->
           X (tm_const (plus n1 n2)))
           ->
           (forall n2,
             Q t1 ->
-            eval' t2 (tm_const n2) ->
+            eval_tt' t2 (tm_const n2) ->
             X (tm_const n2))-> X t'
     |_=>True
   end.
 
-Lemma test_ev'2:forall t,eval' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
+Lemma test_ev'2:forall t,eval_tt' (tm_plus (tm_const 0) (tm_const 1)) t->t=tm_const 1.
 Proof.
 intros.
 generalize
-  (match H in (eval' t t')
+  (match H in (eval_tt' t t')
      return aux_plus' t t' with
      |E_Plus1 _ _ n1 n2 H1 H2 => (fun X k1 k2=> k1 n1 n2 H1 H2)
      |E_Plus2 _ _ n2 H1 H2 => (fun X k1 k2=> k2 n2 H1 H2)
@@ -1568,7 +1600,7 @@ apply k. clear k.
 Admitted.
 
 (*
-Lemma test_ev1: eval (tm_plus (tm_const 1) (tm_const 0)) (tm_const (plus 1 1)) -> False.
+Lemma test_ev1: eval_tt (tm_plus (tm_const 1) (tm_const 0)) (tm_const (plus 1 1)) -> False.
 intro. inversion H. subst. inversion H3. subst. inversion H4. subst.
 info discriminate.
 Qed.
@@ -1582,51 +1614,49 @@ Definition aux_const t t' :=
 Definition aux_plus t t' :=
   match t with
     |tm_plus t1 t2 => forall (X:tm -> Prop),
-      (forall n1 n2, eval t1 (tm_const n1) ->
-                     eval t2 (tm_const n2) ->
+      (forall n1 n2, eval_tt t1 (tm_const n1) ->
+                     eval_tt t2 (tm_const n2) ->
                      X (tm_const (plus n1 n2))) -> X t'
     |_ => True
   end.
 
 (*
-Lemma test_ev2: eval (tm_plus (tm_const 1) (tm_const 0)) (tm_const 0)->False.
+Lemma test_ev2: eval_tt (tm_plus (tm_const 1) (tm_const 0)) (tm_const 0)->False.
 intro. 
 pose (aux x:= match x with tm_plus (tm_const 1) (tm_const 0) => False |_=> True end).
 change (aux (tm_plus (tm_const 1) (tm_const 0))).
 case H. clear H.
 simpl.*)
 
-Variable P : tm -> Prop.
+Variable P_tt : tm -> Prop.
 
-Lemma test_ev1': forall t,P t -> eval (tm_plus (tm_const 1) (tm_const 0)) t -> t=tm_const 1%nat.
+Lemma test_ev_tt1': forall t,P_tt t -> eval_tt (tm_plus (tm_const 1) (tm_const 0)) t -> t=tm_const 1%nat.
 (*intros. inversion H. subst. inversion H2. subst. inversion H4. subst. simpl. reflexivity.
 Qed.*)
 intros t H0 H.
 generalize
-  (match H in (eval t t')
+  (match H in (eval_tt t t')
   return aux_plus t t' with
-  |E_Plus _ _ n1 n2 H1 H2 => (fun X k => k n1 n2 H1 H2)
+  |E_Plus_tt _ _ n1 n2 H1 H2 => (fun X k => k n1 n2 H1 H2)
   |_=>I
    end).
 clear H.
 intro k. red in k. revert H0. apply k. clear k. intros.
 generalize
-  (match H in (eval t t')
+  (match H in (eval_tt t t')
      return aux_const t t' with
-     |E_Const n => (fun X k => k)
+     |E_Const_tt n => (fun X k => k)
      |_=>I
    end).
 clear H.
 intro k. red in k. apply k. clear k.
 generalize
-  (match H0 in (eval t t')
+  (match H0 in (eval_tt t t')
      return aux_const t t' with
-     |E_Const n => (fun X k => k)
+     |E_Const_tt n => (fun X k => k)
      |_=>I
    end).
 clear H0.
 intro k. red in k. apply k. clear k.
 simpl. reflexivity.
 Qed.
-
-*)

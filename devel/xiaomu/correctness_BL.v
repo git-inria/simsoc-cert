@@ -12,29 +12,23 @@ Require Import my_inversion.
 Require Import my_tactic.
 Require Import common_functions.
 
-Set Implicit Arguments.
-
+(* Add function CondictionPassed into global environment. *)
 Definition fun_ConditionPassed :=
-  common_functions.fun_ConditionPassed 
-  bl_compcert.N_flag bl_compcert.Z_flag bl_compcert.C_flag bl_compcert.V_flag
-  bl_compcert.Q_flag bl_compcert.J_flag 
-  bl_compcert.GE0 bl_compcert.GE1 bl_compcert.GE2 bl_compcert.GE3 
-  bl_compcert.E_flag bl_compcert.A_flag bl_compcert.I_flag bl_compcert.F_flag
-  bl_compcert.T_flag 
-  bl_compcert.mode bl_compcert.background bl_compcert.SLv6_StatusRegister
-  bl_compcert.ConditionPassed.
+  common_functions.fun_ConditionPassed bl_compcert.ConditionPassed.
 
 Definition bl_functions :=
   fun_ConditionPassed :: bl_compcert.functions.
 
+(* Re-new the program of BL *)
 Definition prog_bl :=
   AST.mkprogram bl_functions bl_compcert.main bl_compcert.global_variables.
 
+(* Other parameters projection *)
 Definition lbit_func_related (m:Mem.mem) (e:env) (lbit:bool):Prop:=
   bit_proj m e L = lbit.
 
 Definition cond_func_related (m:Mem.mem) (e:env) (cond:opcode):Prop:=
-  cond_proj m e = cond.
+  cond_proj bl_compcert.cond m e = cond.
 
 Definition si24_func_related (m:Mem.mem) (e:env) (si24:word):Prop:=
   bits_proj m e signed_immed_24 = si24.
@@ -46,7 +40,7 @@ Definition condpass :=
   Ecall (Evalof (Evar ConditionPassed T1) T1)
     (Econs
       (Eaddrof
-        (Efield (Ederef (Evalof (Evar proc T2) T2) T3) cpsr T4) T5)
+        (Efield (Ederef (Evalof (Evar bl_compcert.proc T2) T2) T3) cpsr T4) T5)
       (Econs (Evalof (Evar bl_compcert.cond T6) T6) Enil)) T7.
 
 Lemma no_effect_condpass :
@@ -69,7 +63,7 @@ Proof.
   pose (e:=PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
                (PTree.set cond (b2, Tint I32 Signed)
                   (PTree.set L (b0, Tint I8 Signed)
-                     (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+                     (PTree.set bl_compcert.proc (b1, Tpointer typ_SLv6_Processor)
                         empty_env)))).
   fold e in eslst, esl.
 
@@ -129,7 +123,7 @@ Proof.
     (PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
       (PTree.set cond (b2, Tint I32 Signed)
         (PTree.set L (b0, Tint I8 Signed)
-          (PTree.set proc (b1, Tpointer bl_compcert.typ_SLv6_Processor)
+          (PTree.set bl_compcert.proc (b1, Tpointer bl_compcert.typ_SLv6_Processor)
             empty_env)))));
   fold e in ee_L, lfr;simpl in lfr.
 
@@ -170,18 +164,18 @@ Qed.
 
 Definition aoni :=
   (Ecall (Evalof (Evar address_of_next_instruction T9) T9)
-    (Econs (Evalof (Evar proc T2) T2) Enil) T10).
+    (Econs (Evalof (Evar bl_compcert.proc T2) T2) Enil) T10).
 
 Definition set_reg_aoni:=
   Ecall (Evalof (Evar bl_compcert.set_reg T8) T8)
-  (Econs (Evalof (Evar proc T2) T2)
+  (Econs (Evalof (Evar bl_compcert.proc T2) T2)
     (Econs (Eval (Vint (repr 14)) T6)
       (Econs aoni        
-        Enil))) T11.  
+        Enil))) T11.
 
 Lemma same_aoni :
   forall m e l b s ge t m' a' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     eval_expr ge e m RV set_reg_aoni t m' a' ->
     eval_simple_rvalue ge e m' a' (Vint v) ->
     v = Arm6_State.address_of_next_instruction s.
@@ -190,9 +184,9 @@ Admitted.
 
 Lemma set_reg_aoni_ok :
   forall e m t m' a' l b s, 
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     eval_expr (Genv.globalenv prog_bl) e m RV set_reg_aoni t m' a'->
-    (forall l b,proc_state_related m' e
+    (forall l b,proc_state_related proc m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s LR (Arm6_State.address_of_next_instruction s))))).
 Proof.
@@ -200,11 +194,11 @@ Admitted.
 
 Definition set_pc_rw_x :=
   Ecall (Evalof (Evar set_pc_raw T12) T12)
-  (Econs (Evalof (Evar proc T2) T2)
+  (Econs (Evalof (Evar bl_compcert.proc T2) T2)
     (Econs
       (Ebinop Oadd
         (Ecall (Evalof (Evar reg T13) T13)
-          (Econs (Evalof (Evar proc T2) T2)
+          (Econs (Evalof (Evar bl_compcert.proc T2) T2)
             (Econs (Eval (Vint (repr 15)) T6) Enil))
           T10)
         (Ebinop Oshl
@@ -217,10 +211,10 @@ Definition set_pc_rw_x :=
 
 Lemma set_pc_rw_x_ok :
   forall e m t m' a' l b s si24,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     si24_func_related m e si24 ->
     eval_expr (Genv.globalenv prog_bl) e m RV set_pc_rw_x t m' a' ->
-    proc_state_related m' e 
+    proc_state_related proc m' e 
     (Ok tt 
       (mk_semstate l false
       (Arm6_State.set_reg s PC (add (Arm6_State.reg_content s PC) 
@@ -276,13 +270,13 @@ Theorem correctness_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
   bind_parameters e m1 fun_internal_B.(fn_params) vargs m2 ->
 (* TODO: valid_access needs to be more precise *)
   (forall m ch b ofs, Mem.valid_access m ch b ofs Readable) ->
-  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related proc m2 e (Ok tt (mk_semstate nil true s)) ->
   lbit_func_related m2 e L ->
   cond_func_related m2 e cond ->
   si24_func_related m2 e si24 ->
   exec_stmt (Genv.globalenv prog_bl) e m2 fun_internal_B.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related mfin e 
+  proc_state_related proc mfin e 
   (S.B_step L cond si24 (mk_semstate nil true s)).
 Proof.
 
@@ -312,6 +306,8 @@ Proof.
 
   (* condpass has the same value in both side *)
   generalize av;intros av'.
+  (*apply condpass_bool with e m1 nil true s cond t1 m3 v1 b .*)
+
   apply condpass_bool with m0 e m1 m3 t1 m3 v1 cond s b in av';
     [idtac|exact cp'|exact cp_bool].
 

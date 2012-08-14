@@ -216,11 +216,12 @@ Definition fun_ADC :=
   (ADC, Internal fun_internal_ADC).
 
 (* manually add functions *)
-Definition fun_ConditionPassed :=
+(*Definition fun_ConditionPassed :=
   (ConditionPassed, External
   (EF_external ConditionPassed {| sig_args := [AST.Tint; AST.Tint]; sig_res := Some AST.Tint |})
   T[`*` typ_SLv6_StatusRegister; int32]
   int8).
+*)
 
 Definition fun_copy_StatusRegister :=
   (copy_StatusRegister, External
@@ -285,7 +286,7 @@ Definition fun_get_bit :=
 (* manually changed functions list *)
 (*Definition functions : list (prod ident fundef) := [fun_ADC].*)
 Definition functions : list (prod ident fundef) :=
-  [fun_ConditionPassed; fun_copy_StatusRegister; fun_addr_of_reg_m; fun_reg_m; fun_reg; fun_CurrentModeHasSPSR; fun_get_bit; fun_ADC].
+  [(*fun_ConditionPassed;*) fun_copy_StatusRegister; fun_addr_of_reg_m; fun_reg_m; fun_reg; fun_CurrentModeHasSPSR; fun_get_bit; fun_ADC].
 
 (* program *)
 

@@ -20,6 +20,8 @@ Import Arm6_Functions.Semantics.
 Require Import my_inversion.
 Require Import my_tactic.
 
+Require Import type_slv6_proc.
+
 (* The CompcertC generator outputs compcert-c file for each instruction.
    Every file will have the declarations for identifiers and types.
    Different file will give different value to the same identifier.
@@ -29,7 +31,7 @@ Require Import my_tactic.
 *)
 
 Section Common_fun.
-
+(*
 Variable N_flag : positive.
 Variable Z_flag : positive.
 Variable C_flag : positive.
@@ -146,20 +148,20 @@ Variable SLv6_Processor : positive.
 
 Definition cf_typ_SLv6_Processor := 
   Tstruct SLv6_Processor cf_typ_struct_SLv6_Processor.
-
+*)
 Definition cf_T1 :=
   Tfunction
-  (Tcons (Tpointer cf_typ_SLv6_StatusRegister) 
+  (Tcons (Tpointer typ_SLv6_StatusRegister) 
     (Tcons (Tint I32 Signed) Tnil))
   (Tint I8 Signed).
 
-Definition cf_T2 := Tpointer cf_typ_SLv6_Processor.
+Definition cf_T2 := Tpointer typ_SLv6_Processor.
 
-Definition cf_T3 := cf_typ_SLv6_Processor.
+Definition cf_T3 := typ_SLv6_Processor.
 
-Definition cf_T4 := cf_typ_SLv6_StatusRegister.
+Definition cf_T4 := typ_SLv6_StatusRegister.
 
-Definition cf_T5 := Tpointer cf_typ_SLv6_StatusRegister.
+Definition cf_T5 := Tpointer typ_SLv6_StatusRegister.
 
 Definition cf_T6 := Tint I32 Signed.
 
@@ -171,12 +173,12 @@ Definition cf_T9 := Tint I8 Unsigned.
 
 Definition cf_T10 :=
   Tfunction
-  (Tcons (Tpointer cf_typ_SLv6_Processor)
+  (Tcons (Tpointer typ_SLv6_Processor)
     (Tcons (Tint I8 Unsigned) Tnil)) (Tint I32 Unsigned).
 
 Definition cf_T11 :=
   Tfunction
-  (Tcons (Tpointer cf_typ_SLv6_Processor)
+  (Tcons (Tpointer typ_SLv6_Processor)
     (Tcons (Tint I8 Unsigned) (Tcons (Tint I32 Unsigned) Tnil))) Tvoid.
 
 Definition cf_T12 := Tvoid.
@@ -201,7 +203,7 @@ Definition fun_ConditionPassed :=
     (AST.EF_external ConditionPassed 
       {| AST.sig_args := AST.Tint :: AST.Tint :: nil; 
         AST.sig_res := Some AST.Tint |})
-    (Tcons (Tpointer cf_typ_SLv6_StatusRegister) (Tcons (Tint I32 Signed) Tnil))
+    (Tcons (Tpointer typ_SLv6_StatusRegister) (Tcons (Tint I32 Signed) Tnil))
     cf_T7).
 
 Lemma no_effect_condpass :
@@ -212,7 +214,7 @@ Lemma no_effect_condpass :
         {|
           AST.sig_args := AST.Tint :: AST.Tint :: nil;
           AST.sig_res := Some AST.Tint |})
-      (Tcons (Tpointer cf_typ_SLv6_StatusRegister)
+      (Tcons (Tpointer typ_SLv6_StatusRegister)
         (Tcons (Tint I32 Signed) Tnil)) 
       (Tint I8 Signed)) vargs t m' v ->
     m = m'.
@@ -226,7 +228,7 @@ Qed.
 Lemma condpass_bool :
   forall e m l b s cond t m' v bv,
     e!ConditionPassed = None ->
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     cond_func_related m e cond ->
     eval_expression (Genv.globalenv prog_adc) e m condpass t m' v ->
     bool_val v cf_T4 = Some b ->
@@ -238,6 +240,55 @@ Admitted.
 
 (* reg *)
 
+Variable addr_of_reg_m : positive.
+
+Definition cf_T13 :=
+  Tfunction
+  (Tcons (Tpointer typ_SLv6_StatusRegister) 
+    (Tcons (Tint I32 Signed) Tnil))
+  (Tint I32 Unsigned).
+
+Definition cf_T14 :=
+  Tfunction
+  (Tcons (Tpointer typ_SLv6_Processor) 
+    Tnil)
+  (Tint I32 Unsigned).
+  
+
+Definition fun_addr_of_reg_m :=
+  (addr_of_reg_m,
+    External
+    (AST.EF_external addr_of_reg_m
+      {|
+        AST.sig_args := AST.Tint :: AST.Tint :: AST.Tint :: nil;
+        AST.sig_res := Some AST.Tint |})
+    (Tcons (Tpointer typ_SLv6_Processor)
+      (Tcons (Tint I8 Unsigned) (Tcons (Tint I32 Signed) Tnil)))
+    (Tpointer (Tint I32 Unsigned))).
+
+Variable m : positive.
+
+Definition fun_internal_reg_m :=
+  {|fn_return := Tint I32 Unsigned;
+    fn_params := (proc, Tpointer typ_SLv6_Processor)
+    :: (adc_compcert.reg_id, Tint I8 Unsigned)
+    :: (m, Tint I32 Signed) :: nil;
+    fn_vars := nil;
+    fn_body := Sreturn
+    (Some
+      (Evalof
+        (Ederef
+          (Ecall (Evalof (Evar addr_of_reg_m cf_T14) cf_T14)
+            (Econs (Evalof (Evar proc cf_T9) cf_T9)
+              (Econs (Evalof (Evar adc_compcert.reg_id cf_T6) cf_T6)
+                (Econs (Evalof (Evar m cf_T4) cf_T4) Enil))) cf_T11) cf_T1)
+        cf_T1)) |}.
+
+Variable reg_m : positive.
+
+Definition fun_reg_m :=
+  (reg_m, Internal fun_internal_reg_m).
+
 Variable reg : positive.
 
 Definition reg_r id :=
@@ -248,7 +299,7 @@ Definition reg_r id :=
 
 Lemma same_result_reg_content :
   forall m e l b st rg r ge v,
-    proc_state_related m e (Ok tt (mk_semstate l b st)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b st)) ->
     reg_proj m e rg = r ->
     eval_simple_rvalue ge e m (reg_r rg) (Vint v) ->
     v = Arm6_State.reg_content st r.
@@ -257,7 +308,7 @@ Admitted.
 
 Lemma proc_state_not_changed_reg_content :
   forall m e l b st ge rg t m' a',
-    proc_state_related m e (Ok tt (mk_semstate l b st)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b st)) ->
     eval_expr ge e m RV (reg_r rg) t m' a' ->
     param_val proc m e = param_val proc m' e.
 Proof.
@@ -293,11 +344,11 @@ Definition set_regpc src :=
 
 Lemma same_set_reg_or_pc :
   forall e m l b s rd ge src t m' a' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     d_func_related m e rd ->
     eval_expr ge e m RV (set_regpc src) t m' a' ->
     eval_simple_rvalue ge e m (set_regpc src) (Vint v) ->
-    (forall l b, proc_state_related m' e 
+    (forall l b, proc_state_related proc m' e 
       (Ok tt (mk_semstate l b
         (Arm6_State.set_reg s rd v)))).
 Proof.
@@ -315,10 +366,10 @@ Definition set_reg_number nm src :=
 
 Lemma same_set_reg_number :
   forall m e l b s ge rg src t m' a' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     eval_expr ge e m RV (set_reg_number rg src) t m' a' ->
     eval_simple_rvalue ge e m (set_reg_number rg src) (Vint v) ->
-    (forall l b,proc_state_related m' e
+    (forall l b,proc_state_related proc m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s (mk_regnum rg) v)))).
 Proof.
@@ -332,11 +383,11 @@ Definition set_reg_ref r src :=
 
 Lemma same_set_reg_ref :
   forall m e l b s ge rg r src t m' a' v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     reg_proj m e rg = r ->
     eval_expr ge e m RV (set_reg_ref rg src) t m' a' ->
     eval_simple_rvalue ge e m (set_reg_ref rg src) (Vint v) ->
-    (forall l b,proc_state_related m' e
+    (forall l b,proc_state_related proc m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s (mk_regnum r) v)))).
 Proof.
@@ -346,23 +397,23 @@ Admitted.
 
 Variable set_pc_raw :positive.
 
-Definition cf_T13 :=
+Definition cf_T15 :=
   Tfunction
-  (Tcons (Tpointer cf_typ_SLv6_Processor)
+  (Tcons (Tpointer typ_SLv6_Processor)
     (Tcons (Tint I32 Unsigned) Tnil)) Tvoid.
   
 
 Definition set_pc_raw_src src :=
-  Ecall (Evalof (Evar set_pc_raw cf_T13) cf_T13)
+  Ecall (Evalof (Evar set_pc_raw cf_T15) cf_T15)
   (Econs (Evalof (Evar proc cf_T2) cf_T2)
     (Econs src Enil)) cf_T12.
 
 Lemma same_set_pc_raw :
   forall m e l b s ge t m' a' src v,
-    proc_state_related m e (Ok tt (mk_semstate l b s)) ->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s)) ->
     eval_expr ge e m RV (set_pc_raw_src src) t m' a' ->
     eval_simple_rvalue ge e m (set_pc_raw_src src) (Vint v) ->
-    (forall l b,proc_state_related m' e
+    (forall l b,proc_state_related proc m' e
       (Ok tt (mk_semstate l b 
         (Arm6_State.set_reg s PC v)))).
 Proof.
@@ -430,6 +481,8 @@ Qed.
    free_list m3 to m'.
    If there is no change from m2 to m3, the result to free_list gives the
    same result (m = m') *)
+
+(* Free a block can't bring the memory state back to the original one?*)
 
 (*
 Lemma free_list_to_initialst :
