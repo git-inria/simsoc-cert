@@ -4,7 +4,6 @@
 /* Arithmetic and logic functions. */
 
 #include "slsh4_math.h"
-#include "sh4_mmu.h"
 
 BEGIN_SIMSOC_NAMESPACE
 

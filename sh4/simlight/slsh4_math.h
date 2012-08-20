@@ -6,7 +6,6 @@
 #ifndef SH4_MATH_H
 #define SH4_MATH_H
 
-#include "slsh4_processor.h"
 #include "common.h"
 
 BEGIN_SIMSOC_NAMESPACE

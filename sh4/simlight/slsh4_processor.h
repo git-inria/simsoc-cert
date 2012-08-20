@@ -37,11 +37,11 @@ struct SLSH4_Processor {
   uint32_t TRA;
 
   // MMU 
-} SLSH4_Processor;
+};
 
-extern void init_processor(struct SLSH4_Processor* , struct SLSH4_MMU*);
+extern void init_Processor(struct SLSH4_Processor* , struct SLSH4_MMU*);
 
-extern void destruct_processor(struct SLSH4_Processor*);
+extern void destruct_Processor(struct SLSH4_Processor*);
 
 extern uint32_t *addr_of_reg_m(struct SLSH4_Processor*, uint8_t reg_id);
 
