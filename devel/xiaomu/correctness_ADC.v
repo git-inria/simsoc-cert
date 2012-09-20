@@ -164,26 +164,9 @@ Proof.
   inv esl; rewrite noexists in *. try discriminate.
   rename H2 into find_symbol, H5 into tog. clear H1.
 
-  unfold Genv.find_symbol in find_symbol.
-  simpl in find_symbol.
-  injection find_symbol. intro. subst. clear find_symbol.
-  
-  unfold load_value_of_type in lvot. simpl in lvot.
-  injection lvot. intro. subst. clear lvot.
-
-  erewrite Genv.find_funct_find_funct_ptr in Heqff.
-  unfold Genv.find_funct_ptr in Heqff;unfold ZMap.get in Heqff;simpl in Heqff.
-  unfold ZMap.set in Heqff;simpl in Heqff.
-
-  repeat (rewrite PMap.gso in Heqff;[idtac|simpl;congruence]).
-  rewrite PMap.gss in Heqff.
-  injection Heqff.
-  intro. subst. clear Heqff. clear Heqtf.
-
-  inv ev_funcall. rename H7 into excall.
-  inv excall.
-
-  reflexivity.
+  find_func.
+  eapply mem_not_changed_ef in ev_funcall.
+  exact ev_funcall.
 Qed.
 
 Lemma condpass_bool :
@@ -284,7 +267,7 @@ Proof.
   intros until b. intros av sfrel ee bv.
   unfold sbit_func_related in sfrel. unfold bit_proj in sfrel.
   unfold param_val in sfrel.
-  inv_alloc_vars e;
+  inv_alloc_vars av e.
   pose (e:=
     (PTree.set old_Rn (b6, Tint I32 Unsigned)
       (PTree.set shifter_operand (b5, Tint I32 Unsigned)

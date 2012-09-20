@@ -208,15 +208,7 @@ Definition fun_ConditionPassed :=
 
 Lemma no_effect_condpass :
   forall ge m vargs t m' v,
-    eval_funcall ge m
-    (External
-      (AST.EF_external ConditionPassed
-        {|
-          AST.sig_args := AST.Tint :: AST.Tint :: nil;
-          AST.sig_res := Some AST.Tint |})
-      (Tcons (Tpointer typ_SLv6_StatusRegister)
-        (Tcons (Tint I32 Signed) Tnil)) 
-      (Tint I8 Signed)) vargs t m' v ->
+    eval_funcall ge m (snd fun_ConditionPassed) vargs t m' v ->
     m = m'.
 Proof.
   intros until v; intro evfunc. 
@@ -573,6 +565,12 @@ Lemma mult_gt :
     0<=x -> 0<= x* 16777216.
   intros. omega.
 Qed.
+
+Lemma shru_two_p :
+  forall p,
+    shru (repr (two_p (Zpos p))) (repr (Zpos p)) = w1.
+Proof.
+Admitted.
  
 Lemma bsoz_range :
   forall x i,
@@ -586,125 +584,82 @@ Qed.
 
 Lemma eq_getbit' :
   forall x n ,
-    0 < n < Z_of_nat wordsize ->
+    0 < n < Z_of_nat wordsize ->  
+   min_signed <=
+   signed (and (repr (unsigned x / two_p n)) (repr 1)) *
+   two_power_pos 24 <= max_signed ->
     sign_ext 8 (and (shru x (repr n)) (repr 1)) = x [nat_of_Z n].
 Proof.
-  intros x n intval_n.
+  intros x n intval_n intval_n'.
   rewrite sign_ext_shr_shl;
   [idtac
     |unfold wordsize;unfold Wordsize_32.wordsize;simpl;omega].
   rewrite shr_div_two_p.
   rewrite shl_mul_two_p.
   rewrite shru_div_two_p.
-  unfold two_p. simpl.
-
-  unfold bit. unfold bits.
-  unfold bits_val.
-  unfold masks.
-  rewrite minus_diag. simpl masks_aux.
-
-  unfold mul.
+  
+  (* mul_signed *)
+  rewrite mul_signed.
   rewrite unsigned_repr;
-    [idtac
-      |unfold max_unsigned;unfold modulus;
-       unfold wordsize;unfold Wordsize_32.wordsize;
-       unfold two_power_pos;simpl;unfold shift_pos,shift_nat;
-       simpl iter_pos;simpl iter_nat;
-       change (Zpos (4294967296 - 1)) with (Zpos 4294967295);
-       omega].
-  
-  case_eq n;intros.
-  (* n is 0 *)
-  rewrite Zmod_0_l.
-  unfold two_power_nat. unfold shift_nat. simpl iter_nat.
-  rewrite Zdiv_1_r. rewrite Zdiv_1_r.
-  rewrite repr_unsigned.
-  rewrite signed_repr;[idtac|omega].
-  rewrite Z_div_mult;[idtac|omega].
-  unfold unsigned.
-  rewrite and_commut. reflexivity.
-  
-  (* n is positive *)
+    [idtac|
+      unfold max_unsigned;unfold modulus;
+      unfold wordsize in *;unfold Wordsize_32.wordsize in *;
+      unfold two_power_pos in *;simpl in *;
+      unfold shift_pos,shift_nat in *;
+      simpl iter_pos in *;simpl iter_nat in *;
+      change (Zpos (4294967296 - 1)) with (Zpos 4294967295);
+      omega].
 
-  
-
-
-
-  case_eq (Zpos p mod modulus);intros.
-
-  
-    (* n mod modulus is 0 *)
-    rewrite Zdiv_1_r.
-    unfold unsigned.
-    simpl nat_of_Z.
-
-    unfold and at 1;unfold bitwise_binop at 1.
-    apply eqm_samerepr. eapply eqm_trans. 2: apply Z_of_bits_of_Z.
-    apply eqm_refl2. (*apply Z_of_bits_exten.*)
-
-
-(*
-    unfold and at 1. unfold bitwise_binop.
-    rewrite unsigned_repr;[idtac|apply Z_of_bits_range_2].
-    unfold unsigned. 
-    rewrite signed_repr.  
-    admit.
-    assert 
-      (0 <= Z_of_bits wordsize
-        (fun i : Z =>
-          bits_of_Z wordsize (repr x) i && bits_of_Z wordsize (repr 1) i) 0
-        <= max_unsigned) by (apply Z_of_bits_range_2).
-    destruct H1.
-    assert (min_signed < 0) by (apply min_signed_neg).
-    apply conj.
-    apply Zle_trans with 0. omega.
-    unfold two_power_pos. unfold shift_pos. simpl iter_pos. omega.
-    unfold two_power_pos. unfold shift_pos. simpl iter_pos.
-    unfold wordsize;unfold Wordsize_32.wordsize.
-*)  
-
-(*HERE*)
-  
-(*
+  change (signed (repr (two_p (unsigned (repr (Z_of_nat wordsize - 8))))))
+    with (two_p (unsigned (repr (Z_of_nat wordsize - 8)))).
+  simpl.
+  destruct intval_n.
+  destruct n; try discriminate.
+  assert (Z_of_nat wordsize < max_unsigned) by 
+    (simpl;unfold max_signed,modulus; lazy; reflexivity).
+  rewrite signed_repr; [idtac| assumption].
   rewrite Z_div_mult;
-    [idtac|unfold two_power_pos;unfold shift_pos;
-      simpl iter_pos;omega].
-  change 
-    (repr
-      (Z_of_bits wordsize
-        (fun i : Z =>
-          bits_of_Z wordsize (unsigned x) i &&
-          bits_of_Z wordsize (unsigned (repr 1)) i) 0)) with
-    (and x (repr 1)).
-  simpl nat_of_Z.
-  rewrite <- two_power_pos_nat.
-  unfold two_power_pos. unfold shift_pos.
-  unfold modulus in H0. unfold two_power_nat in H0.
-  unfold shift_nat in H0. simpl iter_nat in H0.
+    [idtac
+      |unfold two_power_pos;simpl;unfold shift_pos,shift_nat;simpl;omega].
+  rewrite repr_signed.
   
+  unfold bit, bits, bits_val, masks.
+  rewrite minus_diag. simpl masks_aux.
+  replace (Zpos p) with (unsigned (repr (Zpos p)));
+    [idtac
+      |rewrite unsigned_repr;
+        [reflexivity|
+          assert (Z_of_nat wordsize < max_unsigned);
+            [simpl;
+             unfold max_unsigned,modulus,wordsize,Wordsize_32.wordsize;simpl;
+             unfold shift_pos,shift_nat;simpl;
+             change (Zpos (4294967296 - 1)) with (Zpos 4294967295);omega
+              |omega]]].
 
+  rewrite <- shru_div_two_p.
 
-  rewrite<-Zmod'_correct in H0.
-*)  
+  repeat rewrite two_power_nat_two_p.
+  rewrite nat_of_Z_eq;
+    [idtac
+      |assert (unsigned (repr (Zpos p)) = (repr (Zpos p))) 
+        by (unfold unsigned; reflexivity);
+        unfold unsigned;
+        rewrite <- H2;
+        rewrite unsigned_repr; [omega| omega]].
+  rewrite <- Zpos_eq_Z_of_nat_o_nat_of_P.
+  assert ((unsigned (and (repr (two_p (Zpos p))) x)) =
+    (repr (unsigned (and (repr (two_p (Zpos p))) x)))) by
+  (rewrite repr_unsigned; unfold unsigned; reflexivity).
+  assert (unsigned (and (repr (two_p (Zpos p))) x) = and (repr (two_p (Zpos p))) x)
+    by (unfold unsigned; reflexivity).
+  rewrite <- H3.
+  rewrite <- shru_div_two_p.
+  rewrite <- and_shru.
+  rewrite and_commut.
+  rewrite shru_two_p.
+  reflexivity.
+Qed.  
 
-
-
-
-  
-
-
-
-  
-(*  unfold two_power_pos. unfold shift_pos. simpl iter_pos.
-  unfold repr at 3.
-  unfold modulus. unfold wordsize. unfold Wordsize_32.wordsize.
-  unfold two_power_nat at 2. unfold shift_nat. simpl iter_nat.
-*)  
-  
-
-  
-
-Admitted.
 
 (* Finding a function in globalenv *)
 (*
@@ -715,3 +670,85 @@ Lemma find_f :
     Genv.find_funct ge vf = Some fd
 *)
 
+Section freelst.
+
+Lemma al_st_fr :
+forall m1 lo hi m2 b chunk ofs v m3 m4,
+  lo <= ofs < hi ->
+  Mem.alloc m1 lo hi = (m2, b) ->
+  Mem.store chunk m2 b ofs v = Some m3 ->
+  Mem.free m3 b lo hi = Some m4 ->
+  m1 = m4.
+Proof.
+  intros until m4.
+Transparent Mem.alloc Mem.store Mem.free.
+  unfold Mem.alloc, Mem.store, Mem.free.
+  intros ofsrange al st fr (*nb*).
+  destruct (Mem.valid_access_dec m2 chunk b ofs Writable); try discriminate.
+  destruct (Mem.range_perm_dec m3 b lo hi Freeable); try discriminate.
+  injection al; intros bv m2v. clear al.
+  injection st; intros m3v. clear st.
+  unfold Mem.unchecked_free in fr.
+  injection fr; intro m4v. clear fr.
+
+
+  (* Try to use given Lemma mkmem_ext (in memory.v) to prove m1 = m4 *)
+  (* cont1 = cont4 *)
+  assert (cont14: Mem.mem_contents m1 b ofs= Mem.mem_contents m4 b ofs).
+  rewrite <- m4v; simpl.
+  rewrite <- m3v; simpl.
+  rewrite <- m2v; simpl.
+  rewrite bv.
+  rewrite update_s.
+  rewrite Mem.clearN_in.
+  assert (Mem.perm_order' (Mem.mem_access m1 b ofs) Readable \/
+  Mem.mem_contents m1 b ofs = Undef).
+  apply Mem.noread_undef.
+  destruct H.
+  replace (Mem.perm_order' (Mem.mem_access m1 b ofs) Readable)
+    with (Mem.perm m1 b ofs Readable) in H;
+  [idtac|unfold Mem.perm;reflexivity].
+  apply Mem.perm_valid_block in H.
+  unfold Mem.valid_block in H.
+  rewrite bv in H.
+  apply Zlt_not_eq in H.
+  destruct H. reflexivity.
+  exact H.
+  exact ofsrange.
+
+  (* acc1 = acc4 *)
+  assert (acc14: Mem.mem_access m1 b ofs = Mem.mem_access m4 b ofs).
+  rewrite <- m4v; simpl.
+  rewrite update_s.
+  unfold zle, zlt.
+  destruct ofsrange.
+  destruct Z_le_gt_dec; destruct Z_lt_ge_dec; simpl; try congruence.
+  destruct (Mem.nextblock_noaccess m1 b).
+  rewrite bv in H1.
+  info elimtype False. omega.
+  apply Mem.bounds_noaccess. rewrite H1; simpl. omega.
+  
+  (* bound1 = bound4 *)
+  assert (bound14: Mem.bounds m1 b = Mem.bounds m4 b).
+  destruct (Mem.nextblock_noaccess m1 b).
+  destruct H. rewrite bv in H0. apply Zlt_not_eq in H0.
+  elimtype False. omega.
+  
+  destruct (Mem.nextblock_noaccess m4 b).
+  
+  (*rewrite <- m4v in H0; simpl in H0.
+  rewrite <- m3v in H0; simpl in H0.
+  rewrite <- m2v in H0; simpl in H0.*)
+  
+
+  (*
+  rewrite bv.
+  rewrite update_s.
+  
+
+  destruct (Mem.nextblock_noaccess m4 b).
+  *)
+Admitted.
+
+
+End freelst.
