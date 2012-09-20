@@ -59,7 +59,7 @@ Proof.
   (* vf is the value of ConditionPassed *)
   inv esr. rename H1 into esl,H4 into lvotvf. clear H2.
   (* e *)
-  inv_alloc_vars e.
+  inv_alloc_vars av e.
   pose (e:=PTree.set signed_immed_24 (b3, Tint I32 Unsigned)
                (PTree.set cond (b2, Tint I32 Signed)
                   (PTree.set L (b0, Tint I8 Signed)
@@ -115,7 +115,7 @@ Lemma L_bool :
     Util.zeq lbit 1 = b.
 Proof.
   intros until b; intros av lfr ee_L bv .
-  inv_alloc_vars e.
+  inv_alloc_vars av e.
   unfold lbit_func_related in lfr. unfold bit_proj in lfr.
   unfold param_val in lfr.
   unfold varg_proj in lfr.
@@ -263,6 +263,8 @@ Lemma si24_not_change_set_pc_rw :
     eval_expr (Genv.globalenv prog_bl) e m RV set_pc_rw_x t m' a'->
     si24_func_related m' e si24.
 Admitted.
+
+Require Import String.
 
 Theorem correctness_BL: forall e m0 m1 m2 mfin vargs s out L cond si24,
   alloc_variables empty_env m0 

@@ -41,11 +41,42 @@ Definition condpass :=
       T5)
     (Econs (Evalof (Evar ldrb_compcert.cond T6) T6) Enil)) T7.
 
+(* Proving no_effect_condpass has the exact same stradagy for any instruction*)
+
 Lemma no_effect_condpass :
-  forall e m t m' v,
+  forall m0 e m0' m t m' v,
+    alloc_variables empty_env m0 
+    (fun_internal_LDRB.(fn_params) ++ fun_internal_LDRB.(fn_vars)) e m0' ->
     eval_expression (Genv.globalenv prog_ldrb) e m condpass t m' v->
     m = m'.
-Admitted.
+Proof.
+  intros until v;intros av ee.
+  unfold condpass in ee.
+  inv ee. rename H into ee, H0 into esrv.
+  inv_eval_expr m m'.
+  (* vres=v  *)
+  inv esr0.
+  (* vf is the value of ConditionPassed *)
+  inv esr. rename H1 into esl,H4 into lvotvf. clear H2.
+  (* e *)
+  inv_alloc_vars av e.
+  pose (e:=PTree.set d (b3, Tint I8 Unsigned)
+             (PTree.set cond (b2, Tint I32 Signed)
+                (PTree.set address (b0, Tint I32 Unsigned)
+                   (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+                      empty_env)))).
+  fold e in eslst, esl.
+
+  inv esl.
+  (* ConditionPassed is not in local env *)
+  discriminate.
+  (* ConditionPassed is in global env *)
+  rename H1 into notine,H2 into fs,H5 into tog.
+
+  find_func.
+  eapply mem_not_changed_ef in ev_funcall.
+  exact ev_funcall.
+Qed.
 
 Lemma condpass_bool :
   forall m0 e m0' m t m' v cond s b,
@@ -96,11 +127,20 @@ Proof.
 
   (* m2 = m3 *)
   generalize ee_call; intro ee_call'.
-  apply no_effect_condpass with e m2 t1 m3 v1 in ee_call'.
+  generalize av; intro av'.
+  (*inv_alloc_vars av' e.
+  pose (e := 
+    PTree.set ldrb_compcert.d (b3, Tint I8 Unsigned)
+      (PTree.set ldrb_compcert.cond (b2, Tint I32 Signed)
+        (PTree.set address (b0, Tint I32 Unsigned)
+          (PTree.set proc (b1, Tpointer typ_SLv6_Processor) empty_env)))).
+  fold e in av, bp, psrel,afrel, cfrel, dfrel, ee_call, exst, ee_call' |-*.*)
+  apply no_effect_condpass with m0 e m1 m2 t1 m3 v1 in ee_call';
+    [idtac| assumption].
+
   rewrite<-ee_call' in *;clear ee_call' m3.
   
   (* Condition pass gives the same value in two sides *)
-  generalize av; intro av'.
   apply condpass_bool with m0 e m1 m2 t1 m2 v1 cond s b in av';
     [idtac|exact ee_call|exact bvv1].
   clear ee_call.

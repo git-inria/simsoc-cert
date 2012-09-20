@@ -5,22 +5,31 @@ Require Import mrs_compcert.
 Require Import projection.
 Require Import my_inversion.
 Require Import my_tactic.
+Require Import common_functions.
 
 Require Import Arm6_Simul.
 Import I.
 Import Arm6_Functions.Semantics.
 
+(* Add function CondictionPassed into global environment. *)
+Definition fun_ConditionPassed :=
+  common_functions.fun_ConditionPassed mrs_compcert.ConditionPassed.
+
+Definition mrs_functions :=
+  fun_ConditionPassed :: mrs_compcert.functions.
+
+(* Re-new the program of MRS *)
+Definition prog_mrs :=
+  AST.mkprogram mrs_functions mrs_compcert.main mrs_compcert.global_variables.
+
 Definition rbit_func_related (m:Mem.mem) (e:env) (rbit:bool):Prop:=
   bit_proj m e R = rbit.
 
 Definition cond_func_related (m:Mem.mem) (e:env) (cond:opcode):Prop:=
-  cond_proj m e = cond.
+  cond_proj mrs_compcert.cond m e = cond.
 
 Definition d_func_related (m:Mem.mem) (e:env) (d:regnum):Prop:=
   reg_proj m e mrs_compcert.d = d.
-
-Definition prog_mrs := mrs_compcert.p.
-
 
 Definition condpass :=
   Ecall (Evalof (Evar ConditionPassed T1) T1)
@@ -42,41 +51,41 @@ Definition condpass :=
    is also a external function *)
 
 Lemma no_effect_condpass :
-  forall e m t m' v,
-    eval_expression (Genv.globalenv prog_mrs) e m condpass t m' v->
+  forall m0 e m0' m m' t v,
+    alloc_variables empty_env m0 
+      (fun_internal_MRS.(fn_params) ++ fun_internal_MRS.(fn_vars)) e m0' ->    
+    eval_expression (Genv.globalenv prog_mrs) e m condpass t m' v ->    
     m = m'.
 Proof.
-(*
-  intros until v. intros ee.
-  inv ee. rename H into ee, H0 into esrv.
+  intros until v;intros av ee.
   unfold condpass in ee.
-  inv_call m m'. intros until vres.
-  intros ee_val eelst esrvf eslst cf ff tof ef esrv.
-  inv_valof m m1. intros until a'0. intros ee_var esrvf.
-  inv_var m m1.
-  inv_cons m m2. intros until al'. intros ee_addr eelst eslst.
-  inv_addrof m m0. intros until a'1. intros ee_fld eslst.
-  inv_field m m0. intros until a'2. intros ee_der eslst.
-  inv_deref m m0. intros until a'3. intros ee_valof eslst.
-  inv_valof m m0. intros until a'4. intros ee_var eslst.
-  inv_var m m0.
-  inv_cons m m2. intros until al'0. intros ee_valof eelst eslst.
-  inv_valof m m3. intros until a'5. intros ee_var eslst.
-  inv_var m m3.
-  inv_nil m m2. intros eslst.
+  inv ee. rename H into ee, H0 into esrv.
+  inv_eval_expr m m'.
+  (* vres=v  *)
+  inv esr0.
+  (* vf is the value of ConditionPassed *)
+  inv esr. rename H1 into esl,H4 into lvotvf. clear H2.
+  (* e *)
+  inv_alloc_vars av e.
+  pose (e:= 
+    PTree.set d (b3, Tint I8 Unsigned)
+      (PTree.set cond (b2, Tint I32 Signed)
+        (PTree.set R (b0, Tint I8 Signed)
+          (PTree.set proc (b1, Tpointer typ_SLv6_Processor)
+            empty_env)))).
+  fold e in eslst, esl.
 
-  (* function fd can be found *)
-  unfold Genv.find_funct in ff.
-  destruct vf; try discriminate.
-  destruct (eq_dec i w0); try discriminate.
-  rewrite e0 in *; clear i e0.
+  inv esl.
+  (* ConditionPassed is not in local env *)
+  discriminate.
+  (* ConditionPassed is in global env *)
+  rename H1 into notine,H2 into fs,H5 into tog.
 
-  (* the body of fd is stored in pointer (Vptr b w0)*)
-  inv esrvf. rename H1 into esl, H4 into lvot. clear H2.
-  inv esl; try discriminate.
-  (*Continue*)
-*)
-Admitted.
+  find_func.
+  eapply mem_not_changed_ef in ev_funcall.
+  exact ev_funcall.
+Qed.
+
 
 Lemma condpass_bool :
   forall m0 m0' e m t m' v cond s b,
@@ -118,7 +127,7 @@ Proof.
   intros until b. intros av rfrel ee_R bvv.
   unfold rbit_func_related in rfrel. unfold bit_proj in rfrel.
   unfold param_val in rfrel.
-  inv_alloc_vars e.
+  inv_alloc_vars av e.
   pose (e:=
     PTree.set d (b3, Tint I8 Unsigned)
       (PTree.set cond (b2, Tint I32 Signed)
@@ -178,9 +187,9 @@ Definition set_reg_pc_cpsr :=
 
 Lemma setregpc_spsr_ok :
   forall m e l b s t m' v d,
-    proc_state_related m e (Ok tt (mk_semstate l b s))->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_mrs) e m set_reg_pc_spsr t m' v ->
-    proc_state_related m' e 
+    proc_state_related proc m' e 
     (match Arm6_State.mode s with
        | usr =>
          unpredictable Arm6_Message.EmptyMessage
@@ -196,9 +205,9 @@ Admitted.
 
 Lemma setregpc_cpsr_ok :
   forall m e l b s t m' v b' d,
-    proc_state_related m e (Ok tt (mk_semstate l b s))->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_mrs) e m set_reg_pc_cpsr t m' v ->
-    proc_state_related m' e
+    proc_state_related proc m' e
     (Ok tt (mk_semstate l b'
       (Arm6_State.set_reg s d (Arm6_State.cpsr s)))).
 Admitted.
@@ -230,13 +239,13 @@ Theorem correctness_MSR : forall e m0 m1 m2 mfin vargs s out rbit cond d,
   alloc_variables empty_env m0 
   (fun_internal_MRS.(fn_params)++fun_internal_MRS.(fn_vars)) e m1->
   bind_parameters e m1 fun_internal_MRS.(fn_params) vargs m2->
-  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related proc m2 e (Ok tt (mk_semstate nil true s)) ->
   rbit_func_related m2 e rbit ->
   cond_func_related m2 e cond ->
   d_func_related m2 e d ->
   exec_stmt (Genv.globalenv prog_mrs) e m2 fun_internal_MRS.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related mfin e 
+  proc_state_related proc mfin e 
   (S.MRS_step rbit cond d (mk_semstate nil true s)).
 Proof.
   intros until d;intros av bp psrel rfrel cfrel dfrel exst.
@@ -247,7 +256,7 @@ Proof.
   generalize ee_cp; intro ee_cp'.
 
   (* m2 = m3 *)
-  apply no_effect_condpass with e m2 t1 m3 v1 in ee_cp'.
+  apply no_effect_condpass with m0 e m1 m2 m3 t1 v1 in ee_cp';[idtac| assumption].
   rewrite<-ee_cp' in *;clear m3 ee_cp'.
 
   (* condition pass gives the same result in two side *)

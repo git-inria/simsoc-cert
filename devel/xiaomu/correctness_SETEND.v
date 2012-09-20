@@ -5,6 +5,7 @@ Require Import setend_compcert.
 Require Import projection.
 Require Import my_inversion.
 Require Import my_tactic.
+Require Import common_functions.
 
 Require Import Arm6_Simul.
 Import I.
@@ -28,9 +29,9 @@ Definition set_bit_cpsr :=
 
 Lemma setbit_cpsr_ok :
   forall m e l b s t m' v ebit,
-    proc_state_related m e (Ok tt (mk_semstate l b s))->
+    proc_state_related proc m e (Ok tt (mk_semstate l b s))->
     eval_expression (Genv.globalenv prog_setend) e m set_bit_cpsr t m' v->
-    proc_state_related m' e 
+    proc_state_related proc m' e 
     (Ok tt (mk_semstate l b
     (Arm6_State.set_cpsr s (Bitvec.set_bit 9 ebit (Arm6_State.cpsr s))))).
 Admitted.
@@ -39,11 +40,11 @@ Theorem correctness_SETEND : forall e m0 m1 m2 mfin vargs s out ebit,
   alloc_variables empty_env m0 
   (fun_internal_SETEND.(fn_params)++fun_internal_SETEND.(fn_vars)) e m1->
   bind_parameters e m1 fun_internal_SETEND.(fn_params) vargs m2->
-  proc_state_related m2 e (Ok tt (mk_semstate nil true s)) ->
+  proc_state_related proc m2 e (Ok tt (mk_semstate nil true s)) ->
   ebit_func_related m2 e ebit ->
   exec_stmt (Genv.globalenv prog_setend) e m2 fun_internal_SETEND.(fn_body) 
   Events.E0 mfin out ->
-  proc_state_related mfin e 
+  proc_state_related proc mfin e 
   (S.SETEND_step ebit (mk_semstate nil true s)).
 Proof.
   intros until ebit. intros av bp psrel efrel exst.

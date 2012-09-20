@@ -553,7 +553,7 @@ Ltac inv_eval_expr m m' :=
   end.
 
 (* simplify the inversion on alloc_variables and bind_parameters definition *)
-Ltac inv_alloc_vars e' :=
+Ltac inv_alloc_vars hyp e':=
   let ex :=fresh "e" in
   let mx :=fresh "m" in
   let idx :=fresh "id" in
@@ -564,12 +564,16 @@ Ltac inv_alloc_vars e' :=
   let m2x :=fresh "m2" in
   let e2x :=fresh "e2" in
   let alc :=fresh "alc" in
-  let av' := fresh "av'" in
+  let nav := fresh "av'" in
   match goal with 
-    [av: alloc_variables ?e ?m0 ?lst e' ?m0' |- ?c] => 
-    inversion av as [ex mx|ex mx idx tyx varsx m1x b1x m2x e2x alc av'];
-    subst;try clear av;
-    (inv_alloc_vars e'||idtac)
+    [h: alloc_variables ?e ?m0 ?lst e' ?m0' |- ?c] =>
+    match h with
+      | hyp => 
+        inversion h as [ex mx|ex mx idx tyx varsx m1x b1x m2x e2x alc nav];
+          subst;try clear h;
+            (inv_alloc_vars nav e'||idtac)
+      |_ => idtac "inversion on alloc_variables fails"
+    end
   end.
 
 Ltac inv_bind_params m' :=
