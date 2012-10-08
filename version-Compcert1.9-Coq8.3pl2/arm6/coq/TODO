@@ -1,0 +1,33 @@
+
+
+- prove Util.two_power_nat_monotone and improve functions Bitvec.word_of_*
+
+- fix problems with ZeroExtend and SignExtend
+
+- define some notation for hexadecimal numbers
+
+- implement exception handlers
+
+- for processors and co-processors, use a function on nat
+
+- replace CP15_reg1_*bit by R(CP[15],1)[*] ?
+
+- avoid repr as much as possible
+
+- use a shift instead of a division by two_power_nat
+
+- define specific more efficient functions for accessing the PC
+
+------------------------------------------------------------------------------
+Done:
+
+- add comment about ZeroExtend
+
+- replace (m : processor_mode) arguments by a function call
+
+processor_mode added as an extra field in the state
+  requires to preserve some invariant
+
+- fix problem with SignExtend 24/30 (see Claude's mails on 10/01/26)
+
+done at the OCaml level

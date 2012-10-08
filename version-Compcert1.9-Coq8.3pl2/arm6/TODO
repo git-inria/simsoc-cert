@@ -1,0 +1,5 @@
+
+- move typo fixes from preproc_pseudo.sh to the patch ?
+
+- add a README file explaining what are the generated files and how
+   they are generated
