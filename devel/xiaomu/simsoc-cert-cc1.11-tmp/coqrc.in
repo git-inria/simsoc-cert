@@ -1,0 +1,10 @@
+Add LoadPath "/path/to/simsoc-cert/compcert/flocq/Appli".
+Add LoadPath "/path/to/simsoc-cert/compcert/flocq/Calc".
+Add LoadPath "/path/to/simsoc-cert/compcert/flocq/Core".
+Add LoadPath "/path/to/simsoc-cert/compcert/flocq/Prop".
+Add LoadPath "/path/to/simsoc-cert/compcert/common".
+Add LoadPath "/path/to/simsoc-cert/compcert/lib".
+Add LoadPath "/path/to/simsoc-cert/compcert/cfrontend".
+Add LoadPath "/path/to/simsoc-cert/coq".
+Add LoadPath "/path/to/simsoc-cert/arm6/coq".
+Add LoadPath "/path/to/simsoc-cert/sh4/coq".

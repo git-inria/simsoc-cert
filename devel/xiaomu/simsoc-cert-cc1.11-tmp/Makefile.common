@@ -1,0 +1,123 @@
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+# requires various variables to be defined:
+# - DIR: relative path to root directory
+# - COQ_INCLUDES: include directories other than CompCert ones
+# defines the variables: CC, COQC, COQTOP
+# provides the targets: extraction, libcoq, otags
+# in addition:
+# - default is the default target
+# - clean is set to have :: dependencies
+
+include $(DIR)/compcert/Makefile.config
+
+ifeq ($(VERBOSE),1)
+  SHOW := @true
+  HIDE :=
+else
+  SHOW := @echo
+  HIDE := @
+endif
+
+.PHONY: start default clean
+
+start: default
+
+FORCE:
+
+######################################################################
+# configure
+
+$(DIR)/compcert/Makefile.config:
+	@echo "do './configure /path/to/compcert' first"; exit 1
+
+######################################################################
+# C compiler
+
+CC := gcc
+
+######################################################################
+# extraction
+
+COMPCERT := flocq/Appli flocq/Calc flocq/Core flocq/Prop lib common $(ARCH)/$(VARIANT) $(ARCH) backend cfrontend driver cparser
+
+DEFAULT_COQ_INCLUDES := $(COMPCERT:%=-I $(DIR)/compcert/%)
+
+COQTOP := coqtop -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -batch -load-vernac-source
+
+extraction: $(DIR)/coq/Extraction.vo extraction.v
+	mkdir -p extraction
+	$(SHOW) coqtop extraction.v
+	$(HIDE) $(COQTOP) ./extraction.v
+
+clean::
+	rm -rf extraction
+
+.PHONY: extraction-libcoq
+
+extraction-libcoq:
+	$(MAKE) -C $(DIR)/coq extraction
+
+.PHONY: ocaml
+
+######################################################################
+# Coq compiler
+
+COQ_MAKEFILE := coq_makefile $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES)
+
+COQDEP := coqdep $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -I .
+
+COQC := coqc -q $(DEFAULT_COQ_INCLUDES) $(COQ_INCLUDES) -dont-load-proofs
+
+%.vo: %.v
+	$(SHOW) coqc $<
+	$(HIDE) $(COQC) $<
+
+.PHONY: libcoq
+
+libcoq:
+	$(MAKE) -C $(DIR)/coq
+
+COQDOC := coqdoc --html -toc -g -d html
+
+######################################################################
+# ocamlbuild
+
+OCAMLBUILD := cd $(DIR) && ocamlbuild -j 2 -no-hygiene -no-links
+
+######################################################################
+# simgen
+
+SIMGEN := $(DIR)/simgen/main
+
+$(SIMGEN): FORCE
+	$(MAKE) -C $(DIR)/simgen
+
+%.v: %.c $(SIMGEN)
+	$(SIMGEN) -ocompcertc-c -fstruct-assign -fno-longlong $< > $@
+
+######################################################################
+# dependot
+
+DEPENDOT := $(DIR)/tools/dependot/dependot
+
+$(DEPENDOT): FORCE
+	$(MAKE) -C $(DIR)/tools/dependot
+
+%.dot: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< > $@
+
+%.ps: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< | dot -Tps > $@
+
+%.pdf: %.dep $(DEPENDOT)
+	$(DEPENDOT) < $< | dot -Tpdf > $@
+
+######################################################################
+# otags
+
+.PHONY: otags
+
+otags:
+	otags -sr '.mli' -r .

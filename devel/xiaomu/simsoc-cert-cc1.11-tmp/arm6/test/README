@@ -1,0 +1,39 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+See the COPYRIGHTS and LICENSE files
+--------------------------------------------------------------------
+
+This directory contains tests, which can be used both with simlight
+(use the .elf file) and with the OCaml simulator extracted from the
+Coq code (use the .ml file).
+
+All tests are provided in the form of a C file. The tests whose name
+starts by "arm_" contain ARM inlined assembly code. The tests whose
+name starts by "thumb_" contain Thumb inlined assembly code. To
+compile them, an arm-elf-gcc cross-compiler is necessary.
+
+Each test stores a status in the register r0 and next enters an
+infinite loop. This particular infinite loop is recognized by
+simlight, in order to know when to stop the simulation. For the Coq
+simulator, the number of instructions before this loop (+ 1 iteration
+of the loop) is reported in the C source file, so this number can be
+provided to the simulation function. For files which can be compiled
+either as ARM or as Thumb, the number corresponds to the ARM case.
+
+In most of the test programs, the status is organized as a bit vector:
+each atomic test set one bit. Thus, looking at the binary
+representation of the result tells you which atomic test failed.
+
+The shell script "check-sl" (resp. "check-sl2") executes all the tests
+with simlight (resp. simlight2), and compare the result (last r0
+value) with the expected value.
+
+Remark: to estimate the number of instructions executed, it is
+possible to use SimSoC as follows:
+
+> $path_to_simsoc_build/examples/Demo/demo -v -DT=1 sum_iterative.elf
+... and look at the last line.
+
+TODO:
+
+- The code coverage is poor (<50% of cxx/slv6_iss_expanded.c). In
+particular, there are no test for the new ARMv6 instructions.
