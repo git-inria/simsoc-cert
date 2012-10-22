@@ -50,7 +50,7 @@ check_version() {
 prog=coqc
 check_prog
 
-ref=8.3pl4
+ref=8.4
 ver=`coqc -v | head -1 | awk '{print$6}'`
 check_version
 
