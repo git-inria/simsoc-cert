@@ -10,4 +10,7 @@ Require Extraction RawCoq_Csyntax.
 
 Cd "extraction".
 
+(* For Coq-8.4 *)
+Recursive Extraction Library Vector.
+
 Extraction Library RawCoq_Csyntax.

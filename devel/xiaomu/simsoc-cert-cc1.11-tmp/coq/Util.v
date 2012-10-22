@@ -328,28 +328,47 @@ Implicit Arguments nary_iter_decr [A B].
 (****************************************************************************)
 
 Require Import Bvector.
+(* For Coq-8.3pl4 and older version: *)
+(* Notation "{{ }}" := (Vnil _).
+Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).*)
 
-Notation "{{ }}" := (Vnil _).
-Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
+(* For Coq-8.4: *)
+Notation "{{ }}" := (Vector.nil _).
+Notation "{{ a ; .. ; b }}" := (Vector.cons _ a _ .. (Vector.cons _ b _ (Vector.nil _)) ..).
 
 (****************************************************************************)
 (* convert a [vector] of size [n] into a [list] of length [n] *)
 (****************************************************************************)
 
+(* For Coq-8.3pl4 and older version: *)
+(* Definition list_of_vector : forall A n,
+   Vector.t A n -> { l : list A | n = length l }.
+   Proof.
+   induction n; intros.
+   exists nil. trivial.
+   inversion X. destruct (IHn X0). 
+   exists (a :: x). simpl. auto.
+   *)
+
+(* For Coq-8.4: *)
+
+Close Scope vector_scope.
+
 Definition list_of_vector : forall A n,
-  vector A n -> { l : list A | n = length l }.
+  Vector.t A n -> { l : list A | n = length l }.
 
 Proof.
   induction n; intros.
   exists nil. trivial.
-  inversion X. destruct (IHn X0). exists (a :: x). simpl. auto.
+  inversion X. destruct (IHn X0). exists (h :: x).
+  simpl. auto.
 Defined.
 
 (****************************************************************************)
 (* application of an n-ary function to a vector of n arguments *)
 (****************************************************************************)
 
-Definition apply {A n B} (f : NaryFunctions.nfun A n B) (l : vector A n) : B.
+Definition apply {A n B} (f : NaryFunctions.nfun A n B) (l : Vector.t A n) : B.
 
 Proof.
   refine (NaryFunctions.nuncurry _ _ _ f _). destruct (list_of_vector l).

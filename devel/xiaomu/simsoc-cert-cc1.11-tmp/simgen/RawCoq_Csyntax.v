@@ -19,12 +19,17 @@ Require Import
   NaryFunctions
   FMapAVL.
 
+  Close Scope vector_scope.
+
 (****************************************************************************)
 (** Utilitaries *)
 
 Module Vector.
 
   (* Convert a [vector] into a [list] with an extra property on its length. *)
+
+  (* For Coq-8.3pl4 and older version: *)
+  (*
   Definition to_list : forall A n,
     vector A n -> { l : list A | n = List.length l }.
 
@@ -57,6 +62,45 @@ Module Vector.
     intros. apply Vnil.
     intros. inversion v.
     apply Vcons. apply f.
+    trivial.
+    tauto.
+  Defined.
+*)
+
+(* For Coq-8.4: *)
+
+  Definition to_list : forall A n,
+    Vector.t A n -> { l : list A | n = List.length l }.
+
+  Proof.
+    induction n ; intros.
+    exists List.nil.
+    trivial.
+    inversion X.
+    destruct (IHn X0).
+    exists (h :: x).
+    simpl.
+    auto.
+  Defined.
+
+  Definition init : forall {A} n, (nat -> A) -> Vector.t A n.
+
+  Proof.
+    intros.   
+    induction n.
+    apply Vector.nil.
+    apply Vector.cons. apply X.
+    trivial.
+    trivial.
+  Defined.
+
+  Definition map : forall {A B} (f : A -> B) n (v : Vector.t A n), Vector.t B n.
+
+  Proof.
+    induction n.
+    intros. apply Vector.nil.
+    intros. inversion v.
+    apply Vector.cons. apply f.
     trivial.
     tauto.
   Defined.
@@ -803,6 +847,9 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
 
   (* Note that some parameters can be merged (like separator and
     surrounding) but this writting style expansion is rather general *)
+
+  (* For Coq-8.3pl4 and older version: *)
+  (*
   Parameter _U :
     bool (* true : the whole need to be protected by a
     parenthesis. Note that this information is a simple hint, the
@@ -816,6 +863,23 @@ Module Type CONSTRUCTOR (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M).
     disable the parenthesis (do not consider the hint) *) * (t v (*
     prefix *) * t v (* suffix *))) (S n) -> (* surrounding *)
     t u ^^ (S n) --> t u.
+    *)
+
+  (* For Coq-8.4: *)
+  Parameter _U :
+    bool (* true : the whole need to be protected by a
+    parenthesis. Note that this information is a simple hint, the
+    constructor which call [_U] can decide not to do so. *) ->
+    t v (* prefix *) -> 
+    t v (* suffix *) -> 
+    forall n, 
+    Vector.t (t v) n -> (* separator *)
+    Vector.t (bool (* true : follow the same choice as the parenthesis
+    hint (indicated by the element we are folding), false : explicit
+    disable the parenthesis (do not consider the hint) *) * (t v (*
+    prefix *) * t v (* suffix *))) (S n) -> (* surrounding *)
+    t u ^^ (S n) --> t u.
+  
 
   (* These specials constructors need to have a special implementation
   (not using [_U] for example). *)
@@ -852,8 +916,15 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
 
   Open Scope string_scope.
 
+(* For Coq-8.3pl4 and older version: *)
+  (*
   Notation "[| a ; .. ; b |]" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
-  Notation "[ ]" := nil.
+  *)
+  (* For Coq-8.4: *)
+
+  Notation "[| a ; .. ; b |]" := (Vector.cons _ a _ .. (Vector.cons _ b _ (Vector.nil _)) ..).
+
+  Notation "[]" := nil.
   Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
   Notation "'\n'" := indent.
 
@@ -889,8 +960,14 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
       clear n H ; rename n0 into n.
       apply (_U true (print (s ++ " ")) (ret tt)).
       induction n.
-      exact (Vnil _).
-      apply Vcons. exact (print " "). trivial.
+      (* For Coq-8.3pl4 and older version: *)
+      (* exact (Vnil _). 
+         apply Vcons. *)
+
+      (* For Coq-8.4: *)
+      exact (@Vector.nil _).
+      apply Vector.cons. 
+      exact (print " "). trivial.
       apply surr_empty.
     Defined.
 
@@ -915,7 +992,27 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
       apply surr_empty.
     Defined.
 
-    Definition _R : forall n, vector S.t n -> t u ^^ n --> t u.
+    (* For Coq-8.3pl4 and older version: *)
+    (* Definition _R : forall n, vector S.t n -> t u ^^ n --> t u.
+    Proof.
+      intros n l.
+      case_eq n ; intros.
+      apply ncurry.
+      intros. exact (ret_u "{||}").
+
+      apply (_U false (perform [ save_pos ; print "{| "] )
+        (perform [ print " |}" ; delete_pos ]) ).
+      apply Vector.init. exact (fun _ => perform [ \n ; print " ; " ]).
+      subst n.
+      refine (Vector.map _ _ l) ; clear.
+      intros x.
+      exact (false, (print (x ++ " := "), ret tt)).
+    Defined.
+    *)
+
+    (* For Coq-8.4: *)
+
+    Definition _R : forall n, Vector.t S.t n -> t u ^^ n --> t u.
 
     Proof.
       intros n l.
@@ -931,7 +1028,11 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
       exact (false, (print (x ++ " := "), ret tt)).
     Defined.
 
-    Definition _U2 : S.t -> forall n, vector bool (S n) -> t u ^^ (S n) --> t u.
+    (* For Coq-8.3pl4 and older version: *)
+    (* Definition _U2 : S.t -> forall n, vector bool (S n) -> t u ^^ (S n) --> t u.
+       *)
+    (* For Coq-8.4: *)
+    Definition _U2 : S.t -> forall n, Vector.t bool (S n) -> t u ^^ (S n) --> t u.
 
     Proof.
       intros s n l.
@@ -946,8 +1047,13 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
 
   End pr.
 
+  (* For Coq-8.3pl4 and older version: *)
+  (*
   Notation "{{ a ; .. ; b }}" := (_R _
-    (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)).
+    (Vcons _ (S.of_string a) _ .. (Vcons _ (S.of_string b) _ (Vnil _)) ..)). *)
+  (* For Coq-8.4: *)
+  Notation "{{ a ; .. ; b }}" := (_R _
+    (Vector.cons _ (S.of_string a) _ .. (Vector.cons _ (S.of_string b) _ (Vector.nil _)) ..)).
   Notation "'!' x" := (_U_constr x _) (at level 9).
   Notation "| x · y" := (_U2 x _ y) (at level 9).
 
@@ -983,7 +1089,8 @@ Module Constructor (S : STRING) (M : MONAD_SIMPLE S) (P : PARENTHESIS S M)
       refine (List.map _ X4).
       intros (a, o). case_eq o ; intros. exact (a, "(*" ++ t0 ++ "*)").
       exact (a, S.of_string "").
-      eexact X. eexact X0. exact _ident. eexact _init_data. exact _globvar.
+      eexact X. eexact X0. exact _ident. 
+      apply _init_data. exact _globvar.
       exact {{ "prog_funct" ; "prog_main" ; "prog_vars" }}.
       trivial.
     Defined.
@@ -1173,7 +1280,7 @@ Module Lazy (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
   Definition u := (bool * t v) % type.
 
-  Notation "[ ]" := nil.
+  Notation "[]" := nil.
   Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
   Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
@@ -1205,7 +1312,7 @@ Module Strict (S : STRING) (Import M : MONAD_SIMPLE S) <: PARENTHESIS S M.
 
   Definition u := v.
 
-  Notation "[ ]" := nil.
+  Notation "[]" := nil.
   Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
   Definition eval (a : (bool * (t v * t v)) * t u) : t v := 
@@ -1233,7 +1340,7 @@ Module Monad_simple (F : FRESH) (K_type : KEY with Definition t := type)
 
   Require Import Ascii.
 
-  Notation "[ ]" := nil.
+  Notation "[]" := nil.
   Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
   Implicit Arguments Map_type.add [A].
@@ -1346,12 +1453,17 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
   Coercion S.of_string : String.string >-> S.t.
 
   Notation "a ++ b" := (S.append a b).
-  Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).
-  Notation "[ ]" := nil.
+  (* For Coq-8.3pl4 and older version: *)
+  (* Notation "{{ a ; .. ; b }}" := (Vcons _ a _ .. (Vcons _ b _ (Vnil _)) ..).*)
+  (* For Coq-8.4: *)
+  Notation "{{ a ; .. ; b }}" := (Vector.cons _ a _ .. (Vector.cons _ b _ (Vector.nil _)) ..).
+  Notation "[]" := nil.
   Notation "[ a ; .. ; b ]" := (a :: .. (b :: []) ..).
 
   Implicit Arguments ret [A].
 
+  (* For Coq-8.3pl4 and older version: *)
+  (*
   Definition _U_aux : forall
     (b : bool)
     (pref : t v)
@@ -1362,7 +1474,6 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
     (l : list (t u))
     (_ : l <> nil),
     t u.
-
   Proof.
   intros.
   case_eq l. tauto.
@@ -1378,7 +1489,36 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
   intros acc (sep, a).
   exact (perform [ acc ; sep ; eval a ]).
   Defined.
+    *)
+  (* For Coq-8.4: *)
+  Definition _U_aux : forall
+    (b : bool)
+    (pref : t v)
+    (suff : t v)
+    (n : nat)
+    (sep : Vector.t (t v) n)
+    (surr : Vector.t (bool * (t v * t v)) (S n))
+    (l : list (t u))
+    (_ : l <> nil),
+    t u.
+  Proof.
+  intros.
+  case_eq l. tauto.
+  intros x xs _.
+  refine (ret_u b _) ; clear b.
+  (* (* put this below to display the depth as a Coq comment *)  
+    fun st => print ("(*" ++ (String (ascii_of_nat (depth st + 48)) EmptyString) ++ "*)") st ; *)
+  refine (perform [ add_depth ; pref ; _ ; suff ; remove_depth ]) ; clear pref suff.
+  inversion surr ; clear surr ; rename X into surr.
+  refine (_ (eval (h, x))) ; clear h x n0 H1.
+  pose (v_to_list A v := let (l, _) := Vector.to_list A n v in l).
+  refine (List.fold_left _ (List.combine (v_to_list _ sep) (List.combine (v_to_list _ surr) xs) )) ; clear sep surr xs.
+  intros acc (sep, a).
+  exact (perform [ acc ; sep ; eval a ]).
+  Defined.
 
+  (* For Coq-8.3pl4 and older version: *)
+  (*
   Definition _U : 
     bool -> 
     t v -> 
@@ -1387,7 +1527,18 @@ Module Monad_list (S : STRING) (U : UTIL S) (Import M : MONAD_SIMPLE S)
     vector (t v) n -> 
     vector (bool * (t v * t v)) (S n) -> 
     t u ^^ (S n) --> t u.
+    *)
 
+  (* For Coq-8.4: *)
+  Definition _U : 
+    bool -> 
+    t v -> 
+    t v -> 
+    forall n, 
+    Vector.t (t v) n -> 
+    Vector.t (bool * (t v * t v)) (S n) -> 
+    t u ^^ (S n) --> t u.
+  
   Proof.
   intros b pref suff n sep surr.
   apply ncurry.
