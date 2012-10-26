@@ -1,0 +1,8 @@
+A4.1.24 LDRB
+           begin
+           MemoryAccess(B bit, E bit);
+           if ConditionPassed(cond) then
+               begin
+               Rd = Memory[address,1];
+               end
+           end

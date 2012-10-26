@@ -1,0 +1,129 @@
+A2.6.2    Reset
+	  begin
+          R14_svc   = 0 /*UNPREDICTABLE value*/
+          SPSR_svc = 0 /*UNPREDICTABLE value*/
+          CPSR[4:0] = 0b10011                 /*   Enter Supervisor mode */
+          CPSR[5]   = 0                       /*   Execute in ARM state */
+          CPSR[6]   = 1                       /*   Disable fast interrupts */
+          CPSR[7]   = 1                       /*   Disable normal interrupts */
+          CPSR[8]   = 1                       /*   Disable Imprecise Aborts (v6 only) */
+          CPSR[9]   = CP15_reg1_EEbit         /*   Endianness on exception entry */
+          if high vectors configured then
+              PC    = 0xFFFF0000
+          else
+              PC    = 0x00000000
+          end
+
+A2.6.3   UndIns /*Undefined Instruction exception*/
+	 begin
+         R14_und     =
+                     address of next instruction after the Undefined instruction
+         SPSR_und    =
+                     CPSR
+         CPSR[4:0]   =
+                     0b11011              /* Enter Undefined Instruction mode */
+         CPSR[5]     =
+                     0                    /* Execute in ARM state */
+                                          /* CPSR[6] is unchanged */
+         CPSR[7]   = 1                    /* Disable normal interrupts */
+                                          /* CPSR[8] is unchanged */
+         CPSR[9]   = CP15_reg1_EEbit      /* Endianness on exception entry */
+         if high vectors configured then
+              PC   = 0xFFFF0004
+         else
+              PC   = 0x00000004
+         end
+
+A2.6.4    SoftInt /*Software Interrupt exception*/
+          begin
+          R14_svc     =
+                      address of next instruction after the SWI instruction
+          SPSR_svc    =
+                      CPSR
+          CPSR[4:0]   =
+                      0b10011              /* Enter Supervisor mode */
+          CPSR[5]     =
+                      0                    /* Execute in ARM state */
+                                           /* CPSR[6] is unchanged */
+          CPSR[7]   = 1                    /* Disable normal interrupts */
+                                           /* CPSR[8] is unchanged */
+          CPSR[9]   = CP15_reg1_EEbit      /* Endianness on exception entry */
+          if high vectors configured then
+              PC    = 0xFFFF0008
+          else
+              PC    = 0x00000008
+          end
+
+A2.6.5    PFAbort /*Prefetch Abort (instruction fetch memory abort)*/
+          begin
+          R14_abt     = address of the aborted instruction + 4
+          SPSR_abt    = CPSR
+          CPSR[4:0]   = 0b10111              /* Enter Abort mode */
+          CPSR[5]     = 0                    /* Execute in ARM state */
+                                             /* CPSR[6] is unchanged */
+          CPSR[7]     = 1                    /* Disable normal interrupts */
+          CPSR[8]     = 1                    /* Disable Imprecise Data Aborts (v6 only) */
+          CPSR[9]     = CP15_reg1_EEbit      /* Endianness on exception entry */
+          if high vectors configured then
+              PC      = 0xFFFF000C
+          else
+              PC      = 0x0000000C
+          end
+
+A2.6.6   DataAbort /*Data Abort (data access memory abort)*/
+         begin
+         R14_abt     = address of the aborted instruction + 8
+         SPSR_abt    = CPSR
+         CPSR[4:0]   = 0b10111              /* Enter Abort mode */
+         CPSR[5]     = 0                    /* Execute in ARM state */
+                                            /* CPSR[6] is unchanged */
+         CPSR[7]     = 1                    /* Disable normal interrupts */
+         CPSR[8]     = 1                    /* Disable Imprecise Data Aborts (v6 only) */
+         CPSR[9]     = CP15_reg1_EEbit      /* Endianness on exception entry */
+         if high vectors configured then
+              PC     = 0xFFFF0010
+         else
+              PC      = 0x00000010
+         end
+
+A2.6.8    IRQ /*Interrupt request (IRQ) exception*/
+          begin
+          R14_irq     =
+                      address of next instruction to be executed + 4;
+          SPSR_irq    =
+                      CPSR
+          CPSR[4:0]   =
+                      0b10010               /* Enter IRQ mode */
+          CPSR[5]     =
+                      0                     /* Execute in ARM state */
+                                            /* CPSR[6] is unchanged */
+          CPSR[7]   = 1                     /* Disable normal interrupts */
+          CPSR[8]   = 1                     /* Disable Imprecise Data Aborts (v6 only) */
+          CPSR[9]   = CP15_reg1_EEbit       /* Endianness on exception entry */
+          if VE==0 then
+            if high vectors configured then
+                 PC   = 0xFFFF0018
+            else
+                 PC   = 0x00000018
+          else
+            PC = VE_IRQ_address() /*IMPLEMENTATION DEFINED*/     /* see page A2-26 */
+          end
+
+A2.6.9    FIQ /*Fast interrupt request (FIQ) exception*/
+         begin
+         R14_fiq   = address of next instruction to be executed + 4
+         SPSR_fiq = CPSR
+         CPSR[4:0] = 0b10001               /* Enter FIQ mode */
+         CPSR[5]   = 0                     /* Execute in ARM state */
+         CPSR[6]   = 1                     /* Disable fast interrupts */
+         CPSR[7]   = 1                     /* Disable normal interrupts */
+         CPSR[8]   = 1                     /* Disable Imprecise Data Aborts (v6 only) */
+         CPSR[9]   = CP15_reg1_EEbit       /* Endianness on exception entry */
+         if VE==0 then
+           if high vectors configured then
+                PC   = 0xFFFF001C
+           else
+                PC   = 0x0000001C
+         else
+           PC = VE_FIQ_address() /*IMPLEMENTATION DEFINED*/    /* see page A2-26 */
+         end

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# SimSoC-Cert, a toolkit for generating certified processor simulators
+# See the COPYRIGHTS and LICENSE files.
+
+prog=`basename $0`
+dir=`dirname $0`
+
+usage () { echo "usage: $prog [-h] [library-name]"; }
+
+help () {
+  cat <<EOF
+Generate on the stdout an html file containing an index for the Coq files
+of the current directory.
+
+Options:
+-h Provide this help and exit
+EOF
+}
+
+case "$1" in
+-h) usage; echo; help; exit 0;;
+esac
+
+libname="$1"
+if test -n "$libname"; then libname="${libname}."; fi
+
+cat $dir/begin.html
+echo "<ul>"
+
+for f in `ls *.v`
+do
+  g=`basename $f .v`
+  echo "<li><a href=\"$libname$g.html\">$g</a></li>"
+done
+
+echo "</ul>"
+cat $dir/end.html

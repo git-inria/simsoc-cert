@@ -1,0 +1,11 @@
+A4.1.5 B, BL
+         begin
+         if ConditionPassed(cond) then
+             begin
+             if L == 1 then
+                 begin
+                 LR = address_of_next_instruction();
+                 end
+             PC = PC + (SignExtend_30(signed_immed_24) << 2);
+             end
+         end

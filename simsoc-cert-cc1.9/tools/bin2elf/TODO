@@ -1,0 +1,14 @@
+SimSoC-Cert, a toolkit for generating certified processor simulators
+--------------------------------------------------------------------
+
+- tools/bin2elf: add a command line option for specifying the
+   processor: value of elf.ehdr.e_machine = EM_ARM | EM_PCC | EM_SH
+   defined in elf.h
+
+- tools/bin2elf: extention to big-endian? Claude:
+
+   En cas d'architecture big-endian, c'est un peu plus compliqué :
+   . il faut aussi changer la ligne
+   elf.ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
+   . il faut ajouter des conversions d'endianness
+   au niveau de tous les champs sur 16 ou 32 bits.

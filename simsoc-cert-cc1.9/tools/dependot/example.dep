@@ -1,0 +1,21 @@
+APIDefense.vo: APIDefense.v GenericTactics.vo Norm.vo SubXor.vo Terms.vo
+APIfaux.vo: APIfaux.v GenericTactics.vo Norm.vo SubXor.vo Terms.vo
+CompareTerms.vo: CompareTerms.v Terms.vo Misc.vo GenericTactics.vo Contexts.vo WeightTerms.vo
+Contexts.vo: Contexts.v Terms.vo GenericTactics.vo
+Empty.vo: Empty.v RelProps.vo Separable.vo
+GenericTactics.vo: GenericTactics.v
+LasagnaTerms.vo: LasagnaTerms.v Terms.vo
+Lasagna.vo: Lasagna.v Nat2.vo Terms.vo Empty.vo LasagnaTerms.vo
+Misc.vo: Misc.v GenericTactics.vo
+Nat2.vo: Nat2.v
+Norm.vo: Norm.v Terms.vo GenericTactics.vo
+NXLayer.vo: NXLayer.v RelProps.vo Separable.vo Terms.vo LasagnaTerms.vo
+RelProps.vo: RelProps.v
+RewriteTerms.vo: RewriteTerms.v CompareTerms.vo Contexts.vo Terms.vo GenericTactics.vo
+Separable.vo: Separable.v RelProps.vo
+SortedLasagna.vo: SortedLasagna.v XorLayer.vo NXLayer.vo Empty.vo RelProps.vo Nat2.vo Separable.vo LasagnaTerms.vo Lasagna.vo
+SubXor.vo: SubXor.v Terms.vo Norm.vo GenericTactics.vo
+SuperIntuitionTests.vo: SuperIntuitionTests.v GenericTactics.vo
+Terms.vo: Terms.v
+WeightTerms.vo: WeightTerms.v Terms.vo Misc.vo GenericTactics.vo Contexts.vo
+XorLayer.vo: XorLayer.v RelProps.vo Separable.vo LasagnaTerms.vo

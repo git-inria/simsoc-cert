@@ -1,0 +1,928 @@
+entry point: 0x1040
+---------------------
+read half df17 from 1040
+1 decode df17 -> read 300000 from 10a0
+decoder choice: MOVLI
+---------------------
+read half 122 from 1042
+2 decode 122 -> decoder choice: STCVBR
+---------------------
+read half d21f from 1044
+3 decode d21f -> read 1100 from 10c4
+decoder choice: MOVLI
+---------------------
+read half 3210 from 1046
+4 decode 3210 -> decoder choice: CMPEQ
+---------------------
+read half 8b02 from 1048
+5 decode 8b02 -> decoder choice: BF
+---------------------
+read half d014 from 1050
+6 decode d014 -> read 41d0 from 10a4
+decoder choice: MOVLI
+---------------------
+read half d115 from 1052
+7 decode d115 -> read 4238 from 10a8
+decoder choice: MOVLI
+---------------------
+read half e200 from 1054
+8 decode e200 -> decoder choice: MOVI
+---------------------
+read half 2022 from 1056
+9 decode 2022 -> write 0 to 41d0
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+10 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+11 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+12 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+13 decode 2022 -> write 0 to 41d4
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+14 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+15 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+16 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+17 decode 2022 -> write 0 to 41d8
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+18 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+19 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+20 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+21 decode 2022 -> write 0 to 41dc
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+22 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+23 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+24 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+25 decode 2022 -> write 0 to 41e0
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+26 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+27 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+28 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+29 decode 2022 -> write 0 to 41e4
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+30 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+31 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+32 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+33 decode 2022 -> write 0 to 41e8
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+34 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+35 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+36 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+37 decode 2022 -> write 0 to 41ec
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+38 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+39 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+40 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+41 decode 2022 -> write 0 to 41f0
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+42 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+43 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+44 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+45 decode 2022 -> write 0 to 41f4
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+46 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+47 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+48 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+49 decode 2022 -> write 0 to 41f8
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+50 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+51 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+52 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+53 decode 2022 -> write 0 to 41fc
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+54 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+55 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+56 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+57 decode 2022 -> write 0 to 4200
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+58 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+59 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+60 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+61 decode 2022 -> write 0 to 4204
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+62 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+63 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+64 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+65 decode 2022 -> write 0 to 4208
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+66 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+67 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+68 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+69 decode 2022 -> write 0 to 420c
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+70 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+71 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+72 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+73 decode 2022 -> write 0 to 4210
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+74 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+75 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+76 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+77 decode 2022 -> write 0 to 4214
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+78 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+79 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+80 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+81 decode 2022 -> write 0 to 4218
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+82 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+83 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+84 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+85 decode 2022 -> write 0 to 421c
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+86 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+87 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+88 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+89 decode 2022 -> write 0 to 4220
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+90 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+91 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+92 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+93 decode 2022 -> write 0 to 4224
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+94 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+95 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+96 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+97 decode 2022 -> write 0 to 4228
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+98 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+99 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+100 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+101 decode 2022 -> write 0 to 422c
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+102 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+103 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+104 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+105 decode 2022 -> write 0 to 4230
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+106 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+107 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+108 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+109 decode 2022 -> write 0 to 4234
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+110 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+111 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+112 decode 89fb -> decoder choice: BT
+---------------------
+read half 2022 from 1056
+113 decode 2022 -> write 0 to 4238
+decoder choice: MOVLS
+---------------------
+read half 7004 from 1058
+114 decode 7004 -> decoder choice: ADDI
+---------------------
+read half 3103 from 105a
+115 decode 3103 -> decoder choice: CMPGE
+---------------------
+read half 89fb from 105c
+116 decode 89fb -> decoder choice: BT
+---------------------
+read half d10f from 105e
+117 decode d10f -> read 1894 from 109c
+decoder choice: MOVLI
+---------------------
+read half e404 from 1060
+118 decode e404 -> decoder choice: MOVI
+---------------------
+read half 410b from 1062
+119 decode 410b -> delayed to 1064
+decoder choice: JSR
+---------------------
+read half 4428 from 1064
+120 decode 4428 -> decoder choice: SHLL16
+---------------------
+read half 446a from 1894
+121 decode 446a -> decoder choice: LDSFPSCR
+---------------------
+read half d105 from 1896
+122 decode d105 -> read 422c from 18ac
+decoder choice: MOVLI
+---------------------
+read half 6049 from 1898
+123 decode 6049 -> decoder choice: SWAPW
+---------------------
+read half cb18 from 189a
+124 decode cb18 -> decoder choice: ORI
+---------------------
+read half ca10 from 189c
+125 decode ca10 -> decoder choice: XORI
+---------------------
+read half 6309 from 189e
+126 decode 6309 -> decoder choice: SWAPW
+---------------------
+read half 1131 from 18a0
+127 decode 1131 -> write c0000 to 4230
+decoder choice: MOVLS4
+---------------------
+read half ca08 from 18a2
+128 decode ca08 -> decoder choice: XORI
+---------------------
+read half 6209 from 18a4
+129 decode 6209 -> decoder choice: SWAPW
+---------------------
+read half b from 18a6
+130 decode b -> delayed to 18a8
+decoder choice: RTS
+---------------------
+read half 2122 from 18a8
+131 decode 2122 -> write 40000 to 422c
+decoder choice: MOVLS
+---------------------
+read half 436a from 1066
+132 decode 436a -> decoder choice: LDSFPSCR
+---------------------
+read half 122 from 1068
+133 decode 122 -> decoder choice: STCVBR
+---------------------
+read half d215 from 106a
+134 decode d215 -> read 41d0 from 10c0
+decoder choice: MOVLI
+---------------------
+read half 2212 from 106c
+135 decode 2212 -> write 0 to 41d0
+decoder choice: MOVLS
+---------------------
+read half d115 from 106e
+136 decode d115 -> read 1100 from 10c4
+decoder choice: MOVLI
+---------------------
+read half 412e from 1070
+137 decode 412e -> decoder choice: LDCVBR
+---------------------
+read half d016 from 1072
+138 decode d016 -> read 0 from 10cc
+decoder choice: MOVLI
+---------------------
+read half d116 from 1074
+139 decode d116 -> read 600000f1 from 10d0
+decoder choice: MOVLI
+---------------------
+read half 2008 from 1076
+140 decode 2008 -> decoder choice: TST
+---------------------
+read half 8900 from 1078
+141 decode 8900 -> decoder choice: BT
+---------------------
+read half 410e from 107c
+142 decode 410e -> decoder choice: LDCSR
+---------------------
+read half d00d from 107e
+143 decode d00d -> read 18c0 from 10b4
+decoder choice: MOVLI
+---------------------
+read half d40e from 1080
+144 decode d40e -> read 31e0 from 10bc
+decoder choice: MOVLI
+---------------------
+read half 400b from 1082
+145 decode 400b -> delayed to 1084
+decoder choice: JSR
+---------------------
+read half 9 from 1084
+146 decode 9 -> decoder choice: NOP
+---------------------
+read half d004 from 18c0
+147 decode d004 -> read 1e00 from 18d4
+decoder choice: MOVLI
+---------------------
+read half 6543 from 18c2
+148 decode 6543 -> decoder choice: MOV
+---------------------
+read half 2fe6 from 18c4
+149 decode 2fe6 -> write 7fc7 to 2ffffc
+decoder choice: MOVLM
+---------------------
+read half e400 from 18c6
+150 decode e400 -> decoder choice: MOVI
+---------------------
+read half e600 from 18c8
+151 decode e600 -> decoder choice: MOVI
+---------------------
+read half 6ef3 from 18ca
+152 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half e700 from 18cc
+153 decode e700 -> decoder choice: MOVI
+---------------------
+read half 6fe3 from 18ce
+154 decode 6fe3 -> decoder choice: MOV
+---------------------
+read half 402b from 18d0
+155 decode 402b -> delayed to 18d2
+decoder choice: JMP
+---------------------
+read half 6ef6 from 18d2
+156 decode 6ef6 -> read 7fc7 from 2ffffc
+decoder choice: MOVLP
+---------------------
+read half 2f86 from 1e00
+157 decode 2f86 -> write 7fc7 to 2ffffc
+decoder choice: MOVLM
+---------------------
+read half 6843 from 1e02
+158 decode 6843 -> decoder choice: MOV
+---------------------
+read half 2f96 from 1e04
+159 decode 2f96 -> write 2c6f8c60 to 2ffff8
+decoder choice: MOVLM
+---------------------
+read half 2fa6 from 1e06
+160 decode 2fa6 -> write 7fc7 to 2ffff4
+decoder choice: MOVLM
+---------------------
+read half d245 from 1e08
+161 decode d245 -> read 3210 from 1f20
+decoder choice: MOVLI
+---------------------
+read half 2fb6 from 1e0a
+162 decode 2fb6 -> write 2c845f8f to 2ffff0
+decoder choice: MOVLM
+---------------------
+read half 2fe6 from 1e0c
+163 decode 2fe6 -> write 7fc7 to 2fffec
+decoder choice: MOVLM
+---------------------
+read half 9182 from 1e0e
+164 decode 9182 -> read half 13c from 1f16
+decoder choice: MOVWI
+---------------------
+read half 6922 from 1e10
+165 decode 6922 -> read 3990 from 3210
+decoder choice: MOVLL
+---------------------
+read half 4f22 from 1e12
+166 decode 4f22 -> write 1086 to 2fffe8
+decoder choice: STSMPR
+---------------------
+read half 319c from 1e14
+167 decode 319c -> decoder choice: ADD
+---------------------
+read half 5b13 from 1e16
+168 decode 5b13 -> read 0 from 3ad8
+decoder choice: MOVLL4
+---------------------
+read half 7ff4 from 1e18
+169 decode 7ff4 -> decoder choice: ADDI
+---------------------
+read half 2bb8 from 1e1a
+170 decode 2bb8 -> decoder choice: TST
+---------------------
+read half 8d40 from 1e1c
+171 decode 8d40 -> delayed to 1e1e
+decoder choice: BTS
+---------------------
+read half 6ef3 from 1e1e
+172 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half 9b3b from 1ea0
+173 decode 9b3b -> read half 14c from 1f1a
+decoder choice: MOVWI
+---------------------
+read half 3b9c from 1ea2
+174 decode 3b9c -> decoder choice: ADD
+---------------------
+read half afbc from 1ea4
+175 decode afbc -> delayed to 1ea6
+decoder choice: BRA
+---------------------
+read half 11b3 from 1ea6
+176 decode 11b3 -> write 3adc to 3ad8
+decoder choice: MOVLS4
+---------------------
+read half 51b1 from 1e20
+177 decode 51b1 -> read 0 from 3ae0
+decoder choice: MOVLL4
+---------------------
+read half e21f from 1e22
+178 decode e21f -> decoder choice: MOVI
+---------------------
+read half 3127 from 1e24
+179 decode 3127 -> decoder choice: CMPGT
+---------------------
+read half 8d4b from 1e26
+180 decode 8d4b -> delayed to 1e28
+decoder choice: BTS
+---------------------
+read half 2888 from 1e28
+181 decode 2888 -> decoder choice: TST
+---------------------
+read half d018 from 1ec0
+182 decode d018 -> read 0 from 1f24
+decoder choice: MOVLI
+---------------------
+read half 2008 from 1ec2
+183 decode 2008 -> decoder choice: TST
+---------------------
+read half 8b0c from 1ec4
+184 decode 8b0c -> decoder choice: BF
+---------------------
+read half afb9 from 1ec6
+185 decode afb9 -> delayed to 1ec8
+decoder choice: BRA
+---------------------
+read half e0ff from 1ec8
+186 decode e0ff -> decoder choice: MOVI
+---------------------
+read half 7e0c from 1e3c
+187 decode 7e0c -> decoder choice: ADDI
+---------------------
+read half 6fe3 from 1e3e
+188 decode 6fe3 -> decoder choice: MOV
+---------------------
+read half 4f26 from 1e40
+189 decode 4f26 -> read 1086 from 2fffe8
+decoder choice: LDSMPR
+---------------------
+read half 6ef6 from 1e42
+190 decode 6ef6 -> read 7fc7 from 2fffec
+decoder choice: MOVLP
+---------------------
+read half 6bf6 from 1e44
+191 decode 6bf6 -> read 2c845f8f from 2ffff0
+decoder choice: MOVLP
+---------------------
+read half 6af6 from 1e46
+192 decode 6af6 -> read 7fc7 from 2ffff4
+decoder choice: MOVLP
+---------------------
+read half 69f6 from 1e48
+193 decode 69f6 -> read 2c6f8c60 from 2ffff8
+decoder choice: MOVLP
+---------------------
+read half b from 1e4a
+194 decode b -> delayed to 1e4c
+decoder choice: RTS
+---------------------
+read half 68f6 from 1e4c
+195 decode 68f6 -> read 7fc7 from 2ffffc
+decoder choice: MOVLP
+---------------------
+read half d00c from 1086
+196 decode d00c -> read 1000 from 10b8
+decoder choice: MOVLI
+---------------------
+read half 400b from 1088
+197 decode 400b -> delayed to 108a
+decoder choice: JSR
+---------------------
+read half 9 from 108a
+198 decode 9 -> decoder choice: NOP
+---------------------
+read half 2fc6 from 1000
+199 decode 2fc6 -> write 7fc7 to 2ffffc
+decoder choice: MOVLM
+---------------------
+read half c703 from 1002
+200 decode c703 -> decoder choice: MOVA
+---------------------
+read half dc02 from 1004
+201 decode dc02 -> read 31b4 from 1010
+decoder choice: MOVLI
+---------------------
+read half 2fe6 from 1006
+202 decode 2fe6 -> write 7fc7 to 2ffff8
+decoder choice: MOVLM
+---------------------
+read half 3c0c from 1008
+203 decode 3c0c -> decoder choice: ADD
+---------------------
+read half 4f22 from 100a
+204 decode 4f22 -> write 108c to 2ffff4
+decoder choice: STSMPR
+---------------------
+read half a002 from 100c
+205 decode a002 -> delayed to 100e
+decoder choice: BRA
+---------------------
+read half 6ef3 from 100e
+206 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half d101 from 1014
+207 decode d101 -> read 7a4 from 101c
+decoder choice: MOVLI
+---------------------
+read half c702 from 1016
+208 decode c702 -> decoder choice: MOVA
+---------------------
+read half 123 from 1018
+209 decode 123 -> delayed to 101a
+decoder choice: BRAF
+---------------------
+read half 402a from 101a
+210 decode 402a -> decoder choice: LDSPR
+---------------------
+read half 2fe6 from 17c0
+211 decode 2fe6 -> write 2ffff4 to 2ffff0
+decoder choice: MOVLM
+---------------------
+read half d111 from 17c2
+212 decode d111 -> read 0 from 1808
+decoder choice: MOVLI
+---------------------
+read half 4f22 from 17c4
+213 decode 4f22 -> write 1020 to 2fffec
+decoder choice: STSMPR
+---------------------
+read half 2118 from 17c6
+214 decode 2118 -> decoder choice: TST
+---------------------
+read half 8d04 from 17c8
+215 decode 8d04 -> delayed to 17ca
+decoder choice: BTS
+---------------------
+read half 6ef3 from 17ca
+216 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half d40f from 17d4
+217 decode d40f -> read 3984 from 1814
+decoder choice: MOVLI
+---------------------
+read half 6142 from 17d6
+218 decode 6142 -> read 0 from 3984
+decoder choice: MOVLL
+---------------------
+read half 2118 from 17d8
+219 decode 2118 -> decoder choice: TST
+---------------------
+read half 8911 from 17da
+220 decode 8911 -> decoder choice: BT
+---------------------
+read half 6fe3 from 1800
+221 decode 6fe3 -> decoder choice: MOV
+---------------------
+read half 4f26 from 1802
+222 decode 4f26 -> read 1020 from 2fffec
+decoder choice: LDSMPR
+---------------------
+read half b from 1804
+223 decode b -> delayed to 1806
+decoder choice: RTS
+---------------------
+read half 6ef6 from 1806
+224 decode 6ef6 -> read 2ffff4 from 2ffff0
+decoder choice: MOVLP
+---------------------
+read half d101 from 1020
+225 decode d101 -> read 2178 from 1028
+decoder choice: MOVLI
+---------------------
+read half c702 from 1022
+226 decode c702 -> decoder choice: MOVA
+---------------------
+read half 123 from 1024
+227 decode 123 -> delayed to 1026
+decoder choice: BRAF
+---------------------
+read half 402a from 1026
+228 decode 402a -> decoder choice: LDSPR
+---------------------
+read half 2f86 from 31a0
+229 decode 2f86 -> write 7fc7 to 2ffff0
+decoder choice: MOVLM
+---------------------
+read half d809 from 31a2
+230 decode d809 -> read 3938 from 31c8
+decoder choice: MOVLI
+---------------------
+read half 2fe6 from 31a4
+231 decode 2fe6 -> write 2ffff4 to 2fffec
+decoder choice: MOVLM
+---------------------
+read half 508f from 31a6
+232 decode 508f -> read ffffffff from 3974
+decoder choice: MOVLL4
+---------------------
+read half 4f22 from 31a8
+233 decode 4f22 -> write 102c to 2fffe8
+decoder choice: STSMPR
+---------------------
+read half 88ff from 31aa
+234 decode 88ff -> decoder choice: CMPIM
+---------------------
+read half 8d06 from 31ac
+235 decode 8d06 -> delayed to 31ae
+decoder choice: BTS
+---------------------
+read half 6ef3 from 31ae
+236 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half 6fe3 from 31bc
+237 decode 6fe3 -> decoder choice: MOV
+---------------------
+read half 4f26 from 31be
+238 decode 4f26 -> read 102c from 2fffe8
+decoder choice: LDSMPR
+---------------------
+read half 6ef6 from 31c0
+239 decode 6ef6 -> read 2ffff4 from 2fffec
+decoder choice: MOVLP
+---------------------
+read half b from 31c2
+240 decode b -> delayed to 31c4
+decoder choice: RTS
+---------------------
+read half 68f6 from 31c4
+241 decode 68f6 -> read 7fc7 from 2ffff0
+decoder choice: MOVLP
+---------------------
+read half 6fe3 from 102c
+242 decode 6fe3 -> decoder choice: MOV
+---------------------
+read half 4f26 from 102e
+243 decode 4f26 -> read 108c from 2ffff4
+decoder choice: LDSMPR
+---------------------
+read half 6ef6 from 1030
+244 decode 6ef6 -> read 7fc7 from 2ffff8
+decoder choice: MOVLP
+---------------------
+read half b from 1032
+245 decode b -> delayed to 1034
+decoder choice: RTS
+---------------------
+read half 6cf6 from 1034
+246 decode 6cf6 -> read 7fc7 from 2ffffc
+decoder choice: MOVLP
+---------------------
+read half d007 from 108c
+247 decode d007 -> read 1d00 from 10ac
+decoder choice: MOVLI
+---------------------
+read half 400b from 108e
+248 decode 400b -> delayed to 1090
+decoder choice: JSR
+---------------------
+read half 9 from 1090
+249 decode 9 -> decoder choice: NOP
+---------------------
+read half 2fe6 from 1d00
+250 decode 2fe6 -> write 7fc7 to 2ffffc
+decoder choice: MOVLM
+---------------------
+read half d00b from 1d02
+251 decode d00b -> read 1dc0 from 1d30
+decoder choice: MOVLI
+---------------------
+read half 4f22 from 1d04
+252 decode 4f22 -> write 1092 to 2ffff8
+decoder choice: STSMPR
+---------------------
+read half 9411 from 1d06
+253 decode 9411 -> read half ac from 1d2c
+decoder choice: MOVWI
+---------------------
+read half 400b from 1d08
+254 decode 400b -> delayed to 1d0a
+decoder choice: JSR
+---------------------
+read half 6ef3 from 1d0a
+255 decode 6ef3 -> decoder choice: MOV
+---------------------
+read half c322 from 1dc0
+256 decode c322 -> decoder choice: TRAPA
+---------------------
+read half d005 from 1200
+257 decode d005 -> read 41d0 from 1218
+decoder choice: MOVLI
+---------------------
+read half 6002 from 1202
+258 decode 6002 -> read 0 from 41d0
+decoder choice: MOVLL
+---------------------
+read half 8800 from 1204
+259 decode 8800 -> decoder choice: CMPIM
+---------------------
+read half 8b01 from 1206
+260 decode 8b01 -> decoder choice: BF
+---------------------
+read half a18a from 1208
+261 decode a18a -> delayed to 120a
+decoder choice: BRA
+---------------------
+read half 9 from 120a
+262 decode 9 -> decoder choice: NOP
+---------------------
+read half d085 from 1520
+263 decode d085 -> read 10e0 from 1738
+decoder choice: MOVLI
+---------------------
+read half 8800 from 1522
+264 decode 8800 -> decoder choice: CMPIM
+---------------------
+read half 8b01 from 1524
+265 decode 8b01 -> decoder choice: BF
+---------------------
+read half 142 from 152a
+266 decode 142 -> decoder choice: STCSPC
+---------------------
+read half 412a from 152c
+267 decode 412a -> decoder choice: LDSPR
+---------------------
+read half d480 from 152e
+268 decode d480 -> read ff000024 from 1730
+decoder choice: MOVLI
+---------------------
+read half 6442 from 1530
+269 decode 6442 -> 

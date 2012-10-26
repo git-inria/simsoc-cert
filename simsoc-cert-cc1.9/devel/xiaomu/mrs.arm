@@ -1,0 +1,14 @@
+A4.1.38 MRS
+           begin
+           if ConditionPassed(cond) then
+               begin
+               if R == 1 then
+                    begin
+                    Rd = SPSR;
+                    end
+               else
+                    begin
+                    Rd = CPSR;
+                    end
+               end
+           end

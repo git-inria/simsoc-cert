@@ -1,0 +1,7 @@
+<*.{byte,native}>: use_str, use_unix, use_Cparser
+
+<*.ml>: warn_A, warn_error_A
+
+<*.cmx>: pseudocode_native
+<{ast,flatten,genpc,norm,gencxx,gencxx_arm6,gencxx_sh4,c2pc,sl2_patch,sl2_semantics,sl2_decoder,sl2_print,simlight2,gencoq,gendectest}.ml>: warn_e, warn_error_e
+<CompCert_Driver.ml>: warn_twenty_nine, warn_error_twenty_nine

@@ -1,0 +1,22 @@
+A4.1.2 ADC
+         begin
+         if ConditionPassed(cond) then
+             begin
+             Rd = Rn + shifter_operand + C Flag;
+             if S == 1 and d == 15 then
+                 begin
+                 if CurrentModeHasSPSR() then
+                     begin
+                     CPSR = SPSR;
+                     end
+                 else UNPREDICTABLE
+                 end
+             else if S == 1 then
+                 begin
+                 N Flag = Rd[31];
+                 Z Flag = if Rd == 0 then 1 else 0;
+                 C Flag = CarryFrom(Rn + shifter_operand + C Flag);
+                 V Flag = OverflowFrom(Rn + shifter_operand + C Flag);
+                 end
+             end
+         end

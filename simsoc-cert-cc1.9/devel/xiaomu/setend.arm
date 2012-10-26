@@ -1,0 +1,4 @@
+A4.1.67 SETEND
+         begin
+         CPSR[9] = E;
+         end
