@@ -6,7 +6,7 @@ Prerequisites:
 
 * OCaml 3.12.1 available from http://caml.inria.fr/ .
 
-* Coq 8.3pl2 available from http://coq.inria.fr/ .
+* Coq 8.3plX with X >= 2 available from http://coq.inria.fr/ .
 
 * The sources of CompCert 1.9 available from
   http://compcert.inria.fr/ .
