@@ -156,6 +156,11 @@ let memory_chunk = using string_of_memory_chunk
 
 (*****************************************************************************)
 (** printing function for [attr] *)
+
+let just_no_attr _ = "noattr"
+
+let no_attr = using just_no_attr
+
 let attr b bo =
   bprintf b "{| attr_volatile := %a |}" bo;;
 
@@ -232,7 +237,7 @@ let rec types_of_typelist = function
 (* CompCert-1.9 -> 1.11 change of type definition *)
 let rec coq_type b = function
   | Tvoid -> string b "void"
-  | Tint (IBool, _, _) -> string b "bool"
+  | Tint (IBool, _, _) -> string b "Tint IBool Unsigned noattr"
   | Tint (I8, Signed, _) -> string b "int8"
   | Tint (I8, Unsigned, _) -> string b "uint8"
   | Tint (I16, Signed, _) -> string b "int16"
@@ -242,7 +247,7 @@ let rec coq_type b = function
   | Tfloat (F32, _) -> string b "float32"
   | Tfloat (F64, _) -> string b "float64"
   | Tpointer (t, _) -> app1 b "`*`" coq_type t
-  | Tarray (t, n, _) -> app2 b "Tarray" pcoq_type t coq_Z n
+  | Tarray (t, n, a) -> app3 b "Tarray" pcoq_type t coq_Z n no_attr a
   | Tfunction (tl, t) -> app2 b "Tfunction" typelist tl pcoq_type t
   | Tcomp_ptr (id, _) -> app1 b "Tcomp_ptr" ident id
   | Tstruct (id, _, _)
@@ -315,8 +320,8 @@ let coq_type_def t =
       | Tstruct (id, fl, _) -> "struct", id, fl
       | Tunion (id, fl, _) -> "union", id, fl in
   (fun b _ -> fieldlist id type_type b fl), 
-  (fun b _ -> app2 b ("T" ^ type_type) ident id 
-    (fun b -> bprintf b "typ_%s_%a" type_type ident) id);;
+  (fun b _ -> app2 b ("T" ^ type_type) ident id
+    (fun b -> bprintf b "typ_%s_%a noattr" type_type ident) id);;
 
 let structs_and_unions b =
   compute_typ_order ();

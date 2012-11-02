@@ -49,17 +49,17 @@ Notation "a -: b" := (pair a b) (at level 60).
 Notation "` x" := (Int.repr x) (at level 9).
 Notation "`` x" := (Init_int8 ` x) (at level 9).
 
-Notation int8 := (Tint I8 Signed).
-Notation uint8 := (Tint I8 Unsigned).
-Notation int16 := (Tint I16 Signed).
-Notation uint16 := (Tint I16 Unsigned).
-Notation int32 := (Tint I32 Signed).
-Notation uint32 := (Tint I32 Unsigned).
-Notation float32 := (Tfloat F32).
-Notation float64 := (Tfloat F64).
+Notation int8 := (Tint I8 Signed noattr).
+Notation uint8 := (Tint I8 Unsigned noattr).
+Notation int16 := (Tint I16 Signed noattr).
+Notation uint16 := (Tint I16 Unsigned noattr).
+Notation int32 := (Tint I32 Signed noattr).
+Notation uint32 := (Tint I32 Unsigned noattr).
+Notation float32 := (Tfloat F32 noattr).
+Notation float64 := (Tfloat F64 noattr).
 
 Notation void := Tvoid.
-Notation "`*` t" := (Tpointer t) (at level 20).
+Notation "`*` t" := (Tpointer t noattr) (at level 20).
 
 Notation "a :T: b" := (Tcons a b) (at level 70, right associativity).
 Notation "T[ ]" := Tnil.
