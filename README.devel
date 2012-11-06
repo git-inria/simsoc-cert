@@ -2,6 +2,14 @@ SimSoC-Cert, a toolkit for generating certified processor simulators
 See the COPYRIGHTS and LICENSE files
 --------------------------------------------------------------------
 
+Foreword
+--------
+
+The old devel directory, containing 
+compcert  daiwei  fred  tuong  xiaomu
+on October 2012,
+was moved to simsoc-cert-cc1.9/devel
+
 Guideline for SimSoC-Cert developers:
 -------------------------------------
 
@@ -15,9 +23,8 @@ add in the header your name with the modification date yy-mm-dd.
 About compilation:
 ------------------
 
-- Before any commit, make sure that it compiles with the last stable
-release of Coq and, if possible, with the development version of
-Coq.
+- Before any commit, make sure that it compiles with the suitable
+  release of Coq.
 
 - Put useful messages when you commit.
 
@@ -32,25 +39,18 @@ About the coding style:
 - Use maximum 78 characters per line.
 
 - Add the SimSoC-Cert header at the beginning of each file with the
-creation date yy-mm-dd.
+  creation date yy-mm-dd.
 
 - Only use Parameter, Definition, Lemma (no Axiom, Theorem, etc.).
 
 - Put comments! And use the possibilities offered by coqdoc. For
-instance, "(** " creates a section title. Check the result by doing
-"make doc".
+  instance, "(** " creates a section title. Check the result by doing
+  "make doc".
 
 - Try to use the Coq standard library as much as possible.
 
-- Define decidability lemmas using boolean function.
-
-- Avoid decidability lemmas. Use boolean functions instead.
-
-- Try to define equivalence lemmas whenever possible in order to use
-  rewriting.
-
 - Try to build the names of lemmas by concatening its main
-ingredients. For instance:
+  ingredients. For instance:
 
 Lemma Vforall_in : forall P x n (v : vec n), Vforall P v -> Vin x v -> P x.
 
@@ -69,7 +69,7 @@ Lemma Vin_elim : forall x n (v : vec n),
 provides a way to deduce some information from Vin (elimination rule).
 
 - Use "Require Export" as less as possible. Use "Require Import"
-instead. This reduces the compilation time.
+  instead. This reduces the compilation time.
 
 - Use
 (*COQ:...*) for indicating problems with Coq,
@@ -79,3 +79,12 @@ instead. This reduces the compilation time.
 (*REMOVE:...*) for indicating something to be removed,
 (*MOVE:...*) for indicating something to be moved,
 (*IMPROVE:...*) for indicating soemthing that could be improved.
+
+
+
+- Define decidability lemmas using boolean function.
+
+- Avoid decidability lemmas. Use boolean functions instead.
+
+- Try to define equivalence lemmas whenever possible in order to use
+  rewriting.

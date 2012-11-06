@@ -1,2 +1,0 @@
-<*.{byte,native}>: package(batteries), package(cil)
-<*.ml>: package(batteries), package(cil)

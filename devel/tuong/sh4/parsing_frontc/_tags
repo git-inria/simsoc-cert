@@ -1,2 +1,0 @@
-<*.{byte,native}>: package(batteries), package(FrontC)
-<*.ml>: package(batteries), package(FrontC)

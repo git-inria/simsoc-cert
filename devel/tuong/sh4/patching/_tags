@@ -1,3 +1,0 @@
-<*.{byte,native}>: package(batteries)
-<*.ml>: package(batteries)
-<*.cmx>: for-pack(Patching)
