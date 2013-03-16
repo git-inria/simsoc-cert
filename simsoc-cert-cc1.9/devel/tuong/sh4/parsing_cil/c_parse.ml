@@ -83,7 +83,8 @@ struct
     else
       l
 
-  open BatMap
+  module StringMap = BatMap.Make (BatString)
+  module IntMap = BatMap.Make (BatInt)
 
   let organize_header2 =
     let open Cil in

@@ -12,7 +12,7 @@ Page numbers refer to Renesas_SH4_2006.pdf.
 *)
 
 open Patch
-open BatMap
+module IntMap = BatMap.Make (BatInt)
 
 let main enum_in = 
   let l_map = 
@@ -74,26 +74,19 @@ let main enum_in =
 
   List.fold_left patch enum_in l_map
 
-module Arg = 
-struct
-  let handle l = 
-    let l_arg, l_ref = 
-      BatList.split 
-        (BatList.map (fun s -> 
-          let r = ref [] in
-          BatArg.command s (Arg.String (fun s -> r := s :: !r)), r) l) in
-    let l_arg = BatArg.handle l_arg in (* TODO prove or disprove that we can delta-reduce this declaration without doing side-effects *)
-    l_arg, BatList.map (fun x -> List.rev !x) l_ref
-end
-
 let _ = 
-  let l1, l2 = Arg.handle [ "-o" ] in
+  let l1, l2 =
+    let rec aux o1 o2 l = match o1, o2, l with
+      | _, None, "-o" :: fic_out :: l -> aux o1 (Some fic_out) l
+      | None, _, s :: l when (try s.[0] <> '-' with _ -> false) -> aux (Some s) o2 l
+      | Some _, Some _, _ | _, _, [] -> o1, o2
+      | _, _, _ :: l -> aux o1 o2 l in
+    aux None None (List.tl (Array.to_list Sys.argv)) in
 
-  (match l1, l2 with
-    | _, (fic_out :: _) :: _
-    | _ :: fic_out :: _, _ -> BatFile.write_lines fic_out
-    | _ -> BatIO.write_lines BatIO.stdout) 
+  (match l2 with
+  | Some fic_out -> BatFile.write_lines fic_out
+  | None -> BatEnum.iter (BatIO.write_line BatIO.stdout))
     (main
        (match l1 with
-         | fic_in :: _ -> BatFile.lines_of fic_in
-         | _ -> BatIO.lines_of BatIO.stdin))
+       | Some fic_in -> BatFile.lines_of fic_in
+       | None -> BatIO.lines_of BatIO.stdin))
