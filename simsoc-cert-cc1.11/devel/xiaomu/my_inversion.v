@@ -274,6 +274,7 @@ Ltac inv_eval_expr m m' :=
   let nexp:=fresh "nexp" in
   let a_:=fresh "a" in
   let a'_:=fresh "a'" in
+  let tp_v:=fresh "tp_v" in
   (*ev_funcall*)
   let rf_:=fresh "rf" in
   let t1_:=fresh "t" in
@@ -324,6 +325,12 @@ Ltac inv_eval_expr m m' :=
       repeat(match goal with [h: context c [m']|-?cl]=>revert h end||idtac);
       repeat(match goal with [h: context c [ex']|-?cl]=> revert h end||idtac);
       unfold next_m,next_e in ee;clear next_m next_e
+    |[el:eval_exprlist ?ge ?e m ?rargs ?et ?m' ?rargs' |-?cl]=>
+      pose(next_m := m'); pose(next_r := rargs');
+      change m' with next_m in el; change rargs' with next_r in el;
+      repeat(match goal with [h: context c [m']|-?cl]=>revert h end||idtac);
+      repeat(match goal with [h: context c [rargs']|-?cl]=> revert h end||idtac);
+      unfold next_m,next_r in el;clear next_m next_r
   end;
   match goal with
     |[ee:eval_expr ?ge ?e m RV (Eval ?v ?ty) ?et m' ?a'|-?cl]=>
@@ -334,8 +341,8 @@ Ltac inv_eval_expr m m' :=
       apply (inv_field ee); clear ee; intros t1_ a1_ ev_ex1; try intros;
       inv_eval_expr m m'
     |[ee:eval_expr ?ge ?e m RV (Evalof ?a ?ty) ?t m' ?a'|-?cl]=>
-      apply (inv_valof ee); clear ee;
-      (*intros t1_ a_ ev_ex;*) try intros;
+      apply (inv_valof ee); try discriminate; clear ee; 
+      intros t1_ a_ tp_v ev_ex; try intros;
       inv_eval_expr m m'
     |[ee:eval_expr ?ge ?e m LV (Ederef ?a ?ty) ?t m' ?a'|-?cl]=>
       apply (inv_deref ee); clear ee; intros t2_ a2_ ev_ex1; try intros;
@@ -374,7 +381,7 @@ Ltac inv_eval_expr m m' :=
       inv ee*)
     |[ee:eval_expr ?ge ?e m RV (Eassign ?l ?r ?ty) ?t m' ?a'|-?cl]=>
       apply (inv_assign ee); clear ee;
-      intros t1_ m1_ a1_ t2_ m2_ a2_ b_ ofs_ v1_ v2_ ;
+      intros t1_ m1_ a1_ t2_ m2_ a2_ b_ ofs_ v1_ v2_ t3_;
       intros ev_ex1 ev_ex2 esl esr1 semcast svot Heqtf;
       try intros;
       try
@@ -417,15 +424,16 @@ Ltac inv_eval_expr m m' :=
         intros t1_ m1_ rf'_ t2_ m2_ rargs'_ vf_ vargs_ targs_ tres_ fd_ t3_ 
           vres_;
         intros ev_ex ev_elst esr1 eslst Heqcf Heqff Heqtf 
-          ev_funcall esr2;
+          ev_funcall; try intros;
       try
       (match goal with
         |[ee1:eval_expr ge e m RV rf ?t1 ?mc1 ?rf'|-?cl]=>
+          inv_eval_expr m mc1;
           try
           (match goal with
-            |[eel:eval_exprlist ge e mc1 ?rargs ?t2 ?mc2 ?rargs'|-?cl]=>
-              inv_eval_expr mc1 mc2;
-              inv_eval_expr m mc1
+            |[eel:eval_exprlist ge e ?ml1 ?expr_lst ?t2 ?ml2 ?rargs'|-?cl]=>
+              inv_eval_expr ml1 ml2
+            | _ => pose (f_cantfind := 0)
           end)
       end)
     |[eel:eval_exprlist ?ge ?e m (Econs ?a1 ?al) ?t m' ?rargs'|-?cl]=>
@@ -437,11 +445,43 @@ Ltac inv_eval_expr m m' :=
         |[eel1:eval_expr ge e m RV a1 ?t1 ?ml1 ?a1'|-?cl]=>
           inv_eval_expr ml1 m';
           inv_eval_expr m ml1
+        | _ => pose (f_cantfindlist := 0)
       end)
     |[eel:eval_exprlist ?ge ?e m Enil ?t m' ?al'|-?cl]=>
       apply (inv_nil eel); clear eel
     |_=> pose(f:=0)
   end.
+
+
+(*
+Require Import adc_compcert.
+
+Definition condpass :=
+  Ecall (Evalof (Evar ConditionPassed T5) T5)
+  (Econs
+    (Eaddrof
+      (Efield (Ederef (Evalof (Evar proc T3) T3) T6) cpsr
+        T7) T8) (Econs (Evalof (Evar cond T9) T9) Enil))
+  T10.
+
+Lemma no_effect_condpass :
+  forall e m m' t v,
+    e! ConditionPassed = None ->
+    eval_expression (Genv.globalenv p) e m condpass t m' v ->
+    m = m'.
+Proof.
+  intros until v. intros noexists ee.
+  inv ee. rename H into ee, H0 into esr.
+  unfold condpass in ee.
+  (* mem state between m and m' *)
+  (*revert esr. apply (inv_call ee). intros. revert H1. apply (inv_valof H); try discriminate.
+  clear H. intros t1_ a_ tp_v ev_ex; try intros.
+      inv_eval_expr m m1.*)
+
+  inv_eval_expr m m'. intros.
+  inversion ev_ex0.
+Qed.
+*) 
 
 (* simplify the inversion on alloc_variables and bind_parameters definition *)
 Ltac inv_alloc_vars hyp e':=
@@ -483,7 +523,7 @@ Ltac inv_bind_params m' :=
   let bp' := fresh "bp'" in
   let Heq := fresh "Heq" in
   match goal with
-    [bp: bind_parameters ?e ?m ?lst ?vlst m' |- ?c] =>
+    [bp: bind_parameters ?ge ?e ?m ?lst ?vlst m' |- ?c] =>
     inversion bp as 
       [ex mx Heq
         |ex mx idx tyx paramsx v1x vlx bx m1x m2x eget str bp'];
@@ -549,3 +589,135 @@ Ltac inv_eval_simple m ex :=
         |Esizeof ?ty1 ?ty=>inv esr
       end
   end.
+
+
+(* Example lemma to test my_inversion *)
+
+Section Test_inv.
+
+(* Functional relation between the C memory module which contains the other ADC parameters, 
+   and the COQ specification of ADC parameters *)
+Definition sbit_func_related (m:Mem.mem) (e:env) (sbit:bool):Prop:=
+  bit_proj m e S = sbit.
+
+Definition cond_func_related (m:Mem.mem) (e:env) (cond:opcode):Prop:=
+  cond_proj adc_compcert.cond m e = cond.
+
+Definition d_func_related (m:Mem.mem) (e:env) (d:regnum):Prop:=
+  reg_proj m e adc_compcert.d = d.
+
+Definition n_func_related (m:Mem.mem) (e:env) (n:regnum):Prop:=
+  reg_proj m e adc_compcert.n = n.
+
+Definition so_func_related (m:Mem.mem) (e:env) (so:word):Prop:=
+  bits_proj m e shifter_operand = so.
+
+(* Human readable renaming of [p], which is generated by the Coq printer *)
+Definition prog_adc := adc_compcert.p.
+
+(* Timing new inversion on a complex expression *)
+
+Definition is_S_set_and_is_pc :=
+  Econdition
+  (Ebinop Oeq (Evalof (Evar S T10) T10)
+    (Eval (Vint (repr 1)) T9) T9)
+  (Econdition
+    (Ebinop Oeq (Evalof (Evar d T4) T4)
+      (Eval (Vint (repr 15)) T9) T9)
+    (Eval (Vint (repr 1)) T9)
+    (Eval (Vint (repr 0)) T9) T9)
+  (Eval (Vint (repr 0)) T9) T9.
+
+Lemma no_effect_is_S_set_and_is_pc :
+  forall e m t m' v,
+    eval_expression (Genv.globalenv prog_adc) e m is_S_set_and_is_pc t m' v ->
+    m = m'.
+Proof.
+  intros until v. intros ee.
+  inv ee. unfold is_S_set_and_is_pc in H.
+  rename H into ee, H0 into esrv.
+
+  (* Old inversion *)
+  idtac "using old inversion to discover the relation between m and m'".
+  Time (inv ee; inv H3; inv H14; inv H3; inv H15).
+  Undo.
+  (* New inversion *)
+  idtac "using new inversion to discover the relation between m and m'".
+  Time (inv_eval_expr m m').
+
+  destruct b.
+  
+    (* Old inversion *)
+    idtac "using old inversion to discover the relation between m and m'".
+    Time (inv ev_ex1; inv H3; inv H14; inv H3; inv H15).
+    Undo.
+    (* New inversion *)
+    idtac "using new inversion to discover the relation between m and m'".
+    Time (inv_eval_expr m m').
+    
+    destruct b.
+
+      inv_eval_expr m m'.
+      reflexivity.
+      inv_eval_expr m m'.
+      reflexivity.
+
+    inv_eval_expr m m'.
+    reflexivity.
+Qed.
+
+(* Timing new inversion on single expression *)
+
+Definition is_S_set :=
+  Ebinop Oeq (Evalof (Evar S T10) T10)
+    (Eval (Vint (repr 1)) T9) T9.
+
+Lemma no_effect_is_S_set :
+  forall e m t m' v,
+    eval_expression (Genv.globalenv prog_adc) e m is_S_set t m' v ->
+    m = m'.
+Proof.
+  intros until v. intros is_s. 
+  inv is_s. rename H into ee, H0 into esrv. 
+  unfold is_S_set in ee.
+
+  (* Old inversion *)
+  idtac "using old inversion on Ebinop".
+  Time (inv ee).
+  Undo.
+  (* New inversion *)
+  idtac "using new inversion on Ebinop".
+  Time (revert esrv; apply (inv_binop ee)).
+  clear ee; intros until a2'; intros ee1 ee2 esr.
+  
+  (* Old inversion *)
+  idtac "using old inversion on Evalof".
+  Time (inv ee1).
+  Undo.
+  (* New inversion *)
+  idtac "using new inversion on Evalof".
+  Time (revert esr; apply (inv_valof ee1)).
+  clear ee1; intros until a'0; intros ee esr.
+  
+  (* Old inversion *)
+  idtac "using old inversion on Eval".
+  Time (inv ee2).
+  Undo.
+  (* New inversion *)
+  idtac "using new inversion on Eval".
+  Time (revert esr; apply (inv_val ee2)).
+  clear ee2; intros esr.
+  
+  (* Old inversion *)
+  idtac "using old inversion on Evar".
+  Time (inv ee).
+  Undo.
+  (* New inversion *)
+  idtac "using new inversion on Evar".
+  Time (revert esr; apply (inv_var ee)).
+  clear ee; intros.
+  
+  reflexivity.
+Qed.
+
+End Test_inv.
