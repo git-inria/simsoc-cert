@@ -436,6 +436,8 @@ and exp' loc nm sz b = function
 
   | Unpredictable_exp | Unaffected -> invalid_arg "Gencoq.exp"
 
+  | Old_CPSR -> string b "cpsr s0"
+
 and range loc nm b = function
   (* convert the flag named s into the pre-defined Coq constant sbit *)
   | Flag (s, _) -> bprintf b "%sbit" s

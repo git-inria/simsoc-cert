@@ -394,6 +394,9 @@ let rec exp_trans = function
            int8)
   |Unaffected -> Ecall(Evar(id "ETodo", Tvoid),Enil,Tvoid)
 
+  |Old_CPSR->
+       lval_rval (Evar (id ("old_CPSR"),uint32))
+
 and explst = function
   |[] -> Enil
   |h::t -> Econs (lval_rval(exp_trans h),explst t)
@@ -472,7 +475,7 @@ and assign dst src =
             Econs(Eval(Values.Vint(num n2),uint32),Enil))),Tvoid))
     |Range (CPSR,Flag _)->(*"proc->cpsr.%s_flag = %a"*)
        Sdo(Eassign(exp_trans dst,exp_trans src,int8))
-    |CPSR -> 
+    |CPSR|Old_CPSR -> 
         (match src with
           |SPSR None -> (*"copy_StatusRegister(&proc->cpsr, spsr(proc))"*)
              Sdo(Ecall(lval_rval(Evar(id "copy_StatusRegister",tp_copysr)),
@@ -493,14 +496,14 @@ and assign dst src =
                              Econs(lval_rval(Evar(id(mode m),int32)),Enil)),
                                    Tpointer (tp_sr, noattr)),
                        Enil)),Tvoid))
-          |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|CPSR|Reg _
+          |(Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|CPSR|Old_CPSR|Reg _
             |Var _|Range (_,Bits _)|Range (_,Flag _)|Range (_,Index _)
             |Unaffected|Unpredictable_exp|Memory _|Coproc_exp _) as e -> 
              Sdo(Ecall(lval_rval(Evar(id "set_StatusRegister",tp_setsr)),
                        Econs(lval_rval(exp_trans e),Enil),Tvoid)))
     |SPSR None ->
         (match src with
-          |CPSR -> (*"copy_StatusRegister(spsr(proc), &proc->cpsr)"*)
+          |CPSR |Old_CPSR-> (*"copy_StatusRegister(spsr(proc), &proc->cpsr)"*)
              Sdo(Ecall(lval_rval(Evar(id "copy_StatusRegister",tp_copysr)),
                        Econs(Ecall(lval_rval(Evar(id "spsr",tp_spsr)),
                                    Econs(lval_rval(Evar(id "proc",Tpointer (tp_proc, noattr))),
@@ -516,7 +519,7 @@ and assign dst src =
                        Econs(lval_rval(exp_trans e),Enil),Tvoid)))
     |SPSR (Some m) ->
         (match src with
-          |CPSR -> (*"copy_StatusRegister(spsr_m(proc,m), &proc->cpsr)"*)
+          |CPSR |Old_CPSR -> (*"copy_StatusRegister(spsr_m(proc,m), &proc->cpsr)"*)
              Sdo(Ecall(lval_rval(Evar(id "copy_StatusRegister",tp_copysr)),
                        Econs(Ecall(lval_rval(Evar(id "spsr_m",tp_spsrm)),
                                    Econs(lval_rval(Evar(id "proc",Tpointer (tp_proc, noattr))),
@@ -539,7 +542,7 @@ and assign dst src =
               |Half->Tint(I16,Unsigned,noattr)
               |Word->uint32)))
     |Num _|Bin _|Hex _|Float_zero|If_exp _|Fun _|BinOp _|Reg _|Var _|Range (_,Flag _)
-    |Unaffected|Unpredictable_exp|Coproc_exp _  -> 
+    |Unaffected|Unpredictable_exp|Coproc_exp _ -> 
        Sdo(Eassign(lval_rval(exp_trans dst),lval_rval(exp_trans src),Tvoid))
 
 and switch_aux s o =

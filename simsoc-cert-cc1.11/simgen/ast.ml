@@ -41,6 +41,7 @@ type exp =
 | Unpredictable_exp
 | Memory of exp * size
 | Coproc_exp of exp * string * exp list
+| Old_CPSR
 
 and range =
 | Bits of string * string

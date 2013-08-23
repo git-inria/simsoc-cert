@@ -103,7 +103,7 @@ let rec exp = function
 
   (* non-recursive expressions *)
   |Num _|Bin _|Hex _|Float_zero|CPSR|SPSR _|Var _|Unaffected
-  |Unpredictable_exp as e -> e
+  |Unpredictable_exp|Old_CPSR as e -> e
 
 (* replace two successive ranges by a single one *)
 and range =
@@ -175,9 +175,14 @@ let rec inst = function
   (* normalize block's *)
   | Block is -> raw_inst (Block (List.map inst is))
 
-  (* replace affectations to Unaffected by nop's *)
   | Assign (e1, e2) ->
       begin match exp e2 with
+
+  (* If CPSR is on the right side, it is Old_CPSR *)
+        | CPSR -> Assign (exp e1, Old_CPSR)
+        | Range (CPSR, Flag (s,s')) -> Assign (exp e1, Range (Old_CPSR, Flag (s,s')))
+
+  (* replace affectations to Unaffected by nop's *)
         | Unaffected -> nop
         | e2 -> Assign (exp e1, e2)
       end
