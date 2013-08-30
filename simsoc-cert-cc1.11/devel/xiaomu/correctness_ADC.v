@@ -293,7 +293,7 @@ Definition add_old_Rn_so_Cf :=
       (Efield
         (Ederef
           (Evalof (Evar adc_compcert.proc T3) T3)
-          T6) cpsr T7) C_flag T10) T10) T10.
+          T6) old_CPSR T7) C_flag T10) T10) T10.
 
 Lemma same_result_add_old_Rn_so_Cf :
   forall ge e m v s0 n so s,
@@ -302,7 +302,7 @@ Lemma same_result_add_old_Rn_so_Cf :
     so_func_related m e so ->
     eval_simple_rvalue ge e m add_old_Rn_so_Cf (Vint v) ->
     v = add (add (Arm6_State.reg_content s0 n) so)
-    ((Arm6_State.cpsr s)[Cbit]).
+    ((Arm6_State.cpsr s0)[Cbit]).
 Proof.
 Admitted.
 
@@ -314,7 +314,7 @@ Lemma same_setregpc :
     (forall l b, proc_state_related proc m' e 
       (Ok tt (mk_semstate l b
         (Arm6_State.set_reg s d (add (add (Arm6_State.reg_content s0 n) so)
-          ((Arm6_State.cpsr s)[Cbit]) ))))).
+          ((Arm6_State.cpsr s0)[Cbit]) ))))).
 Proof.
 Admitted.
 
@@ -651,7 +651,7 @@ Definition cflag_assgnt:=
               (Efield
                 (Ederef
                   (Evalof (Evar adc_compcert.proc T3) T3)
-                  T6) cpsr T7) C_flag T10)
+                  T6) old_CPSR T7) C_flag T10)
             T10) Enil))) T10) T10.
 
 Lemma same_cflag_assgnt:
@@ -663,7 +663,7 @@ Lemma same_cflag_assgnt:
     forall l b, proc_state_related proc m' e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Cbit
         (Arm6_Functions.CarryFrom_add3 (Arm6_State.reg_content s0 n) so
-          (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
+          ((Arm6_State.cpsr s0)[Cbit]))))).
 Proof.
 Admitted.
 
@@ -690,7 +690,7 @@ Definition vflag_assgnt:=
               (Efield
                 (Ederef
                   (Evalof (Evar adc_compcert.proc T3) T3)
-                  T6) cpsr T7) C_flag T10)
+                  T6) old_CPSR T7) C_flag T10)
             T10) Enil))) T10) T10.
 
 Lemma same_vflag_assgnt:
@@ -702,7 +702,7 @@ Lemma same_vflag_assgnt:
     proc_state_related proc m' e
       (Ok tt (mk_semstate l b (Arm6_State.set_cpsr_bit s Arm6_SCC.Vbit
         (Arm6_Functions.OverflowFrom_add3 (Arm6_State.reg_content s0 n) so
-           (Arm6_State.cpsr (st (mk_semstate l b s))) [Cbit])))).
+           ((Arm6_State.cpsr s0)[Cbit]))))).
 Proof.
 Admitted.
 
@@ -1200,7 +1200,7 @@ Proof.
             pose (s3 := Arm6_State.set_cpsr_bit s2 Cbit
               (Arm6_Functions.CarryFrom_add3
                 (Arm6_State.reg_content s n) so
-                (Arm6_State.cpsr s2) [Cbit]));
+                (Arm6_State.cpsr s) [Cbit]));
             revert psrel; fold s3; intro psrel;
             eapply (same_vflag_assgnt m16 e nil (Util.zne d 15) s s3
               n so Events.E0 mfin v7) in psrel;
